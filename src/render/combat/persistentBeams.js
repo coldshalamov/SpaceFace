@@ -200,6 +200,61 @@ function applyBeamShaderStructure(material, shared, role) {
   material.customProgramCacheKey = () => `sf-beam-structure-${role}`;
 }
 
+// One construction site for both beam-layer recipes — the pool and the precompile salvo specimen
+// share it so the staged draw resolves the same program keys a live beam later hits.
+function createBeamLayerMaterials(THREE, shared) {
+  const coreMaterial = new THREE.MeshBasicMaterial({
+    name: 'sf-combat-beam-core',
+    color: 0xffffff,
+    transparent: true,
+    opacity: 1,
+    depthTest: true,
+    depthWrite: false,
+    // A sustained connection needs a stable energy filament even against true black space.
+    // Normal blending supplies that readable structural core; only the surrounding sheath is
+    // additive, so beam identity no longer depends on bloom or exposure.
+    blending: THREE.NormalBlending,
+    toneMapped: false,
+    vertexColors: true,
+    side: THREE.DoubleSide,
+  });
+  applyBeamShaderStructure(coreMaterial, shared, 'core');
+  const haloMaterial = new THREE.MeshBasicMaterial({
+    name: 'sf-combat-beam-sheath',
+    color: 0xffffff,
+    transparent: true,
+    opacity: 0.34,
+    depthTest: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    toneMapped: false,
+    vertexColors: true,
+    side: THREE.DoubleSide,
+  });
+  applyBeamShaderStructure(haloMaterial, shared, 'sheath');
+  return { coreMaterial, haloMaterial };
+}
+
+// Specimen pair for the startup precompile salvo: both beam-layer programs resolve inside the
+// staged 1x1 draw instead of linking on the first sustained beam mid-combat. The live pool's
+// quad batches carry aSfAxial/aSfBorn/aSfStop; the shader declares them as attributes, so a plain
+// quad resolves the identical program key — absent attributes read constant zero.
+export function createPersistentBeamPrecompileMeshes(THREE) {
+  const shared = { time: { value: 0 }, pulse: { value: 1 } };
+  const mats = createBeamLayerMaterials(THREE, shared);
+  const geometry = new THREE.PlaneGeometry(2, 2);
+  const core = new THREE.Mesh(geometry, mats.coreMaterial);
+  const halo = new THREE.Mesh(geometry, mats.haloMaterial);
+  core.name = 'SF_Precompile_CombatBeam_Core';
+  halo.name = 'SF_Precompile_CombatBeam_Sheath';
+  core.frustumCulled = false;
+  halo.frustumCulled = false;
+  const group = new THREE.Group();
+  group.name = 'SF_Precompile_PersistentBeams';
+  group.add(halo, core);
+  return group;
+}
+
 /**
  * Two draw calls for every live continuous weapon beam: one opaque-hot core and one restrained
  * additive sheath. Simulation owns hit rays; this bounded pool only mirrors presentation receipts.
@@ -250,35 +305,9 @@ export class PersistentCombatBeamPool {
     this._coreBatch = createBeamBatch(THREE, this.maxBeams, 'sf-combat-beam-core-batch');
     this._haloBatch = createBeamBatch(THREE, this.maxBeams, 'sf-combat-beam-sheath-batch');
     this.geometry = this._coreBatch.geometry;
-    this.coreMaterial = new THREE.MeshBasicMaterial({
-      name: 'sf-combat-beam-core',
-      color: 0xffffff,
-      transparent: true,
-      opacity: 1,
-      depthTest: true,
-      depthWrite: false,
-      // A sustained connection needs a stable energy filament even against true black space.
-      // Normal blending supplies that readable structural core; only the surrounding sheath is
-      // additive, so beam identity no longer depends on bloom or exposure.
-      blending: THREE.NormalBlending,
-      toneMapped: false,
-      vertexColors: true,
-      side: THREE.DoubleSide,
-    });
-    applyBeamShaderStructure(this.coreMaterial, this._beamShaderShared, 'core');
-    this.haloMaterial = new THREE.MeshBasicMaterial({
-      name: 'sf-combat-beam-sheath',
-      color: 0xffffff,
-      transparent: true,
-      opacity: 0.34,
-      depthTest: true,
-      depthWrite: false,
-      blending: THREE.AdditiveBlending,
-      toneMapped: false,
-      vertexColors: true,
-      side: THREE.DoubleSide,
-    });
-    applyBeamShaderStructure(this.haloMaterial, this._beamShaderShared, 'sheath');
+    const beamMaterials = createBeamLayerMaterials(THREE, this._beamShaderShared);
+    this.coreMaterial = beamMaterials.coreMaterial;
+    this.haloMaterial = beamMaterials.haloMaterial;
     this.core = new THREE.Mesh(this._coreBatch.geometry, this.coreMaterial);
     this.halo = new THREE.Mesh(this._haloBatch.geometry, this.haloMaterial);
     this.core.name = 'sf-combat-beam-core-pool';

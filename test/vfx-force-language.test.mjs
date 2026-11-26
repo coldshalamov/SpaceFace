@@ -32,7 +32,7 @@ for(const kind of Object.keys(FIELD_SIGNATURES))test(`${kind}: actual surfaces, 
 });
 
 test('empty-space and contact field motion is uniform-driven; steady descriptors do not re-upload',()=>{
- const owner=new FieldForcePresentation(new THREE.Scene()),s=state([field('well')]);prime(owner,s);
+ const owner=new FieldForcePresentation(new THREE.Scene()),s=state([field('sheet')]);prime(owner,s);
  const before=versions(owner),buffers=owner.batch.attributes.map(a=>a.array);
  for(let i=0;i<60;i++){s.simTime+=1/60;owner.update(1/60,s);}
  assert.deepEqual(versions(owner),before);owner.batch.attributes.forEach((a,i)=>assert.equal(a.array,buffers[i]));
@@ -63,7 +63,8 @@ test('Seed phase is read-only, never emits gravity flow, re-launch resets a cons
 });
 
 test('removal retires perimeter immediately; authored body breaks up, then uploads sleep',()=>{
- const owner=new FieldForcePresentation(new THREE.Scene()),s=state([field('repulsor')]);prime(owner,s);
+ // Skim: Shove, Pull, Pin and Plow are drawn by the VFX kit now and leave no cloth body to break up.
+ const owner=new FieldForcePresentation(new THREE.Scene()),s=state([field('sheet')]);prime(owner,s);
  s.fields.active=[];owner.update(0,s);assert.equal(owner.stats.active,0);assert.equal(owner.stats.releasing,1);
  assert.ok(owner.stats.surfaces>3,'retain the existing form for its visible breakup');
  for(let i=0;i<owner.stats.surfaces;i++){
@@ -77,17 +78,17 @@ test('removal retires perimeter immediately; authored body breaks up, then uploa
 
 test('deployment born at simTime zero does not reset; origin shifts update local positions',()=>{
  let ox=0,oz=0;const owner=new FieldForcePresentation(new THREE.Scene(),{toLocal:(x,z,o)=>{o.x=x-ox;o.z=z-oz;return o;}});
- const s=state([field('well')]);owner.update(0,s);s.simTime=.1;owner.update(.1,s);
+ const s=state([field('sheet')]);owner.update(0,s);s.simTime=.1;owner.update(.1,s);
  assert.equal(owner.slots.find(x=>x.seen).born,0);
  assert.equal(owner.batch.attributes[6].getX(0),0,'birth at zero stays stable');
  assert.ok(owner.batch.attributes[6].getY(0)>.1,'build duration is supplied to the GPU');
  ox=10000;oz=-20000;owner.update(0,s);
- assert.equal(owner.batch.attributes[0].getX(0),30-10000);assert.equal(owner.batch.attributes[0].getZ(0),-25+20000);
+ assert.equal(owner.batch.attributes[8].getX(0),30-10000,'the source pivot follows the origin shift');assert.equal(owner.batch.attributes[8].getY(0),-25+20000);
  owner.dispose();
 });
 
 test('reduced motion freezes flows without deleting silhouettes; reduced flash keeps boundary geometry',()=>{
- const owner=new FieldForcePresentation(new THREE.Scene()),s=state([field('repulsor')]);prime(owner,s);
+ const owner=new FieldForcePresentation(new THREE.Scene()),s=state([field('sheet')]);prime(owner,s);
  const count=owner.mesh.count;s.settings.video.motionReduce=true;s.settings.video.flashReduce=true;owner.update(0,s);
  assert.equal(owner.mesh.count,count);assert.equal(owner.batch.material.uniforms.uMotion.value,0);
  assert.equal(owner.batch.material.uniforms.uFlash.value,.56);owner.dispose();

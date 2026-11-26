@@ -22,6 +22,7 @@ import {
   generateDrillField, recoverClearedGeometry, entryShaftIndex, tileIndex, DRILL_CONST, drill,
 } from '../src/systems/drill.js';
 import { asteroidSites } from '../src/systems/asteroidSites.js';
+import { resolveBoreFamily } from '../src/systems/drillFieldModel.js';
 import { contactProfile, machineCapability } from '../src/systems/siteProduction.js';
 import { SITE_BALANCE, SITE_MACHINE_BY_ID } from '../src/data/sites.js';
 
@@ -147,9 +148,13 @@ function addAsteroid(h, id = ROCK_ID) {
 
 /** Open a live drill session over a REAL generated field with the pocket hand-carved into it. */
 function openSession(h, asteroidId = ROCK_ID, cells = POCKET) {
-  const field = generateDrillField(asteroidId);
-  for (const [c, r] of cells) field[c][r] = EMPTY();
+  // What drill.start does: a rock nobody has bored takes the geology of its type, and the family
+  // is stamped on the rock so the site regenerates the same interior.
   const ent = h.entities.get(asteroidId);
+  const family = resolveBoreFamily(ent.data);
+  ent.data.boreFamily = family;
+  const field = generateDrillField(asteroidId, family);
+  for (const [c, r] of cells) field[c][r] = EMPTY();
   ent.data.drillCleared = cells.map(([c, r]) => tileIndex(c, r));
   h.state.drill = { active: true, asteroidId, field, avatar: { col: cells[0][0], row: cells[0][1] } };
   return field;

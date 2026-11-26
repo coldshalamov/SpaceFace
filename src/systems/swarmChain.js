@@ -33,7 +33,7 @@
 // which needs a clock.
 
 import { runOwnsReward } from '../combat/rewardEligibility.js';
-import { validateRunState } from '../core/runState.js';
+import { validateRunStateForTick } from '../core/runState.js';
 import { styleCauseFromKill } from './survivalStyle.js';
 import { isSwarmRuleset } from './survivalSwarm.js';
 import { ownedSwarmLegendaryIds, swarmPassiveFireRateScale } from '../data/swarmDraft.js';
@@ -116,6 +116,41 @@ export function swarmChainBonus(chain) {
   return Math.min(SWARM_CHAIN_SCORE_CAP, n);
 }
 
+/**
+ * The tiers the Swarm HUD already prints (×1.5 … ×6). Same cuts as
+ * `swarmStyleReadout` in survivalHud.js — a chain under 5 is still ×1.
+ * The top tier is the cap: nothing invents a ×7.
+ */
+export const SWARM_CHAIN_PAY_CAP = 6;
+export const SWARM_CHAIN_PAY_TIERS = Object.freeze([
+  Object.freeze({ at: 200, mult: 6 }),
+  Object.freeze({ at: 100, mult: 5 }),
+  Object.freeze({ at: 50, mult: 4 }),
+  Object.freeze({ at: 25, mult: 3 }),
+  Object.freeze({ at: 10, mult: 2 }),
+  Object.freeze({ at: 5, mult: 1.5 }),
+]);
+
+/** Scrap/XP multiplier the meter is showing for this chain count. Pure. ×1 below the first tier. */
+export function swarmChainPayMultiplier(chain) {
+  const n = Number.isFinite(chain) ? Math.max(0, Math.trunc(chain)) : 0;
+  for (const tier of SWARM_CHAIN_PAY_TIERS) {
+    if (n >= tier.at) return tier.mult;
+  }
+  return 1;
+}
+
+/**
+ * Room pay (2.5×) and the chain multiply together, then stop at the meter's top tier.
+ * A boss's own scrap multiple is not part of this product — callers apply it after.
+ */
+export function swarmKillPayMultiplier(chainMult, roomMult = 1) {
+  const chain = Number.isFinite(chainMult) && chainMult > 0 ? chainMult : 1;
+  const room = Number.isFinite(roomMult) && roomMult > 0 ? roomMult : 1;
+  const product = chain * room;
+  return product > SWARM_CHAIN_PAY_CAP ? SWARM_CHAIN_PAY_CAP : product;
+}
+
 /** How much a kill adds, given whether it arrived differently from the one before it. */
 export function swarmChainStep(cause, previousCause) {
   if (!previousCause || cause === previousCause) return SWARM_CHAIN_STEP;
@@ -138,7 +173,7 @@ function liveSwarmRun(state) {
   if (run.kind !== 'survival') return null;
   if (run.phase === 'inactive' || run.phase === 'ended') return null;
   if (!isSwarmRuleset(run.ruleset)) return null;
-  if (!validateRunState(run).ok) return null;
+  if (!validateRunStateForTick(run, state.tick).ok) return null;
   return run;
 }
 
@@ -165,6 +200,9 @@ export const swarmChain = {
     // writer of chain state: this path walks the same continue/step/milestone logic per body.
     this._unsubs.push(this.bus.on('swarm:broodKills', (p) => this._onBroodKills(p)));
     this._unsubs.push(this.bus.on('run:ended', () => this._onRunEnded()));
+    // Victory reaches the next run through run:started without run:ended — the chain
+    // ledger must reset on both edges or the streak carries over.
+    this._unsubs.push(this.bus.on('run:started', () => this._onRunEnded()));
   },
 
   destroy() {
@@ -233,6 +271,20 @@ export const swarmChain = {
         ? Math.max(0, SWARM_CHAIN_WINDOW_S - (simTimeOf(this.state) - this._lastKillAt))
         : 0,
     };
+  },
+
+  /**
+   * The multiplier a kill should pay RIGHT NOW — the tier already on the meter,
+   * or 1 when the chain is dark or its window has already lapsed. Does not
+   * count the kill being paid; the chain steps after the purse is written.
+   */
+  livePayMultiplier() {
+    const chain = Number.isFinite(this._chain) ? this._chain : 0;
+    if (!(chain > 0)) return 1;
+    const now = simTimeOf(this.state);
+    const last = Number.isFinite(this._lastKillAt) ? this._lastKillAt : 0;
+    if (now - last > SWARM_CHAIN_WINDOW_S) return 1;
+    return swarmChainPayMultiplier(chain);
   },
 
   _reset() {

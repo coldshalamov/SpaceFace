@@ -5,12 +5,20 @@ import { SWARM_RULESET } from '../data/swarmMode.js';
 export const SWARM_CALLOUT_MAX = 3;
 export const SWARM_CALLOUT_WORDS = 3;
 const FIGHT_SOURCES = new Set(['swarm-callout', 'boss', 'danger', 'round', 'system', 'warn']);
-const JARGON = /\b(snag|messy|window|logged|mass|tonn|winch|strain|payload|ride|budge|shunted)\b|\d+\s*t\b/i;
+const JARGON = /\b(snag|messy|window|logged|mass|tonn|winch|strain|payload|ride|budge|shunted|ignition|flare|nova)\b|\b(?:mixed|terrain|direct)\s*\+\s*\d|\d+\s*t\b/i;
 const BARE_NUMBER = /(^|\s)\d{2,}(\s|$)/;
 
 export function isSwarmGlass(state) {
   const run = state && state.run;
   return !!(run && run.kind === 'survival' && run.phase !== 'inactive' && run.ruleset === SWARM_RULESET);
+}
+export function isSwarmHudActive(state) {
+  const run = state && state.run;
+  if (!run || run.kind !== 'survival' || run.ruleset !== SWARM_RULESET) return false;
+  if (run.phase === 'inactive' || run.phase === 'ended' || run.phase === 'victory') return false;
+  if (state.mode !== 'flight') return false;
+  if (state.ui && state.ui.docked) return false;
+  return true;
 }
 export function swarmGlassAdmits(state, { source = '' } = {}) {
   return !isSwarmGlass(state) || FIGHT_SOURCES.has(String(source));

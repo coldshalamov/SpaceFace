@@ -1,4 +1,5 @@
 import { TraceLayer, distance2, normalizeSensorFrame, saturate, stableId } from './contracts.js';
+import { simCoreFlag } from '../core/simCoreFlags.js';
 
 export const POOLED_SENSOR_CONTACT = Symbol('pooled sensor contact');
 
@@ -83,8 +84,9 @@ export class PerceptionMemory {
     const seen = this.seenScratch;
     if (!useTick) seen.clear();
     let seenCount = 0;
+    const keyCache = simCoreFlag('aiContactKeyCache');
     for (const contact of normalized.contacts) {
-      const key = contactKey(contact);
+      const key = contactKey(contact, keyCache);
       if (!useTick) seen.add(key);
       let record = memory.contacts.get(key);
       if (!record) {
@@ -309,8 +311,36 @@ export function aggregatePerceivedTelemetry(perceptions, freeze = Object.freeze)
   });
 }
 
-function contactKey(contact) {
-  return `${contact.kind}|${stableId(contact.id)}`;
+// Every observe keys every contact (16 hulls x ~140 contacts per think in a Swarm round). The key
+// is a pure function of (kind, id), so it is built once per pair and reused: the same string, so
+// the same Map row, without two string builds and a fresh hash per contact per think. Bounded:
+// entity ids recycle below a few thousand, and the table is dropped if it ever grows past that.
+const CONTACT_KEY_CACHE_LIMIT = 8192;
+const contactKeysByKind = new Map();
+let contactKeyCount = 0;
+
+function contactKey(contact, cached = false) {
+  const kind = contact.kind;
+  const id = contact.id;
+  const idType = typeof id;
+  if (!cached || (idType !== 'number' && idType !== 'string') || typeof kind !== 'string') {
+    return `${kind}|${stableId(id)}`;
+  }
+  let byId = contactKeysByKind.get(kind);
+  if (!byId) { byId = new Map(); contactKeysByKind.set(kind, byId); }
+  let key = byId.get(id);
+  if (key === undefined) {
+    if (contactKeyCount >= CONTACT_KEY_CACHE_LIMIT) {
+      contactKeysByKind.clear();
+      contactKeyCount = 0;
+      byId = new Map();
+      contactKeysByKind.set(kind, byId);
+    }
+    key = `${kind}|${stableId(id)}`;
+    byId.set(id, key);
+    contactKeyCount++;
+  }
+  return key;
 }
 
 /** Body token a lock or missile must match. A reused entity id with a new token is not the old target. */

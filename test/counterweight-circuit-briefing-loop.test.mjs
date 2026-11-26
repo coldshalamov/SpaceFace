@@ -2,8 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { COUNTERWEIGHT_EVENTS, COUNTERWEIGHT_EVENT_BY_ID, VENUE_SECTOR_ID } from '../src/features/counterweightCircuit/definition.js';
 import { createAttemptState } from '../src/features/counterweightCircuit/attempt.js';
-import { eventPreviewSpec, resultOfferSpec, attemptProgressSpec } from '../src/features/counterweightCircuit/readModel.js';
+import { eventPreviewSpec, recordsOfferSpec, resultOfferSpec, attemptProgressSpec } from '../src/features/counterweightCircuit/readModel.js';
 import { freshCounterweightCircuitState, normalizeCounterweightCircuitState } from '../src/features/counterweightCircuit/persistence.js';
+import { applyResultToRecord, freshEventRecord } from '../src/features/counterweightCircuit/scoring.js';
 import { projectCounterweightHandling } from '../src/features/counterweightCircuit/handlingReadout.js';
 import { createCounterweightCircuitPromptSystem } from '../src/features/counterweightCircuit/prompts.js';
 import { setPromptDeck } from '../src/ui/promptDeck.js';
@@ -50,8 +51,30 @@ test('result compares only real completed receipts and describes actual limitati
   assert.doesNotMatch(cancel.detail, /faster|behind|first recorded/i);
   assert.match(resultOfferSpec({ ...result, outcome: 'failed', reason: 'load_destroyed' }).detail, /Load destroyed/);
   assert.match(resultOfferSpec({ ...result, outcome: 'failed', reason: 'unexpected_reason' }).detail, /unexpected_reason/);
-  assert.ok(resultOfferSpec(result, { canReview: true }).choices.some(c => c.id === 'preview:soft_berth'));
-  assert.ok(!resultOfferSpec(result, { canReview: false }).choices.some(c => c.id.startsWith('preview:')));
+  assert.deepEqual(resultOfferSpec(result, { canReview: true }).choices.map(c => c.id), ['preview:soft_berth', 'events', 'close']);
+  const outsideRegistrar = resultOfferSpec(result, { canReview: false });
+  assert.match(outsideRegistrar.detail, /Return to the registrar to choose another run/);
+  assert.deepEqual(outsideRegistrar.choices.map(c => c.id), ['close']);
+});
+
+test('the registrar keeps a practice best without promising a payment', () => {
+  const state = bareState(), def = COUNTERWEIGHT_EVENT_BY_ID.soft_berth, record = freshEventRecord();
+  state.world.counterweightCircuit.records[def.id] = record;
+  const practice = createAttemptState(def, { attemptId: 1, practice: true });
+  Object.assign(practice, { phase: 'complete', elapsedS: 35, finishedAt: 45 });
+  const scoredPractice = applyResultToRecord(record, def, practice, 1);
+  assert.equal(scoredPractice.rewardRequested, undefined);
+  const softBerth = () => recordsOfferSpec(state).detail.split('\n').find(line => line.startsWith('SOFT BERTH:'));
+  assert.match(softBerth(), /best 35\.0s.*practice finish/);
+  assert.doesNotMatch(softBerth(), /payment pending/);
+
+  const ranked = { ...practice, attemptId: 2, practice: false, elapsedS: 42 };
+  assert.equal(applyResultToRecord(record, def, ranked, 1).rewardRequested, true);
+  record.pendingReward = { eventId: def.id, attemptId: ranked.attemptId };
+  assert.match(softBerth(), /best 35\.0s.*payment pending/);
+  record.pendingReward = null;
+  record.paid = true;
+  assert.match(softBerth(), /\+60 CR/);
 });
 
 test('existing prompt adapter routes the review choice and rejects stale cards', () => {

@@ -8,6 +8,7 @@ import { createStick, dialDeg } from './instrument.js';
 import { createWheel } from './wheel.js';
 import { injectOrrery } from '../../ui/orrery/tokens.js';
 import { arcD } from '../../ui/orrery/svg.js';
+import { nearestSwarmFloorPad } from '../../data/swarmFloor.js';
 
 // A thumb starting on one of these is using the page, not flying. Everything else in the flight field,
 // including HUD text and receipts that are not controls, starts the stick.
@@ -64,6 +65,7 @@ export function mountMobileView({ state, model, activate, onFlick, reset, config
   const q = s => root.querySelector(s);
   const flight = q('.mf-flight'), edge = q('.mf-edge'), toast = q('.mf-toast'), caption = q('.mf-caption'), guideButton = q('.mf-guide-open');
   const gunKey = q('.mf-gun'), tetherKey = q('.mf-tether'), dockKey = q('.mf-dock'), pauseKey = q('.mf-pause');
+  const dockLabel = dockKey.querySelector('span');
   const aimArc = q('.mf-a-arc'), reel = q('.mf-reel'), reelBead = q('.mf-reel-bead'), ghost = q('.mf-ghost');
   const beam = q('.mf-beam'), beamBloom = q('.mf-beam-bloom'), beamCore = q('.mf-beam-core'), beamTip = q('.mf-beam-tip');
 
@@ -133,6 +135,7 @@ export function mountMobileView({ state, model, activate, onFlick, reset, config
     pages: POWER_PAGES, icon,
     onUse: power => use(power),
     onPage: i => { model.wheelPage = i; selected = -1; wheel.setPage(i); schedule(); },
+    onClose: () => { closeWheel(); edge.focus?.({ preventScroll: true }); },
   });
   flight.insertBefore(wheel.root, q('.mf-toast'));
   let wheelGeometry = { cx: 0, cy: 0, radius: 150 }, selected = -1;
@@ -557,7 +560,14 @@ export function mountMobileView({ state, model, activate, onFlick, reset, config
     setIf(tetherKey, 'held', model.held('tether') ? '1' : '0');
     setIf(tetherKey, 'latched', state.player?.tether?.active ? '1' : '0');
     paintAim(f);
-    if (dockKey.hidden === dockReady) dockKey.hidden = !dockReady;
+    const armPad = !dockReady && nearestSwarmFloorPad(state);
+    const showDock = dockReady || !!armPad;
+    const interactLabel = armPad ? 'Select' : 'Dock';
+    if (dockLabel.textContent !== interactLabel) {
+      dockLabel.textContent = interactLabel;
+      dockKey.setAttribute('aria-label', armPad ? 'Select this floor offer' : 'Dock at the station');
+    }
+    if (dockKey.hidden === showDock) dockKey.hidden = !showDock;
     if (clock() >= messageUntil && !toast.hidden) toast.hidden = true;
     if (clock() >= captionUntil && !caption.hidden) caption.hidden = true;
     seatNotes();

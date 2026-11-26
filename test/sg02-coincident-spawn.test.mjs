@@ -260,6 +260,9 @@ test('a layered pose resync rotates nearby spines only and keeps the same nudge'
     });
     const entities = [...far, partner, moved];
     owner.syncFromEntityLayers([], entities, 1);
+    // Native mints are budgeted per sync pass (SG02_SYNC_NATIVE_MINT_BUDGET): a bulk spawn
+    // drains over repeated passes — the same contract production kill waves rely on.
+    while (entities.some((e) => !owner.records.has(e.id))) owner.syncFromEntityLayers([], entities, 1);
 
     let farSpineReads = 0;
     for (const entity of far) {
@@ -304,6 +307,37 @@ test('static-static coincidence is left alone — fixed pairs never form contact
     owner.syncFromEntities([s1, s2]);
     assert.ok(Math.abs(s2.pos.x - SPAWN.x) < 0.01,
       `second static keeps its authored point (${s2.pos.x})`);
+  } finally {
+    owner.dispose();
+  }
+});
+
+test('the ladder still sees a partner that only enters reach ahead of the walk', async () => {
+  const owner = await createSg02DynamicBodyOwner({ fixedDt: DT });
+  try {
+    // Six balls pave the first +15 WU of +x ladder slots — each keeps its authored point
+    // (spacing 2.5 > the 2 WU point band) but each blocks exactly its own slot.
+    const pavers = [];
+    for (let i = 0; i < 6; i++) {
+      const e = dynamicBody(80 + i);
+      e.pos = { x: SPAWN.x + i * 2.5, z: SPAWN.z };
+      pavers.push(e);
+    }
+    // A wreck capsule sits far enough ahead (+20 WU) that its reach square cannot touch the
+    // candidate's start point, but its ±5.6 axial window covers every slot from +15 to +25.
+    // The lazy partner index must harvest it on the whole ladder corridor — a harvest that
+    // only tests reach at the START point would drop it and land the candidate inside its
+    // degenerate window at +15.
+    const ahead = dynamicBody(86, { type: 'wreck', shape: 'capsule', material: 'debris', mass: 55, radius: 18 });
+    ahead.pos = { x: SPAWN.x + 20, z: SPAWN.z };
+    owner.syncFromEntities([...pavers, ahead]);
+    const candidate = dynamicBody(87);
+    owner.syncFromEntities([...pavers, ahead, candidate]);
+    assert.ok(Math.abs(candidate.pos.x - (SPAWN.x + 27.5)) < 0.01,
+      `candidate walks past the ahead partner's window to +27.5 (got ${candidate.pos.x})`);
+    owner.step(DT);
+    const sep = Math.hypot(candidate.pos.x - ahead.pos.x, candidate.pos.z - ahead.pos.z);
+    assert.ok(sep > 5 && sep < 100, `candidate clears the capsule window (sep=${sep})`);
   } finally {
     owner.dispose();
   }

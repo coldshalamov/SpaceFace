@@ -11,6 +11,7 @@ import {
   createAdaptiveResolution,
   qualityModeForVideo,
 } from '../src/render/adaptiveQuality.js';
+import { render } from '../src/render/renderer.js';
 
 function feed(controller, frameDt, frames, sample = {}) {
   for (let i = 0; i < frames; i++) controller.update(frameDt, sample);
@@ -148,13 +149,15 @@ test('a borderline sustained miss parks at a shallow band instead of grinding to
   assert.equal(borderline.getScale(), 1, 'a ~1.25x miss never reaches even the first band');
 });
 
-test('raster relief raises the adaptive floor — the demo posture stays native content', () => {
-  assert.equal(adaptiveFloorForCombinedScale(0.6, 1), 1,
-    'no relief still holds the demo combined floor at native content');
-  assert.equal(adaptiveFloorForCombinedScale(0.6, 0.8), 1,
-    'hitch relief 0.8 lifts the discrete floor to the native scale');
-  assert.equal(adaptiveFloorForCombinedScale(0.5, 0.72), 1,
-    'integrated + hitch relief lifts the integrated floor to native');
+test('raster relief raises the adaptive floor — Auto never presents below 0.5 combined', () => {
+  // Director ruling 2026-11-21: the GPU budget governor may use 0.5-1.0 with the CAS upscale.
+  assert.equal(adaptiveFloorForCombinedScale(0.5, 1), 0.5,
+    'no relief: Auto may go down to the 0.5 combined floor');
+  assert.equal(adaptiveFloorForCombinedScale(0.6, 1), 0.6, 'a tier floor above the combined floor wins');
+  assert.ok(Math.abs(adaptiveFloorForCombinedScale(0.5, 0.8) - 0.5 / 0.8) < 1e-9,
+    'hitch relief 0.8 raises the content floor so the product stays at 0.5');
+  assert.equal(adaptiveFloorForCombinedScale(0.5, 0.5), 1,
+    'deep relief already at the floor holds content at native');
 
   const controller = createAdaptiveResolution({ floor: 0.5 });
   controller.syncScale(0.5);
@@ -162,6 +165,113 @@ test('raster relief raises the adaptive floor — the demo posture stays native 
   assert.equal(controller.getScale(), 0.8, 'a raised floor lifts the live scale at once');
   controller.setFloor(0.5);
   assert.equal(controller.getScale(), 0.8, 'a lowered floor leaves the recovered scale alone');
+});
+
+test('Manual adaptive resolution keeps its tier floor without changing the saved render scale', () => {
+  const state = createGameState(46);
+  const video = state.settings.video;
+  const gpu = state.render.gpu = { tier: 'integrated' };
+  const renderer = Object.assign(Object.create(render), { state });
+  const controller = createAdaptiveResolution({ floor: 0.5 });
+  const syncPolicy = () => {
+    controller.setEnabled(adaptiveResolutionEnabledForSettings(gpu, video));
+    controller.setFloor(renderer._adaptiveFloorForRelief());
+  };
+  const slowFlight = { eligible: true, targetMs: 1000 / 60 };
+
+  applyQualityPreset(state.settings, 'integrated');
+  const savedScale = video.renderScale;
+  assert.equal(renderer._adaptiveFloorForRelief(), 0.5);
+  syncPolicy();
+  feed(controller, 0.026, 130, slowFlight);
+  assert.equal(controller.getScale(), 0.9, 'the explicit Manual toggle can start a resolution trial');
+  feed(controller, 0.026, 160, slowFlight);
+  assert.equal(controller.getScale(), 1, 'a trial without a frame time gain still rolls back');
+
+  video.dynamicResolution = false;
+  syncPolicy();
+  feed(controller, 0.026, 130, slowFlight);
+  assert.equal(controller.getScale(), 1, 'explicit Manual off keeps the configured scale fixed');
+  assert.equal(video.renderScale, savedScale);
+
+  video.qualityMode = 'auto';
+  syncPolicy();
+  // Auto's combined floor is 0.5 of native (director ruling 2026-11-21): with this preset's
+  // automatic render scale the content floor is at least 0.5 / renderScale, and the controller may step
+  // toward it on a GPU-bound frame (no CPU sample here = GPU-bound by default).
+  const floor = renderer._adaptiveFloorForRelief();
+  assert.ok(floor >= Math.min(1, 0.5 / video.renderScale) - 1e-9 && floor <= 1, `floor ${floor}`);
+  feed(controller, 0.026, 130, slowFlight);
+  assert.ok(controller.getScale() >= floor, 'Auto never presents below its combined floor');
+});
+
+test('sustained Auto relief applies the same post style as the player switch', () => {
+  const state = createGameState(44);
+  Object.assign(state.settings.video, { bloomLevels: 2, postFx: true });
+  state.render.gpu = { tier: 'integrated' };
+  const renderer = Object.assign(Object.create(render), {
+    state,
+    _sectorPost: { grade: 0.4, vignette: 0.2, toe: 0.005, grain: 0.03 },
+    _hitchRelief: { level: 0 },
+    bloom: { setOptions: (options) => { bloom = options; } },
+    _renderGraph: { setOptions: (options) => { graph = options; } },
+  });
+  let bloom, graph;
+  const style = ({ grade, vignette, toe, grain }) => [grade, vignette, toe, grain];
+  renderer._syncPostOptions();
+  const base = bloom;
+  assert.deepEqual(style(base), [0.4, 0.2, 0.005, 0.03]);
+  state.settings.video.postFx = false;
+  renderer._syncPostOptions();
+  const manualOffStyle = style(bloom);
+  assert.deepEqual(manualOffStyle, [0, 0, 0, 0]);
+  state.settings.video.postFx = true;
+  renderer._setHitchReliefLevel(state.render, 1, true);
+  assert.deepEqual(style(bloom), style(base));
+  assert.equal(bloom.bloomLevels, 1);
+  renderer._setHitchReliefLevel(state.render, 2, true);
+  assert.deepEqual(style(bloom), manualOffStyle);
+  assert.deepEqual(style(graph), manualOffStyle);
+  assert.equal(bloom.exposure, base.exposure);
+  assert.equal(bloom.acesToneMapping, base.acesToneMapping);
+  assert.equal(bloom.bloomStrength, base.bloomStrength);
+  assert.equal(state.settings.video.postFx, true);
+  assert.equal(state.render.hitchReliefScale, 1);
+  state.settings.video.qualityMode = 'manual';
+  renderer._syncPostOptions();
+  assert.deepEqual(bloom, base, 'switching to Manual restores the authored controls immediately');
+  state.settings.video.qualityMode = 'auto';
+  renderer._setHitchReliefLevel(state.render, 0, null);
+  assert.deepEqual(bloom, base);
+});
+
+test('hitch relief only counts intervals between eligible presentations on the same surface', () => {
+  const state = createGameState(45);
+  state.render.gpu = { tier: 'integrated' };
+  state.render.frameCap = 30;
+  state.render.lastPresentDtMs = 100;
+  const renderer = Object.assign(Object.create(render), { state });
+  const frame = { sequence: 0, lifecycleGeneration: 1 };
+  const present = () => { frame.sequence++; renderer._notePicturePresent(frame); };
+  state.mode = 'loading';
+  for (let i = 0; i < 12; i++) present();
+  state.mode = 'flight';
+  state.render.openingFirstPictureReady = true;
+  state.render.firstPlayableFrameAt = 1;
+  state.timeScale = 1;
+  present();
+  assert.equal(renderer._hitchRelief.level, 0, 'loading history cannot downshift first playable');
+  for (let i = 0; i < 9; i++) present();
+  assert.equal(renderer._hitchRelief.level, 0, 'only nine fully visible flight intervals elapsed');
+  present();
+  assert.equal(renderer._hitchRelief.level, 1, 'ten slow eligible presents retain the existing first rung');
+
+  // A frozen pause bypasses prepareFrame and the quality controller entirely.
+  frame.sequence++;
+  present();
+  assert.equal(renderer._hitchRelief.level, 0, 'resuming after a skipped surface drops prior pressure');
+  for (let i = 0; i < 9; i++) present();
+  assert.equal(renderer._hitchRelief.level, 0);
 });
 
 test('isolated 330 ms stalls are ignored but sustained 330 ms frames adapt and revert without benefit', () => {
@@ -175,4 +285,34 @@ test('isolated 330 ms stalls are ignored but sustained 330 ms frames adapt and r
   assert.equal(sustained.getScale(), 0.9, 'consecutive 3 fps frames are clamped and learned as sustained load');
   feed(sustained, 0.33, 35, { eligible: true, targetMs: 1000 / 60 });
   assert.equal(sustained.getScale(), 1, 'a non-beneficial lower band is restored after its trial');
+});
+
+test('a CPU-bound frame never trials a lower resolution band; a GPU-bound one still does', () => {
+  // Main thread busy for the whole 26 ms interval: resolution cannot help, so no pop.
+  const cpuBound = createAdaptiveResolution({ floor: 0.5 });
+  feed(cpuBound, 0.026, 400, { eligible: true, targetMs: 1000 / 60, cpuMs: 25 });
+  assert.equal(cpuBound.getScale(), 1, 'a busy main thread keeps native resolution');
+  assert.equal(cpuBound.getBound().bound, 'cpu');
+
+  // Main thread idle for most of the interval: the wait is the GPU, so the band is trialled.
+  const gpuBound = createAdaptiveResolution({ floor: 0.5 });
+  feed(gpuBound, 0.026, 130, { eligible: true, targetMs: 1000 / 60, cpuMs: 9 });
+  assert.equal(gpuBound.getScale(), 0.9);
+  assert.equal(gpuBound.getBound().bound, 'gpu');
+
+  // A GPU timer sample overrides the CPU-share guess.
+  const timed = createAdaptiveResolution({ floor: 0.5 });
+  feed(timed, 0.026, 130, { eligible: true, targetMs: 1000 / 60, cpuMs: 24, gpuMs: 25 });
+  assert.equal(timed.getScale(), 0.9, 'GPU time as the longer pole admits the trial');
+});
+
+test('fruitless trials back off so an unhelpful band stops reappearing', () => {
+  const scales = [];
+  const controller = createAdaptiveResolution({ floor: 0.5, apply: (s) => scales.push(s) });
+  // No CPU sample (old callers): every trial fails to improve the 26 ms frame.
+  feed(controller, 0.026, 60 * 120, { eligible: true, targetMs: 1000 / 60 });
+  const trials = scales.filter((s) => s < 1).length;
+  // Without backoff a 15 s cooldown + 2.5 s trial would retry ~7 times in 120 s.
+  assert.ok(trials <= 4, `trials in 120 s: ${trials}`);
+  assert.equal(controller.getScale(), 1);
 });

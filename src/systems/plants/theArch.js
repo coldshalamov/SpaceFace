@@ -66,6 +66,7 @@ export function crossesSegment(prev, pos, a, b) {
 }
 
 export const theArchPlant = {
+  modes: ['flight'],
   name: 'plants167',
 
   init(ctx) {

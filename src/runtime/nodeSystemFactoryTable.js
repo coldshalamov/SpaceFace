@@ -186,6 +186,11 @@ import { nemesis } from '../systems/nemesis.js';
 import { nemesisEncounter } from '../systems/nemesisEncounter.js';
 import { nemesisSignals } from '../systems/nemesisSignals.js';
 import { capitalBossEncounters } from '../systems/capitalBossRuntime.js';
+import { createConvoyRaidProductionSystem } from '../features/convoyRaid/production.js';
+import { createTowjawSystem } from '../features/towjaw/index.js'; // PORT-PRO-FIVE TOWJAW
+import { createDerelictExpeditionSystem } from '../features/derelictExpedition/index.js'; // PORT-PRO-FIVE BLACKBOX RUNS
+import { createStormChaseSystem } from '../features/stormChase/index.js'; // PORT-PRO-FIVE GLASSWAKE
+import { createKineticCatalystsRuntime } from '../features/kineticCatalysts/runtime.js'; // PORT-PRO-FIVE KINETIC CATALYSTS
 import { createChronicler } from '../systems/chronicler.js';
 import { isRunSealed } from '../core/runSeal.js';
 import { livingPoiBehaviors } from '../systems/livingPoiBehaviors.js';
@@ -223,6 +228,7 @@ import { gravedigger } from '../systems/gravedigger.js';
 import { salvage } from '../systems/salvage.js';
 import { voiceArbiter } from '../ui/voiceArbiter.js';
 import { sectorPostcard } from '../ui/sectorPostcard.js';
+import { sectorArrivalPlate } from '../ui/sectorArrivalPlate.js';
 import { dockDenyBanner } from '../ui/dockDenyBanner.js';
 import { stationBroadcast } from '../systems/stationBroadcast.js';
 import { hazardHints } from '../data/hazardLanguage.js';
@@ -403,6 +409,11 @@ export function getNodeSystemFactoryTable(options = {}) {
     // Packet 09: production construction lives in capitalBossRuntime (shared with the browser
     // registry) so Node runs the identical observe/spawnWing ports.
     ['capitalBossEncounters', capitalBossEncounters],
+    ['convoyRaid', createConvoyRaidProductionSystem()],
+    ['towjaw', createTowjawSystem()],
+    ['derelictExpedition', createDerelictExpeditionSystem()],
+    ['stormChase', createStormChaseSystem()],
+    ['kineticCatalysts', createKineticCatalystsRuntime()],
     ['uniqueWrecks', uniqueWrecks],
     ['titles', titlesSystem],
     ['wingMorale', wingMorale],
@@ -542,6 +553,7 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['survivalHud', survivalHud],
     ['crucibleFocus', crucibleFocus],
     ['sectorPostcard', sectorPostcard],
+    ['sectorArrivalPlate', sectorArrivalPlate],
     ['dockDenyBanner', dockDenyBanner],
     ['stationBroadcast', stationBroadcast],
     ['hazardHints', hazardHints],

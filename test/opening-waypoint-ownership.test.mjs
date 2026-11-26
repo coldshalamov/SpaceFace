@@ -1,7 +1,7 @@
 // Opening waypoint ownership — New Game cold-start must not install a competing
 // kind:'mission' marker while the staged tutorial owns the first-session rail.
-// Mission Log CURRENT ACTION must carry the story first-route ("Follow the anomaly")
-// during teaching so the public first-15 route has one unmistakable opening objective.
+// Mission Log CURRENT ACTION must carry the opening's live instruction (the same words as the
+// tracker) during teaching so the public first-15 route has one unmistakable opening objective.
 //
 // Companion to check:first-15-runtime (browser) and contract-47a-first-loop
 // (tutorial off). Run:
@@ -22,12 +22,16 @@ import {
   onboarding as onboardingProto,
 } from '../src/systems/onboarding.js';
 import {
+  missionLogScreen,
   recommendedActions,
   stagedOpeningOwnsCommand,
 } from '../src/ui/screens/missionLog.js';
-import { commitCoursePayload } from '../src/ui/galaxyMap.js';
+import { berthAnchorFor } from '../src/data/collisionProxyManifests.js';
+import { commitCoursePayload, resolveMapOpenTarget } from '../src/ui/galaxyMap.js';
+import { takeMapOpenIntent } from '../src/ui/mapAuthority.js';
 import { flightV3 } from '../src/systems/flightV3.js';
 import { world as worldProto } from '../src/systems/world.js';
+import { ensurePadWalkDocument } from '../scripts/lib/pq16400-gamepad-screens.mjs';
 
 function harness({ tutorialHints = true, seed = 47 } = {}) {
   const state = createGameState(seed);
@@ -144,7 +148,69 @@ test('default New Game: cold-start tracks 47-A without claiming a mission waypoi
     h.state.ui.trackedMissionId,
   );
   assert.equal(actions[0].label, 'STORY', 'opening CURRENT ACTION is the story first-route');
-  assert.match(actions[0].title, /Follow the anomaly/i);
+  assert.equal(actions[0].title, 'Thrust toward the beacon.',
+    'the log names the lesson the tracker names, not story beat 0 and its retired "Follow the anomaly"');
+});
+
+test('the opening Mission Log names its existing recovery marker and opens it on the chart once', () => {
+  const h = harness();
+  h.asteroid.pos = { x: 1500, z: 0 };
+  h.asteroid.occupantGeneration = 1;
+  h.onboarding.registry = { get: key => key === 'missions' ? h.missions : null };
+  h.bus.emit('game:started');
+  h.state.onboarding.currentBeat = BEATS.findIndex(beat => beat.key === 'seam');
+  h.onboarding._setObjectiveWaypoint(true);
+  const mission = h.state.missions.active.find(m => m.storyTag === CONTRACT_47A_B0_TAG);
+  const marker = h.state.nav.waypoint;
+  assert.equal(marker.markerId, 'onboarding:seam');
+  assert.equal(marker.presentationEntityId, h.asteroid.id);
+  assert.match(marker.reason, /Open the Chart.*track 47-A/);
+  // The live surface can receive its objective marker before the tracked-id mirror.
+  h.state.ui.trackedMissionId = null;
+  h.state.ui.screenStack = ['missionLog'];
+
+  ensurePadWalkDocument();
+  const screen = Object.create(missionLogScreen);
+  const root = document.createElement('div');
+  document.body.appendChild(root);
+  const opened = [];
+  const navigationEvents = [];
+  h.bus.on('ui:trackMission', event => navigationEvents.push(event));
+  h.bus.on('ui:setCourse', event => navigationEvents.push(event));
+  try {
+    screen.mount(root, { state: h.state, bus: h.bus,
+      screenManager: { top: () => 'missionLog', pushScreen: id => opened.push(id) },
+    });
+    const current = root.querySelectorAll('[data-current-action="true"]');
+    assert.equal(current.length, 1);
+    const liveAction = h.state.onboarding.beatAction || 'Follow the anomaly';
+    assert.ok(current[0].textContent.includes(liveAction), 'the log names the live lesson: ' + liveAction);
+    assert.match(current[0].textContent, /47-A Recovery Site/);
+    assert.doesNotMatch(current[0].textContent, /No goal marker yet/i);
+    const chart = root.querySelectorAll('[data-map-selection-target="47a-recovery-fix"]');
+    assert.equal(chart.length, 1);
+    assert.equal(root.querySelector('.sf-mlog-btn-track'), null, 'the current marker only needs a Chart action');
+    chart[0].click();
+    assert.deepEqual(opened, ['galaxyMap']);
+    const intent = takeMapOpenIntent(h.state);
+    const target = resolveMapOpenTarget(h.state, intent);
+    assert.equal(target.missionId, mission.id);
+    assert.equal(target.missionFix, true);
+    assert.deepEqual({ x: target.x, z: target.z }, h.asteroid.pos);
+    assert.equal(h.state.nav.waypoint, marker);
+    assert.deepEqual(navigationEvents, []);
+
+    const detour = { kind: 'local', pos: { x: 80, z: 650 }, label: 'Pilot detour' };
+    h.state.nav.waypoint = detour;
+    screen.refresh();
+    assert.equal(root.querySelectorAll('[data-map-selection-target="47a-recovery-fix"]').length, 0);
+    assert.ok(root.querySelector('.sf-mlog-btn-track'), 'the normal Track action remains available');
+    assert.equal(h.state.nav.waypoint, detour);
+    assert.deepEqual(navigationEvents, []);
+  } finally {
+    screen.onHide();
+    root.remove();
+  }
 });
 
 test('automatic tether entry yields to an armed player course, which can explicitly retarget the derelict', () => {
@@ -285,4 +351,41 @@ test('tutorialHints off: cold-start still installs mission-owned 47-A waypoint i
     h.state.ui.trackedMissionId,
   );
   assert.equal(actions[0].label, 'TRACKED');
+});
+
+test('a berth objective names its station by stable id, never by a runtime entity id', () => {
+  // A waypoint targetEntityId is read as a rope route anchor (tetherGameplay →
+  // masslineTargetScoring 'route-anchor'), so naming Helios there made the station outrank the
+  // hostile and tow contexts the opening lessons are actually about. The objective may carry the
+  // stable stationId only; berthOffer matches the [E] chip by that id.
+  const station = { id: 7, pos: { x: -420, z: 100 } };
+  const wp = buildOnboardingObjectiveWaypoint(
+    { key: 'berth', line: 'Dock at Helios Station.' },
+    { pos: station.pos, label: 'HELIOS', stationId: 'station_helios' },
+  );
+  assert.equal(wp.stationId, 'station_helios', 'the objective names the station it docks at');
+  assert.equal(wp.targetEntityId, undefined, 'a berth objective never carries a rope route anchor');
+  const throughStation = buildOnboardingObjectiveWaypoint(
+    { key: 'berth', line: 'Dock at Helios Station.' },
+    { pos: station.pos, label: 'HELIOS', targetEntityId: station.id, stationId: 'station_helios' },
+  );
+  assert.equal(throughStation.targetEntityId, undefined,
+    'even a caller that passes a runtime id cannot make the berth a rope anchor');
+});
+
+test('the berth objective measures to the dock anchor, and the [E] chip agrees', () => {
+  const h = harness({ tutorialHints: false });
+  const state = h.state;
+  const helios = state.entityList.find((e) => e && e.type === 'station'
+    && e.data && e.data.stationId === 'station_helios');
+  assert.ok(helios, 'the live Helios body is present');
+  const hull = state.entities.get(state.playerId);
+  const target = onboardingProto._stationObjectiveTarget.call(
+    Object.assign(Object.create(onboardingProto), { state }), helios, 'HELIOS');
+  const anchor = berthAnchorFor(helios, hull);
+  assert.ok(anchor);
+  assert.equal(Math.round(target.pos.x), Math.round(anchor.x));
+  assert.equal(Math.round(target.pos.z), Math.round(anchor.z));
+  assert.equal(target.stationId, 'station_helios');
+  assert.equal(target.targetEntityId, undefined);
 });

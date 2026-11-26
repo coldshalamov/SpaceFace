@@ -16,13 +16,15 @@
 // consume — the picture never disagrees with the hologram. Deterministic off simTime and a
 // per-station phase hash; reduced motion stretches every period and never drops the work floor
 // (the beacon-lamp floor law). Same buffer contract as dockApproachBeacons.js: caller-owned
-// typed arrays, fixed Uint16 indices, draw count moves; the adapter binds one additive mesh.
+// typed arrays, fixed Uint16 indices, draw count moves. The adapter binds one additive mesh.
 
 /** Readability cull — the same band the approach beacons read at. */
 export const APRON_FLOOD_MAX_RANGE_WU = 1400;
 /** One mesh, one draw call: 5 quads per station, four docking stations fit with margin. */
 export const APRON_FLOOD_STATION_CAP = 4;
 export const APRON_FLOOD_QUADS_PER_STATION = 5;
+export const APRON_FLOOD_VERTICES_PER_QUAD = 5;
+export const APRON_FLOOD_INDICES_PER_QUAD = 12;
 
 /** Work-light rhythm and floors. */
 export const APRON_FLOOD_PERIOD_S = 3.4;
@@ -144,17 +146,18 @@ export function resolveApronFloodPlan(row, readout, now, reduced = false, out = 
 /** Scratch buffers for the shared apron mesh — same contract as dockApproachBeacons. */
 export function createApronFloodGeometry() {
   const quadCapacity = APRON_FLOOD_STATION_CAP * APRON_FLOOD_QUADS_PER_STATION;
-  const positions = new Float32Array(quadCapacity * 12);
-  const colors = new Float32Array(quadCapacity * 12);
-  const indices = new Uint16Array(quadCapacity * 6);
+  const positions = new Float32Array(quadCapacity * APRON_FLOOD_VERTICES_PER_QUAD * 3);
+  const colors = new Float32Array(positions.length);
+  const indices = new Uint16Array(quadCapacity * APRON_FLOOD_INDICES_PER_QUAD);
   for (let q = 0; q < quadCapacity; q++) {
-    const o = q * 4;
-    indices[q * 6] = o;
-    indices[q * 6 + 1] = o + 1;
-    indices[q * 6 + 2] = o + 2;
-    indices[q * 6 + 3] = o;
-    indices[q * 6 + 4] = o + 2;
-    indices[q * 6 + 5] = o + 3;
+    const firstVertex = q * APRON_FLOOD_VERTICES_PER_QUAD;
+    const firstIndex = q * APRON_FLOOD_INDICES_PER_QUAD;
+    for (let corner = 0; corner < 4; corner++) {
+      const offset = firstIndex + corner * 3;
+      indices[offset] = firstVertex + corner;
+      indices[offset + 1] = firstVertex + (corner + 1) % 4;
+      indices[offset + 2] = firstVertex + 4;
+    }
   }
   return { positions, colors, indices, indexCount: 0, quadCapacity };
 }
@@ -174,21 +177,27 @@ export function writeApronFloodGeometry(out, layout, plan, opts = {}) {
   if (!(gain > 0)) return out;
   let emitted = base;
 
-  const emitTinted = (x0, y0, z0, x1, y1, z1, x2, y2, z2, x3, y3, z3, bright, hex) => {
+  const emitTinted = (x0, y0, z0, x1, y1, z1, x2, y2, z2, x3, y3, z3, bright, hex, softEdge = false) => {
     if (emitted >= out.quadCapacity) return;
-    const o = emitted * 12;
+    const o = emitted * APRON_FLOOD_VERTICES_PER_QUAD * 3;
     const p = out.positions, c = out.colors;
     p[o] = x0; p[o + 1] = y0; p[o + 2] = z0;
     p[o + 3] = x1; p[o + 4] = y1; p[o + 5] = z1;
     p[o + 6] = x2; p[o + 7] = y2; p[o + 8] = z2;
     p[o + 9] = x3; p[o + 10] = y3; p[o + 11] = z3;
+    p[o + 12] = (x0 + x2) * 0.5;
+    p[o + 13] = (y0 + y2) * 0.5;
+    p[o + 14] = (z0 + z2) * 0.5;
     const cr = ((hex >> 16) & 255) / 255;
     const cg = ((hex >> 8) & 255) / 255;
     const cb = (hex & 255) / 255;
-    for (let v = 0; v < 4; v++) {
-      c[o + v * 3] = cr * bright;
-      c[o + v * 3 + 1] = cg * bright;
-      c[o + v * 3 + 2] = cb * bright;
+    // Additive light fades to zero at the pool edges so the deck stays visible.
+    // The narrow standing rig cards retain their uniform luminance.
+    for (let v = 0; v < APRON_FLOOD_VERTICES_PER_QUAD; v++) {
+      const value = softEdge && v < 4 ? 0 : bright;
+      c[o + v * 3] = cr * value;
+      c[o + v * 3 + 1] = cg * value;
+      c[o + v * 3 + 2] = cb * value;
     }
     emitted += 1;
   };
@@ -223,7 +232,7 @@ export function writeApronFloodGeometry(out, layout, plan, opts = {}) {
         cz + layout.axisZ * layout.poolHalfLen + nz * layout.poolHalfW,
         cx - layout.axisX * layout.poolHalfLen + nx * layout.poolHalfW, APRON_FLOOD_DECK_Y,
         cz - layout.axisZ * layout.poolHalfLen + nz * layout.poolHalfW,
-        pool, APRON_FLOOD_POOL_HEX,
+        pool, APRON_FLOOD_POOL_HEX, true,
       );
     };
     emitPool(layout.poolAX, layout.poolAZ);
@@ -235,10 +244,10 @@ export function writeApronFloodGeometry(out, layout, plan, opts = {}) {
       layout.padX, APRON_FLOOD_DECK_Y, layout.padZ - hw,
       layout.padX + hw, APRON_FLOOD_DECK_Y, layout.padZ,
       layout.padX, APRON_FLOOD_DECK_Y, layout.padZ + hw,
-      Math.min(1, pool * 1.15), APRON_FLOOD_POOL_HEX,
+      Math.min(1, pool * 1.15), APRON_FLOOD_POOL_HEX, true,
     );
   }
 
-  out.indexCount = emitted * 6;
+  out.indexCount = emitted * APRON_FLOOD_INDICES_PER_QUAD;
   return out;
 }

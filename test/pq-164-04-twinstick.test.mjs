@@ -125,13 +125,15 @@ test('PQ-164.04 drive scheme keeps the wheel map unchanged', () => {
   } finally { restore(); }
 });
 
-test('PQ-164.04 pad connect suggests the twin-stick scheme exactly once', () => {
+test('PQ-164.04 pad connect points a legacy drive profile at twin-stick exactly once', () => {
   const events = [];
   const pad = createProofPad();
   const restore = installProofPad(pad);
   try {
     const gp = createGamepad({ bus: { emit: (name, payload) => events.push({ name, payload }) } });
-    const live = { tick: 1, settings: { controls: { gamepad: { enabled: true } } } };
+    // CONTROLLER-1: twin-stick is the shipped default, so a fresh/default profile hears nothing —
+    // only a profile still seated on the legacy 'drive' scheme gets the one-time pointer.
+    const live = { tick: 1, settings: { controls: { gamepad: { enabled: true, scheme: 'drive' } } } };
     gp.tick(1 / 60, live, null);
     const toasts = events.filter((e) => e.name === 'toast');
     assert.equal(toasts.length, 1, 'one suggestion toast on first connect');
@@ -159,12 +161,16 @@ test('PQ-164.04 pad connect suggests the twin-stick scheme exactly once', () => 
     assert.ok(events.some((e) => e.name === 'gamepad:connected'));
     assert.equal(events.filter((e) => e.name === 'toast').length, 0, 'no second suggestion');
 
-    // A profile that already picked twin-stick is never suggested.
-    events.length = 0;
-    const live2 = { tick: 1, settings: { controls: { gamepad: { scheme: 'twinstick' } } } };
-    const gp2 = createGamepad({ bus: { emit: (name, payload) => events.push({ name, payload }) } });
-    gp2.tick(1 / 60, live2, null);
-    assert.equal(events.filter((e) => e.name === 'toast').length, 0);
+    // A twin-stick profile is never suggested — it already flies the default — and neither is
+    // a still-unset one (the pad layer already treats unset as twin-stick).
+    for (const scheme of ['twinstick', undefined]) {
+      events.length = 0;
+      const live2 = { tick: 1, settings: { controls: { gamepad: { scheme } } } };
+      const gp2 = createGamepad({ bus: { emit: (name, payload) => events.push({ name, payload }) } });
+      gp2.tick(1 / 60, live2, null);
+      assert.equal(events.filter((e) => e.name === 'toast').length, 0,
+        `scheme=${scheme}: twin-stick is already the default — no upsell`);
+    }
   } finally { restore(); }
 });
 
@@ -174,16 +180,27 @@ test('PQ-164.04 the scheme survives save/profile settings normalization', () => 
   save._restoreSettings({ controls: { gamepad: { scheme: 'twinstick' } } });
   assert.equal(state.settings.controls.gamepad.scheme, 'twinstick', 'a saved twin-stick choice restores');
 
-  const legacy = createGameState(16405);
+  // CONTROLLER-1: twin-stick is the shipping default — a new profile boots it, a save that
+  // never named a scheme inherits it, and garbage resolves to it. Only an explicit stored
+  // 'drive' keeps the legacy seat (and the connect toast points that profile forward).
+  const fresh = createGameState(16405);
+  assert.equal(fresh.settings.controls.gamepad.scheme, 'twinstick', 'a new profile ships twin-stick');
+  const legacy = createGameState(16406);
   save.init({ state: legacy, bus: createBus(), helpers: {}, registry: { get: () => null } });
   save._restoreSettings({ controls: {} });
-  assert.equal(legacy.settings.controls.gamepad.scheme, 'drive', 'an old save normalizes to the shipping default');
+  assert.equal(legacy.settings.controls.gamepad.scheme, 'twinstick',
+    'a save with no scheme inherits the shipping default');
   assert.equal(legacy.settings.controls.gamepad.schemeSuggested, false);
 
-  const bogus = createGameState(16406);
+  const driver = createGameState(16407);
+  save.init({ state: driver, bus: createBus(), helpers: {}, registry: { get: () => null } });
+  save._restoreSettings({ controls: { gamepad: { scheme: 'drive' } } });
+  assert.equal(driver.settings.controls.gamepad.scheme, 'drive', 'an explicit drive choice survives');
+
+  const bogus = createGameState(16408);
   save.init({ state: bogus, bus: createBus(), helpers: {}, registry: { get: () => null } });
   save._restoreSettings({ controls: { gamepad: { scheme: 'sideways' } } });
-  assert.equal(bogus.settings.controls.gamepad.scheme, 'drive', 'an unknown scheme value falls back');
+  assert.equal(bogus.settings.controls.gamepad.scheme, 'twinstick', 'an unknown scheme resolves to the default');
 });
 
 // The PQ-141 60-second scenario on twin-stick alone. Env-gated like the keyboard suite:

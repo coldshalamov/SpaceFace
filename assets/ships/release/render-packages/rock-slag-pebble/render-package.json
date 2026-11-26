@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "a644c34b9922b327fa3d8a5c90546b2427730a1200174d8a1761039412f6fe4e",
+  "contentHash": "48cb6baf6af2b42ac99c62b6953f6fb7f1a4d28f5060a22e3d5c5004ee08330d",
   "dynamicGroups": [
     {
       "id": "sf.render.rock-slag-pebble.mesh.lod0-hook-nav-port.dynamic",
@@ -1640,8 +1640,8 @@
       "uri": "place_rock_slag_pebble.glb"
     },
     "sourceManifest": {
-      "bytes": 340541,
-      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
+      "bytes": 352460,
+      "sha256": "7b29a65ee148539881ae9782eccdf6b975daa858f6ccb23db9554e3ec5c293f7",
       "uri": "pilots.json"
     }
   },
@@ -2804,7 +2804,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_rock_slag_pebble.glb"
   },
-  "runtimeHash": "f34e7a06cc2df9ee38cdb7a7298f8c2c382343496450ee64f4144a69739857ea",
+  "runtimeHash": "a8ce3b8fee597911d05ca0f3b2eecefc8dc9699c1f7a0376973af680a611fb1e",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

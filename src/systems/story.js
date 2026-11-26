@@ -63,6 +63,7 @@ import {
   livingHullWithScar,
   normalizeLivingHull,
 } from '../core/livingHull.js';
+import { isOpeningSettling } from '../onboarding/opportunityAdmission.js';
 import { isSurvivalRunLive } from './adventureMigration.js';
 import {
   normalizeStoryNewGamePlusRecord,
@@ -138,6 +139,14 @@ const CHARACTER_INTERRUPT_POLL_S = 5;
 // The exact ids whose voice:surface receipt spends the once-per-save (review hardening: a future
 // system must not inherit the spend by reusing the `char_` prefix).
 const CHARACTER_INTERRUPT_IDS = new Set(CHARACTER_INTERRUPTS.map((def) => def.id));
+
+const RECOVERY_COMMS_ID = /^story_recovery_([4-7])_\d+$/;
+const LEGACY_RESERVED_COMMS_ID = /^(?:ending_station_[A-E]_.+|ending_return_[A-E]|finale_announced|ngplus_consequence)$/;
+
+function scheduledOrSeenComms(storyState, id) {
+  return storyState.seenComms?.[id]
+    || storyState.scheduled?.some((event) => event?.kind === 'comms' && event.id === id);
+}
 
 export const story = {
   name: 'story',
@@ -669,7 +678,10 @@ export const story = {
     if (!s) return;
     s.flags = s.flags || {};
     const content = BEAT_CONTENT[s.beatIndex];
-    if (content) {
+    // Suppress giant opening dock graffiti around Helios in Act I (beat 0). Once B0 delivers the
+    // 47-A sample and advances to beat 1+, beat airlock lines resume normally.
+    const openingHeliosDock = stationId === 'station_helios' && (s.beatIndex | 0) <= 0;
+    if (content && !openingHeliosDock) {
       for (const g of (content.graffiti || [])) {
         if (g.where === 'bulkhead') continue; // bulkhead shows in flight, not at the airlock
         this.bus.emit('graffiti:show', { line: g.line, where: g.where, beat: s.beatIndex, author: g.author || null, dockedStationId: stationId });
@@ -2012,6 +2024,7 @@ export const story = {
   // NEW GAME / LOAD / SERIALIZE
   // =========================================================================================
   _onNewGame(payload = {}) {
+    if (this.state.world?.swarmArenaOnly) return;
     this._ensureState(true);
     // A same-session new game rewinds state.simTime (src/main.js) into these SAME system
     // instances — drop the session clocks so the lazy init re-arms at simTime+5 (the traps'
@@ -2182,12 +2195,16 @@ export const story = {
     entryState.atS = Number(this.state.simTime) || 0;
     entryState.contactId = STORY_ENTRY_CONTACT.id;
     this._coldStartDeferred = false;
-    // Set the previous crew's graffiti on the bulkhead immediately.
-    // Dark humor. They knew they might not make it. They were right.
-    this.bus.emit('graffiti:show', {
-      line: GRAFFITI.GANG_DIDNT_MAKE_IT,
-      where: 'bulkhead', beat: -1,
-    });
+    // Suppress giant bulkhead graffiti during the Helios/Act I opening route so translucent text
+    // does not stretch over the station rim when the pilot undocks on their first job.
+    const openingHelios = isOpeningSettling(this.state)
+      || (this.state.world?.currentSectorId === 'sector_helios_prime' && (s.beatIndex | 0) <= 0);
+    if (!openingHelios) {
+      this.bus.emit('graffiti:show', {
+        line: GRAFFITI.GANG_DIDNT_MAKE_IT,
+        where: 'bulkhead', beat: -1,
+      });
+    }
     // The whole cold start, including the shared Helios berth, is one simTime queue.
     for (const entry of COLD_START) {
       this._scheduleNarrative(entry.delayS || 0, {
@@ -2248,6 +2265,11 @@ export const story = {
     if (!event) return;
     if (event.kind === 'comms' && event.id && this.state && this.state.story) {
       const s = this.state.story;
+      // The berth invitation can outlive the tutorial or a combat hold in the queue.
+      // Once 47-A closes, it would send the pilot back to Helios for work already done.
+      if (event.id === STORY_ENTRY_CONTACT.commsId && s.beatIndex > 0) return;
+      const recoveryBeat = RECOVERY_COMMS_ID.exec(event.id)?.[1];
+      if (recoveryBeat && Number(recoveryBeat) !== (s.beatIndex | 0)) return;
       s.seenComms = s.seenComms || {};
       // The queue holds while a fight does; another path may have spoken the line first.
       if (s.seenComms[event.id]) return;
@@ -2272,6 +2294,14 @@ export const story = {
 
   _onLoaded() {
     this._ensureState();
+    const s = this.state.story;
+    // Older saves marked these notices seen at enqueue. A retained row means the
+    // notice was still waiting for delivery. Keep markers for notices with no row.
+    for (const event of s.scheduled) {
+      if (event?.kind === 'comms' && (LEGACY_RESERVED_COMMS_ID.test(event.id) || RECOVERY_COMMS_ID.test(event.id))) {
+        delete s.seenComms[event.id];
+      }
+    }
     // A load restores an arbitrary (possibly earlier) simTime into these SAME instances
     // (src/save/saveSystem.js) — re-arm the session clocks exactly like a new game.
     this._charNextAtS = null;
@@ -2286,10 +2316,9 @@ export const story = {
     if (!(this.state.story.ambientTimerS > 0)) this._rescheduleAmbient();
     this._recoverValeMilestones();
     this._reconcileStoryEntry();
-    if (this.state.story.endgameResolved && this.state.story.endgameChoice
-        && this.state.story.seenComms && !this.state.story.seenComms.finale_announced) {
+    if (s.endgameResolved && s.endgameChoice && !scheduledOrSeenComms(s, 'finale_announced')) {
       // An ending filed before this line existed is not announced again on Continue.
-      this.state.story.seenComms.finale_announced = true;
+      s.seenComms.finale_announced = true;
     }
     this._publishPostEndingContinuity('loaded');
   },
@@ -2599,9 +2628,7 @@ export const story = {
     const text = ENDING_STATION_ACK[s.endgameChoice];
     if (!text) return false;
     const id = `ending_station_${s.endgameChoice}_${stationId}`;
-    s.seenComms = s.seenComms || {};
-    if (s.seenComms[id]) return false;
-    s.seenComms[id] = true;
+    if (scheduledOrSeenComms(s, id)) return false;
     this._scheduleNarrative(0, {
       kind: 'comms', id, sender: 'DOCK', text, category: 'story', ttl: 9, persist: true,
     });
@@ -2615,9 +2642,7 @@ export const story = {
     const text = ENDING_RETURN_ACK[s.endgameChoice];
     if (!text) return false;
     const id = `ending_return_${s.endgameChoice}`;
-    s.seenComms = s.seenComms || {};
-    if (s.seenComms[id]) return false;
-    s.seenComms[id] = true;
+    if (scheduledOrSeenComms(s, id)) return false;
     this._scheduleNarrative(0, {
       kind: 'comms', id, sender: 'ASHFALL REACH', text, category: 'story', ttl: 9, persist: true,
     });
@@ -2628,9 +2653,7 @@ export const story = {
   _announceFinaleReady() {
     const s = this.state && this.state.story;
     if (!s || !s.endgameResolved || !s.endgameChoice) return false;
-    s.seenComms = s.seenComms || {};
-    if (s.seenComms.finale_announced) return false;
-    s.seenComms.finale_announced = true;
+    if (scheduledOrSeenComms(s, 'finale_announced')) return false;
     const def = endingDef(s.endgameChoice);
     const title = def && def.title || s.endgameChoice;
     const now = Number(this.state.simTime) || 0;
@@ -2675,9 +2698,7 @@ export const story = {
     const fails = own.failuresByBeat && (own.failuresByBeat[String(beat)] | 0);
     if (!fails) return false;
     const id = `story_recovery_${beat}_${fails}`;
-    s.seenComms = s.seenComms || {};
-    if (s.seenComms[id]) return false;
-    s.seenComms[id] = true;
+    if (scheduledOrSeenComms(s, id)) return false;
     recordStoryFact(s, {
       id,
       kind: 'recovery',
@@ -2702,9 +2723,7 @@ export const story = {
     const text = newGamePlusConsequenceLine(record);
     if (!text) return false;
     const s = this.state.story;
-    s.seenComms = s.seenComms || {};
-    if (s.seenComms.ngplus_consequence) return false;
-    s.seenComms.ngplus_consequence = true;
+    if (scheduledOrSeenComms(s, 'ngplus_consequence')) return false;
     this._scheduleNarrative(0, {
       kind: 'comms',
       id: 'ngplus_consequence',

@@ -71,8 +71,8 @@ test('a second, differently-stamped load flips the board to both readings; Kessl
   assert.equal(watchOf(f).second.count, 2);
   assert.equal(first.alive, true); assert.equal(second.alive, true);
   assert.equal(first.data.kesslerReceipt.trueRead, 40);
-  assert.match(first.data.scanLabel, /Iron freight · WEIGHED 40\.0 t · 17 u/);
-  assert.match(second.data.scanLabel, /Iron freight · WEIGHED 60\.0 t · 17 u/);
+  assert.match(first.data.scanLabel, /Iron freight · WEIGHED 37\.6 t · STAMP 40\.0 t · 17 u/);
+  assert.match(second.data.scanLabel, /Iron freight · WEIGHED 56\.4 t · STAMP 60\.0 t · 17 u/);
 
   // Re-init (the real system lifecycle on sector re-entry) does not replay the line.
   f.system.init({ state: f.state, bus: f.bus, helpers: f.helpers });

@@ -8,7 +8,7 @@ export const towlineTablePrompt={name:'towlineTablePrompt',init(ctx){this.bus=ct
   for(const event of ['game:load','game:new','game:newGame','save:restoring','save:loaded','dock:docked','sector:exit'])this._subs.push(ctx.bus.on(event,()=>this.clear()));
 },offer(row){if(this._destroyed)return false;if(!row){this.clear();return false;}const choices=[];
   if(row.canTake)choices.push({id:'take',label:'TAKE THIS CLEANUP LINE',title:'The crew releases its actual line. Return this original slowly at Ceres; the named worker must witness the handover.'});
-  if(row.canDeliver)choices.push({id:'deliver',label:'HAND OVER THIS ORIGINAL',title:'Keep a Massline on this original, bring it slowly to Ceres, and keep the named worker nearby to witness the return.'});
+  if(row.canDeliver)choices.push({id:'deliver',label:'HAND OVER THIS ORIGINAL',title:'Keep a line on this original, bring it slowly to Ceres, and keep the named worker nearby to witness the return.'});
   if(row.canAssist)choices.push({id:'assist',label:row.resume?'RESUME THE SAME TOW':'ASK FOR ONE CARGO TOW',title:'One earned service, one original load, fixed Ceres destination. A declined hire consumes nothing; accepted work retains its first deadline.'});
   if(row.canRelease)choices.push({id:'release',label:'RETURN THE CLEANUP TO THE CREW'});
   if(row.canCourse)choices.push({id:'course',label:'SET CERES RECEIVER COURSE'});

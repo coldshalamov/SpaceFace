@@ -15,7 +15,7 @@ import {
   rankMasslineTargets,
   stabilizeMasslineSelection,
 } from '../combat/masslineTargetScoring.js';
-import { automaticMasslineBreakAllowed, resolveWinchBrace, WINCH_BRACE } from '../combat/attachments.js';
+import { automaticMasslineBreakAllowed, resolveWinchBrace, tetherReachScale, WINCH_BRACE } from '../combat/attachments.js';
 import { stepLatchRepair } from '../combat/latchRepair.js';
 import { entityLocalPointToWorld } from '../combat/geometry.js';
 import { occupantGenerationOf } from '../core/entity.js';
@@ -49,6 +49,7 @@ import { createCadenceWinch, stepCadenceWinch, readCadencePair, rateCadenceTechn
 // onboarding's _showHint speaks through, so a head's line and a rail line share one vocabulary.
 import { firstUseLine } from '../ui/hudAttention.js';
 import { swarmReelRateScale } from './playerModifiers.js';
+import { pilotHas } from '../data/pilotTree.js';
 
 const TETHER_DEF_ID = 'tether_standard';
 // PQ-137.09 — the tag a shared helm loss carries, and the loop guard. A shared tumble never
@@ -153,6 +154,13 @@ const DRILL_APPROACH_POSITION_GAIN = 3.5;
 const DRILL_APPROACH_VELOCITY_GAIN = 2.6;
 const DRILL_APPROACH_MAX_SURFACE_WU = 220;
 const DRILL_APPROACH_TIMEOUT_S = 8;
+// The rover goes down once the ship is parked at the rock and steady. "Parked" used to also mean
+// "the Line is exactly its commanded length", which a small rock can never satisfy: the parked gap
+// is shorter than the Line's minimum length, so the Line hangs slack for ever and the approach
+// timed out in silence. A slack Line at its minimum is settled, and a ship that has simply held
+// station for this long is settled whatever the Line is doing (a spinning rock keeps moving its
+// anchor, so the commanded length never stops changing).
+const DRILL_APPROACH_STEADY_HOLD_S = 1.5;
 // Presentation load (massline rung 04): phase floors so the cable reads "working" the moment the
 // phase says so, even while the physical rating ratio (strain) is still low. strain*2.5 lets real
 // tension overtake the floor. tether.load is presentation-only — tether.strain stays the untouched
@@ -203,6 +211,31 @@ export function playerTetherSpoolOut(state, player) {
   const runtime = book[String(player.id)];
   const spool = runtime && runtime.subsystems && runtime.subsystems.subsystem_tether_spool;
   return !!(spool && spool.effectiveDisabled === true);
+}
+
+// ── OVH-01c2 — the Rigger's Pilot Tree reads (06 §2.2) ──────────────────────────────────────
+// Pure pilot-record reads; every helper is the identity for a run with no pilot record, so
+// Adventure, NPCs and a pick-less Swarm run stay byte-identical.
+
+// rigger_long_reel — the line reaches 50 % further. The ONE scale lives in
+// ../combat/attachments.js (tetherReachScale) so the policy maxLength the Rapier joint clamps
+// to and every reach reader below (the acquisition snapshot, the latch validator, the
+// Ctrl-nearest command latch, the winch pay-out bound, the bridle pair check) agree by
+// construction — PT-FIX-C item 2.
+
+// rigger_quick_latch — inside 120 WU the latch is instant: no acquisition hold. A challenger
+// that close takes the selection on its first ranked tick instead of holding the 200 ms Schmitt
+// window (the press path already consumes a fresh snapshot on its own tick).
+export const QUICK_LATCH_RANGE_WU = 120;
+function quickLatchChallengerNear(state, player, snapshot) {
+  if (!pilotHas(state, 'rigger_quick_latch')) return false;
+  const best = snapshot.ranked.find((record) => record.score > 0) || snapshot.ranked[0];
+  if (!best || !player || !player.pos) return false;
+  const entity = snapshot.byId.get(best.id);
+  if (!entity || !entity.pos) return false;
+  const surface = Math.hypot(entity.pos.x - player.pos.x, entity.pos.z - player.pos.z)
+    - Math.max(0, finite(entity.radius, 0));
+  return surface <= QUICK_LATCH_RANGE_WU;
 }
 
 export const tetherGameplay = {
@@ -585,8 +618,8 @@ export const tetherGameplay = {
         this._lastLineControlDenial = null;
       }
       if (approach && this._drillApproach) {
-        if (this._drillApproachSettled(attachments, player, target)) this._completeDrillApproach(state);
-        else this._queueDrillApproachAssist(attachments, player, target, dt);
+        if (this._drillApproachSettled(attachments, player, target, state)) this._completeDrillApproach(state);
+        else this._queueDrillApproachAssist(attachments, player, target, dt, state);
       }
       this._emitStrain(attachments, state, dt);
       const att = attachments.get(this._active.attachmentId);
@@ -614,13 +647,19 @@ export const tetherGameplay = {
     this._reelStrength = 0;
     this._resetPhaseMirror();
     this._mirror(state, null, 0);
-    const wantsLatch = !!(actions && actions.tetherFire);
+    const drillIntent = this._takeDrillLatchIntent(now);
+    const wantsLatch = !!(actions && actions.tetherFire) || !!drillIntent;
     if (wantsLatch && playerTetherSpoolOut(state, player)) {
       this.bus.emit('tether:latchDenied', { reason: 'spool_out' });
       return;
     }
-    const bridleHeadActive = player.data?.derived?.masslineHeadId === TWIN_BRIDLE_HEAD_ID
-      && massline2Flag('masslineHeadTwinBridle', state.runtime && state.runtime.features);
+    // OVH-01c2 rigger_second_line — the run grants the existing twin_bridle capability: the
+    // pilot record answers exactly what the fitted head answers, behind the same feature flag.
+    // Without the node (and without the head) a second line is refused as today.
+    const twinBridleFlag = massline2Flag('masslineHeadTwinBridle', state.runtime && state.runtime.features);
+    const bridleHeadActive = twinBridleFlag
+      && (player.data?.derived?.masslineHeadId === TWIN_BRIDLE_HEAD_ID
+        || pilotHas(state, 'rigger_second_line'));
     const remoteBridleActive = state.player?.remoteMassline?.active
       && state.player.remoteMassline.kind === TWIN_BRIDLE_HEAD_ID;
     if (bridleHeadActive || this._bridleSetup || this._bridleActive || remoteBridleActive) {
@@ -650,18 +689,12 @@ export const tetherGameplay = {
     // Ctrl-nearest (src/systems/input.js:1074) is an explicit manual override of the scored pick:
     // "not that one — the one I am closest to". It bypasses the receipt entirely, so it must not
     // publish or consume one either.
-    const nearestOnly = state.input?.tetherMode === 'nearest';
-    // PHYSICAL_PLAY_GRAMMAR §7.1: the candidate is published EVERY tick, pressed or not — "you can
-    // see what the Massline will grab before you press, and it updates as you move". Steering-only
-    // presses consume the previous-frame receipt; explicit cursor-aim presses refresh current aim
-    // on the press tick.
-    //
-    // Passive drift keeps the standing receipt and Schmitt hysteresis so the HUD does not flicker.
-    // An explicit cursor-aim press is different: the player is committing NOW, so the press tick
-    // refreshes acquisition from current aim and bypasses the hold. Steering-only presses keep the
-    // previous-frame receipt contract pinned by massline-acquisition-preview.
+    const nearestOnly = state.input?.tetherMode === 'nearest' || !!drillIntent;
+    // Keyboard input can arrive after the worker has stepped or the camera has reprojected the
+    // cursor. Resolve the press against its sampled preview and revalidate that body's current life.
+    const keyboardReceipt = wantsLatch && !nearestOnly ? actions.tetherPreview : null;
     const tickNow = Math.trunc(finite(state.tick));
-    const publishedReceipt = nearestOnly ? null : (state.masslineAcquisition || null);
+    const publishedReceipt = nearestOnly ? null : keyboardReceipt || state.masslineAcquisition;
     const publishedTargetId = publishedReceipt && publishedReceipt.selected
       ? publishedReceipt.selected.targetId
       : null;
@@ -670,7 +703,7 @@ export const tetherGameplay = {
       && publishedReceipt.validUntil >= now;
     if (!def || nearestOnly) {
       this._clearAcquisitionPreview(state);
-    } else {
+    } else if (!keyboardReceipt) {
       const pressOwnsCurrentAim = wantsLatch && acquisitionCursorActive(state);
       if (pressOwnsCurrentAim) {
         this._refreshAcquisitionPreview(player, def, state, now, true, true);
@@ -684,26 +717,32 @@ export const tetherGameplay = {
     // Readable failure reasons (T04): never fail latch silently. The ORDER below is load-bearing —
     // cooldown outranks a missing def (pinned by T04 §3 in test/tether-latch-eligibility.test.mjs).
     this._lastLatchDenial = null;
-    const commandLatch = nearestOnly && def ? this._acquireCommandTarget(player, def, state) : null;
+    const commandLatch = !nearestOnly || !def ? null
+      : drillIntent ? this._acquireDrillTarget(player, def, state, drillIntent.asteroidId)
+        : this._acquireCommandTarget(player, def, state);
+    const selectionReceipt = nearestOnly ? null : keyboardReceipt || state.masslineAcquisition;
     const candidate = nearestOnly ? commandLatch?.entity
-      : state.entities.get(state.masslineAcquisition?.selected?.targetId);
+      : state.entities.get(selectionReceipt?.selected?.targetId);
     if (now < this._noRelatchUntil && (this._noRelatchTargetId == null
         || !candidate || candidate.id === this._noRelatchTargetId)) {
       this.bus.emit('tether:latchDenied', { reason: 'cooldown' });
+      this._sayRoverRefused(drillIntent, 'cooldown');
       return;
     }
     if (!def) {
       // Attachment authority's established reason when the def is absent from the catalog.
       this.bus.emit('tether:latchDenied', { reason: 'unknown_attachment_def' });
+      this._sayRoverRefused(drillIntent, 'unknown_attachment_def');
       return;
     }
     const latch = nearestOnly
       ? commandLatch
-      : this._consumeAcquisitionReceipt(player, def, state, now);
+      : this._consumeAcquisitionReceipt(player, def, state, now, null, selectionReceipt);
     let target = latch && latch.entity;
     if (!target) {
       const denial = this._lastLatchDenial || { reason: 'no-target' };
       this.bus.emit('tether:latchDenied', denial);
+      this._sayRoverRefused(drillIntent, denial.reason);
       return;
     }
     // OPENING-1b: until the first latch lands, the marked loose rock outranks passing traffic freight
@@ -748,6 +787,7 @@ export const tetherGameplay = {
         reason: (result && result.reason) || 'create_failed',
         targetId: target.id,
       });
+      this._sayRoverRefused(drillIntent, (result && result.reason) || 'create_failed');
       return;
     }
 
@@ -762,9 +802,12 @@ export const tetherGameplay = {
     this._lastStrainT = -Infinity;
     this._ignoreReleaseCutUntilReelIdle = true;
     this._latchGraceUntil = now + 0.55;
+    if (drillIntent) {
+      // The promoted rock may carry a new id; the approach names the body the line is really on.
+      this._pendingDrillApproach = { asteroidId: target.id, attachmentId: result.attachment.id };
+    }
     // Truthfulness receipt: the latch reports WHICH rendered candidate it consumed, so a mismatch
     // between what the player saw and what they got is observable rather than a bug report.
-    const selectionReceipt = nearestOnly ? null : state.masslineAcquisition;
     const selectedEntry = selectionReceipt && selectionReceipt.selected;
     const pMass = bodyMassOf(player);
     const tMass = bodyMassOf(target);
@@ -777,17 +820,11 @@ export const tetherGameplay = {
       selectionReceiptId: (selectionReceipt && selectionReceipt.id) || null,
       context: (selectedEntry && selectedEntry.context)
         || (state.player?.targetId === target.id ? 'selected' : 'nearby'),
-      // TRUTHFUL BY CONSTRUCTION. publishedTargetId was read at the TOP of this tick, before the
-      // refresh decision above, so it is the candidate the previous frame actually drew — not the
-      // receipt this tick built compared against itself, which is what made the old expression
-      // structurally incapable of ever reporting false. If a press-tick rebuild is ever
-      // reintroduced, this goes false and check-tether-gameplay.mjs / tether-latch-eligibility
-      // catch it. A cold or expired receipt has no published candidate to contradict (nothing was
-      // on screen), and reports the record it built and consumed in the same tick.
+      // Compare to the sampled keyboard mark or the standing receipt before any refresh.
       previewMatched: !!(selectedEntry && selectedEntry.targetId === target.id)
         && (publishedTargetId == null || publishedTargetId === target.id),
     });
-    this.bus.emit('camera:shake', { amount: 0.06 });
+    this.bus.emit('camera:shake', { amount: 0.06, cause: 'tether' });
     // FB-013 — the tractor's defining moment is the capture: one distinct receipt naming the
     // pull, and the head's first-use line once. Other heads announce on their own events.
     const captureHeadId = player && player.data && player.data.derived
@@ -800,11 +837,8 @@ export const tetherGameplay = {
       });
       this._announceHead(state, 'tractor', target.id);
     }
-    // The consumed receipt deliberately SURVIVES this tick. state.player.tether was mirrored
-    // inactive earlier in this same tick, so neither the cable nor a stale preview is drawn yet —
-    // the latch completes visually on the next frame, where the _active branch above clears the
-    // receipt. Keeping it here is what lets a reader (and the live truthfulness probes) compare the
-    // rendered candidate against the attachment that was actually created.
+    // The active-line branch clears the standing preview on the next tick. The latch event
+    // identifies the exact consumed receipt even when the worker's standing preview advanced.
   },
 
   _handleTwinBridle(attachments, kernel, state, player, now, wantsLatch, masslineCommand, headFitted) {
@@ -1308,6 +1342,11 @@ export const tetherGameplay = {
       {
         forceId: snapshot.context.forceId,
         forceSwitch: intent.reversed || pressOverride,
+        // OVH-01c2 rigger_quick_latch — a challenger inside 120 WU owns the selection on its
+        // first ranked tick: no acquisition hold to wait out before the press can take it.
+        ...(quickLatchChallengerNear(state, player, snapshot)
+          ? { holdS: 0, switchMargin: 0 }
+          : {}),
       },
     );
     this._acquisitionMemory = stable.memory;
@@ -1325,8 +1364,7 @@ export const tetherGameplay = {
     return state.masslineAcquisition;
   },
 
-  _consumeAcquisitionReceipt(player, def, state, now, admissionSource = null) {
-    const receipt = state.masslineAcquisition;
+  _consumeAcquisitionReceipt(player, def, state, now, admissionSource = null, receipt = state.masslineAcquisition) {
     const selected = receipt && receipt.selected;
     if (!selected) {
       this._lastLatchDenial = { reason: receipt?.reason || 'no-target' };
@@ -1334,7 +1372,7 @@ export const tetherGameplay = {
     }
     if (!(receipt.validUntil >= now)) {
       this._lastLatchDenial = { reason: 'preview-stale', targetId: selected.targetId };
-      invalidateAcquisitionReceipt(state, 'preview-stale');
+      if (state.masslineAcquisition?.id === receipt.id) invalidateAcquisitionReceipt(state, 'preview-stale');
       return null;
     }
     if (selected.status !== 'ready') {
@@ -1350,7 +1388,7 @@ export const tetherGameplay = {
       : validateAcquisitionTarget(this, player, target, def, state, null, admissionSource);
     if (denial) {
       this._lastLatchDenial = { reason: denial, targetId: selected.targetId };
-      invalidateAcquisitionReceipt(state, denial);
+      if (state.masslineAcquisition?.id === receipt.id) invalidateAcquisitionReceipt(state, denial);
       return null;
     }
     return { entity: target, targetWorld: surfacePointToward(target, player.pos) };
@@ -1360,7 +1398,8 @@ export const tetherGameplay = {
   // receipt via _consumeAcquisitionReceipt; this is the deliberate manual escape hatch, so it stays
   // pure geometry with no scoring, no intent, and no hysteresis.
   _acquireCommandTarget(player, def, state) {
-    const maxLength = positive(def && def.maxLength, positive(def && def.break && def.break.maxLength, 390));
+    const maxLength = positive(def && def.maxLength, positive(def && def.break && def.break.maxLength, 390))
+      * tetherReachScale(state, player);
     const entities = commandAcquireCandidates(
       state,
       player,
@@ -1529,7 +1568,15 @@ export const tetherGameplay = {
   _requestDrillApproach(payload = {}) {
     const asteroidId = payload && payload.asteroidId;
     const attachmentId = payload && payload.attachmentId;
-    if (asteroidId == null || attachmentId == null) return false;
+    if (asteroidId == null) return false;
+    if (attachmentId == null) {
+      // One press sets the rover down: with no line on the rock yet, the Line is put on it by
+      // this owner on its next tick, and the approach begins from that latch.
+      const state = this.state;
+      const now = state && Number.isFinite(state.simTime) ? state.simTime : 0;
+      this._drillLatchIntent = { asteroidId, untilT: now + 2.5 };
+      return true;
+    }
     if (this._drillApproach
         && this._drillApproach.asteroidId === asteroidId
         && this._drillApproach.attachmentId === attachmentId) return false;
@@ -1539,6 +1586,49 @@ export const tetherGameplay = {
     this._cancelDrillApproach('superseded');
     this._pendingDrillApproach = { asteroidId, attachmentId };
     return true;
+  },
+
+  /** A rover press that could not put the Line on its rock says why, in the pilot's terms. */
+  _sayRoverRefused(drillIntent, reason) {
+    if (!drillIntent || !this.bus || typeof this.bus.emit !== 'function') return;
+    const blocker = reason === 'blocked' ? this._lastLineBlocker : null;
+    const what = !blocker ? 'something'
+      : blocker.type === 'asteroid' ? 'another rock'
+        : blocker.type === 'station' ? (blocker.name || 'a station')
+          : (blocker.name || 'a wreck');
+    const text = reason === 'blocked'
+      ? `No clear line to that rock: ${what} is in the way. Move until you can see it, then set the rover down again.`
+      : reason === 'out-of-range' ? 'Too far to set the rover down. Fly closer to the rock.'
+        : reason === 'cooldown' ? 'The Line is still rewinding. Set the rover down again in a moment.'
+          : 'The Line could not take hold of that rock. Try from another side.';
+    this.bus.emit('toast', { text, kind: 'warn', ttl: 4.5 });
+  },
+
+  /** The rover press waiting for a line, taken once. A stale press is dropped, never replayed. */
+  _takeDrillLatchIntent(now) {
+    const intent = this._drillLatchIntent;
+    if (!intent) return null;
+    this._drillLatchIntent = null;
+    return now <= intent.untilT ? intent : null;
+  },
+
+  /** The rock the rover was sent to, admitted by the same reach and line-of-sight rules as any latch. */
+  _acquireDrillTarget(player, def, state, asteroidId) {
+    const maxLength = positive(def && def.maxLength, positive(def && def.break && def.break.maxLength, 390))
+      * tetherReachScale(state, player);
+    const entity = state.entities && state.entities.get ? state.entities.get(asteroidId) : null;
+    if (!entity || entity.alive === false || entity.type !== 'asteroid') {
+      this._lastLatchDenial = { reason: 'no-target', maxLength };
+      return null;
+    }
+    const obstacles = collectAcquisitionObstacles(this, state, player, [entity], maxLength);
+    const refusal = validateAcquisitionTarget(this, player, entity, def, state, obstacles);
+    if (refusal) {
+      this._lastLatchDenial = { reason: refusal, targetId: entity.id, maxLength,
+        ...(refusal === 'blocked' && this._lastLineBlocker ? { blocker: { ...this._lastLineBlocker } } : {}) };
+      return null;
+    }
+    return { entity, targetWorld: surfacePointToward(entity, player.pos) };
   },
 
   _startPendingDrillApproach(attachments, state, player) {
@@ -1558,7 +1648,7 @@ export const tetherGameplay = {
     }
     const kernel = combatKernel(this);
     const def = attachmentDef(kernel, attachment.defId);
-    const geometry = drillApproachGeometry(def, attachment, player, asteroid);
+    const geometry = drillApproachGeometry(def, attachment, player, asteroid, state);
     if (!geometry) {
       this._cancelDrillApproach('invalid_geometry');
       return false;
@@ -1614,7 +1704,7 @@ export const tetherGameplay = {
     }
     const kernel = combatKernel(this);
     const def = attachmentDef(kernel, attachment.defId);
-    const geometry = drillApproachGeometry(def, attachment, player, asteroid);
+    const geometry = drillApproachGeometry(def, attachment, player, asteroid, state);
     if (!geometry) {
       this._cancelDrillApproach('invalid_geometry');
       return null;
@@ -1625,14 +1715,14 @@ export const tetherGameplay = {
       : 0;
   },
 
-  _queueDrillApproachAssist(attachments, player, asteroid, dt) {
+  _queueDrillApproachAssist(attachments, player, asteroid, dt, state) {
     if (!this._drillApproach || !(dt > 0)) return false;
     const attachment = attachments && typeof attachments.get === 'function'
       ? attachments.get(this._drillApproach.attachmentId)
       : null;
     const kernel = combatKernel(this);
     const def = attachment && attachmentDef(kernel, attachment.defId);
-    const geometry = drillApproachGeometry(def, attachment, player, asteroid);
+    const geometry = drillApproachGeometry(def, attachment, player, asteroid, state);
     if (!geometry) {
       this._cancelDrillApproach('invalid_geometry');
       return false;
@@ -1657,28 +1747,33 @@ export const tetherGameplay = {
     });
   },
 
-  _drillApproachSettled(attachments, player, asteroid) {
+  _drillApproachSettled(attachments, player, asteroid, state) {
     const approach = this._drillApproach;
     const attachment = approach && attachments && typeof attachments.get === 'function'
       ? attachments.get(approach.attachmentId)
       : null;
     const kernel = combatKernel(this);
     const def = attachment && attachmentDef(kernel, attachment.defId);
-    const geometry = drillApproachGeometry(def, attachment, player, asteroid);
+    const geometry = drillApproachGeometry(def, attachment, player, asteroid, state);
     if (!geometry) return false;
     const distance = distance2d(player && player.pos, asteroid && asteroid.pos);
     const relativeSpeed = Math.hypot(
       finite(player && player.vel && player.vel.x) - finite(asteroid && asteroid.vel && asteroid.vel.x),
       finite(player && player.vel && player.vel.z) - finite(asteroid && asteroid.vel && asteroid.vel.z),
     );
-    return !!(attachment && attachment.state === 'active')
-      && Math.abs(finite(attachment.restLength, geometry.desiredRestLength) - geometry.desiredRestLength)
-        <= DRILL_APPROACH_REST_LENGTH_EPSILON_WU
-      && Math.abs(geometry.currentEndpointDistance - attachment.restLength)
-        <= DRILL_APPROACH_REST_LENGTH_EPSILON_WU
-      && Number.isFinite(distance)
+    if (!(attachment && attachment.state === 'active')) return false;
+    const parked = Number.isFinite(distance)
       && Math.abs(distance - geometry.desiredCenterDistance) <= DRILL_APPROACH_DISTANCE_EPSILON_WU
       && relativeSpeed <= DRILL_APPROACH_SPEED_EPSILON_WU_S;
+    const now = state && Number.isFinite(state.simTime) ? state.simTime : finite(state && state.tick) / 60;
+    if (!parked) { approach.steadySince = null; return false; }
+    if (approach.steadySince == null) approach.steadySince = now;
+    const reeled = Math.abs(finite(attachment.restLength, geometry.desiredRestLength) - geometry.desiredRestLength)
+      <= DRILL_APPROACH_REST_LENGTH_EPSILON_WU;
+    const slackOrTaut = geometry.restClamped
+      ? geometry.currentEndpointDistance - attachment.restLength <= DRILL_APPROACH_REST_LENGTH_EPSILON_WU
+      : Math.abs(geometry.currentEndpointDistance - attachment.restLength) <= DRILL_APPROACH_REST_LENGTH_EPSILON_WU;
+    return (reeled && slackOrTaut) || now - approach.steadySince >= DRILL_APPROACH_STEADY_HOLD_S;
   },
 
   _completeDrillApproach(state) {
@@ -1707,6 +1802,13 @@ export const tetherGameplay = {
       attachmentId: approach.attachmentId,
       reason,
     });
+    // A press that ends with no rover says why. These are the ways an approach gives up on its
+    // own; a pilot who cut the Line or flew off already knows.
+    const text = reason === 'timeout' ? 'The ship could not hold steady beside that rock. Come to a stop near it and set the rover down again.'
+      : reason === 'out_of_range' ? 'Too far to set the rover down. Fly closer to the rock.'
+        : reason === 'target_lost' ? 'Lost the rock. Fly back to it and set the rover down again.'
+          : null;
+    if (text) this.bus.emit('toast', { text, kind: 'warn', ttl: 4.5 });
     return true;
   },
 
@@ -1733,35 +1835,28 @@ export const tetherGameplay = {
     const def = attachmentDef(combatKernel(this), attachment.defId);
     if (!def) return { changed: false, reason: 'unknown_attachment_def', attachment };
     const policy = typeof attachments.reelPolicy === 'function' ? attachments.reelPolicy(attachment.id) : null;
-    // LINE-03/04 (rows 498–499): an over-class hold strains the line — the winch reels
-    // slower, commanded authority weakens, and the strained cable reads its break
-    // threshold early. Factors come from the lineProgression bag (1 when under class).
-    const strain = state && state.lineProgression ? state.lineProgression : null;
     const baseReelRate = policy && Number.isFinite(policy.reelRate) ? policy.reelRate : def.reelRate;
-    // A01-05 Long Reel take: the winch's reel cadence reads the run ledger's own
-    // multiplier — player-owned reel only, folded beside the strain factor.
+    // The deployed winch policy and the player-owned Long Reel upgrade set the motor rate.
     const modReel = player && player.id === (state && state.playerId) ? swarmReelRateScale(state) : 1;
-    const reelRate = baseReelRate
-      * (Number.isFinite(strain && strain.overClassReelFactor) ? strain.overClassReelFactor : 1)
-      * modReel;
+    const reelRate = baseReelRate * modReel;
     const maxStep = positive(reelRate, 0) * Math.max(0, finite(dt));
     if (!(maxStep > 0)) return { changed: false, reason: 'reel_unavailable', attachment };
     const minLength = positive(def.minLength, 0);
-    const maxLength = positive(policy && policy.maxLength, positive(def.maxLength, Infinity));
+    // PT-FIX-C item 2 / rigger_long_reel — the winch pays out to the policy's ONE scaled number
+    // (attachments.js already folds the pilot's reach into tetherPolicy.maxLength). Only the
+    // def fallback is scaled here, so a live policy is never doubled.
+    const maxLength = positive(policy && policy.maxLength,
+      positive(def.maxLength, Infinity) * tetherReachScale(state, player));
     const before = finite(attachment.restLength);
-    const snapTensionFactor = Number.isFinite(strain && strain.overClassSnapTensionFactor) ? strain.overClassSnapTensionFactor : 1;
-    const maxTension = positive(policy && policy.break && policy.break.maxTension, Infinity) / Math.max(1e-6, snapTensionFactor);
+    const maxTension = positive(policy && policy.break && policy.break.maxTension, Infinity);
     const automaticBreakAllowed = automaticMasslineBreakAllowed(def, player, target);
     const normalized = options && options.normalizedAxis === true;
     const runtime = this._ensureCadenceRuntime(state, attachment.id);
     let proposal = null, requested;
     if (normalized) {
       const command = state.input && state.input.actions && state.input.actions.massline;
-      // Over-class strain also costs commanded authority: the winch answers the stick
-      // weakly while the load is above the Line's class ceiling.
-      const turnFactor = Number.isFinite(strain && strain.overClassTurnFactor) ? strain.overClassTurnFactor : 1;
       proposal = stepCadenceWinch(runtime.winch, {
-        dt, axis: reelDelta * turnFactor, restLength: before, minLength, maxLength, reelRate,
+        dt, axis: reelDelta, restLength: before, minLength, maxLength, reelRate,
         tension: finite(attachment.lastTension), maxTension, automaticBreakAllowed,
         pair: readCadencePair(player, target, before),
         orbit: !!(command && command.lineControl && Math.abs(finite(command.orbitDirection)) > 0.08),
@@ -1819,7 +1914,7 @@ export const tetherGameplay = {
     });
     const verb = direction === 'reel_in' ? 'reel-in' : 'pay-out';
     this.bus.emit('toast', {
-      text: `Massline ${verb} blocked: ${LINE_CONTROL_DENIAL_COPY[reason] || humanizeReasonSlug(reason)}`,
+      text: `Line ${verb} blocked: ${LINE_CONTROL_DENIAL_COPY[reason] || humanizeReasonSlug(reason)}`,
       kind: 'warn',
       ttl: 2,
     });
@@ -2149,7 +2244,7 @@ export const tetherGameplay = {
       if (this._lastCutDenial !== key) {
         this._lastCutDenial = key;
         this.bus.emit('toast', {
-          text: `Massline cut refused: ${CUT_DENIAL_COPY[reason] || humanizeReasonSlug(reason)}`,
+          text: `Line cut refused: ${CUT_DENIAL_COPY[reason] || humanizeReasonSlug(reason)}`,
           kind: 'warn',
           ttl: 2,
         });
@@ -2605,7 +2700,7 @@ export const tetherGameplay = {
           tick: Number.isFinite(state.tick) ? state.tick : null,
         });
         this.bus.emit('toast', {
-          text: 'MASSLINE SNAGGED — haul through, reposition, or cut free.',
+          text: 'LINE SNAGGED — haul through, reposition, or cut free.',
           kind: 'warn',
           ttl: 4,
         });
@@ -2914,7 +3009,9 @@ export function validateTwinBridlePair(host, state, player, source, target, def)
     return 'endpoint_lost';
   }
   if (source.id === target.id) return 'same_endpoint';
-  const maxLength = positive(def && def.maxLength, 480);
+  // PT-FIX-C item 2 — the bridle pair admits what the pilot's reel reaches, the same ONE scale
+  // the bridle attachment's own policy maxLength carries (attachments.js).
+  const maxLength = positive(def && def.maxLength, 480) * tetherReachScale(state, player);
   const worlds = contextualRemoteAttachmentWorlds(source, target);
   const physicalDistance = Math.hypot(
     worlds.targetWorld.x - worlds.sourceWorld.x,
@@ -3149,7 +3246,8 @@ function intentWorldDirection(player, intent) {
 }
 
 function buildAcquisitionSnapshot(host, player, def, state, intent, admissionSource = null) {
-  const maxLength = positive(def && def.maxLength, positive(def && def.break && def.break.maxLength, 390));
+  const maxLength = positive(def && def.maxLength, positive(def && def.break && def.break.maxLength, 390))
+    * tetherReachScale(state, player);
   const focus = state.player && state.player.flybyFocus;
   const focusTarget = focus && focus.active && focus.targetId != null && state.entities?.get
     ? state.entities.get(focus.targetId)
@@ -3448,7 +3546,8 @@ function validateAcquisitionTarget(host, player, target, def, state, obstacles =
   if (!isAttachable(target, player && player.id, state)) {
     return acquisitionDenialReason(target, player && player.id);
   }
-  const maxLength = positive(def && def.maxLength, positive(def && def.break && def.break.maxLength, 390));
+  const maxLength = positive(def && def.maxLength, positive(def && def.break && def.break.maxLength, 390))
+    * tetherReachScale(state, player);
   if (acquisitionOutOfRange(player, target, maxLength)) return 'out-of-range';
   // Twin Bridle's second press is admitted on the remote A→candidate pair, the same segment the
   // pair validator and the bridle's own create call use. The controller ship is never an endpoint.
@@ -3498,6 +3597,7 @@ function bridleAcquisitionEndpoints(source, target) {
  * way a thrown check fails closed.
  */
 function masslineObstructed(host, state, player, target, endpoints = null, obstacles = null) {
+  const report = { blocker: null };
   const request = {
     state,
     player,
@@ -3505,7 +3605,10 @@ function masslineObstructed(host, state, player, target, endpoints = null, obsta
     sourceWorld: endpoints && endpoints.sourceWorld ? endpoints.sourceWorld : null,
     targetWorld: endpoints && endpoints.targetWorld ? endpoints.targetWorld : null,
     obstacles: Array.isArray(obstacles) ? obstacles : null,
+    report,
   };
+  // What blocked the last line, for the callers that say it out loud. Cleared on every check.
+  if (host) host._lastLineBlocker = null;
   const check = host && host.helpers && host.helpers.isMasslineObstructed;
   if (typeof check === 'function') {
     try {
@@ -3515,7 +3618,13 @@ function masslineObstructed(host, state, player, target, endpoints = null, obsta
     }
   }
   try {
-    return isAsteroidMasslineObstructed(request) === true;
+    const blocked = isAsteroidMasslineObstructed(request) === true;
+    if (blocked && host && report.blocker) {
+      const b = report.blocker;
+      host._lastLineBlocker = { id: b.id != null ? b.id : null, type: b.type || null,
+        name: (typeof b.name === 'string' && b.name) || (b.data && typeof b.data.name === 'string' && b.data.name) || null };
+    }
+    return blocked;
   } catch (_) {
     return true;
   }
@@ -4156,7 +4265,7 @@ function distance2d(a, b) {
   return Math.hypot(finite(a.x) - finite(b.x), finite(a.z) - finite(b.z));
 }
 
-function drillApproachGeometry(def, attachment, player, asteroid) {
+function drillApproachGeometry(def, attachment, player, asteroid, state = null) {
   const playerCenter = finitePoint(player && player.pos);
   const asteroidCenter = finitePoint(asteroid && asteroid.pos);
   const sourceAnchorLocal = finitePoint(attachment && attachment.sourceAnchorLocal);
@@ -4185,12 +4294,16 @@ function drillApproachGeometry(def, attachment, player, asteroid) {
   const currentEndpointDistance = distance2d(sourceWorld, targetWorld);
   if (!Number.isFinite(desiredEndpointDistance) || !Number.isFinite(currentEndpointDistance)) return null;
   const minLength = positive(def && def.minLength, 0);
-  const maxLength = positive(def && def.maxLength, Infinity);
+  // PT-FIX-C item 2 — the drill approach desires lengths the policy would admit: the pilot's
+  // own reach, never more (and the attachment's tetherPolicy clamp agrees downstream).
+  const maxLength = positive(def && def.maxLength, Infinity) * tetherReachScale(state, player);
   if (maxLength < minLength) return null;
   return {
     desiredCenterDistance,
     desiredPlayerCenter,
     desiredRestLength: clamp(desiredEndpointDistance, minLength, maxLength),
+    // The parked gap is shorter than the Line can be: it will hang slack at its minimum.
+    restClamped: desiredEndpointDistance < minLength,
     currentCenterDistance,
     currentEndpointDistance,
   };

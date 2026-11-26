@@ -15,6 +15,7 @@
 // below the 12 px floor; reduced motion reaches every state instantly.
 
 import { injectOrrery } from './tokens.js';
+import { SCROLL_EXTENT_CSS } from './scrollExtent.js';
 
 const STYLE_ID = 'sf-orrery-physics-race';
 const R = 'html body #screens .k-screen.pv-board';
@@ -26,6 +27,7 @@ const PLAIN = 'background:none !important; border:0 !important; border-image:non
 const NUM = 'font-family:var(--dp-face-numeral, "Archivo") !important; font-stretch:100% !important; font-variation-settings:"wdth" 100, "wght" 300 !important; font-weight:300 !important; font-variant-numeric:tabular-nums lining-nums !important; letter-spacing:-.01em !important;';
 
 const CSS = `
+${SCROLL_EXTENT_CSS}
 /* ============================ the board frame ================================= */
 ${R} { display:grid !important; grid-template-columns:minmax(0, 1fr) !important;
   grid-template-rows:auto minmax(0, 1fr) auto !important; grid-auto-rows:auto !important;

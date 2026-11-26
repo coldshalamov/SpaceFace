@@ -88,7 +88,7 @@ export function offerFoundryProtocol(world, force = false) {
   world.bus.emit('siteEvidence:offer', {
     siteId: site.siteId, headline: 'Two correct orders',
     detail: approach
-      ? `${approach.toUpperCase()}: ${protocol.sequences[approach].join(' → ')}. Next: ${expected}. Move this ballast into the ${approach === 'preservation' ? 'west' : 'east'} cradle, radius ${site.workCycle.intakeRadius}; hold below 5 WU/s for ${site.workCycle.settleS}s. Three spent gantry charges stay spent. No cargo or payment is required; ordinary Massline can move the ballast.`
+      ? `${approach.toUpperCase()}: ${protocol.sequences[approach].join(' → ')}. Next: ${expected}. Move this ballast into the ${approach === 'preservation' ? 'west' : 'east'} cradle, radius ${site.workCycle.intakeRadius}; hold below 5 m/s for ${site.workCycle.settleS}s. Three spent gantry charges stay spent. No cargo or payment is required; ordinary Massline can move the ballast.`
       : 'Read either machine. Preservation files position before presentation; construction files presentation before position. Both accept the same ballast. Leaving keeps a safe stalemate.',
     choices: approach ? [
       { id: 'present', label: 'Present the current finding' },

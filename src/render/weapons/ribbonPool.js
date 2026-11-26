@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { CHASE_CAMERA_FOV_DEG, CHASE_CAMERA_VIEWPORT_HEIGHT, tanHalfFov } from './pixelFloor.js';
 import { RIBBON_PROFILE, ribbonProfileForWidth } from './recipes.js';
 import { weaponEffectSeed } from './energyBoltPool.js';
+import { VFX_BUDGET } from '../vfx/vfxBudget.js';
 
 export { RIBBON_PROFILE, ribbonProfileForWidth };
 
@@ -231,7 +232,13 @@ export class WeaponRibbonPool {
     this.uploadedBytesLastFrame = 0;
     this._fovDeg = CHASE_CAMERA_FOV_DEG;
     this._viewportHeight = CHASE_CAMERA_VIEWPORT_HEIGHT;
+    this._budgetActive = false;
     if (scene) scene.add(this.mesh);
+  }
+
+  /** Live integrated-GPU wake cap & arc budget (?rfx=-vfxBudget restores full wakes). */
+  setBudgetActive(active) {
+    this._budgetActive = !!active;
   }
 
   /** Optional exactness for the projected width floor; the chase defaults stand in otherwise. */
@@ -366,9 +373,13 @@ export class WeaponRibbonPool {
       this._spanMax = -Infinity;
     }
     const previousLive = this.live;
+    const budgetActive = this._budgetActive === true;
+    const maxDrawn = budgetActive ? VFX_BUDGET.ribbonMaxDrawn : this.capacity;
+    const visibleArcLimit = budgetActive ? VFX_BUDGET.ribbonVisibleArcWu : WAKE_VISIBLE_ARC_WU;
     let live = 0;
     for (let i = 0; i < this.capacity; i++) {
       if (!this.alive[i]) { this.drawSlots[i] = -1; continue; }
+      if (live >= maxDrawn) { this.drawSlots[i] = -1; continue; }
       // History slots stay stable for entity lookup; only GPU vertices pack into a live prefix.
       // A lone late-ring wake must not submit the geometry of 255 empty neighbours.
       const drawSlot = live++;
@@ -406,6 +417,17 @@ export class WeaponRibbonPool {
       let lastY = this.hist[hb + 1];
       let lastZ = this.hist[hb + 2];
       for (let s = 0; s < seg; s++) {
+        if (budgetActive && (s >= usable || arc > visibleArcLimit)) {
+          // Collapse the remaining unused/beyond-arc tail in place without per-segment trig/hypot.
+          const tailStart = vb + s * SECTION;
+          const tailEnd = vb + seg * SECTION;
+          al.fill(0, tailStart, tailEnd);
+          for (let v = tailStart; v < tailEnd; v++) {
+            const vp = v * 3;
+            pos[vp] = lastX; pos[vp + 1] = lastY; pos[vp + 2] = lastZ;
+          }
+          break;
+        }
         const p = hb + s * 3;
         const px = this.hist[p]; const py = this.hist[p + 1]; const pz = this.hist[p + 2];
         arc += Math.hypot(px - lastX, py - lastY, pz - lastZ);
@@ -430,7 +452,7 @@ export class WeaponRibbonPool {
         nx /= nm; ny /= nm; nz /= nm;
 
         const u = s / (seg - 1);
-        const hidden = s >= usable || arc > WAKE_VISIBLE_ARC_WU;
+        const hidden = s >= usable || arc > visibleArcLimit;
         const taper = hidden ? 0 : (1 - u) * (1 - u * 0.35);
         const floorW = floorPixels * (2 * Math.max(0.01, dist) * floorTan);
         // Special energy has a body; ballistic and starter wakes keep their terse silhouettes.

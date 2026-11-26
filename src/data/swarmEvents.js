@@ -57,24 +57,24 @@ export const SWARM_EVENT_BY_ID = Object.freeze({
 
   // ── helios_core (the Foundry): shutters, furnace, loose plates — the room it already is ──
   shutter_storm: event({
-    id: 'shutter_storm', name: 'Shutter storm', kind: 'surge', factor: 2.4, windupS: 5, windowS: 12,
-    telegraph: 'SHUTTER STORM — the drag is about to run hot',
+    id: 'shutter_storm', name: 'Shutter Storm', kind: 'surge', factor: 2.4, windupS: 5, windowS: 12,
+    telegraph: 'SHUTTER STORM — the drag is waking up. Hold on.',
     wager: { score: 60, timeout: 'accept' },
     install: {
       fields: [{ kind: 'well', bearing: 'spin', dist: 280, radius: 520, strength: 92, falloff: 1.25 }],
     },
   }),
   furnace_flare: event({
-    id: 'furnace_flare', name: 'Furnace flare', kind: 'surge', factor: 2.2, windupS: 5, windowS: 10,
-    telegraph: 'FURNACE FLARE — the middle is about to get meaner',
+    id: 'furnace_flare', name: 'Furnace Roar', kind: 'surge', factor: 2.2, windupS: 5, windowS: 10,
+    telegraph: 'FURNACE ROAR — the middle is about to shove back.',
     wager: { score: 55, timeout: 'accept' },
     install: {
       fields: [{ kind: 'repulsor', bearing: 'center', radius: 430, strength: 150, falloff: 1.55 }],
     },
   }),
   plate_drift: event({
-    id: 'plate_drift', name: 'Plate drift', kind: 'surge', factor: 1.6, windupS: 4, windowS: 14,
-    telegraph: 'PLATE DRIFT — cover is tearing loose',
+    id: 'plate_drift', name: 'Plate Drift', kind: 'surge', factor: 1.6, windupS: 4, windowS: 14,
+    telegraph: 'PLATE DRIFT — cover is tearing loose. Ride it.',
     wager: { score: 45, timeout: 'accept' },
     install: {
       cover: true,
@@ -84,20 +84,20 @@ export const SWARM_EVENT_BY_ID = Object.freeze({
 
   // ── lagrange_crucible: the pull and the sling ──
   well_swing: event({
-    id: 'well_swing', name: 'Well swing', kind: 'pulse', windupS: 4, windowS: 9,
-    telegraph: 'WELL SWING — a pull is walking the room',
+    id: 'well_swing', name: 'Well Swing', kind: 'pulse', windupS: 4, windowS: 9,
+    telegraph: 'WELL SWING — a pull is walking the room. Keep moving.',
     wager: { score: 40, timeout: 'accept' },
     field: { kind: 'well', bearing: 'across', dist: 220, radius: 360, strength: 150, falloff: 1.2 },
   }),
   sling_gust: event({
-    id: 'sling_gust', name: 'Sling gust', kind: 'surge', factor: 1.8, windupS: 4, windowS: 8, minor: true,
-    telegraph: 'SLING GUST — the slingshot is about to bite',
+    id: 'sling_gust', name: 'Sling Gust', kind: 'surge', factor: 1.8, windupS: 4, windowS: 8, minor: true,
+    telegraph: 'SLING GUST — the sling bites. Brace, or fly it.',
     wager: { score: 40, timeout: 'accept' },
   }),
   // Same chord the swing walks, opposite sign: the gather point becomes a throw line.
   pylon_flip: event({
-    id: 'pylon_flip', name: 'Pylon flip', kind: 'pulse', windupS: 4, windowS: 9,
-    telegraph: 'PYLON FLIP — one anchor is about to shove',
+    id: 'pylon_flip', name: 'Pylon Flip', kind: 'pulse', windupS: 4, windowS: 9,
+    telegraph: 'PYLON FLIP — one anchor is about to shove.',
     wager: { score: 45, timeout: 'accept' },
     field: { kind: 'repulsor', bearing: 'across', dist: 220, radius: 380, strength: 175, falloff: 1.2 },
   }),
@@ -105,8 +105,8 @@ export const SWARM_EVENT_BY_ID = Object.freeze({
   // across bearing), so the tide enters one rail, pours through the anchor and carries the
   // pack crosswise — ride it out or be raked across the room.
   sling_tide: event({
-    id: 'sling_tide', name: 'Sling tide', kind: 'pulse', windupS: 4, windowS: 9,
-    telegraph: 'SLING TIDE — the room pours crosswise. Ride it or be raked.',
+    id: 'sling_tide', name: 'Sling Tide', kind: 'pulse', windupS: 4, windowS: 9,
+    telegraph: 'SLING TIDE — the room pours sideways. Ride it.',
     wager: { score: 45, timeout: 'accept' },
     field: {
       kind: 'cone', bearing: 'across', dist: -240, radius: 560, strength: 140,
@@ -116,21 +116,21 @@ export const SWARM_EVENT_BY_ID = Object.freeze({
 
   // ── cinder_sluice: the lane and its undertow ──
   sluice_surge: event({
-    id: 'sluice_surge', name: 'Sluice surge', kind: 'surge', factor: 2.0, windupS: 4, windowS: 10,
-    telegraph: 'SLUICE SURGE — the lane is about to flood',
+    id: 'sluice_surge', name: 'Sluice Surge', kind: 'surge', factor: 2.0, windupS: 4, windowS: 10,
+    telegraph: 'SLUICE SURGE — the lane floods. Out, or be carried.',
     wager: { score: 50, timeout: 'accept' },
   }),
   undertow_snap: event({
-    id: 'undertow_snap', name: 'Undertow snap', kind: 'pulse', windupS: 3, windowS: 6,
-    telegraph: 'UNDERTOW — mind the deck',
+    id: 'undertow_snap', name: 'Undertow Snap', kind: 'pulse', windupS: 3, windowS: 6,
+    telegraph: 'UNDERTOW — mind your feet, darling.',
     wager: { score: 45, timeout: 'accept' },
     field: { kind: 'well', bearing: 'player', radius: 280, strength: 210, falloff: 1.0 },
   }),
 
   // ── cryo_drift: cold fronts and breaking plates ──
   freeze_front: event({
-    id: 'freeze_front', name: 'Freeze front', kind: 'pulse', windupS: 4, windowS: 8,
-    telegraph: 'FREEZE FRONT — a wall of cold is sweeping in',
+    id: 'freeze_front', name: 'Freeze Front', kind: 'pulse', windupS: 4, windowS: 8,
+    telegraph: 'FREEZE FRONT — cold sweeping in. Keep moving.',
     wager: { score: 40, timeout: 'accept' },
     field: {
       kind: 'cone', bearing: 'lane', dist: 300, radius: 560, strength: 130,
@@ -138,8 +138,8 @@ export const SWARM_EVENT_BY_ID = Object.freeze({
     },
   }),
   plate_shatter: event({
-    id: 'plate_shatter', name: 'Plate shatter', kind: 'surge', factor: 1.5, windupS: 4, windowS: 10,
-    telegraph: 'PLATE SHATTER — the ice is about to give',
+    id: 'plate_shatter', name: 'Plate Shatter', kind: 'surge', factor: 1.5, windupS: 4, windowS: 10,
+    telegraph: 'PLATE SHATTER — the ice gives. Mind the drift.',
     wager: { score: 40, timeout: 'accept' },
     install: {
       cover: true,
@@ -148,8 +148,8 @@ export const SWARM_EVENT_BY_ID = Object.freeze({
   }),
   // The freeze stores pressure; the thaw lets it all go at once. The middle is the throw.
   thaw_burst: event({
-    id: 'thaw_burst', name: 'Thaw burst', kind: 'pulse', windupS: 4, windowS: 7,
-    telegraph: 'THAW BURST — the middle is about to let go',
+    id: 'thaw_burst', name: 'Thaw Burst', kind: 'pulse', windupS: 4, windowS: 7,
+    telegraph: 'THAW BURST — the middle lets go. Clear it.',
     wager: { score: 45, timeout: 'accept' },
     field: { kind: 'repulsor', bearing: 'center', radius: 460, strength: 190, falloff: 1.3 },
   }),
@@ -157,8 +157,8 @@ export const SWARM_EVENT_BY_ID = Object.freeze({
   // windup is the bet — drag the grab across the pack and be somewhere else when it bites.
   // Damping is the freeze here: the snare drinks momentum instead of only pulling.
   cold_snap: event({
-    id: 'cold_snap', name: 'Cold snap', kind: 'pulse', windupS: 4, windowS: 8,
-    telegraph: 'COLD SNAP — the drift has your scent. Spend it on them.',
+    id: 'cold_snap', name: 'Cold Snap', kind: 'pulse', windupS: 4, windowS: 8,
+    telegraph: 'COLD SNAP — it hunts you. Lead it into them.',
     wager: { score: 40, timeout: 'accept' },
     field: { kind: 'well', bearing: 'player', radius: 320, strength: 140, damping: 2.2, falloff: 1.15 },
   }),
@@ -167,65 +167,65 @@ export const SWARM_EVENT_BY_ID = Object.freeze({
   // The lattice's own fields are occupancy markers authored at strength 0 — a multiplier has
   // nothing to bite, so its signature cards are pulses: temporary fields for the window only.
   relay_arc: event({
-    id: 'relay_arc', name: 'Relay arc', kind: 'pulse', windupS: 4, windowS: 9,
-    telegraph: 'RELAY ARC — the lattice is about to energize',
+    id: 'relay_arc', name: 'Relay Arc', kind: 'pulse', windupS: 4, windowS: 9,
+    telegraph: 'RELAY ARC — the lattice wakes. Mind the shove.',
     wager: { score: 40, timeout: 'accept' },
     field: { kind: 'repulsor', bearing: 'spin', dist: 300, radius: 340, strength: 170, falloff: 1.2 },
   }),
   grid_surge: event({
-    id: 'grid_surge', name: 'Grid surge', kind: 'pulse', windupS: 4, windowS: 12,
-    telegraph: 'GRID SURGE — the whole room is hot',
+    id: 'grid_surge', name: 'Grid Surge', kind: 'pulse', windupS: 4, windowS: 12,
+    telegraph: 'GRID SURGE — the whole room pulls middle. Fight it.',
     wager: { score: 45, timeout: 'accept' },
     field: { kind: 'well', bearing: 'center', radius: 520, strength: 140, falloff: 1.15 },
   }),
 
   // ── asteroid_mill (SWARM-07 B4): the grind and the seam that pays ──
   mill_surge: event({
-    id: 'mill_surge', name: 'Mill surge', kind: 'surge', factor: 2.2, windupS: 5, windowS: 11,
-    telegraph: 'MILL SURGE — the seam is about to turn hard',
+    id: 'mill_surge', name: 'Mill Surge', kind: 'surge', factor: 2.2, windupS: 5, windowS: 11,
+    telegraph: 'MILL SURGE — the seam turns hard. Hold tight.',
     wager: { score: 55, timeout: 'accept' },
   }),
   seam_burst: event({
-    id: 'seam_burst', name: 'Seam burst', kind: 'pulse', windupS: 4, windowS: 7,
-    telegraph: 'SEAM BURST — the middle is about to give',
+    id: 'seam_burst', name: 'Seam Burst', kind: 'pulse', windupS: 4, windowS: 7,
+    telegraph: 'SEAM BURST — the middle gives. Clear out.',
     wager: { score: 40, timeout: 'accept' },
     field: { kind: 'repulsor', bearing: 'center', radius: 420, strength: 190, falloff: 1.3 },
   }),
 
   // ── the_hive (SWARM-07 B4): the breath, the walls, the eggs ──
   spore_breath: event({
-    id: 'spore_breath', name: 'Spore breath', kind: 'surge', factor: 1.9, windupS: 5, windowS: 10,
-    telegraph: 'SPORE BREATH — the hive inhales',
+    id: 'spore_breath', name: 'Spore Breath', kind: 'surge', factor: 1.9, windupS: 5, windowS: 10,
+    telegraph: 'SPORE BREATH — the hive inhales. Do not be breathed.',
     wager: { score: 45, timeout: 'accept' },
   }),
   wall_bloom: event({
-    id: 'wall_bloom', name: 'Wall bloom', kind: 'pulse', windupS: 4, windowS: 9,
-    telegraph: 'WALL BLOOM — the room flexes inward',
+    id: 'wall_bloom', name: 'Wall Bloom', kind: 'pulse', windupS: 4, windowS: 9,
+    telegraph: 'WALL BLOOM — the room squeezes. Stay loose.',
     wager: { score: 40, timeout: 'accept' },
     field: { kind: 'well', bearing: 'center', radius: 480, strength: 160, falloff: 1.2 },
   }),
   egg_drift: event({
-    id: 'egg_drift', name: 'Egg drift', kind: 'mines', count: 4, windupS: 5, windowS: 0, minor: true,
-    telegraph: 'EGG DRIFT — the hive seeds the lane',
+    id: 'egg_drift', name: 'Egg Drift', kind: 'mines', count: 4, windupS: 5, windowS: 0, minor: true,
+    telegraph: 'EGG DRIFT — eggs in the lane. Mind them.',
     wager: { score: 30, timeout: 'accept' },
   }),
 
   // ── shared cards — every arena can draw these ──
   mine_drift: event({
-    id: 'mine_drift', name: 'Mine drift', kind: 'mines', count: 4, windupS: 5, windowS: 0, minor: true,
-    telegraph: 'MINE DRIFT — hazards riding a bearing',
+    id: 'mine_drift', name: 'Mine Drift', kind: 'mines', count: 4, windupS: 5, windowS: 0, minor: true,
+    telegraph: 'MINE DRIFT — mines riding in. Yours, if you are quick.',
     wager: { score: 30, timeout: 'accept' },
   }),
   supply_drop: event({
-    id: 'supply_drop', name: 'Supply pod', kind: 'supply', credits: 60, windupS: 6, windowS: 0, minor: true,
-    telegraph: 'SUPPLY POD — salvage riding in. Staying for it is a choice.',
+    id: 'supply_drop', name: 'Supply Pod', kind: 'supply', credits: 60, windupS: 6, windowS: 0, minor: true,
+    telegraph: 'SUPPLY POD — salvage riding in. Going for it is a choice.',
     wager: { score: 40, timeout: 'accept' },
   }),
 
   // EXP-07 / EXP-08 — same kinds and install keys as the named donors, scaled.
   rock_rain: event({
-    id: 'rock_rain', name: 'Rock rain', kind: 'surge', factor: 1.9, windupS: 4, windowS: 12,
-    telegraph: 'ROCK RAIN — catch what you can, throw what you catch',
+    id: 'rock_rain', name: 'Rock Rain', kind: 'surge', factor: 1.9, windupS: 4, windowS: 12,
+    telegraph: 'ROCK RAIN — catch what falls. Throw it back.',
     wager: { score: 50, timeout: 'accept' },
     install: {
       cover: true,
@@ -233,32 +233,32 @@ export const SWARM_EVENT_BY_ID = Object.freeze({
     },
   }),
   slag_spill: event({
-    id: 'slag_spill', name: 'Slag spill', kind: 'surge', factor: 2.4, windupS: 5, windowS: 9,
-    telegraph: 'SLAG SPILL — the floor runs hot, and so does anything you throw through it',
+    id: 'slag_spill', name: 'Slag Spill', kind: 'surge', factor: 2.4, windupS: 5, windowS: 9,
+    telegraph: 'SLAG SPILL — the floor runs hot. Throws burn hotter.',
     wager: { score: 55, timeout: 'accept' },
     install: {
       fields: [{ kind: 'repulsor', bearing: 'center', radius: 480, strength: 170, falloff: 1.55 }],
     },
   }),
   lantern_drift: event({
-    id: 'lantern_drift', name: 'Lantern drift', kind: 'mines', count: 4, windupS: 5, windowS: 0, minor: true,
+    id: 'lantern_drift', name: 'Lantern Drift', kind: 'mines', count: 4, windupS: 5, windowS: 0, minor: true,
     telegraph: "LANTERN DRIFT — they want your heat. Give them someone else's.",
     wager: { score: 30, timeout: 'accept' },
   }),
   reef_surge: event({
-    id: 'reef_surge', name: 'Reef surge', kind: 'pulse', windupS: 4, windowS: 8,
-    telegraph: 'REEF SURGE — the room moves. Let it throw for you.',
+    id: 'reef_surge', name: 'Reef Surge', kind: 'pulse', windupS: 4, windowS: 8,
+    telegraph: 'REEF SURGE — the room moves. Let it throw.',
     wager: { score: 45, timeout: 'accept' },
     field: { kind: 'well', bearing: 'player', radius: 320, strength: 180, falloff: 1.0 },
   }),
   shepherd_pulse: event({
-    id: 'shepherd_pulse', name: 'Shepherd pulse', kind: 'pulse', windupS: 4, windowS: 8,
+    id: 'shepherd_pulse', name: 'Shepherd Pulse', kind: 'pulse', windupS: 4, windowS: 8,
     telegraph: 'SHEPHERD PULSE — they fly as one. Break the one.',
     wager: { score: 40, timeout: 'accept' },
     field: { kind: 'repulsor', bearing: 'spin', dist: 280, radius: 380, strength: 190, falloff: 1.2 },
   }),
   sprocket_crate: event({
-    id: 'sprocket_crate', name: "Sprocket's crate", kind: 'supply', credits: 80, windupS: 6, windowS: 0, minor: true,
+    id: 'sprocket_crate', name: "Sprocket's Crate", kind: 'supply', credits: 80, windupS: 6, windowS: 0, minor: true,
     telegraph: 'MA SPROCKET SENDS A CRATE — catch it before they do.',
     wager: { score: 40, timeout: 'accept' },
   }),

@@ -71,7 +71,7 @@ function fakeButton(label, key) {
   const button = {
     dataset: { label, key }, childNodes: [{}], disabled: false, hidden: false,
     classList: { toggle() {} }, style: {},
-    setAttribute() {},
+    setAttribute() {}, removeAttribute() {},
     querySelector: () => null,
     appendChild(node) { this.childNodes.push(node); },
   };
@@ -114,7 +114,7 @@ function armoryFor(run, preview) {
     _ctx: ctx,
     _root: root,
     _cards: { innerHTML: '', querySelectorAll: () => [], querySelector: () => null },
-    _title: { textContent: '' },
+    _title: { textContent: '', parentNode: { appendChild() {} } },
     _filters: { hidden: false, children: [] },
     _refitBtn: { hidden: false },
     _sub: { textContent: '' },
@@ -122,6 +122,7 @@ function armoryFor(run, preview) {
     _briefing: { hidden: false },
     _armoryHeading: { hidden: false, textContent: '' },
     _skip: fakeButton(`Launch round ${run.wave + 1}`, 'Esc'),
+    _launchSummary: { textContent: '', hidden: true, id: 'sf-armory-launch-summary' },
     _rerollBtn: Object.assign(fakeButton('Re-roll', 'R'), { style: {} }),
     _wallet: { textContent: '' },
     _hint: { textContent: '' },
@@ -212,6 +213,7 @@ function circuitWidgets() {
     status: { textContent: '' },
     route: { textContent: '' },
     next: { textContent: '', hidden: true },
+    options: { hidden: true, parentNode: null, removeAttribute() {}, setAttribute() {} },
   };
 }
 
@@ -239,28 +241,35 @@ test('shop forecast follows canonical stake, Threat, modifier and mutator plan i
   };
 
   const base = expectedAt(2);
-  // PIT-01 retuned the round quota to min(26 + 4w, 4 + 6w) under the same clamps, so the
-  // wave-2 ramp leg (16) sits under the concurrency floor (11 + 8 = 19): the base reads 19
-  // and every stake rides its own pressure leg off that figure.
-  assert.equal(base.killTarget, 19);
+  // DEMO-SWARM-BUDGET-1 — wave 2 owes its approved round budget (16) from
+  // swarmCourseCast.js (director 2026-11-20), and every stake rides its own pressure leg
+  // off that figure.
+  assert.equal(base.killTarget, 16,
+    'approved round budgets in swarmCourseCast.js (director 2026-11-20)');
   assert.equal(base.concurrent, 11);
   let line = swarmNextLine(base);
-  assert.match(line, /room cap 11/);
+  // Plain words (R18, design/overhaul/04_SWARM.md): 'up to 11 at once', not the planner's 'room cap 11'.
+  assert.match(line, /16 to clear, up to 11 at once/,
+    'approved round budgets in swarmCourseCast.js (director 2026-11-20)');
   assert.doesNotMatch(line, /11 in the room|admissions/i);
   // EC-Z01 — the next round's own question rides the forecast as its inbound line.
-  assert.ok(line.endsWith(`· inbound: ${swarmCourseFor(2).question}`), line);
+  assert.ok(line.endsWith(`· ${swarmCourseFor(2).question}`), line);
 
   run.telemetry.swarmStake = 'exhibition';
-  assert.equal(expectedAt(2).killTarget, 12);
+  assert.equal(expectedAt(2).killTarget, 10,
+    'exhibition rides the approved round-2 budget — approved round budgets in swarmCourseCast.js (director 2026-11-20)');
   run.telemetry.swarmStake = 'veteran';
-  assert.equal(expectedAt(2).killTarget, 22);
+  assert.equal(expectedAt(2).killTarget, 18,
+    'veteran rides the approved round-2 budget — approved round budgets in swarmCourseCast.js (director 2026-11-20)');
   run.telemetry.swarmStake = 'ironbound';
-  assert.equal(expectedAt(2).killTarget, 25);
+  assert.equal(expectedAt(2).killTarget, 21,
+    'ironbound rides the approved round-2 budget — approved round budgets in swarmCourseCast.js (director 2026-11-20)');
 
   run.telemetry.swarmStake = 'contender';
   run.telemetry.threats = ['thick_pack'];
   const threatened = expectedAt(2);
-  assert.equal(threatened.killTarget, 26);
+  assert.equal(threatened.killTarget, 22,
+    'contender + thick_pack rides the approved round-2 budget — approved round budgets in swarmCourseCast.js (director 2026-11-20)');
   assert.equal(threatened.concurrent, 15);
 
   run.modifiers = [{ kind: 'weapon', offerId: 'throw', verb: 'Throw', defId: 'wpn_concussion_cannon_m', wave: 1 }];
@@ -330,7 +339,8 @@ test('Armory and Refit refresh with changed plans, without touching the run or i
     assert.deepEqual(run, beforeRefresh);
     assert.equal(armoryPreview.hidden, false);
     assert.equal(armoryPreview.textContent, refitPreview.textContent);
-    assert.match(armoryPreview.textContent, /clear 19 · room cap 11/);
+    assert.match(armoryPreview.textContent, /16 to clear, up to 11 at once/,
+      'approved round budgets in swarmCourseCast.js (director 2026-11-20)');
 
     // The planner runs only on a real shop refresh; periodic animation passes keep their early
     // return and therefore do not rebuild/consume a planner stream every frame.
@@ -344,7 +354,8 @@ test('Armory and Refit refresh with changed plans, without touching the run or i
     armory.screen.refresh(armory.ctx);
     refit.screen.refresh(refit.ctx);
     assert.deepEqual(run, beforeRefresh);
-    assert.match(armoryPreview.textContent, /clear 12 · room cap 7/);
+    assert.match(armoryPreview.textContent, /10 to clear, up to 7 at once/,
+      'exhibition rides the approved round-2 budget — approved round budgets in swarmCourseCast.js (director 2026-11-20)');
     assert.equal(armoryPreview.textContent, refitPreview.textContent);
     assert.equal(armory.ctx.state.rng.calls, 0);
     assert.equal(refit.ctx.state.rng.calls, 0);
@@ -420,7 +431,7 @@ test('Armory and Refit refresh with changed plans, without touching the run or i
     assert.equal(armoryPreview.hidden, false);
     assert.equal(armoryPreview.textContent, refitPreview.textContent);
     assert.match(armoryPreview.textContent, /Round 17/);
-    assert.match(armoryPreview.textContent, /room cap/);
+    assert.match(armoryPreview.textContent, /at once/);
   } finally {
     if (oldDocument === undefined) delete globalThis.document;
     else globalThis.document = oldDocument;
@@ -494,7 +505,7 @@ test('Armory and Refit repaint once from delayed worker receipts and unbind acro
     armory.bus.emit('run:draftRerollRejected', { reason: 'insufficient_credits' });
     await flushUiMicrotasks();
     assert.equal(armoryRefreshes, afterOpen + 2, 'the rejection pair coalesces into one repaint');
-    assert.equal(armory.screen._wallet.textContent, '214 cr to spend');
+    assert.equal(armory.screen._wallet.textContent, '214 Scrap to spend');
     assert.equal(armory.screen._note.textContent, 'Not enough run credits. Save for the next round.');
 
     // A main-thread owner can emit the result inside the intent. Suppression plus the direct
@@ -518,7 +529,7 @@ test('Armory and Refit repaint once from delayed worker receipts and unbind acro
     armory.bus.emit('run:shopPurchased', { wave: 1, offerId: 'cannon', price: 83 });
     await flushUiMicrotasks();
     assert.equal(armoryRefreshes, asyncPurchaseBase + 1);
-    assert.equal(armory.screen._wallet.textContent, '97 cr to spend');
+    assert.equal(armory.screen._wallet.textContent, '97 Scrap to spend');
     assert.match(armory.screen._note.textContent, /fitted/);
 
     // Hiding cancels an already queued result; reopening twice still leaves only one result
@@ -587,7 +598,7 @@ test('Armory and Refit repaint once from delayed worker receipts and unbind acro
     await flushUiMicrotasks();
     assert.equal(refitRefreshes, beforeRefitIntent + 2);
     assert.equal(refit.screen._note.textContent, 'That fitting will not fit this hardpoint.');
-    assert.match(refit.screen._bankNote.textContent, /140 cr moves to the hangar chest now.*140 cr stays in the purse/);
+    assert.match(refit.screen._bankNote.textContent, /140 Scrap is safe even if you die\.\s*140 Scrap stays in your purse/);
 
     const beforeBankReject = refitRefreshes;
     refit.publish({ credits: 280, notice: 'The bank window closed before the spend landed.' });
@@ -647,8 +658,9 @@ test('Armory and Refit repaint once from delayed worker receipts and unbind acro
     refit.publish({ refitRows: [] });
     refit.screen.onShow(refit.ctx);
     assert.equal(refit.screen._note.textContent, 'Late fit receipt: Corsair mount is live.');
-    assert.match(refit.screen._bankNote.textContent, /59 cr moves to the hangar chest now.*59 cr stays in the purse/);
-    assert.match(refit.screen._preview.textContent, /Round 11 .*clear 27/);
+    assert.match(refit.screen._bankNote.textContent, /59 Scrap is safe even if you die\.\s*59 Scrap stays in your purse/);
+    assert.match(refit.screen._preview.textContent, /Round 11 .*20 to clear/,
+      'round 11 owes its approved budget — approved round budgets in swarmCourseCast.js (director 2026-11-20)');
     refit.screen.onShow(refit.ctx);
     assert.equal(refit.bus.listenerCount('run:refitChanged'), 2);
     const reopenedRefitBase = refitRefreshes;
@@ -735,10 +747,11 @@ test('production domain wire, lane facade and result bridge repaint the merged s
     armory.bus.emit('run:shopPurchased', structuredClone(wireReceipt.flat));
     await flushUiMicrotasks();
     assert.equal(repaintCount, beforeAck + 1);
-    assert.equal(armory.screen._wallet.textContent, '214 cr to spend');
+    assert.equal(armory.screen._wallet.textContent, '214 Scrap to spend');
     assert.equal(armory.screen._note.textContent, mirroredDraft.notice);
     assert.equal(armory.screen._preview.textContent, swarmNextLine(swarmForecastForRun(mirroredRun, 2)));
-    assert.match(armory.screen._preview.textContent, /clear 12/);
+    assert.match(armory.screen._preview.textContent, /10 to clear/,
+      'exhibition rides the approved round-2 budget — approved round budgets in swarmCourseCast.js (director 2026-11-20)');
   } finally {
     if (oldDocument === undefined) delete globalThis.document;
     else globalThis.document = oldDocument;
@@ -750,5 +763,6 @@ test('unavailable forecast inputs return no line rather than throwing or inventi
   assert.equal(swarmForecastForRun(null, 2), null);
   assert.equal(swarmForecastForRun(run, 0), null);
   assert.equal(swarmForecastForRun({ ...run, arenaId: 'not_a_real_arena' }, 2), null);
-  assert.equal(swarmForecastForRun({ ...run, modifiers: null, arenaMutators: null, telemetry: null }, 2)?.killTarget, 19);
+  assert.equal(swarmForecastForRun({ ...run, modifiers: null, arenaMutators: null, telemetry: null }, 2)?.killTarget, 16,
+    'the unstaked fallback still answers the approved round-2 budget — approved round budgets in swarmCourseCast.js (director 2026-11-20)');
 });

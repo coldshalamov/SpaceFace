@@ -25,7 +25,6 @@ import { localizeText } from '../../localization/sourceText.js';
 import { stationIcon } from './stationArt.js';
 import { createStationEffects, stationMotionAllowed } from './stationEffects.js';
 import { ensureStylesheet } from './stationStyles.js';
-import { createStationCommands } from './stationCommands.js';
 import {
   berthSeatDefId, bindReturningPilotSummary, buildDockArrival, finishReturnSummary, writeBerthArrival,
 } from '../dockArrival.js';
@@ -36,6 +35,8 @@ import { createShipworksScreen } from './screens/shipworks.js';
 import { createIndustryScreen } from './screens/industry.js';
 import { createBarScreen } from './screens/bar.js';
 import { createLedgerScreen } from './screens/ledger.js';
+import { createConcourseScreen } from './screens/concourse.js';
+import { buildServiceBundle } from './concourseModel.js';
 import { SECTORS } from '../../data/sectors.js';
 import { stationInfoFor } from '../../systems/missions.js';
 import { FACTION_META } from '../../data/factions.js';
@@ -89,6 +90,8 @@ function titleCaseWords(v) { return String(v || '').replace(/_/g, ' ').replace(/
 const TARGET_MAP = {
   market: 'market', hold: 'market', missions: 'contracts', shipyard: 'shipworks',
   outfit: 'shipworks', manufacture: 'industry', factions: 'factions', bar: 'bar', services: null,
+  // Ship services (refuel, repair) live on the arrival concourse's Service ship button.
+  concourse: 'concourse',
 };
 
 // `services` legitimately maps to no destination — services are verbs on the fascia now, not a
@@ -153,26 +156,38 @@ function createBerth(canvas, ctx) {
   };
 }
 
+// The station is four places plus Undock (design/overhaul/08_INTERFACE.md §7): Jobs, Market,
+// Shipyard, People — the same four doors, in the same order and words, on the hub and on the rail
+// inside every door. Industry, Factions and the Ledger are not places: they stay reachable from the
+// links that name them (the Works door when you own works here, a faction link, a receipt) but they
+// never stand on the rail. `rail: true` marks the four.
 const DESTINATIONS = [
-  { id: 'market', label: stationControlLabel('market'), icon: 'market', create: createMarketScreen },
-  { id: 'shipworks', label: stationControlLabel('shipworks'), icon: 'shipworks', create: createShipworksScreen },
+  // Player-facing label is Jobs (contracts is the stable internal rail id + TARGET_MAP alias).
+  { id: 'contracts', label: stationControlLabel('contracts'), icon: 'contracts', create: createContractsScreen, rail: true },
+  { id: 'market', label: stationControlLabel('market'), icon: 'market', create: createMarketScreen, rail: true },
+  { id: 'shipworks', label: stationControlLabel('shipworks'), icon: 'shipworks', create: createShipworksScreen, rail: true },
+  { id: 'bar', label: stationControlLabel('bar'), icon: 'people', create: createBarScreen, rail: true },
   { id: 'industry', label: stationControlLabel('industry'), icon: 'industry', create: createIndustryScreen },
-  // Player-facing label is Missions (contracts is the stable internal rail id + TARGET_MAP alias).
-  { id: 'contracts', label: stationControlLabel('contracts'), icon: 'contracts', create: createContractsScreen },
   { id: 'factions', label: stationControlLabel('factions'), icon: 'factions', create: createFactionsScreen },
-  { id: 'bar', label: stationControlLabel('bar'), icon: 'bar', create: createBarScreen },
   { id: 'ledger', label: stationControlLabel('ledger'), icon: 'ledger', create: createLedgerScreen },
 ];
+const RAIL_DESTINATIONS = DESTINATIONS.filter((d) => d.rail);
+/** The rail's digit keys: 1 Jobs, 2 Market, 3 Shipyard, 4 People — the hub's door keys. */
+const RAIL_ORDER = RAIL_DESTINATIONS.map((d) => d.id);
 
-/** The one-line gloss each destination already had in the help pop. The rail speaks the same line. */
+/** The one-line gloss each destination already had in the help pop. The rail speaks the same line.
+ *  Sized to complete within the rail's ~36-character caption seat at 1920x1080 (bench 2026-11-14:
+ *  longer glosses ellipsised at rest on every tab); the rail plate and aria-label carry the same
+ *  line, so nothing is lost to the seat. */
 export const STATION_HELP = {
-  market: ['Market', 'Pick a commodity to see its price, demand and stock. Buy or sell against your credits and hold space.'],
-  shipworks: ['Shipworks', 'Pick a ship or a slot, preview compatible gear, then install it.'],
-  industry: ['Industry', 'Trace raw stock into refined goods and modules. A broken line names the exact input it is missing.'],
-  contracts: ['Missions', 'Accept jobs, track routes and settle objectives that finish at this berth. Highlighted rows need attention first.'],
-  factions: ['Factions', 'Pick a faction to see its standing, relationships, recent changes and what it unlocks.'],
-  bar: ['Contacts', 'Contacts turn rumors and local knowledge into leads, survey data and missions.'],
-  ledger: ["Ship's Ledger", 'The Tessera keeps what the manifests leave out. Recovered evidence opens to full detail.'],
+  concourse: ['Concourse', 'Service your ship and choose a door into the station.'],
+  market: ['Market', 'Buy and sell cargo.'],
+  shipworks: ['Shipyard', 'Fit parts, paint, buy ships.'],
+  industry: ['Works', 'Your works at this station.'],
+  contracts: ['Jobs', 'Take paid work, then fly it.'],
+  factions: ['Factions', 'Standing and unlocks per faction.'],
+  bar: ['People', 'Talk to the people here.'],
+  ledger: ["Ship's Ledger", 'Keeps what the manifests leave out.'],
 };
 
 // Drops a tile's data-sx-quiet-focus once the player acts on it (see the arrival focus below).
@@ -224,7 +239,7 @@ function playerEntity(state) {
 function credits(state) { return Math.max(0, Math.round(Number(state && state.player && state.player.credits) || 0)); }
 function hullFrac(state) { const s = playerEntity(state); return (s && s.hullMax > 0) ? Math.max(0, Math.min(1, (s.hull || 0) / s.hullMax)) : 1; }
 function fuelFrac(state) { const f = state && state.fuel; return (f && f.max > 0) ? Math.max(0, Math.min(1, (f.current || 0) / f.max)) : 1; }
-function cargoFrac(state) { const c = state && state.player && state.player.cargo; return (c && c.capVolume > 0) ? Math.max(0, Math.min(1, (c.usedVolume || 0) / c.capVolume)) : 0; }
+function cargoFrac(state) { const c = state && state.player && state.player.cargo; if (c && (Array.isArray(c.slots) || Number.isFinite(c.slotCount)) && c.slotCount > 0) return Math.max(0, Math.min(1, (Array.isArray(c.slots) ? c.slots.length : 0) / c.slotCount)); return (c && c.capVolume > 0) ? Math.max(0, Math.min(1, (c.usedVolume || 0) / c.capVolume)) : 0; }
 function fmtCr(n) { return Math.round(Number(n) || 0).toLocaleString('en-US'); }
 // Meter colour is no longer chosen here. A vital carries a data-tone and the sheet owns the hue,
 // so the "gain / caution / loss" contract lives in one place instead of being re-picked per meter.
@@ -328,6 +343,18 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   const newsEl = app.querySelector('.sxb-berth__news');
   const eventEl = app.querySelector('.sxb-event');
   const titleBlock = app.querySelector('.sxb-berth');
+  // THE DOOR HEAD. Inside a door the head is one slim plate in the hub's own voice: where you are
+  // (the station, then the place you are standing in) on the left, your credits and the three
+  // readings that matter on the right. The older head furniture — the stencil plate, the news tape,
+  // the bay screen and station wire, the vitals dials with their service verbs, the credit line —
+  // is hidden in a door by the Station Standard sheet: service lives on the hub's Service strip.
+  const doorHeadEl = document.createElement('div');
+  doorHeadEl.className = 'sx-dh';
+  doorHeadEl.setAttribute('role', 'group');
+  doorHeadEl.setAttribute('aria-label', 'Where you are and your account');
+  if (titleBlock && typeof titleBlock.insertBefore === 'function') titleBlock.insertBefore(doorHeadEl, titleBlock.firstChild || null);
+  else if (titleBlock && typeof titleBlock.appendChild === 'function') titleBlock.appendChild(doorHeadEl);
+  let doorHeadSig = '';
   const vitalsEl = app.querySelector('.sxb-vitals');
   const lawFineDesk = mountLawFineDesk(app.querySelector('.sxb-crown'), ctx);
   const creditsEl = app.querySelector('.sxb-purse__value');
@@ -338,6 +365,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   const popEl = app.querySelector('.sx-pop');
   const helpEl = app.querySelector('.sxb-help');
   const footEl = app.querySelector('.sxb-ops');
+  const facilityRailEl = app.querySelector('.of-facility-rail');
   const commsEl = app.querySelector('.sx-comms');
   const commsToggle = app.querySelector('.sx-comms__toggle');
   const commsCount = app.querySelector('.sx-comms__count');
@@ -349,10 +377,11 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   // twice, with the verb detached from its number. They are now attached to their vital, so the
   // dock is a clean tab strip and keeps its ARIA tablist semantics undiluted by toolbar buttons.
   const dock = createCommandDock({
-    destinations: DESTINATIONS,
+    destinations: RAIL_DESTINATIONS.map((d, i) => ({ ...d, key: String(i + 1) })),
     actions: [],
     onNavigate: (id) => navigate(id),
     onAction: (id) => runAction(id),
+    onBack: () => navigate('concourse'),
     allowMotion: () => stationMotionAllowed(state()),
   });
   dock.el.querySelectorAll('.sx-tile').forEach((tile) => {
@@ -363,43 +392,11 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   const dockRail = createStationRow({ row: dock.el.querySelector('.sx-dock__group--nav') });
   let shown = true;
   const effects = createStationEffects({ root: rootEl, app, body: bodyEl, dock: dock.el, credits: creditsEl, getState: state });
-  const commands = createStationCommands({
-    root: app, trigger: app.querySelector('.so-command-trigger'),
-    canOpen: () => shown && !document.hidden && rootEl.isConnected,
-    getCommands: () => [
-      ...DESTINATIONS.map(d => ({ label: d.label, detail: HELP[d.id]?.[1] || 'Open station facility', icon: d.id,
-        run: () => { navigate(d.id); dock.el.querySelector(`[data-nav="${d.id}"]`)?.focus({ preventScroll: true }); } })),
-      { label: 'Sell cargo', detail: 'Open your hold in Sell mode', keywords: 'trade unload ore', icon: 'hold', run: () => navigate('market', { tradeMode: 'sell', cargoOnly: true }) },
-      { label: 'Buy commodities', detail: 'Browse this station’s exchange', keywords: 'trade goods', icon: 'market', run: () => navigate('market', { tradeMode: 'buy' }) },
-      { label: 'Cargo manifest', detail: 'Inspect quantities and local sale values', icon: 'hold', run: () => openHoldPop(app.querySelector('[data-hold]')) },
-      ...[['repair','Repair hull','hull'],['refuel','Refuel ship','fuel'],['resupply','Resupply munitions','muni']].map(([id,label,icon]) => {
-        const cost = actionCosts()[id] || {};
-        return { label, icon, detail: cost.title || cost.text || 'Station service', disabled: !!cost.disabled, run: () => runAction(id) };
-      }),
-      ...(() => {
-        const survey = actionCosts().survey;
-        if (!survey) return [];
-        return [{
-          label: 'Buy fix',
-          icon: 'search',
-          detail: survey.title || survey.text || 'Survey fix',
-          disabled: !!survey.disabled,
-          keywords: 'survey scan cache lab',
-          run: () => runAction('survey'),
-        }];
-      })(),
-      ...factionPresenceServiceRows(state(), stationId()).map((row) => ({
-        label: row.label,
-        icon: 'factions',
-        detail: (!row.available && row.disabledReason) || row.desc || 'Faction desk',
-        disabled: !row.available,
-        keywords: 'faction archive pitborn understory',
-        run: () => runAction(row.id),
-      })),
-      { label: 'Review departure', detail: 'Check hull, fuel, cargo and tracked mission before undocking', keywords: 'launch flight exit', icon: 'launch', run: openDeparturePop },
-    ],
-  });
-
+  // Comms and Help are not places either. The receipt lane (.sx-comms) stays: purchases and
+  // payouts still say themselves there; only the two keys leave the foot.
+  if (commsToggle) commsToggle.hidden = true;
+  if (helpEl) helpEl.hidden = true;
+  const commands = { isOpen: false, setEnabled() {}, dispose() {} };
 
   const screenCache = new Map();
   let activeId = null;
@@ -524,6 +521,32 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   };
   window.addEventListener('keydown', onEscCapture, true);
 
+  /** The door keys: 1 Jobs, 2 Market, 3 Shipyard, 4 People. True when the key was taken. */
+  const handleDigitKey = (ev) => {
+    if (!shown || commands.isOpen || !popEl.hidden || kiteOpen) return false;
+    if (ev.altKey || ev.ctrlKey || ev.metaKey || ev.repeat) return false;
+    const t = ev.target;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return false;
+    if (activeId === 'bar') return false; // Bar owns 1–3 for dialogue choices
+    const m = /^(?:Digit|Numpad)([1-5])$/.exec(ev.code || '') || /^([1-5])$/.exec(ev.key || '');
+    if (!m) return false;
+    const n = Number(m[1]);
+    if (activeId === 'concourse') return !!concourseScreen.openDoorByKey(n);
+    const target = RAIL_ORDER[n - 1];
+    if (!target) return false;
+    navigate(target);
+    return true;
+  };
+  // In the game the UI input owner stops a modal screen's keys at the document, so they reach the
+  // station through the screen's onKey (stationScreen.js), never this window listener: the door
+  // keys printed on the hub and the rail did nothing in a real dock. The window listener remains
+  // for hosts without that owner (the UI bench).
+  const onDigitShortcut = (ev) => {
+    if (ev.defaultPrevented) return;
+    if (handleDigitKey(ev)) { ev.preventDefault(); ev.stopPropagation(); }
+  };
+  window.addEventListener('keydown', onDigitShortcut);
+
   // ---------- departure readiness ----------
   function departureNow() {
     const s = state();
@@ -574,18 +597,28 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       const legality = titleCaseWords(def.legality || 'legal');
       // One row per commodity: name · category, quantity, the station's quote, and Sell as a word.
       return `<li><button type="button" ${stationControlAttrs('hold-row')} class="k-row sx-holdrow" data-hold-item="${escapeHtml(id)}" data-hold-volume="${volume.toFixed(2)}" aria-label="Sell ${escapeHtml(CMDTY_NAME.get(id) || id)}. ${fmtCr(qty)} units, ${fmtCr(volume)} hold units, ${unit != null ? fmtCr(unit * qty) + ' credits' : 'no quote'}.">` +
-        `<span class="sx-holdrow__body"><span class="k-row__name">${escapeHtml(CMDTY_NAME.get(id) || id)}</span><span class="k-row__sub">${escapeHtml(titleCaseWords(def.category || 'cargo'))} · ${escapeHtml(legality)} · ${fmtCr(volume)} u · ${fmtCr(mass)} t</span></span>` +
-        `<span class="k-row__num sx-holdrow__load">${fmtCr(qty)}<span class="k-t-data k-38"> u</span></span>` +
-        `<span class="k-row__num sx-holdrow__quote">${unit != null ? fmtCr(unit * qty) : '—'}<span class="k-t-data k-38">${unit != null ? ' cr · ' + fmtCr(unit) + ' / u' : ' no local quote'}</span></span>` +
+        `<span class="sx-holdrow__body"><span class="k-row__name">${escapeHtml(CMDTY_NAME.get(id) || id)}</span><span class="k-row__sub">${escapeHtml(titleCaseWords(def.category || 'cargo'))} · ${escapeHtml(legality)} · ${fmtCr(volume)} units · ${fmtCr(mass)} t</span></span>` +
+        `<span class="k-row__num sx-holdrow__load">${fmtCr(qty)}<span class="k-t-data k-38"> units</span></span>` +
+        `<span class="k-row__num sx-holdrow__quote">${unit != null ? fmtCr(unit * qty) : '—'}<span class="k-t-data k-38">${unit != null ? ' cr · ' + fmtCr(unit) + ' / unit' : ' no local quote'}</span></span>` +
         `<span class="k-word k-word--fine k-word--primary sx-holdrow__go" aria-hidden="true">Sell</span></button></li>`;
     }).join('');
     const used = Number(cargo.usedVolume) || 0;
     const cap = Number(cargo.capVolume) || 0;
-    const usedPct = cap > 0 ? Math.max(0, Math.min(100, used / cap * 100)) : 0;
+    const slotted = Number.isFinite(cargo.slotCount) && cargo.slotCount > 0;
+    const usedSlots = Array.isArray(cargo.slots) ? cargo.slots.length : 0;
+    const usedPct = slotted
+      ? Math.max(0, Math.min(100, usedSlots / cargo.slotCount * 100))
+      : (cap > 0 ? Math.max(0, Math.min(100, used / cap * 100)) : 0);
+    const headText = slotted
+      ? `${fmtCr(usedSlots)} / ${fmtCr(cargo.slotCount)} slots · ${usedPct.toFixed(0)}% · ${fmtCr(used)} u`
+      : `${fmtCr(used)} / ${fmtCr(cap)} units · ${usedPct.toFixed(0)}%`;
+    const headAria = slotted
+      ? `Cargo hold ${usedPct.toFixed(0)} percent full, ${fmtCr(usedSlots)} of ${fmtCr(cargo.slotCount)} slots used`
+      : `Cargo hold ${usedPct.toFixed(0)} percent full, ${fmtCr(used)} of ${fmtCr(cap)} hold units used`;
     // The bay is one 2 px k-bar (no per-segment reveal: the rows below name every commodity).
     openPop(
-      `<div class="sx-pop__head k-t-emph">Cargo hold <em class="k-62">${fmtCr(used)} / ${fmtCr(cap)} u · ${usedPct.toFixed(0)}%</em></div>` +
-      `<div class="k-bar sx-holdbay" role="img" aria-label="Cargo hold ${usedPct.toFixed(0)} percent full, ${fmtCr(used)} of ${fmtCr(cap)} hold units used">` +
+      `<div class="sx-pop__head k-t-emph">Cargo hold <em class="k-62">${headText}</em></div>` +
+      `<div class="k-bar sx-holdbay" role="img" aria-label="${headAria}">` +
         `<span class="k-bar__fill sx-holdbay__used" style="width:${usedPct.toFixed(2)}%"></span>` +
       `</div>` +
       (rows ? `<ul class="k-rows sx-holdlist" style="--k-row-cols: minmax(0,1fr) auto auto auto">${rows}</ul>`
@@ -706,6 +739,36 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   });
 
   // ---------- screens ----------
+  const concourseScreen = createConcourseScreen(ctx, {
+    serviceQuote: opts.serviceQuote,
+    peopleTarget: 'bar',
+    getAttention: () => lastMissionAttention,
+    resolveHandoffTarget: (tab) => resolveTarget(tab),
+    onOpenDoor: (dest, options = {}) => navigate(dest, options),
+    onServiceAll: () => runAction('service-all'),
+    onServiceOne: (id) => {
+      if (id === 'resupply') {
+        const bundle = buildServiceBundle(state(), playerEntity(state()), opts.serviceQuote);
+        const item = bundle.items.find((i) => i.id === 'resupply');
+        if (item && item.done) {
+          if (ctx?.bus) ctx.bus.emit('toast', { text: 'Munitions already stocked', kind: 'info', ttl: 2 });
+          return;
+        }
+        if (item && item.actionable && item.amount > 0) {
+          runAction('resupply', { amount: item.amount });
+          return;
+        }
+      }
+      runAction(id);
+    },
+    onDismissHandoff: () => {
+      if (ctx && ctx.screenMemory) ctx.screenMemory.set('station', { firstDockHandoffDismissed: true });
+      renderHandoff();
+    },
+    onHandoffAction: (act) => runAction(act),
+  });
+  screenCache.set('concourse', concourseScreen);
+
   function screenFor(dest) {
     if (screenCache.has(dest.id)) return screenCache.get(dest.id);
     let screen;
@@ -759,8 +822,39 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   syncKiteEntry();
 
   function navigate(id, options = {}) {
+    if (id === 'people') id = 'bar';
+    if (id === 'concourse') {
+      const leavingKite = kiteOpen;
+      if (leavingKite) closeKite(false);
+      if (titleBlock) titleBlock.hidden = true;
+      if (facilityRailEl) facilityRailEl.hidden = true;
+      if (activeId === 'concourse') {
+        concourseScreen.onShow();
+        return;
+      }
+      const prev = activeId && screenCache.get(activeId);
+      if (!leavingKite && prev && typeof prev.onHide === 'function') { try { prev.onHide(); } catch (_) {} }
+      activeId = 'concourse';
+      app.dataset.operation = 'concourse';
+      app.dataset.view = 'concourse';
+      if (rootEl && rootEl.dataset) {
+        rootEl.dataset.operation = 'concourse';
+        rootEl.dataset.view = 'concourse';
+      }
+      dock.setActive(null);
+      bodyEl.removeAttribute('aria-labelledby');
+      applyDestinationRegister('concourse');
+      bodyEl.replaceChildren(concourseScreen.el);
+      concourseScreen.onShow();
+      effects.navigate();
+      if (ctx && ctx.bus && prev) ctx.bus.emit('audio:cue', { id: 'ui_tab' });
+      closePop();
+      return;
+    }
     const dest = DESTINATIONS.find((d) => d.id === id);
     if (!dest) return;
+    if (titleBlock) titleBlock.hidden = false;
+    if (facilityRailEl) facilityRailEl.hidden = false;
     const leavingKite = kiteOpen;
     if (leavingKite) closeKite(false);
     if (id === activeId) {
@@ -781,6 +875,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     dock.setActive(id);
     bodyEl.setAttribute('aria-labelledby', 'sx-tab-' + id);
     applyDestinationRegister(id);
+    renderStatus();
     const screen = screenFor(dest);
     bodyEl.replaceChildren(screen.el);
     if (typeof screen.onShow === 'function') screen.onShow({ ...ctx, ...options });
@@ -919,8 +1014,13 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     showReceipt,
     receiptVisible: () => receiptEl.hidden === false,
   });
+  // The station's PA keeps its voice (bells, berth calls, the market desk's chime), but only the
+  // market desk — news a trader can act on — is captioned in the receipt lane. Watch bells and
+  // berth chatter were a second news crawl printed over the foot (retired, 08_INTERFACE §7).
+  const LIFE_CAPTIONED = new Set(['Market desk']);
   const lifePresenter = createStationLifePresenter(ctx, {
-    ...opts.lifeTimers, showReceipt,
+    ...opts.lifeTimers,
+    showReceipt: (kind, title, delta) => { if (LIFE_CAPTIONED.has(kind)) showReceipt(kind, title, delta); },
     receiptVisible: () => receiptEl.hidden === false,
   });
 
@@ -946,8 +1046,9 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     // INF-095: a hidden app takes no navigation — it would corrupt the active tab for the
     // next dock. onShow re-renders the current destination from live state.
     if (!shown) return;
-    const destination = DESTINATIONS.some((d) => d.id === request.destination)
-      ? request.destination : null;
+    const raw = request.destination === 'people' ? 'bar' : request.destination;
+    const destination = raw === 'concourse' || DESTINATIONS.some((d) => d.id === raw)
+      ? raw : null;
     if (!destination) return;
     navigate(destination, request.options && typeof request.options === 'object' ? request.options : {});
   });
@@ -1004,22 +1105,28 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     showReceipt(receipt.title, receipt.line, receipt.detail);
     refresh();
   });
-  subscribe('module:purchased', (p = {}) => showReceipt('SHIPWORKS', 'MODULE ACQUIRED', `−${fmtCr(p.price)} cr`));
+  // Receipts speak plain words (R18): what happened, then what it cost or what it set up.
+  subscribe('module:purchased', (p = {}) => showReceipt('Shipyard', 'Part bought', `−${fmtCr(p.price)} cr`));
   // inf-fit-milestone: a fit that teaches the hull a new verb names it on the receipt — the
-  // capability vocabulary's own words — instead of the mechanical LOADOUT RECALCULATED line.
+  // capability vocabulary's own words — instead of a mechanical loadout line.
   subscribe('module:equipped', (p = {}) => {
     const gained = consumeFitCapabilityMilestone(state(), p);
-    showReceipt('SHIPWORKS', 'FIT COMMITTED', gained && gained.verb
-      ? `NEW · ${String(gained.verb).toUpperCase()}`
-      : 'LOADOUT RECALCULATED');
+    showReceipt('Shipyard', 'Part fitted', gained && gained.verb
+      ? `New: ${String(gained.verb)}`
+      : '');
   });
-  subscribe('module:unequipped', () => showReceipt('SHIPWORKS', 'MODULE RETURNED', 'INVENTORY UPDATED'));
-  subscribe('ship:purchased', (p = {}) => showReceipt('SHIPWORKS', 'SHIP ACQUIRED', p.price ? `−${fmtCr(p.price)} cr` : 'FABRICATION COMPLETE'));
-  subscribe('mission:accepted', () => showReceipt('MISSION BOUND', 'ROUTE ADDED TO NAVIGATION', 'STAGE 01 ACTIVE'));
+  subscribe('module:unequipped', () => showReceipt('Shipyard', 'Part removed', 'In your storage'));
+  subscribe('ship:purchased', (p = {}) => showReceipt('Shipyard', 'Ship bought', p.price ? `−${fmtCr(p.price)} cr` : ''));
+  subscribe('mission:accepted', (p = {}) => {
+    const s = state();
+    const active = s && s.missions && Array.isArray(s.missions.active) ? s.missions.active : [];
+    const job = active.find((m) => m && p && String(m.id) === String(p.missionId));
+    showReceipt('Job taken', job && job.title ? String(job.title) : 'On your list', 'Route marked on your chart');
+  });
   subscribe('mission:completed', (p = {}) => {
     const reward = Number(p.rewardCr);
-    const delta = Number.isFinite(reward) && reward > 0 ? `+${fmtCr(reward)} cr` : 'OBJECTIVE SETTLED';
-    showReceipt('MISSION COMPLETE', String(p.type || 'JOB').replace(/_/g, ' ').toUpperCase(), delta);
+    const delta = Number.isFinite(reward) && reward > 0 ? `+${fmtCr(reward)} cr` : '';
+    showReceipt('Job done', titleCaseWords(String(p.type || 'job')), delta);
   });
   subscribe('mission:updated', (payload = {}) => {
     // Board/active list can change while docked (accept, auto turn-in). Refresh rail attention.
@@ -1033,13 +1140,13 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     const reason = String(p.reason || '');
     if (!reason.startsWith('service:')) return;
     const serviceResult = {
-      repair: 'HULL REPAIRED',
-      refuel: 'FUEL RESTORED',
-      ammo: 'MUNITIONS LOADED',
-      hull_wash: 'HULL WASHED',
-      survey_fix: 'SURVEY FIX',
-    }[reason.slice(8)] || `${titleCaseWords(reason.slice(8))} COMPLETE`;
-    showReceipt('BERTH SERVICE', serviceResult, `${p.delta < 0 ? '−' : '+'}${fmtCr(Math.abs(p.delta))} cr`);
+      repair: 'Hull repaired',
+      refuel: 'Fuel topped up',
+      ammo: 'Munitions loaded',
+      hull_wash: 'Hull washed',
+      survey_fix: 'Survey fixed',
+    }[reason.slice(8)] || `${titleCaseWords(reason.slice(8))} done`;
+    showReceipt('Service', serviceResult, `${p.delta < 0 ? '−' : '+'}${fmtCr(Math.abs(p.delta))} cr`);
   });
 
   // PQ-163.03: the first-hour store hook waits for the admitted dock surface — this comms
@@ -1051,7 +1158,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     if (!shown || typeof text !== 'string' || !text) return false;
     if (presentedStoreSentenceOfferId === offerId) return false;
     presentedStoreSentenceOfferId = offerId;
-    showReceipt('FLIGHT SCHOOL', text, 'SHIPWORKS');
+    showReceipt('Flight school', text, 'Shipyard');
     const bus = ctx && ctx.bus;
     if (bus && typeof bus.emit === 'function') {
       bus.emit('firsthour:sentencePresented', { id: offerId });
@@ -1192,12 +1299,35 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     if (ctx && ctx.bus) ctx.bus.emit('dock:undocked', { committed: true, intent: 'explicit', source: 'sx-dock' });
   }
 
-  function runAction(id) {
+  function runAction(id, actionOpts = {}) {
     const bus = ctx && ctx.bus;
     if (id === 'undock') {
       const dep = departureNow();
       if (dep.state !== 'ready') { openDeparturePop(); return false; } // surface the risk, don't strand them
       commitUndock();
+      return true;
+    }
+    if (id === 'service-all') {
+      const bundle = buildServiceBundle(state(), playerEntity(state()), opts.serviceQuote);
+      if (bundle.ready) {
+        if (bus) bus.emit('toast', { text: 'Ship is ready — hull, fuel, and munitions are topped off', kind: 'info', ttl: 2 });
+        return false;
+      }
+      if (!bundle.actionableItems.length) {
+        if (bus) bus.emit('toast', { text: bundle.blockedReason || 'Ship service unavailable here', kind: 'warn', ttl: 3 });
+        return false;
+      }
+      if (bus) {
+        for (const item of bundle.actionableItems) {
+          bus.emit('ui:service', {
+            type: item.type,
+            amount: Number.isFinite(Number(item.amount)) && Number(item.amount) > 0 ? Number(item.amount) : undefined,
+          });
+        }
+        bus.emit('audio:cue', { id: 'ui_click' });
+      }
+      refresh();
+      setTimeout(refresh, 60);
       return true;
     }
     if (id === 'decant') {
@@ -1234,7 +1364,14 @@ export function createStationApp(rootEl, ctx, opts = {}) {
         if (quote) void runInsuranceService(quote);
         return false;
       }
-      bus.emit('ui:service', { type, amount: quote && Number.isFinite(Number(quote.amount)) ? Number(quote.amount) : undefined });
+      const explicitAmount = Number.isFinite(Number(actionOpts.amount)) && Number(actionOpts.amount) > 0
+        ? Number(actionOpts.amount) : null;
+      bus.emit('ui:service', {
+        type,
+        amount: explicitAmount != null
+          ? explicitAmount
+          : (quote && Number.isFinite(Number(quote.amount)) ? Number(quote.amount) : undefined),
+      });
       bus.emit('audio:cue', { id: 'ui_click' });
     }
     setTimeout(refresh, 60);
@@ -1415,6 +1552,35 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     return true;
   }
 
+  function renderDoorHead(s, st, ship, fuel, cargo) {
+    const dest = DESTINATIONS.find((d) => d.id === activeId);
+    if (!dest) return;
+    const hullPct = Math.round(hullFrac(s) * 100);
+    const fuelPct = Math.round(fuelFrac(s) * 100);
+    const slotted = Number.isFinite(cargo.slotCount) && cargo.slotCount > 0;
+    const holdUsed = slotted ? (Array.isArray(cargo.slots) ? cargo.slots.length : 0) : Math.round(Number(cargo.usedVolume) || 0);
+    const holdCap = slotted ? cargo.slotCount : Math.round(Number(cargo.capVolume) || 0);
+    const holdHtml = holdCap > 0
+      ? `<button type="button" ${stationControlAttrs('hold-manifest')} class="sx-dh__vital sx-dh__vital--hold" data-hold data-pop-owner aria-label="Hold ${holdUsed} of ${holdCap}${slotted ? ' slots' : ''} used. Open the cargo manifest.">Hold <b>${holdUsed}/${holdCap}</b></button>`
+      : '';
+    const html =
+      `<div class="sx-dh__where">` +
+        `<p class="sx-dh__station">${escapeHtml(st.name || 'Station')}</p>` +
+        `<h1 class="sx-dh__door">${escapeHtml(dest.label)}</h1>` +
+      `</div>` +
+      `<div class="sx-dh__purse">` +
+        `<p class="sx-dh__credits"><span class="sx-dh__credits-k">Credits</span><strong class="sx-dh__credits-v">${fmtCr(credits(s))}</strong></p>` +
+        `<p class="sx-dh__vitals">` +
+          `<span class="sx-dh__vital${hullPct < 70 ? ' is-warn' : ''}">Hull <b>${hullPct}%</b></span>` +
+          `<span class="sx-dh__vital${fuelPct < 45 ? ' is-warn' : ''}">Fuel <b>${fuelPct}%</b></span>` +
+          holdHtml +
+        `</p>` +
+      `</div>`;
+    if (html === doorHeadSig) return;
+    doorHeadSig = html;
+    doorHeadEl.innerHTML = html;
+  }
+
   function renderStatus() {
     syncKiteEntry();
     const s = state();
@@ -1446,8 +1612,14 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       },
       {
         k: 'hold', label: 'Hold', frac: holdF, tone: vitalTone(holdF, 'hold'), openHold: true,
-        value: `${fmtCr(cargo.usedVolume)} / ${fmtCr(cargo.capVolume)} u`,
-        aria: `Cargo hold ${fmtCr(cargo.usedVolume)} of ${fmtCr(cargo.capVolume)} units`,
+        // CARGO-BUILD-1: the bag's slot count is the capacity a trader reads here;
+        // volume stays a physical readout inside the hold popup.
+        value: Number.isFinite(cargo.slotCount) && cargo.slotCount > 0
+          ? `${fmtCr(Array.isArray(cargo.slots) ? cargo.slots.length : 0)} / ${fmtCr(cargo.slotCount)} slots`
+          : `${fmtCr(cargo.usedVolume)} / ${fmtCr(cargo.capVolume)} units`,
+        aria: Number.isFinite(cargo.slotCount) && cargo.slotCount > 0
+          ? `Cargo hold ${fmtCr(Array.isArray(cargo.slots) ? cargo.slots.length : 0)} of ${fmtCr(cargo.slotCount)} slots used`
+          : `Cargo hold ${fmtCr(cargo.usedVolume)} of ${fmtCr(cargo.capVolume)} units`,
         acts: [carrying
           ? `<button type="button" ${stationControlAttrs('sell')} class="k-word k-word--fine fh-key fh-key--small sxb-vital__act" data-vital-act="sell"` +
             ` aria-label="Sell cargo at this station">Sell</button>`
@@ -1479,7 +1651,12 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     const muniAboard = Math.max(0, Math.floor(Number(cargo.items && cargo.items.cmdty_munitions) || 0));
     if (costs.resupply && !costs.resupply.disabled) {
       vitals.push({
-        k: 'muni', label: 'Munitions', frac: Math.min(1, muniAboard / MUNITIONS_LOAD), tone: 'warn', track: false,
+        k: 'muni', label: 'Munitions',
+        frac: Math.min(1, muniAboard / MUNITIONS_LOAD),
+        // the tile speaks its own urgency: an empty magazine is a bad reading (red dial), a thin
+        // one warns, a topped-up one is merely a fact (stationLayouts data-tone hues)
+        tone: muniAboard <= 0 ? 'bad' : muniAboard < MUNITIONS_LOAD * 0.3 ? 'warn' : 'ok',
+        track: false,
         value: `${fmtCr(muniAboard)} / ${MUNITIONS_LOAD}`, aria: `Munitions low: ${fmtCr(muniAboard)} aboard of a ${MUNITIONS_LOAD}-round load`,
         acts: [vitalActHtml('resupply', costs.resupply, 'Rearm')],
       });
@@ -1540,6 +1717,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     setTextIfChanged(launchStateEl, titleCaseWords(depState));
 
     const st = resolveStation(ctx);
+    renderDoorHead(s, st, ship, fuel, cargo);
     setTextIfChanged(crestName, st.name || 'Station');
     // The berth you are docked at is itself a door: the crest name opens the station dossier.
     const dockedRef = stationId() ? 'station:' + stationId() : null;
@@ -1591,6 +1769,13 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     const id = act.getAttribute('data-vital-act');
     if (id === 'sell') { navigate('market', { tradeMode: 'sell' }); return; }
     runAction(id);
+  });
+
+  if (typeof doorHeadEl.addEventListener === 'function') doorHeadEl.addEventListener('click', (ev) => {
+    const hold = ev.target.closest('[data-hold]');
+    if (!hold) return;
+    if (!popEl.hidden && popKind === 'sx-pop--hold') { closePop(); return; }
+    openHoldPop(hold);
   });
 
   launchEl.addEventListener('click', () => runAction('undock'));
@@ -1666,6 +1851,10 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     // Station operation screens are event-driven and contain real pointer targets. Rebuilding them
     // on that cadence replaces hovered nodes and briefly leaves new Shipworks labels at their
     // unprojected/default position until the following animation frame.
+    if (activeId === 'concourse') {
+      concourseScreen.refresh();
+      return;
+    }
     if (options.periodic) return;
     const dest = DESTINATIONS.find((d) => d.id === activeId);
     if (dest) {
@@ -1699,10 +1888,9 @@ export function createStationApp(rootEl, ctx, opts = {}) {
 
   renderStatus();
   berth.show(state());
-  // Restore the last destination this save left on, unless mission attention re-routes.
+  // Arrival lands on the calm Concourse — five doors, not a dashboard.
   arriving = true; // the first navigate does not settle the panel: arrive() choreographs it
-  const remembered = ctx && ctx.screenMemory && ctx.screenMemory.read('station', 'destination', null);
-  navigate(DESTINATIONS.some((d) => d.id === remembered) ? remembered : 'market');
+  navigate('concourse');
   arriving = false;
   let pendingArrival = true;
   function resetDockAttention() {
@@ -1710,15 +1898,44 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     attentionAutoOpenedThisDock = false;
   }
   for (const event of ['game:new', 'game:newGame', 'save:loaded']) subscribe(event, resetDockAttention);
-  // Undock (moment 5): the panel and the foot k-out in 140 ms before uiRoot's existing fade.
+  // Undock (moment 5): the panel fades out cleanly; keep footer controls live until screen closes.
   subscribe('dock:undocked', () => {
     resetDockAttention();
     bodyEl.classList.add('k-out');
-    footEl.classList.add('k-out');
   });
+
+  /** Where a fresh dock arrives: the job board while the first-hour loop still owes its first
+   *  job at this berth, the hub otherwise. */
+  function arrivalDestination() {
+    let firstDock = false;
+    try {
+      // The opening's own story contract (47-A) is already aboard when a new pilot first docks;
+      // what the first dock owes is the first job from the board, so only desk jobs count here.
+      const active = state().missions && Array.isArray(state().missions.active) ? state().missions.active : [];
+      const deskJobs = active.filter((m) => m && (m.status == null || m.status === 'active')
+        && !(typeof m.storyTag === 'string' && m.storyTag.startsWith('campaign47a:')));
+      firstDock = !!firstDockHandoffVisible(state(), stationId()) && deskJobs.length === 0;
+    } catch (_) { firstDock = false; }
+    return firstDock && RAIL_ORDER.includes('contracts') ? 'contracts' : 'concourse';
+  }
+
+  /** Back out of a door to the hub. True when it moved (Esc and the rail's Back both land here). */
+  function back() {
+    if (!shown) return false;
+    if (!popEl.hidden) { closePop(); return true; }
+    if (kiteOpen) { closeKite(); return true; }
+    if (!activeId || activeId === 'concourse') return false;
+    const left = activeId;
+    navigate('concourse');
+    const door = concourseScreen.el.querySelector(`[data-cc-door="${left === 'bar' ? 'bar' : left}"]`);
+    try { door?.focus({ preventScroll: true }); } catch (_) {}
+    if (ctx && ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_back' });
+    return true;
+  }
 
   function activeScreen() {
     if (kiteOpen) return kiteScreen;
+    if (activeId === 'concourse') return concourseScreen;
     const dest = DESTINATIONS.find((d) => d.id === activeId);
     return dest ? screenCache.get(dest.id) : null;
   }
@@ -1727,14 +1944,24 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     el: app,
     refresh,
     navigate,
+    back,
+    /** The screen's onKey: the door keys 1-4. True when the key was taken. */
+    handleKey(ev) { return !!(ev && handleDigitKey(ev)); },
     onShow() {
       shown = true; commands.setEnabled(true); effects.show();
       lawFineDesk.setActive(true);
-      // A child screen such as Manifest covers this same dock. Returning must resume the
-      // player's chosen destination, even when a ready mission still deserves a badge.
+      // A child screen such as Manifest covers this same dock. Returning resumes the player's
+      // active view; a fresh dock arrival always opens on the Concourse.
       const enteringDock = pendingArrival;
       bodyEl.classList.remove('k-out');
       footEl.classList.remove('k-out');
+      // A stranger's first dock has one obvious next action: the job board, with the recommended
+      // job selected. Every later dock arrives in the bay (the hub).
+      const arrivalDoor = enteringDock ? arrivalDestination() : null;
+      if (arrivalDoor && activeId !== arrivalDoor) {
+        // A door that cannot mount must never strand the arrival: the hub always can.
+        try { navigate(arrivalDoor); } catch (_) { navigate('concourse'); }
+      }
       renderStatus();
       berth.show(state());
       berth.setActive(activeId !== 'shipworks');
@@ -1751,30 +1978,24 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       presentOwedStoreSentence();
       arrivalPresenter.show();
       lifePresenter.show();
-      const allowAutoOpen = enteringDock && !kiteOpen && !attentionAutoOpenedThisDock;
-      const attention = applyDockAttention({ allowAutoOpen, refreshActive: false });
-      if (!(allowAutoOpen && attention?.autoOpen)) {
-        const scr = activeScreen();
-        if (scr && typeof scr.onShow === 'function') {
-          try {
-            scr.onShow({
-              ...ctx,
-              missionId: lastMissionAttention && lastMissionAttention.focusMissionId,
-              attention: lastMissionAttention,
-              focusSurface: lastMissionAttention?.surface,
-            });
-          } catch (_) {}
-        }
+      // Badge doors/rail on arrival without yanking the player off the Concourse.
+      applyDockAttention({ allowAutoOpen: false, refreshActive: false });
+      const scr = activeScreen();
+      if (scr && typeof scr.onShow === 'function') {
+        try {
+          scr.onShow({
+            ...ctx,
+            missionId: lastMissionAttention && lastMissionAttention.focusMissionId,
+            attention: lastMissionAttention,
+            focusSurface: lastMissionAttention?.surface,
+          });
+        } catch (_) {}
       }
-      // First focus lands on the active dock tile. screenManager focuses the first focusable in DOM
-      // order when a screen has not chosen one, and the topbar's HOLD gauge button precedes the
-      // dock — so every keyboard-driven arrival painted a focus ring on the cargo readout. The tile
-      // is the roving-tabindex owner the dock already maintains; focusing it changes no tabindex.
-      const activeTile = dock.el && dock.el.querySelector('.sx-tile.is-active');
+      // First focus lands cleanly on the active dock tile (or primary service/door on Concourse).
+      const activeTile = activeId === 'concourse'
+        ? (concourseScreen.el.querySelector('.sx-cc-door') || concourseScreen.el.querySelector('.sx-cc-svc__primary'))
+        : (dock.el && dock.el.querySelector('.sx-tile.is-active'));
       if (activeTile) {
-        // Mark this arrival focus as quiet, the station's and not the player's: the wide-rail
-        // caption plate (station.css, 1701+ × 901+) stays off for it, so it can't cover the body at
-        // rest. The first key on the tab, or focus leaving it, hands the focus back to the player.
         activeTile.setAttribute('data-sx-quiet-focus', '');
         activeTile.addEventListener('keydown', clearQuietFocus);
         activeTile.addEventListener('blur', clearQuietFocus);
@@ -1822,6 +2043,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       window.removeEventListener('resize', refreshReceiptPlacement);
       rootEl.removeEventListener('scroll', refreshReceiptPlacement, true);
       window.removeEventListener('keydown', onEscCapture, true);
+      window.removeEventListener('keydown', onDigitShortcut);
       if (offExit) offExit();
       subscriptions.splice(0).forEach((off) => off());
       try { dock.dispose && dock.dispose(); } catch (_) {}

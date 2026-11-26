@@ -100,7 +100,7 @@ test('seed 4242: rock rain, slag spill, and lantern drift use their donors and p
   const rock = SWARM_EVENT_BY_ID.rock_rain;
   const plate = SWARM_EVENT_BY_ID.plate_drift;
   assert.equal(rock.kind, 'surge');
-  assert.equal(rock.telegraph, 'ROCK RAIN — catch what you can, throw what you catch');
+  assert.equal(rock.telegraph, 'ROCK RAIN — catch what falls. Throw it back.'); // Swarm words demo pass
   assert.deepEqual(keyset(rock.install), keyset(plate.install));
   assert.deepEqual(keyset(rock.install.fields[0]), keyset(plate.install.fields[0]));
   assert.ok(SWARM_EVENT_TABLES.asteroid_mill.includes('rock_rain'));
@@ -108,7 +108,7 @@ test('seed 4242: rock rain, slag spill, and lantern drift use their donors and p
   const slag = SWARM_EVENT_BY_ID.slag_spill;
   const furnace = SWARM_EVENT_BY_ID.furnace_flare;
   assert.equal(slag.kind, 'surge');
-  assert.equal(slag.telegraph, 'SLAG SPILL — the floor runs hot, and so does anything you throw through it');
+  assert.equal(slag.telegraph, 'SLAG SPILL — the floor runs hot. Throws burn hotter.'); // Swarm words demo pass
   assert.deepEqual(keyset(slag.install), keyset(furnace.install));
   assert.deepEqual(keyset(slag.install.fields[0]), keyset(furnace.install.fields[0]));
   assert.ok(SWARM_EVENT_TABLES.cinder_sluice.includes('slag_spill'));
@@ -165,7 +165,7 @@ test('seed 4242: reef surge, shepherd pulse, and Sprocket\'s crate use their don
   const reef = SWARM_EVENT_BY_ID.reef_surge;
   const undertow = SWARM_EVENT_BY_ID.undertow_snap;
   assert.equal(reef.kind, 'pulse');
-  assert.equal(reef.telegraph, 'REEF SURGE — the room moves. Let it throw for you.');
+  assert.equal(reef.telegraph, 'REEF SURGE — the room moves. Let it throw.'); // Swarm words demo pass
   assert.deepEqual(keyset(reef.field), keyset(undertow.field));
   assert.ok(SWARM_EVENT_TABLES.storm_lattice.includes('reef_surge'));
 

@@ -34,6 +34,8 @@ import {
 
 // Exported for stage.js (G16-01): the shared severity ranking orders a slot's queue.
 export const SEV_RANK = { danger: 3, dock: 2.5, warn: 2, info: 1 };
+export const FOUNDRY_APPROACH_ALERT = 'foundry-plate-approach';
+export const FOUNDRY_RETURN_ALERT = 'foundry-return';
 
 // ── Mechanical one-voice ownership (ONEVOICE-ALERT-DEDUPE) ─────────────────────────────────────
 // Short status lines that THIS module always routes through the arbiter (announce → voice:say).
@@ -193,25 +195,74 @@ export function createAlerts(ctx) {
   let nextExpiryAt = Infinity;
   let blockedMills = new Set();
 
-  function ensureEl(rec) {
-    if (rec.el) return rec.el;
+  // Pill elements are pooled like floatingText/swarmJuiceHud nodes: a raised record's (el, lens,
+  // text) trio is created once and recycled by class/text swap on clear/expiry instead of three
+  // createElement calls per pill. The free list is bounded; record churn beyond it GCs as before.
+  const alertNodeFree = [];
+  const ALERT_NODE_POOL_MAX = 8;
+  function acquireAlertNode() {
+    const node = alertNodeFree.pop();
+    if (node) return node;
     const el = document.createElement('div');
-    // dp-annunc: the annunciator is a machined strip with a lamp lens (deckplate components).
-    // Persistent condition chips (ttl Infinity) are lit controls — --status, never a blinker.
-    el.className = `sf-alert sf-alert--${rec.sev} dp-annunc`;
     // Persistent condition chips are discoverable status text, never a second automatic voice.
     // Transient/danger speech belongs to the single arbiter floor below.
     el.setAttribute('role', 'group');
     el.setAttribute('aria-live', 'off');
     el.setAttribute('aria-atomic', 'true');
     const lens = document.createElement('span');
-    lens.className = `dp-annunc__lens dp-lamp${rec.sev === 'danger' ? ' dp-lamp--danger' : ''}`;
     lens.setAttribute('aria-hidden', 'true');
     const txt = document.createElement('span');
     txt.className = 'sf-alert__text';
     el.append(lens, txt);
-    rec._lens = lens;
-    rec._txt = txt;
+    return { el, lens, txt };
+  }
+  function releaseAlertNode(node) {
+    if (!node) return;
+    const { el } = node;
+    // Per-record chrome the base shape does not carry (the dock key chip) and any state pinned
+    // on the element — suppressEntrance's inline animation-name, [hidden], dock data attrs —
+    // must not ride the next record's card.
+    for (const child of Array.from(el.children)) {
+      if (child !== node.lens && child !== node.txt) el.removeChild(child);
+    }
+    el.className = 'sf-alert';
+    el.hidden = false;
+    // The HUD seats a dock prompt with inline fixed position and size (placeFlightBox) and caches
+    // them in el._sfStyle; a recycled node must not carry that seat to the next pill, or the next
+    // warning draws at the old dock spot, boxed to the dock prompt's size.
+    if (typeof el.removeAttribute === 'function') el.removeAttribute('style');
+    else el.style.animationName = '';
+    delete el._sfStyle;
+    // Optional-call: Mini-DOM harnesses may not implement removeAttribute.
+    if (typeof el.removeAttribute === 'function') {
+      for (const name of Array.from(el.getAttributeNames?.() || [])) {
+        if (name.startsWith('data-')) el.removeAttribute(name);
+      }
+      el.removeAttribute('data-dock-station');
+      el.removeAttribute('data-dock-key');
+      el.removeAttribute('data-visor-anchored');
+    }
+    if (alertNodeFree.length < ALERT_NODE_POOL_MAX) alertNodeFree.push(node);
+  }
+
+  // Standing condition lights (ttl Infinity) wear sf-alert--lamp so the one-voice seat
+  // never treats them as a timed danger announcement and the yield CSS never hides them.
+  function alertClass(sev, ttl) {
+    return `sf-alert sf-alert--${sev} dp-annunc${ttl === Infinity ? ' sf-alert--lamp' : ''}`;
+  }
+
+  function ensureEl(rec) {
+    if (rec.el) return rec.el;
+    const node = acquireAlertNode();
+    const el = node.el;
+    // dp-annunc: the annunciator is a machined strip with a lamp lens (deckplate components).
+    // Persistent condition chips (ttl Infinity) are lit controls — --status, never a blinker.
+    el.className = alertClass(rec.sev, rec.ttl);
+    node.lens.className = `dp-annunc__lens dp-lamp${rec.sev === 'danger' ? ' dp-lamp--danger' : ''}`;
+    rec._node = node;
+    rec._lens = node.lens;
+    rec._txt = node.txt;
+    rec._dockKey = null;
     rec.el = el;
     return el;
   }
@@ -224,7 +275,7 @@ export function createAlerts(ctx) {
     rec.ttl = ttl == null || ttl === Infinity ? Infinity : ttl * 1000;
     rec.born = performance.now();
     rec.expiresAt = rec.ttl === Infinity ? Infinity : rec.born + rec.ttl;
-    if (rec.el) rec.el.className = `sf-alert sf-alert--${sev} dp-annunc`;
+    if (rec.el) rec.el.className = alertClass(sev, rec.ttl);
     // A danger word deserves a danger lens — the kit ships the variant but nothing wore it, so
     // every severity lit the same amber dot. Steady red (no blink): pills are lit controls.
     if (rec._lens) rec._lens.className = `dp-annunc__lens dp-lamp${sev === 'danger' ? ' dp-lamp--danger' : ''}`;
@@ -236,6 +287,7 @@ export function createAlerts(ctx) {
     } else {
       render();
     }
+    return rec;
   }
 
   function clear(key) {
@@ -243,6 +295,8 @@ export function createAlerts(ctx) {
     if (!rec) return;
     if (rec.stageHandle) { rec.stageHandle.clear(); rec.stageHandle = null; }
     if (rec.el && rec.el.parentNode) rec.el.parentNode.removeChild(rec.el);
+    releaseAlertNode(rec._node);
+    rec._node = null; rec.el = null; rec._lens = null; rec._txt = null; rec._dockKey = null;
     map.delete(key);
     recomputeNextExpiry();
   }
@@ -350,6 +404,8 @@ export function createAlerts(ctx) {
       if (!rec) continue;
       if (rec.stageHandle) { rec.stageHandle.clear(); rec.stageHandle = null; }
       if (rec.el && rec.el.parentNode) rec.el.parentNode.removeChild(rec.el);
+      releaseAlertNode(rec._node);
+      rec._node = null; rec.el = null; rec._lens = null; rec._txt = null; rec._dockKey = null;
       map.delete(rec.key);
       dirty = true;
     }
@@ -497,6 +553,12 @@ export function createAlerts(ctx) {
   // pills; every transient one-shot routes through the one-voice arbiter.
   bus.on('alert', (p) => {
     const rec = p || {};
+    // Live Foundry flight guidance occupies the run panel's existing instruction row.
+    if (rec.key === FOUNDRY_APPROACH_ALERT || rec.key === FOUNDRY_RETURN_ALERT) return;
+    if (rec.action === 'clear') {
+      if (typeof rec.key === 'string' && rec.key) clear(rec.key);
+      return;
+    }
     if (rec.ttl === Infinity || rec.ttl == null) raise(rec);
     else announce(rec);
   });
@@ -507,9 +569,51 @@ export function createAlerts(ctx) {
 
   // dock prompt (persistent while in range) — large and unmissable, a status affordance not a voice.
   // The key label is sourced from the live binding registry (spec §15.4) so it can never drift.
+  function nearestLiveStationId(state) {
+    if (!state) return null;
+    const player = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId) : null;
+    const px = Number(player?.pos?.x);
+    const pz = Number(player?.pos?.z);
+    const hasPos = Number.isFinite(px) && Number.isFinite(pz);
+    const list = state.entityIndex?.stations
+      || (Array.isArray(state.entityList) ? state.entityList : []);
+    let bestId = null;
+    let bestD2 = Infinity;
+    for (const e of list) {
+      if (!e || e.alive === false || e.type !== 'station' || e.data?.isGate) continue;
+      const sid = e.data?.stationId || e.id;
+      if (sid == null) continue;
+      if (!hasPos || !e.pos) { if (bestId == null) bestId = sid; continue; }
+      const d2 = (e.pos.x - px) ** 2 + (e.pos.z - pz) ** 2;
+      if (d2 < bestD2) { bestD2 = d2; bestId = sid; }
+    }
+    return bestId;
+  }
+
   bus.on('dock:range', ({ inRange, stationId }) => {
-    if (inRange) raise({ key: 'dock', sev: 'dock', text: dockPromptText(ctx.state, stationId, promptLabel('dock')), ttl: Infinity });
-    else clear('dock');
+    if (!inRange) { clear('dock'); return; }
+    const resolvedStationId = stationId != null ? stationId : nearestLiveStationId(ctx.state);
+    const keyLabel = promptLabel('dock');
+    const rec = raise({ key: 'dock', sev: 'dock', text: dockPromptText(ctx.state, resolvedStationId, keyLabel), ttl: Infinity });
+    if (rec?.el) {
+      if (resolvedStationId != null) rec.el.setAttribute('data-dock-station', String(resolvedStationId));
+      else rec.el.removeAttribute('data-dock-station');
+      const key = keyLabel.replace(/^\[\s*|\s*\]$/g, '');
+      rec.el.setAttribute('data-dock-key', key);
+      if (!rec._dockKey) {
+        const chip = document.createElement('span');
+        chip.className = 'sf-alert__dock-chip';
+        chip.setAttribute('aria-hidden', 'true');
+        rec._dockKey = document.createElement('kbd');
+        const verb = document.createElement('span');
+        verb.className = 'sf-alert__dock-verb';
+        verb.textContent = 'Dock';
+        chip.append(rec._dockKey, verb);
+        rec.el.appendChild(chip);
+      }
+      rec._dockKey.textContent = key;
+    }
   });
   // A dock attempt can be stale or belong to another ship. Only the UI owner's accepted
   // transition is entitled to remove the player's still-live range affordance.
@@ -543,7 +647,7 @@ export function createAlerts(ctx) {
   bus.on('research:pointsChanged', (p) => {
     const granted = Number(p && p.granted);
     if (!(granted > 0)) return;
-    announce({ key: `research:${researchGrantKey(p)}`, sev: 'info', text: `+${granted} RP — ${researchGrantLabel(p)}`, ttl: 4 });
+    announce({ key: `research:${researchGrantKey(p)}`, sev: 'info', text: `+${granted} research — ${researchGrantLabel(p)}`, ttl: 4 });
   });
 
   // ECON-04 — an NPC salvage lot the market absorbed posts one receipt line naming the yard and
@@ -556,7 +660,7 @@ export function createAlerts(ctx) {
     announce({
       key: `salvage-intake:${p.intakeId || p.lotId || 'x'}`,
       sev: 'info',
-      text: `SALVAGE INTAKE — ${qty}u salvage taken in at ${yard} · ~${value} CR`,
+      text: `SALVAGE INTAKE — ${qty} units salvage taken in at ${yard} · ~${value} CR`,
       ttl: 4,
     });
   });
@@ -623,10 +727,12 @@ export function createAlerts(ctx) {
     const text = playerSubsystemNotice('enabled', p.subsystemId);
     if (text) announce({ key: 'subsystem-' + p.subsystemId, sev: 'info', text, ttl: 2.5 });
   });
+  // An ordinary hit is not a sentence (08 §1: the world shows it first): the hit arc on the rim
+  // points at the shooter, the shield shell flashes and the bars drop. Only the shield breaking —
+  // a change of state the pilot must act on — takes the danger floor.
   bus.on('combat:damage', (p) => {
     if (!p || !p.isPlayer) return;
     if (p.brokeShield) announce({ key: 'shield-down', sev: 'danger', text: 'SHIELDS DOWN', ttl: 3 });
-    else announce({ key: 'incoming', sev: 'danger', text: 'TAKING FIRE', ttl: 1.5 });
   }, { presentation: true });
   // Missile lock is a condition-bound STATUS light (raised on lock, cleared on unlock) — it must
   // stay visible while the lock holds, so it stays a pill, not a one-shot voice. The emitter

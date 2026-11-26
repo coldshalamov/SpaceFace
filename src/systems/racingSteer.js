@@ -16,11 +16,19 @@ import { isRacingCorridorSession } from '../world/racingCorridor.js';
 
 export const STEERING_VIEWS = Object.freeze(['overhead', 'racing', 'auto']);
 
+// A higher rig than the first one (58 / 22 / 36). From 22 high the whole course sat on the
+// horizon line: every gate and rock at the same height in the frame. From 42 up and 80 back,
+// looking at a point just ahead of the nose, the eye is pitched about 22 degrees down: the horizon
+// sits near the top edge, the ground plane fills the frame so the next gates read as near and
+// far, and the ship rides about 60% of the way down the screen, above the instrument cluster.
+// (The numbers are tied: the ship sits below the horizon by atan(height / distance), and that
+// angle has to fit between the top edge and the instruments.)
 export const RACING_RIG_DEFAULT = Object.freeze({
-  distance: 58,
-  height: 22,
-  lookAhead: 36,
+  distance: 80,
+  height: 42,
+  lookAhead: 24,
 });
+const RACING_RIG_FIRST = Object.freeze({ distance: 58, height: 22, lookAhead: 36 });
 
 const DRAFT_MIN_WU = 18;
 const DRAFT_MAX_WU = 150;
@@ -38,6 +46,19 @@ export function racingPaceSpeed(params) {
 
 export function normalizeSteeringView(value) {
   return STEERING_VIEWS.includes(value) ? value : 'overhead';
+}
+
+/**
+ * The view the pilot wants. A profile that never chose is 'auto': overhead in ordinary flight,
+ * the stern (third-person) camera for a race or a timed run, which is the mode that camera is for.
+ * 'overhead' counts as a choice only once the pilot has actually made one (the view key or the
+ * settings row sets steeringViewChosen); before that it is the settings screen's old default.
+ */
+export function preferredSteeringView(settings) {
+  const g = (settings && settings.gameplay) || {};
+  if (!STEERING_VIEWS.includes(g.steeringView)) return 'auto';
+  if (g.steeringView === 'overhead' && g.steeringViewChosen !== true) return 'auto';
+  return g.steeringView;
 }
 
 function activeMissions(state) {
@@ -80,8 +101,7 @@ export function activeAuthoredRace(state) {
 export function resolveSteeringView(state, opts = {}) {
   if ((opts && (opts.photo || opts.death)) || state?.render?.photoMode?.active) return 'overhead';
   if (activeSteerLock(state)) return 'racing';
-  const pref = normalizeSteeringView(state && state.settings && state.settings.gameplay
-    && state.settings.gameplay.steeringView);
+  const pref = preferredSteeringView(state && state.settings);
   if (pref === 'racing') return 'racing';
   const race = pref === 'auto' ? activeRaceMission(state) : null;
   if (race && (!race.params?.sectionMission
@@ -97,9 +117,14 @@ export function racingRigOf(settings, out = {}) {
     if (!Number.isFinite(n)) return fallback;
     return Math.min(hi, Math.max(lo, n));
   };
-  out.distance = num(g.racingDistance, RACING_RIG_DEFAULT.distance, 24, 140);
-  out.height = num(g.racingHeight, RACING_RIG_DEFAULT.height, 6, 64);
-  out.lookAhead = num(g.racingLookAhead, RACING_RIG_DEFAULT.lookAhead, 0, 120);
+  // A profile that still holds the first rig's exact numbers never chose them: the settings
+  // screen wrote its defaults. It gets the current rig. Any other value is the player's own.
+  const untouched = Number(g.racingDistance) === RACING_RIG_FIRST.distance
+    && Number(g.racingHeight) === RACING_RIG_FIRST.height
+    && Number(g.racingLookAhead) === RACING_RIG_FIRST.lookAhead;
+  out.distance = num(untouched ? null : g.racingDistance, RACING_RIG_DEFAULT.distance, 24, 140);
+  out.height = num(untouched ? null : g.racingHeight, RACING_RIG_DEFAULT.height, 6, 64);
+  out.lookAhead = num(untouched ? null : g.racingLookAhead, RACING_RIG_DEFAULT.lookAhead, 0, 120);
   return out;
 }
 
@@ -408,7 +433,7 @@ export function readRaceTape(params, player, gatesGlobal, simTime) {
   };
 }
 
-const RECORD_KEY = 'spaceface.raceRecords.v2';
+export const RACING_RECORD_STORAGE_KEY = 'spaceface.raceRecords.v2';
 export function raceRecordKey(params, category = params?.raceCategory) {
   if (!params || !params.racingContractId || !params.courseId) return null;
   const base = `${params.courseId}@${params.courseRevision || 1}:${params.racingContractId}:${circuitLaps(params)}L`;
@@ -435,7 +460,7 @@ export function racingLoadoutCategory(state, player = state?.entities?.get?.(sta
 
 export function readRaceRecords(storage) {
   try {
-    const raw = storage && storage.getItem && storage.getItem(RECORD_KEY);
+    const raw = storage && storage.getItem && storage.getItem(RACING_RECORD_STORAGE_KEY);
     const parsed = raw ? JSON.parse(raw) : {};
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
     const clean = {};
@@ -459,6 +484,6 @@ export function rememberRaceRecord(storage, levelId, elapsedS) {
   bag[levelId] = Math.max(0.01, Math.round(elapsedS * 100) / 100);
   const keys = Object.keys(bag);
   for (const key of keys.slice(0, Math.max(0, keys.length - 128))) delete bag[key];
-  try { storage.setItem(RECORD_KEY, JSON.stringify(bag)); } catch { return null; }
+  try { storage.setItem(RACING_RECORD_STORAGE_KEY, JSON.stringify(bag)); } catch { return null; }
   return bag[levelId];
 }

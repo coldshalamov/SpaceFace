@@ -6,7 +6,8 @@ import assert from 'node:assert/strict';
 import {
   applySnapshotPoseToMesh,
   createSnapshotFence,
-  PLAYOUT_MAX_GAP_S,
+  EXTRAPOLATION_DECAY_TAU_S,
+  PLAYOUT_RESEAT_FRAME_S,
 } from '../src/render/snapshotFence.js';
 import { presentedAnchorRot, presentedAnchorXZ } from '../src/render/presentedAnchor.js';
 
@@ -34,6 +35,11 @@ function draw(fence, mesh, elapsedS, rawElapsedS = elapsedS) {
     fence.previousSnapshot(),
     alpha,
   );
+  // The drawn pose: the renderer adds the fence's correction blend (ENGINE slice 1).
+  fence.beginBlendFrame(elapsedS);
+  const b = fence.blendDrawnPose(PLAYER_ID, 0, mesh.position.x, mesh.position.z, mesh.rotation.y, {});
+  mesh.position.x = b.x;
+  mesh.position.z = b.z;
   return alpha;
 }
 
@@ -134,8 +140,9 @@ test('a 3 s worker silence re-seats on the burst and recovers in under 1 s', () 
     assert.ok(silence[i] >= silence[i - 1] - 1e-9, `silence never rewinds: frame ${i}`);
   }
   const atBurst = mesh.position.x;
-  assert.ok(atBurst - beforeSilence <= SPEED * 0.25,
-    'the silence advances at most the reserve + extrapolation window');
+  // ENGINE slice 1: the hull coasts — at most the playout reserve plus tau of velocity.
+  assert.ok(atBurst - beforeSilence <= SPEED * (0.1 + EXTRAPOLATION_DECAY_TAU_S),
+    'the silence advances at most the reserve + the coast');
 
   // The worker bursts: every tick since the silence lands at once (3 s of sim time).
   for (let tick = 60; tick < 240; tick++) {
@@ -185,7 +192,7 @@ test('a long no-frame interval re-seats instead of replaying the occlusion backl
   const diag = fence.getPlayoutDiagnostics();
   assert.equal(diag.gapResets, 1, 'the long frame re-seated');
   assert.ok(diag.lastGapResetRawElapsedMs >= 1900);
-  assert.ok(mesh.position.x <= before + SPEED * (PLAYOUT_MAX_GAP_S + PLAYOUT_MAX_GAP_S),
+  assert.ok(mesh.position.x <= before + SPEED * 2 * PLAYOUT_RESEAT_FRAME_S,
     'the long frame does not invent seconds of motion');
 });
 
@@ -428,6 +435,36 @@ test('a one-tick near respawn never half-blends; a normal hop still interpolates
   );
   assert.ok(Math.abs(mesh.position.x - 19.5) < 1e-6,
     `a sub-bar hop still blends: ${mesh.position.x}`);
+});
+
+test('the pose writer refuses an older occupant before mutating its recycled mesh', () => {
+  const fence = createSnapshotFence({ capacity: 4 });
+  const mesh = meshStub();
+  mesh.position.x = -25;
+  const before = structuredClone(mesh);
+  const origin = { x: 0, z: 0 };
+
+  const old = fence.beginPack(1, 0, 3, 1);
+  const oldRow = old.write(PLAYER_ID, 0, 10, 0, 20, 0, 0, 0, 1, 1, 1, 1, 0);
+  old.setGeneration(oldRow, 1);
+  old.slotRows[0] = oldRow;
+  fence.commit();
+
+  assert.equal(applySnapshotPoseToMesh(mesh, fence.latestSnapshot(), PLAYER_ID, origin, null, 1, 0, 2), false);
+  assert.deepEqual(mesh, before, 'a completed pack for the prior occupant cannot write any pose');
+
+  const current = fence.beginPack(1, DT, 3, 1);
+  const currentRow = current.write(PLAYER_ID, 0, 16, 0, 24, 0, 0, 0, 1, 1, 1, 1, 0);
+  current.setGeneration(currentRow, 2);
+  current.slotRows[0] = currentRow;
+  fence.commit();
+
+  const latest = fence.latestSnapshot();
+  const previous = fence.previousSnapshot();
+  assert.equal(applySnapshotPoseToMesh(mesh, latest, PLAYER_ID + 1, origin, previous, 0.5, 0, 2), false);
+  assert.deepEqual(mesh, before, 'a slot hint for a missing identity cannot write a pose');
+  assert.equal(applySnapshotPoseToMesh(mesh, latest, PLAYER_ID, origin, previous, 0.5, 0, 2), true);
+  assert.deepEqual(mesh.position, { x: 16, y: 0, z: 24 }, 'the arriving occupant never blends the retired pose');
 });
 
 test('a new-epoch transition serves no newer previous pack than its presented latest', () => {

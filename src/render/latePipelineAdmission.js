@@ -183,6 +183,15 @@ function isLiveFirstFlightEffect(object) {
   // so its two ShaderMaterial programs first linked mid-flight (swarm GPU brick, 2026-09-13).
   if (name === 'sf-retro-jets-root') return true;
   if (name === 'SF_RibbonTrail') return true;
+  // Hull scar/scorch marks: the layer is created lazily on the first wound event, so its
+  // LineBasicMaterial otherwise linked inside the first presented frame it drew (+0.6 s).
+  if (name === 'sf-cause-marks') return true;
+  // The comet streak sprite lives on the background group from build time but is hidden and
+  // outside the opening leaf census; its SpriteMaterial linked at first reveal (+19 s).
+  if (name === 'L6_comet') return true;
+  // Rigid-opaque batch chunks attach straight to the scene (no instance-pool userData flag) —
+  // their USE_BATCHING material variant otherwise links on the first chunk's flight draw.
+  if (data.spacefaceRigidOpaqueBatch === true) return true;
   if (name === 'Evidence_Spindle_47A') return true;
   if (name.startsWith('plume-system:')) return true;
   if (name.startsWith('rcs-system:')) return true;

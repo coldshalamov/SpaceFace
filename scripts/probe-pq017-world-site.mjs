@@ -116,7 +116,6 @@ try {
 
   const response = await page.goto(rootUrl, { waitUntil: 'domcontentloaded', timeout: 90_000 });
   assert(response, 'canonical navigation must return a response');
-  await page.bringToFront();
   assert.deepEqual(inspectCanonicalRootUrl(page.url(), rootUrl).failures, [],
     'browser left the canonical root during navigation');
 

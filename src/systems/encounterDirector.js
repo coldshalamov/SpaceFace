@@ -74,6 +74,7 @@ import {
 } from '../data/encounters/planning.js';
 export { PURSUIT_RESOLVE_S, sectorSecurityOf };
 import { makeEnemySpawnSpec } from './combat.js';
+import { findClearSpawnPoint } from './spawnClearance.js';
 import { patrolJurisdictionFor } from '../data/factionContactGrammar.js';
 import { patrolInterventionHailFor } from '../data/barks.js';
 import {
@@ -2239,6 +2240,20 @@ export const encounterDirector = {
           applyNestBroodSpawnSpec(spec, live, slot);
           if (sh.nestSavedActor) applyNestSavedSpawnSpec(spec, sh.nestSavedActor);
         }
+        // R11 shared admission: a script seat that is already occupied or sits on a live
+        // body's 2 s path relocates along the bounded deterministic walk instead of being
+        // born inside a collider. Clear seats — nearly all of them — keep the script's
+        // formation geometry exactly.
+        const clearSeat = findClearSpawnPoint(this.state, {
+          x: spec.pos.x, z: spec.pos.z,
+          radius: Number.isFinite(spec.radius) ? spec.radius : 10,
+          vel: spec.vel || null,
+          rng: this.stream(live, 'spawn-clearance'),
+          attempts: 24,
+        });
+        // A scripted actor must not be dropped on an exhausted walk — the script seat is
+        // kept, never worse than the unchecked seat it replaces.
+        if (clearSeat) { spec.pos.x = clearSeat.x; spec.pos.z = clearSeat.z; }
         const ent = spawnEntity(spec);
         if (ent && ent.id != null) {
           spawned.push(ent.id);
@@ -2918,6 +2933,11 @@ export const encounterDirector = {
   _onEntityGone(p) {
     const id = p && p.id;
     if (id == null) return;
+    // entity:destroyed queues after the map delete: if the id already carries a new
+    // occupant, every id-keyed row below belongs to it — drop the stale receipt.
+    const liveOccupant = this.state && this.state.entities && this.state.entities.get
+      ? this.state.entities.get(id) : null;
+    if (p.entity && liveOccupant && liveOccupant !== p.entity) return;
     const dir = ensureDirectorState(this.state);
     // Entity ids recycle through freeIds — a stale pursuit row would leak onto the next hull.
     if (dir.pursuitWatch) delete dir.pursuitWatch[id];

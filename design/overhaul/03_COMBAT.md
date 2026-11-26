@@ -285,6 +285,72 @@ the dome you pull its owner out of, the raider that latches you. The work is beh
 - **Done when:** fodder thrown-body hit rate in the staged fixture rises (measure before/after), and a
   stranger sorts the fifteen kinds by sight.
 
+## 9A. Encounters: the cast is the fight (ruling R19)
+
+A fight in this game is a small cast whose abilities interact. The player reads the cast, picks
+which piece to remove first, and uses the verbs and the room to do it. Scale sits between a
+Freelancer dogfight and a Crimsonland wave: a handful of ships in Adventure, dozens arriving in
+groups in Swarm. The ceiling is the measured frame budget on the owner's laptop, not a target.
+
+### 9A.1 Seven jobs
+
+Every enemy kind does exactly one of these. A kind that does two is split or simplified; two kinds
+that do the same job in the same way are merged. The job decides its minimap glyph (`08`), its
+silhouette language (`07` §6) and what the player should do about it.
+
+| Job | What it does to the player | The tell | The best answer | Kinds today (to verify from the code) |
+|---|---|---|---|---|
+| **Rush** | Closes and hits at contact, in a bunch | A tight pack turning in together | Shove or Plow through them; bowl a rock; they never dodge a thrown body | Wasp Swarmer, Choir Zealot, Mothlight |
+| **Burst** | Dives and explodes | A rising whine and a straight dive line | Shove it back into its friends; shoot it at range | Detonator Dart |
+| **Reach** | Hurts from beyond the player's guns | A long charge-up beam line on the floor | Close fast on the Line; break line of sight with a rock; Pull it out of position | Lancer Sniper |
+| **Wall** | Soaks fire and blocks; slow | Big, turns slowly | It is terrain: orbit it on the Line, throw things *at* it, or tow it into the room's hazard | Bruiser Brawler, Kilnback, the bosses |
+| **Skirmish** | Strafes, breaks off, comes back | Fast passes; one telegraphed dodge | Pin it mid-pass; lead with the cannon to knock it into something | Corsair Raider, Reaver Pirate, Scissorwake |
+| **Deny** | Makes space dangerous | Mines, fields and domes that are visible objects | Use it: Shove enemies into their own mines; Pull the dome's owner out; kill the source first | Mine-Layer Jackal, Anchor Controller, Point-Defense Screen, Warden Escort |
+| **Seize** | Takes a control away for a moment | A cable or lock line reaching for the hull | Cut or outweigh the cable (R12); kill the holder; the Line never refuses, so tow *it* | Tether-Control Raider, Quiet Ghost |
+
+A **Source** (Nest Carrier, Brood Queen, Hive-Hulk) is a Wall that makes Rush units while it lives;
+it is the priority target a wave is built around. Law ships and traders are not combat jobs: they
+have reasons to be there and leave when the reason ends (`05`).
+
+### 9A.2 What makes a cast
+
+- **Two or three jobs per group, one of them the problem.** Rush + Reach: the bunch keeps the
+  player moving while the beam punishes straight lines. Wall + Deny: a dome on a brawler that must
+  be pulled apart. Source + Skirmish: escorts that peel the player off the carrier. Burst + Deny:
+  darts through a minefield, which is a gift to anyone who Shoves.
+- **Every cast has a soft spot the verbs open.** If a cast can only be answered by shooting
+  longer, it is rejected.
+- **The room is part of the cast.** A group arrives from a direction that puts rocks, lanes or a
+  hazard between it and the player, so the first ten seconds offer a throw or a stage kill (§10).
+- **Groups arrive, fight and end.** A group has an entrance the player can see coming (a gate
+  flare, a formation on the minimap rim), and its end pays out. The next group does not start
+  until the player has had a breath, unless the round's name promises pressure.
+- **Nobody is parked** (R15). If a kind is not attacking, it is travelling, winding up, reloading
+  or fleeing, and that is visible.
+
+### 9A.3 One composer, both doors
+
+One module builds every fight from the same parts: a cast list (kinds and counts), an entrance,
+a formation and a target budget. Swarm rounds call it with a rising budget and the round's named
+recipe; Adventure calls it for pirates, bounties, convoy raids and story fights with a budget from
+the sector's danger and the player's standing. The existing Course (`src/data/swarmCourse.js`,
+`swarmCourseCast.js`) and wave data (`survivalWaves.js`) become recipes for it; the Adventure
+spawners move onto it (the world lead counted about 110 uncoordinated ship spawners). The five
+finished encounters on `codex/pro-five-integration` are ported as recipes.
+
+- **Budget, not head count.** Each job has a cost that reflects how hard it is to answer; a recipe
+  spends a budget. Fodder is cheap, so a late Swarm wave can still be a crowd.
+- **Brains are sized to the job.** Rush and Burst run the cheap pack brain (steering only). Reach,
+  Skirmish, Deny and Seize add one behaviour each. Only Walls with phases (bosses) get a tactical
+  brain. This is where the simulation time comes back.
+- **Readable before contact.** The minimap shows each arriving group's jobs by glyph; the round or
+  contract card names the cast in plain words ("Darts through a minefield").
+
+**Done when:** a stranger can name each job after one meeting; each of the first ten Swarm rounds
+is a different cast with a different best answer; an Adventure pirate fight, a bounty and a convoy
+raid feel different because their casts differ; and a late Swarm round holds a smooth frame with
+every enemy thinking and shooting.
+
 ## 10. The room is a weapon — stage kills
 
 - **Swarm:** each arena's machinery (doc 15) kills: freight, crusher, furnace, sluice, pylons, mill.

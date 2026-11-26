@@ -51,7 +51,7 @@ export const ENTRIES_EGG_A = [
     trigger: { type: 'proximity', nearStation: 'poi_charon_star_marker', wu: 120 },
     channel: 'memory',
     payload: {
-      text: 'One star in the wake is too bright for its magnitude, and no parallax ever moves it. From a hundred WU out it stops being a star: the oldest navigation beacon on the chart, still burning on a scrap panel, its registration plate older than the colony. Survey pilots trim against its rhythm like a compass, and have never once agreed on who planted it.',
+      text: 'One star in the wake is too bright for its magnitude, and no parallax ever moves it. From a hundred meters out it stops being a star: the oldest navigation beacon on the chart, still burning on a scrap panel, its registration plate older than the colony. Survey pilots trim against its rhythm like a compass, and have never once agreed on who planted it.',
     },
     followup: 'chartable place record per src/data/PLACE_REGISTRATION.md + codex page; the beacon joins the background star row',
   },
@@ -252,7 +252,7 @@ export const ENTRIES_EGG_A = [
     channel: 'commsLog',
     payload: {
       from: 'Outer dark, Ashfall Reach',
-      text: 'Two thousand WU from anything with a name, a hand-built marker buoy floats in nothing: transponder VHL-4471-T / TESSERA, transmitter off. Wired to it, a paper tag — the only readable surface for a very long way in any direction: FOR WHOEVER FLIES HER NEXT. SHE PULLS LEFT. SHE IS WORTH IT. — W.',
+      text: 'Two thousand meters from anything with a name, a hand-built marker buoy floats in nothing: transponder VHL-4471-T / TESSERA, transmitter off. Wired to it, a paper tag — the only readable surface for a very long way in any direction: FOR WHOEVER FLIES HER NEXT. SHE PULLS LEFT. SHE IS WORTH IT. — W.',
     },
     followup: 'worldOneOffs row gated on the spine end-state flag; shipScreen hull-notes row ("she pulls left")',
   },
@@ -360,7 +360,7 @@ export const ENTRIES_EGG_A = [
     channel: 'commsLog',
     payload: {
       from: 'Bay 7 screen',
-      text: 'The bay screen still carries the fourteen-year-old ticket, verbatim: BAY 7 ODOR CONSISTENT WITH TRANSIT. NO ACTION. TICKET Y3-C2. Someone has taped a work light onto the cradle marked R3-CARRIER and hung a paper sign: IF YOU ARE THE REPLACEMENT SCHEDULE, PENDING SINCE YEAR 3: YOU ARE LATE.',
+      text: 'The bay board still carries the fourteen-year-old ticket, verbatim: BAY 7 ODOR CONSISTENT WITH TRANSIT. NO ACTION. TICKET Y3-C2. Someone has taped a work light onto the cradle marked R3-CARRIER and hung a paper sign: IF YOU ARE THE REPLACEMENT SCHEDULE, PENDING SINCE YEAR 3: YOU ARE LATE.',
     },
     followup: 'SIGN_BAY row (types trade_hub) + flag bay7_grid_seen; the Ashfall Kurtz-ledger addendum is gated on both flags',
   },

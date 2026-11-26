@@ -24,6 +24,7 @@ import { story } from '../src/systems/story.js';
 import { normalizeMassScaleState, physicalMassT } from '../src/systems/cargoCustody.js';
 import { resolveMasslineInstrumentColumns } from '../src/ui/masslineCadenceReadout.js';
 import { readClusterModel, mountOrreryCluster } from '../src/ui/orrery/hudAdapter.js';
+import { lineBodyMassT, lineWeightWord } from '../src/ui/lineRelation.js';
 import { objectInfoLine } from '../src/ui/targetPanel.js';
 import { SECTORS } from '../src/data/sectors.js';
 import { fakeDom, findAll } from './helpers/fake-dom.mjs';
@@ -345,12 +346,9 @@ test('the live ORRERY adapter reads the earned slip, never the manifest or the h
   assert.equal(model2.tether.mass, 40, 'the durable slip alone carries the reading');
 });
 
-test('the mounted Cluster answers the unweighed line: strain live, tonnage at the empty mark', () => {
-  // Codex round-7: a mass gate on the payload readout hid the whole instrument while the
-  // tonnage was honestly unknown — beam, strain dial and label vanished together at tick 0
-  // and only reappeared once the weigh landed. The instrument answers the LINE, not the
-  // scale: live strain reads from the first latched frame, the numeral waits for the
-  // earned slip and prints the empty mark until then.
+test('the mounted Cluster answers the line with one weight word — the Line speaks one grammar, director 2026-11-23', () => {
+  // The beam still draws on an unweighed line. The glass never prints tonnes or a strain
+  // percent; the one word waits until the rope has actually measured the load.
   const t = boot();
   const { target } = acceptAndTarget(t, CASES[0]);
   const attachments = t.state.combat.attachments
@@ -383,30 +381,31 @@ test('the mounted Cluster answers the unweighed line: strain live, tonnage at th
   const root = doc.createElement('div');
   let mounted = null;
   const payloadEl = () => findAll(root, (n) => /orr-cluster__payload/.test(n.className || ''))[0];
-  const massLabel = () => payloadEl().children[1].getAttribute('aria-label');
-  const strainText = () => findAll(payloadEl(), (n) => n.tagName === 'small')[0].textContent;
+  const weightText = () => findAll(payloadEl(), (n) => /orr-cluster__weight/.test(n.className || ''))[0].textContent;
+  const expectedWord = () => {
+    const model = readClusterModel(t.state, t.player, { ordnance: {} });
+    return lineWeightWord(model && model.tether && model.tether.mass, lineBodyMassT(t.player), false);
+  };
   try {
     mounted = mountOrreryCluster(root, t.state);
-    // Before the dwell earns anything the rope is already loaded — the instrument paints,
-    // the strain reads, and only the tonnage waits at the empty mark.
     mounted.update(t.state, t.player, true);
     const payload = payloadEl();
     assert.ok(payload, 'the payload readout exists in the mounted cluster');
-    assert.equal(payload.style.visibility, 'visible',
-      'an active line shows the instrument before the scale reads a number');
-    assert.equal(strainText(), 'STRAIN 50%', 'live strain still reads on the unweighed line');
-    assert.equal(massLabel(), '— T',
-      'an unearned tonnage prints the empty mark, never a fabricated count');
+    assert.ok(findAll(root, (n) => n.dataset && n.dataset.tethered === '1').length > 0,
+      'the line still draws before the scale has a number');
+    assert.equal(weightText(), '', 'an unweighed declared load prints no word');
+    assert.equal(payload.style.visibility, 'hidden');
+    assert.doesNotMatch(payload.textContent, /STRAIN|BODY|ON THE LINE|\d+\s*T/i);
     t.step(29);
     mounted.update(t.state, t.player, true);
-    assert.equal(payloadEl().style.visibility, 'visible', 'mid-dwell the instrument stays up');
-    assert.equal(strainText(), 'STRAIN 50%', 'the strain never blinked during the dwell');
-    assert.equal(massLabel(), '— T', '29 ticks is still no measurement');
+    assert.equal(weightText(), '', '29 ticks is still no measurement');
     t.step(1);
     mounted.update(t.state, t.player, true);
-    assert.equal(payloadEl().style.visibility, 'visible');
-    assert.equal(massLabel(), '40 T', 'the earned slip lands its measured tonnage on the instrument');
-    assert.equal(strainText(), 'STRAIN 50%', 'the weigh added the number without dramatizing the load');
+    const word = expectedWord();
+    assert.equal(readClusterModel(t.state, t.player, { ordnance: {} }).tether.mass, 40);
+    assert.equal(weightText(), word, 'the earned mass becomes Light or Heavy, never tonnes');
+    assert.equal(payloadEl().style.visibility, word ? 'visible' : 'hidden');
+    assert.doesNotMatch(payloadEl().textContent, /STRAIN|BODY|ON THE LINE|\d+\s*T/i);
   } finally {
     mounted?.dispose();
     globalThis.document = previous;

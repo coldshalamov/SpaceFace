@@ -26,7 +26,7 @@ assert.match(pauseSrc, /INTER-SYSTEM ROUTE/,
 assert.match(pauseSrc, /no jump route is required/,
   'pause brief should explicitly separate local routes from jump-route commitments');
 // ORRERY pause: the action wears the live map binding label and routes through openPauseMapReview.
-assert.match(pauseSrc, /if \(mapAction\) mk\(mapAction\.label, \(\) => openPauseMapReview\(ctx, mapAction\)/,
+assert.match(pauseSrc, /if \(mapAction && !inRun\) mk\(mapAction\.label, \(\) => openPauseMapReview\(ctx, mapAction\)/,
   'pause menu should expose a waypoint map review action when nav is set');
 assert.match(pauseSrc, /function openPauseMapReview\(ctx, mapAction\)[\s\S]{0,400}focus: mapAction\.focus/,
   'the pause map review action must open the map at the waypoint focus');
@@ -97,8 +97,8 @@ lines = pauseStatusLines({
   ...trackedState,
   ui: { trackedMissionId: null },
 });
-assert.match(lines.objective, /^UNTRACKED CONTRACT/);
-assert.match(lines.next, /Mission Log \(J\).*Track Nav/);
+assert.match(lines.objective, /^NOT PINNED/, 'Adventure words demo pass');
+assert.match(lines.next, /Mission Log \(J\).*track a job/, 'Adventure words demo pass');
 
 lines = pauseStatusLines({
   simTime: 10,
@@ -109,7 +109,7 @@ lines = pauseStatusLines({
 });
 assert.match(lines.objective, /^NAV SET/);
 assert.match(lines.objective, /Sell Food at Vesta Exchange/);
-assert.match(lines.next, new RegExp(`Local Map \\(${BINDINGS.localmap.label}\\)`));
+assert.match(lines.next, new RegExp(`Chart \\(${BINDINGS.localmap.label}\\)`));
 assert.match(lines.save, /^Unsaved run/);
 
 lines = pauseStatusLines({
@@ -135,7 +135,7 @@ lines = pauseStatusLines({
 });
 assert.match(lines.objective, /^INTER-SYSTEM ROUTE/);
 assert.match(lines.objective, /Sell Food at Meridian Exchange/);
-assert.match(lines.next, new RegExp(`Star Map \\(${BINDINGS.starmap.label}\\).*Meridian`));
+assert.match(lines.next, new RegExp(`Chart \\(${BINDINGS.starmap.label}\\).*Meridian`));
 assert.match(lines.next, /before committing a jump/);
 
 // Map review CTA: one public surface (galaxyMap) + MAP_FOCUS vocabulary.
@@ -154,7 +154,7 @@ let mapAction = pauseMapAction({
 assert.equal(mapAction.screenId, MAP_SCREEN_ID);
 assert.equal(mapAction.screenId, 'galaxyMap');
 assert.equal(mapAction.focus, MAP_FOCUS.LOCAL);
-assert.equal(mapAction.label, `Local Map (${BINDINGS.localmap.label})`);
+assert.equal(mapAction.label, `Chart (${BINDINGS.localmap.label})`);
 assert.equal(mapAction.commitment, 'local');
 assert.match(mapAction.hint, /live marker/);
 assert.match(mapAction.hint, /no jump route is required/);
@@ -166,7 +166,7 @@ mapAction = pauseMapAction({
 assert.equal(mapAction.screenId, MAP_SCREEN_ID);
 assert.equal(mapAction.screenId, 'galaxyMap');
 assert.equal(mapAction.focus, MAP_FOCUS.GALAXY);
-assert.equal(mapAction.label, `Star Map (${BINDINGS.starmap.label})`);
+assert.equal(mapAction.label, `Chart (${BINDINGS.starmap.label})`);
 assert.equal(mapAction.commitment, 'inter-system');
 assert.match(mapAction.hint, /inter-system route/);
 assert.match(mapAction.hint, /Meridian/);

@@ -191,8 +191,7 @@ export function registrarOfferSpec(state, opts = {}) {
     headline: 'COUNTERWEIGHT CIRCUIT',
     detail: view.attempt?.armed
       ? `Attempt live — ${view.attempt.title} (${(view.attempt.elapsedS ?? 0).toFixed(1)}s)`
-      : `Seven physical events. ${view.completedCount}/7 complete.\n${lines.join('\n')}`,
-    statusFlag: view.attempt?.armed ? 'running' : 'idle',
+      : `${view.completedCount} of ${view.menu.length} courses completed.\n${lines.join('\n')}`,
     choices: view.attempt
       ? [
           ...(!view.attempt.practice ? [{ id: 'practiceContinue', label: 'Continue as practice · forfeit payout' }] : []),
@@ -244,12 +243,19 @@ export function eventPreviewSpec(state, eventId, opts = {}) {
 
 export function recordsOfferSpec(state, opts = {}) {
   const view = projectCounterweightCircuitView(state, opts);
+  const records = row(state)?.records;
   const lines = view.records.map((r) => {
+    if (!r.completed && r.bestTimeS == null && r.lastTimeS == null) return `${r.title} · No finish yet`;
     const medal = r.bestMedal ? MEDAL_LABEL[r.bestMedal] : (r.completed ? MEDAL_LABEL.none : '—');
     const best = r.bestTimeS != null ? `${r.bestTimeS.toFixed(1)}s` : '—';
     const last = r.lastTimeS != null ? `${r.lastTimeS.toFixed(1)}s ${MEDAL_LABEL[r.lastMedal] || ''}` : '—';
-    const paid = r.paid ? `+${r.rewardCr} CR` : r.completed ? 'payment pending' : '';
-    return `${r.title}: ${medal} · best ${best} · last ${last} ${paid}`;
+    const record = records?.[r.id];
+    const practice = record?.lastResult?.outcome === 'complete' && record.lastResult.practice;
+    const pending = record?.pendingReward;
+    const pendingHere = pending?.eventId === r.id && record.lastAttemptKey === `${r.id}:${pending.attemptId}`;
+    const reward = r.paid ? `+${r.rewardCr} CR first payout` : pendingHere ? 'payment pending' : '';
+    return [`${r.title}: ${medal} · best ${best} · last ${last}`, practice ? 'practice finish' : '', reward]
+      .filter(Boolean).join(' · ');
   });
   return {
     id: 'counterweight:records',
@@ -257,7 +263,6 @@ export function recordsOfferSpec(state, opts = {}) {
     sender: 'Circuit Registrar',
     headline: 'COUNTERWEIGHT RECORDS',
     detail: lines.join('\n') || 'No attempts on file.',
-    statusFlag: 'records',
     choices: [{ id: 'menu', label: 'Back' }, { id: 'close', label: 'Leave' }],
   };
 }
@@ -320,7 +325,7 @@ export function resultOfferSpec(result, opts = {}) {
     detail,
     statusFlag: result.outcome === 'complete' ? 'success' : 'notice',
     choices: [...(canReview ? [{ id: `preview:${result.eventId}`, label: 'Review this course' }] : []),
-      { id: 'events', label: 'Course list' }, { id: 'close', label: 'Leave' }],
+      ...(opts.canReview ? [{ id: 'events', label: 'Course list' }] : []), { id: 'close', label: 'Leave' }],
   };
 }
 

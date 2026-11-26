@@ -14,11 +14,13 @@ import { createTimeEffects } from './timeEffects.js';
 import { resetFreshRunSystems } from './runReset.js';
 import { makeShipEntitySpec } from '../systems/ships.js';
 import { NEW_GAME, resolveNewGameStarter } from '../data/newGameDefaults.js';
+import { SWARM_RULESET } from '../data/swarmMode.js';
 import { applyRacingLoadout } from '../data/racingLoadouts.js';
 import { configureRacingCorridorSession, isRacingCorridorSession } from '../world/racingCorridor.js';
 import { defaultShipAppearance } from './shipAppearance.js';
 import { mark47aPlayerActor, spawn47aOpeningScene } from '../data/scenarios/47aLiveScene.js';
 import { promoteAsteroidFieldRock } from '../world/asteroidField.js';
+import { markFieldRockAtRest } from '../systems/spawnClearance.js';
 import { NOCTURNE_LAYOUTS, NOCTURNE_LIGHT_PROFILES } from '../data/nocturneLighting.js';
 import { GameStartReadinessError } from './newGameStartTransition.js';
 import { shouldGrantKeepsake } from './newGamePlus.js';
@@ -35,32 +37,77 @@ export async function runBootstrapScene(state, helpers, bus, registry, options =
     team: 0, factionId: 'faction_free', isPlayer: true, player: state.player, fittings,
     appearance: owned && owned.appearance,
     livingHull: owned && owned.livingHull,
+    legacyWeaponFallback: !options.swarmBoot,
     pos: { x: 0, z: 0 },
   });
   const player = helpers.spawnEntity(playerSpec);
   state.playerId = player.id;
-  if (!racingSession) mark47aPlayerActor(player);
+  if (!racingSession && !options.swarmBoot) mark47aPlayerActor(player);
   state.player.credits = NEW_GAME.credits || 5000;
   const ships = registry.get('ships');
   if (ships && typeof ships.recomputeActiveShip === 'function') ships.recomputeActiveShip();
 
-  // World owns sector contents: it spawns stations, asteroid fields, enemies, and POIs from data.
-  const world = registry.get('world');
+  // Swarm enters its backdrop in the prepared arena setup, after runSession owns the run.
+  // Campaign bootstrap would materialize Helios and its neighbors before that handoff.
+  const world = options.swarmBoot ? null : registry.get('world');
   if (world && typeof world.enterSector === 'function') {
     world.enterSector(NEW_GAME.startingSectorId || NEW_GAME.startSectorId || 'sector_helios_prime');
-  } else {
+    if (!state.physicsVenueSession && !racingSession) seatOpeningPilot(state, world, player);
+  } else if (!options.swarmBoot) {
     // fallback: a single station + asteroid ring so the build is still playable
     helpers.spawnEntity({ type: 'station', factionId: 'faction_scn', pos: { x: 280, z: -140 }, radius: 42, mass: 1e6, hull: 1e6, hullMax: 1e6, data: { stationId: 'station_helios', dockRadius: 72, services: ['market', 'shipyard', 'missions'] } });
-    for (let i = 0; i < 12; i++) { const a = (Math.PI * 2 * i) / 12; const r = 360 + state.rng() * 200; helpers.spawnEntity({ type: 'asteroid', pos: { x: Math.cos(a) * r, z: Math.sin(a) * r }, radius: 12, mass: 500, hull: 240, hullMax: 240, data: { typeId: 'ast_rock', oreHP: 240, oreHPMax: 240 } }); }
+    for (let i = 0; i < 12; i++) { const a = (Math.PI * 2 * i) / 12; const r = 360 + state.rng() * 200; markFieldRockAtRest(helpers.spawnEntity({ type: 'asteroid', pos: { x: Math.cos(a) * r, z: Math.sin(a) * r }, radius: 12, mass: 500, hull: 240, hullMax: 240, data: { typeId: 'ast_rock', oreHP: 240, oreHPMax: 240 } }), { simTime: state.simTime }); }
   }
   // Split the two heaviest scene-build halves so the 'preparing' stage gets a paint between
   // world regen and opening composition instead of one frozen monolith.
   if (typeof options.yield === 'function') await options.yield();
-  if (!state.physicsVenueSession && !racingSession) {
+  if (!state.physicsVenueSession && !racingSession && !options.swarmBoot) {
     const scene = spawn47aOpeningScene({ state, helpers, liveColdStartSafe: true });
     light47aOpeningLandmarks(scene);
-    drift47aOpeningTowardMark(state, player, helpers);
+    wake47aMarkedBoulder(state, helpers);
+    // FIRST HOUR (2026-11-21): no scripted drift. R23 — the ship moves for the player's input,
+    // physics the player can see, or a moment the player started; the opening is calm and the
+    // first move is the player's own (the dock, or anything they choose to fly to).
   }
+}
+
+// FIRST HOUR (world lead, 2026-11-21; director ruling + R16): a new Adventure game opens in sight of
+// the harbour. The pilot is seated at rest on the start sector's authored opening seat (Helios
+// Station ~340 WU ahead, up-screen), and the camera is asked for one establishing shot: it opens
+// pulled back far enough to show the harbour, then eases in to the ship (render/trailerStaging.js
+// consumes `state.nav.openingEstablishing` once, through the camera gate as cause `establishing`).
+// The flight camera shows ~95 WU ahead at rest (measured 2026-11-21); ×5 shows the station's ~350.
+export const OPENING_ESTABLISHING = Object.freeze({ zoom: 4.5, seconds: 3, holdS: 1.8 });
+export function seatOpeningPilot(state, world, player) {
+  if (!state || !world || !player || !player.pos) return false;
+  const sectorId = state.world && state.world.currentSectorId;
+  const sector = sectorId && state.world.sectors && state.world.sectors[sectorId];
+  const seat = sector && sector.openingSeat;
+  if (!seat || !Number.isFinite(seat.x) || !Number.isFinite(seat.z)) return false;
+  const origin = typeof world._sectorOrigin === 'function' ? world._sectorOrigin(sectorId) : { x: 0, z: 0 };
+  const entry = { x: origin.x + seat.x, z: origin.z + seat.z, heading: Number.isFinite(seat.heading) ? seat.heading : 0 };
+  if (typeof world.relocatePlayerInSector === 'function') world.relocatePlayerInSector(entry, { reason: 'opening_seat' });
+  else { player.pos.x = entry.x; player.pos.z = entry.z; }
+  if (player.vel) { player.vel.x = 0; player.vel.z = 0; }
+  player.angVel = 0;
+  // Rides state.nav: a whole-root mirror, so the presenting thread sees it in the worker lane too.
+  state.nav = state.nav || {};
+  state.nav.openingEstablishing = { sectorId, atSimTime: Number(state.simTime) || 0,
+    zoom: OPENING_ESTABLISHING.zoom, seconds: OPENING_ESTABLISHING.seconds, holdS: OPENING_ESTABLISHING.holdS };
+  return true;
+}
+
+// The 47-A contract is bound to the authored rim boulder (its marked rock): wake that shelf row so
+// it is a live, lit body the contract and its recovery marker can name from the first frame.
+export function wake47aMarkedBoulder(state, helpers) {
+  const field = state && state.world && state.world.asteroidField;
+  if (!field || !field.byId || !helpers) return null;
+  for (const row of field.byId.values()) {
+    if (row && row.alive !== false && row.data && row.data.authoredBoulderId === 'helios_boulder_rim') {
+      return promoteAsteroidFieldRock(state, row.id, helpers, '47a-opening');
+    }
+  }
+  return null;
 }
 
 // OPENING-1b (design/game/20 beat 1): the ship is already drifting toward the marked rock when the
@@ -230,7 +277,9 @@ export async function runNewGameSimBoot({
   await nextPaint();
   if (!isCurrent()) return { aborted: true };
 
+  const swarmBoot = opts?.crucibleLaunch === true && opts.crucibleSetup?.survivalRuleset === SWARM_RULESET;
   const resetCompleted = resetFreshRunSystems(registry, {
+    swarmBoot,
     afterEach: name => {
       if (!isCurrent()) return false;
       // Register the fresh sector objects before Adventure missions seed their opening.
@@ -246,10 +295,11 @@ export async function runNewGameSimBoot({
   if (!isCurrent()) return { aborted: true };
 
   const ships = registry.get('ships');
+  const swarmHullId = swarmBoot ? opts.crucibleSetup.survivalSetup?.hullId : null;
   if (ships && typeof ships.newGame === 'function') {
-    ships.newGame();
+    ships.newGame({ unfittedHullId: swarmHullId });
   } else {
-    state.player.ownedShips = [{ defId: NEW_GAME.shipId || 'ship_kestrel', fittings: [] }];
+    state.player.ownedShips = [{ defId: swarmHullId || NEW_GAME.shipId || 'ship_kestrel', fittings: [] }];
     state.player.activeShipIndex = 0;
     state.player.moduleInventory = [];
     state.player.researchedNodes = (NEW_GAME.researchedNodes || []).slice();
@@ -261,7 +311,7 @@ export async function runNewGameSimBoot({
   // installs the legacy NEW_GAME ship, so the pick rewrites the active owned ship here,
   // before the scene bootstrap spawns the player entity. Absent/unknown ids keep the legacy
   // defaults byte-for-byte; nothing about the pick is saved as a class or lock.
-  applyStarterPick(state, ships, opts);
+  if (!swarmHullId) applyStarterPick(state, ships, opts);
   applyRacingLoadout(state, ships, opts);
   if (!isCurrent()) return { aborted: true };
   // Single-frame breath: a committed paint is reserved for the boundary just
@@ -304,7 +354,7 @@ export async function runNewGameSimBoot({
 
   // Create the canonical player and starting sector before readiness waits. This gives the
   // renderer real entity boundaries to upgrade while the route remains frozen in loading.
-  await runBootstrapScene(state, helpers, bus, registry, { yield: () => nextFrameTick() });
+  await runBootstrapScene(state, helpers, bus, registry, { yield: () => nextFrameTick(), swarmBoot });
   if (!isCurrent()) return { aborted: true };
   // Run-specific loadouts and arena placement must exist before visual/GPU admission.
   // Installing them on game:started prepares the wrong hull, then replaces it in flight.
@@ -425,6 +475,9 @@ export function resetRunState(state, opts = {}) {
   state.world.enterSerial = state.enterSerialSeq;
   resetRunUiState(state, fresh.ui);
   state.save = fresh.save;
+  // The ironman latch is run-scoped but lives in session settings: a new game may still
+  // choose it. It re-stamps itself once the new run accrues playtime.
+  if (state.settings && state.settings.gameplay) delete state.settings.gameplay.ironmanChoiceLocked;
 }
 
 // The ui reset step of resetRunState — exported separately because the main

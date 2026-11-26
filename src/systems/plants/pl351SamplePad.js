@@ -83,6 +83,7 @@ export function owesDanger(mislabelUntil, hullKey, now) {
 }
 
 export const pl351SamplePad = {
+  modes: ['flight'],
   name: 'plantsPl351',
 
   init(ctx) {

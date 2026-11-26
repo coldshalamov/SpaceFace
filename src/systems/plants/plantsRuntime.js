@@ -13,6 +13,8 @@
 import { afterHoursCoachPlant } from './afterHoursCoach.js';
 import { anselsDishPlant } from './anselsDish.js';
 import { isRacingCorridorSession } from '../../world/racingCorridor.js';
+import { isSwarmRuleset } from '../survivalSwarm.js';
+import { getSimStepProfiler, nowNs } from '../../core/simStepProfiler.js';
 import { badMagnetPlant } from './badMagnetPlant.js';
 import { borrowedBoostPlant } from './borrowedBoost.js';
 import { borrowedLadderPlant } from './borrowedLadder.js';
@@ -450,9 +452,13 @@ function safeRun(name, fn) {
     fn();
     return true;
   } catch (err) {
-    if (typeof console !== 'undefined' && console.error) console.error('[plants] ' + name + ' lifecycle failed:', err);
+    reportPlantFailure(name, err);
     return false;
   }
+}
+
+function reportPlantFailure(name, err) {
+  if (typeof console !== 'undefined' && console.error) console.error('[plants] ' + name + ' lifecycle failed:', err);
 }
 
 export const plantsRuntime = {
@@ -466,6 +472,7 @@ export const plantsRuntime = {
     const plantBus = Object.create(ctx.bus);
     plantBus.on = (event, listener, options) => ctx.bus.on(event, RESET_EVENTS.has(event) ? listener : (payload) => {
       if (!isRacingCorridorSession(ctx.state)) return listener(payload);
+      return undefined;
     }, options);
     const plantContext = { ...ctx, bus: plantBus };
     for (const plant of PLANTS) {
@@ -475,13 +482,48 @@ export const plantsRuntime = {
         this._boundPlants.push(plant);
       }
     }
+    this._initBoundPlants = this._boundPlants;
+    this._updatablePlants = this._boundPlants.filter(p => typeof p.update === 'function');
+    // Per-door update lists (SIM-RATE-TIERS-BREADTH batch D): each plant declares `modes`
+    // read from its own guard — 'swarm' plants check a live survival-ruleset run, the rest
+    // are Adventure flight vignettes. A plant with no declaration stays on the flight list,
+    // matching its `mode !== 'flight'` early return; only a declared 'swarm' entry is
+    // walked during a Swarm run, so campaign vignettes cost nothing there.
+    this._plantsByDoor = { flight: [], swarm: [] };
+    for (const p of this._updatablePlants) {
+      const modes = p.modes;
+      if (Array.isArray(modes) && modes.includes('swarm') && !modes.includes('flight')) {
+        this._plantsByDoor.swarm.push(p);
+      } else {
+        this._plantsByDoor.flight.push(p);
+      }
+    }
   },
   update(dt, state) {
     if (!ownsContext(this) || state !== this._ctx.state) return;
     if (isRacingCorridorSession(state)) return;
-    for (const plant of this._boundPlants) {
+    // Only plants that have an update are walked (most are event-only), and only the list
+    // for the live door: a survival-ruleset run walks 'swarm', everything else 'flight'.
+    const door = state.run && state.run.kind === 'survival' && isSwarmRuleset(state.run.ruleset)
+      ? 'swarm' : 'flight';
+    const plants = this._boundPlants === this._initBoundPlants
+      ? this._plantsByDoor[door]
+      : this._boundPlants;
+    const prof = getSimStepProfiler();
+    const profActive = prof.active;
+    for (let i = 0; i < plants.length; i++) {
+      const plant = plants[i];
       if (typeof plant.update !== 'function') continue;
-      safeRun(plant.name, () => plant.update(dt, state));
+      // The ordered tick can reach every child. Isolate failures at the call so a
+      // routine update does not allocate a callback for each plant.
+      const t0 = profActive ? nowNs() : 0;
+      try {
+        plant.update(dt, state);
+        // Per-plant attribution (no-freeze world speed): only while the profiler is armed.
+        if (profActive) prof.record(`plants.${plant.name || i}`, nowNs() - t0);
+      } catch (err) {
+        reportPlantFailure(plant.name, err);
+      }
     }
   },
   destroy() {
@@ -492,6 +534,8 @@ export const plantsRuntime = {
       CHILD_OWNERS.delete(plant);
     }
     this._boundPlants = [];
+    this._initBoundPlants = null;
+    this._updatablePlants = null;
     this._ctx = null;
   },
 };

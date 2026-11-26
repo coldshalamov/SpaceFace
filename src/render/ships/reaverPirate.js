@@ -60,25 +60,27 @@ export function buildReaverPirate(entity) {
   const rustMat = kit.standardMaterial(COLOR.rust, 0.92, 0.06); rustMat.name = 'Reaver_Rust';
   const graphiteMat = kit.machineryMaterial(COLOR.graphite, 0.6, 0.66); graphiteMat.name = 'Reaver_Graphite';
   const gunmetalMat = kit.machineryMaterial(COLOR.gunmetal, 0.5, 0.72); gunmetalMat.name = 'Reaver_Gunmetal';
-  const tagGlowMat = kit.emissiveMaterial(COLOR.tag, 1.6); tagGlowMat.name = 'Reaver_TagGlow';
+  const tagGlowMat = kit.shadedSignal(COLOR.tag, 0.62); tagGlowMat.name = 'Reaver_TagGlow';
 
   // ---- stolen civilian drifter hull: a LOFTED multirole fuselage, PITCHED (altered posture, §8.5) ----
   // The base hull is symmetric, but we tilt the whole assembly nose-up + a slight roll to read as
   // "repurposed." A lofted shell reads as a real stolen civilian hull, not a crate of boxes.
   const baseGroup = new THREE.Group(); baseGroup.name = 'Reaver_BaseHull'; baseGroup.rotation.z = 0.06; hull.add(baseGroup);
-  const pressureHull = kit.addMesh(baseGroup, kit.loftXGeometry([
+  const REAVER_SECTIONS = [
     { x: -8.5,  halfY: 0.9,  halfZ: 1.8 },
     { x: -3.0,  halfY: 1.5,  halfZ: 2.3 },
     { x: 3.0,   halfY: 1.55, halfZ: 2.4 },
     { x: 8.0,   halfY: 1.2,  halfZ: 1.9 },
     { x: 12.5,  halfY: 0.3,  halfZ: 0.4 },
-  ], 10), hullMat, 'Reaver_Pressure_Hull');
+  ];
+  const pressureHull = kit.addMesh(baseGroup, kit.loftXGeometry(REAVER_SECTIONS, 10), hullMat, 'Reaver_Pressure_Hull');
   pressureHull.castShadow = true;
 
   // ---- mismatched repair panel (strong local damage + replacement, §8.5) ----
   // One quadrant of the hull is a visibly different-color replacement panel — reads as battle damage
   // repaired with whatever was available. Kept separate so its name survives the merge.
-  const repairPanel = kit.addBox(baseGroup, patchMat, 'Reaver_Repair_Panel', [5.0, 2.6, 0.2], [2.0, 0.4, 2.4]);
+  const repairSec = kit.sectionAt(REAVER_SECTIONS, 2.0);
+  const repairPanel = kit.addBox(baseGroup, patchMat, 'Reaver_Repair_Panel', [3.2, Math.min(1.35, repairSec.halfY * 1.1), 0.08], [2.0, 0.15, repairSec.halfZ - 0.05]);
   repairPanel.castShadow = true;
   repairPanel.userData.keepSeparate = true;
 
@@ -94,10 +96,11 @@ export function buildReaverPirate(entity) {
   kit.addTorusX(cannon, gunmetalMat, 'Reaver_Cannon_Muzzle', 0.62, 0.08, [6.2, 0.8, 0], 8, 12);
   kit.addTorusX(cannon, gunmetalMat, 'Reaver_Cannon_Ring1', 0.66, 0.05, [4.2, 0.8, 0], 8, 10);
   hull.add(cannon);
-  cannon.position.set(0, 0, 2.6); // off-center on the starboard quarter
+  cannon.position.set(1.2, 0.15, 1.85); // planted on the starboard flank, barrel still clear of the hull
 
   // vestigial port cargo door (the other side wasn't weaponized) — a named secondary part shed at critical
-  const cargoDoor = kit.addBox(baseGroup, patchMat, 'Reaver_CargoDoor_Port', [3.0, 2.0, 0.3], [1.0, 0.2, -2.4]);
+  const doorSec = kit.sectionAt(REAVER_SECTIONS, 1.0);
+  const cargoDoor = kit.addBox(baseGroup, patchMat, 'Reaver_CargoDoor_Port', [2.2, Math.min(1.15, doorSec.halfY), 0.08], [1.0, 0.05, -(doorSec.halfZ - 0.05)]);
   cargoDoor.castShadow = true;
   cargoDoor.userData.keepSeparate = true;
   cargoDoor.userData.damageRole = 'secondary';
@@ -106,8 +109,9 @@ export function buildReaverPirate(entity) {
   // Bent, not groomed. Kept separate so both Reaver_Radiator_* names survive the merge.
   const radiators = [];
   for (const side of [-1, 1]) {
-    const fin = kit.addBox(hull, rustMat, `Reaver_Radiator_${side < 0 ? 'Port' : 'Starboard'}`, [4.0, 0.2, 2.4], [-3.0, 0.6, side * 3.6]);
-    fin.rotation.x = side * 0.18; // bent — not groomed
+    const finSec = kit.sectionAt(REAVER_SECTIONS, -3.0);
+    const fin = kit.addBox(baseGroup, rustMat, `Reaver_Radiator_${side < 0 ? 'Port' : 'Starboard'}`, [2.6, 0.08, 1.15], [-3.0, finSec.halfY * 0.35, side * (finSec.halfZ + 0.15)]);
+    fin.rotation.z = side * -0.12;
     fin.castShadow = true;
     fin.userData.keepSeparate = true;
     radiators.push(fin);
@@ -117,18 +121,22 @@ export function buildReaverPirate(entity) {
   // Crimson spray tag + kill tallies (style 'punk'). Kept separate so the LOD reaction drops it at
   // distance and so its Reaver_Decal_Tag name survives the merge.
   const tagDecalMat = kit.noseArtMaterial({ style: 'punk', accent: COLOR.tag, seed: seed + 11, tally: 7 });
-  const tagDecal = kit.addDecal(hull, tagDecalMat, 'Reaver_Decal_Tag', [5.0, 2.5], [1.0, 1.4, 2.31], [0, Math.PI, 0]);
+  const tagSec = kit.sectionAt(REAVER_SECTIONS, 2.4);
+  const tagDecal = kit.addDecal(hull, tagDecalMat, 'Reaver_Decal_Tag', [2.2, Math.min(1.05, tagSec.halfY * 0.85)], [2.4, 0.2, tagSec.halfZ - 0.04], [0, 0, 0]);
 
   // ---- hot unstable drive: a single oversized crude nozzle (hot emission, §8.5) ----
   // Oversaturated red-orange, flickering (the flicker flag destabilizes the plume + fan cadence).
   const drive = kit.buildDrive(hull, {
-    name: 'Reaver_Drive', position: [-8.6, 0.3, 0], radius: 1.15, length: 1.6,
+    name: 'Reaver_Drive', position: [-8.95, 0.15, 0], radius: 0.78, length: 1.05,
     materials: { dark: graphiteMat, accent: tagGlowMat },
     driveColor: COLOR.drive, coreColor: COLOR.driveCore, driveGlowOpacity: 0.62, flicker: true,
   });
 
   // ---- a dim red nav strobe on the spine (the one maintained light — they need it to dock) ----
-  const navLight = kit.addBox(hull, tagGlowMat, 'Reaver_Nav_Strobe', [0.3, 0.14, 0.14], [0.5, 1.8, 0]);
+  // Its damage animation must not dim the drive accent and other tag-colored details.
+  const navMat = kit.emissiveMaterial(COLOR.tag, 1.05); navMat.name = 'Reaver_Nav_Strobe_Material';
+  const navSec = kit.sectionAt(REAVER_SECTIONS, 0.5);
+  const navLight = kit.addBox(hull, navMat, 'Reaver_Nav_Strobe', [0.16, 0.06, 0.06], [0.5, navSec.halfY * 0.9, 0]);
   navLight.userData.damageRole = 'navLight';
   navLight.userData.keepSeparate = true;
   const navLightBase = [navLight.material.emissiveIntensity];
@@ -140,7 +148,7 @@ export function buildReaverPirate(entity) {
   });
 
   // ---- sockets ----
-  kit.addSocket(hull, 'SOCKET_Weapon_Front', [13.0, 0.8, 2.6], 'weapon'); // the off-center cannon muzzle
+  kit.addSocket(hull, 'SOCKET_Weapon_Front', [11.2, 0.95, 1.85], 'weapon'); // the off-center cannon muzzle
   kit.addSocket(hull, 'SOCKET_Engine_Main', [-8.6, 0.3, 0], 'engine', [-1, 0, 0]);
   kit.addSocket(hull, 'SOCKET_Trail_Main', [-8.9, 0.3, 0], 'vfx', [-1, 0, 0]);
   kit.addSocket(hull, 'SOCKET_Camera_Focus', [0, 0.4, 0], 'camera');

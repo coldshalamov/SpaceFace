@@ -64,6 +64,13 @@ Examples:
 - For quantities, a bar and figure, stepper, arc, dial, or plain value can fit depending on precision,
   interaction, and available space. For choices, use a list, ring, menu, or another control that makes
   the options and selection clear.
+- **Selection is the Hand, everywhere.** A chosen row carries the amber bead + beam on its tick rail
+  (the `rail()` grammar in `src/ui/orrery/stationTabsLayouts.js`; hover is the lean-in tick). Do not
+  add a parallel selection language — no amber bars, bone cursors, or per-tab idioms. One grammar
+  across every tab is what separates a suite from a folder of screens.
+- **Scrolling lists say "more".** An overflowing list dissolves its last rows in a deep fold and
+  carries the `MORE ▾` rim cue from `scrollExtent.js`; the cue stands down at scroll end. A thin
+  silent fade reads as broken clipping, not as an affordance.
 
 ## 5. Buttons — states and hierarchy
 
@@ -94,6 +101,14 @@ min target 28 px high).
 - Amber can emphasize a selected or primary action; red can mark threat or loss; cool phosphor can
   distinguish live readings. Apply color semantics consistently, with other accents where the screen
   needs them.
+- **State numbers speak their color**: market deltas read phosphor on the way up and red on the way
+  down; empty/threatened vitals read red via the `data-tone` system; locked rungs read lamp-dim
+  ("idle hardware"). Grey-on-grey state is a defect.
+- **Key prompts are `dp-kbd` hairline chips** (the consoleStandard §2 voice: mono, dark fill, bone
+  hairline). Underlined words read as web hyperlinks, not keys; a destructive verb is a hazard key
+  (bone at rest with a red rule, red flood on intent), never an underlined link.
+- **Popups dim what sits under them** with a non-interactive scrim, so live HUD text never slices
+  through their edges.
 
 ## 7. Review prompts for concrete defects
 

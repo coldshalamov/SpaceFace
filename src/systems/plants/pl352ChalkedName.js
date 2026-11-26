@@ -89,6 +89,7 @@ export function isNominee(nomineeUntil, hullKey, now) {
 }
 
 export const pl352ChalkedName = {
+  modes: ['flight'],
   name: 'plantsPl352',
 
   init(ctx) {

@@ -279,7 +279,7 @@ test('globalToScreen -> screenToGlobal round-trips to identity', () => {
   }
 });
 
-test('the projection is north-up, minor-axis, and centered on the viewport rect', () => {
+test('the projection matches the flight camera (east left, north up), minor-axis, and centered on the viewport rect', () => {
   const cam = createMapCamera({ focusGlobal: TETHYS, spanWU: 1000 });
 
   // The focus lands dead center of the viewport rect, offset included.
@@ -287,11 +287,13 @@ test('the projection is north-up, minor-axis, and centered on the viewport rect'
   assertClosePx(center.x, INSET.x + INSET.width / 2, 'focus not at viewport center x');
   assertClosePx(center.y, INSET.y + INSET.height / 2, 'focus not at viewport center y');
 
-  // +x global goes right, +z global goes down.
+  // The chart shows the world as the flight camera does (minimap, chart and 3D view agree,
+  // measured live 2026-11-20): +x global (east) goes LEFT, +z global (north) goes UP.
+  const mid = globalToScreen(cam, TETHYS, SQUARE);
   const east = globalToScreen(cam, { x: TETHYS.x + 100, z: TETHYS.z }, SQUARE);
-  const south = globalToScreen(cam, { x: TETHYS.x, z: TETHYS.z + 100 }, SQUARE);
-  assert.ok(east.x > center.x - INSET.x, '+x must project right');
-  assert.ok(south.y > 500, '+z must project down');
+  const north = globalToScreen(cam, { x: TETHYS.x, z: TETHYS.z + 100 }, SQUARE);
+  assert.ok(east.x < mid.x, '+x (east) must project left, as on the flight camera');
+  assert.ok(north.y < mid.y, '+z (north) must project up, as on the flight camera');
 
   // span is the MINOR axis extent: a 1600x900 viewport shows spanWU across its 900px height.
   assert.equal(pixelsPerWU(cam, WIDE), 900 / 1000);

@@ -122,8 +122,12 @@ for (const kind of ['custodian', 'mason']) {
       assert.notEqual(entity.data.machine, native.data.machine, 'work flags cross a cloned boundary');
       let mesh = buildMachineMesh(entity);
       const lampName = kind === 'custodian' ? 'cust_tip' : 'msn_weld';
+      // updateAuthoredMotion's second arg is the authored ABSOLUTE clock (render.js passes
+      // state.simTime), not a delta — a constant freezes the deploy ease at its last value.
+      let motionClock = 0;
       const intensity = () => {
-        mesh.userData.updateAuthoredMotion(entity, 1, {}, state);
+        motionClock += 1;
+        mesh.userData.updateAuthoredMotion(entity, motionClock, {}, state);
         return mesh.getObjectByName(lampName).material.emissiveIntensity;
       };
       assert.ok(intensity() <= 0.35, 'a newly transported idle machine has a quiet work light');

@@ -76,7 +76,7 @@ const SCENES = [
   }),
   scene({
     id: 'ferro-anchor-cut',
-    title: 'Cut the massline and the crane takes the crate',
+    title: 'Cut the line and the crane takes the crate',
     kind: 'playable',
     crosses: ['machinery', 'massline'],
     families: ['ferromagnetic'],
@@ -131,7 +131,7 @@ const SCENES = [
   }),
   scene({
     id: 'brittle-tow',
-    title: 'Keep the massline; a cryo spar fracture retargets onto the surviving lug',
+    title: 'Keep the line; a cryo spar fracture retargets onto the surviving lug',
     kind: 'playable',
     crosses: ['massline', 'traffic'],
     families: ['brittle'],
@@ -305,7 +305,7 @@ const SCENES = [
   }),
   scene({
     id: 'massline-elastic-snap',
-    title: 'A massline reel stores impulse in an elastic pod and the cut gives it back',
+    title: 'A line reel stores impulse in an elastic pod and the cut gives it back',
     kind: 'playable',
     crosses: ['massline'],
     families: ['elastic'],

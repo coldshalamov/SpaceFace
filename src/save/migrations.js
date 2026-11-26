@@ -11,6 +11,9 @@ import { migrateSurveyCustody } from '../data/surveyCartography.js';
 import { sectorGlobalOrigin } from '../data/sectorCoordinates.js';
 import { UNIQUE_WRECK_STATE_SCHEMA_VERSION } from '../data/uniqueWrecks.js';
 import { COORDINATE_SCHEMA } from '../core/coordinates.js';
+import { CARGO_SLOTS, packItemsIntoSlots, slotCountForCargoCap } from '../data/cargoSlots.js';
+import { COMMODITIES } from '../data/commodities.js';
+import { PERSISTENT_CARGO } from '../data/narrative.js';
 import {
   createEmptyRecordsBag,
   normalizeRecordsBag,
@@ -20,6 +23,8 @@ import {
   normalizeResourceBodyBag,
 } from '../world/resourceBodyRecords.js';
 
+import { normalizeAdventurePilot } from '../data/pilotAdventure.js';
+import { builderSkillsCovering } from '../data/pilotWork.js';
 export { CURRENT_VERSION } from '../data/saveVersion.js';
 
 function finiteXZ(value) {
@@ -437,7 +442,101 @@ export const MIGRATIONS = [
       }
     },
   },
+  {
+    from: 23,
+    to: 24,
+    // CARGO-BUILD-1 (R22, 06 §5.5): the hold becomes a slot bag. Every flat {items} map packs
+    // greedily into stacks, commodity by commodity in sorted-id order — ordinary 20/slot,
+    // bulky (volPerU > 1.2) 10/slot, never-stack goods one slot each. Whatever does not fit the
+    // derived slot count stays aboard as the over-cap tail (nothing is created or lost; new
+    // adds refuse until it drains). Re-runnable: a record already carrying slots is untouched.
+    fn(data) {
+      if (!data || typeof data !== 'object' || Array.isArray(data)) return;
+      const upsFor = (id) => {
+        if (PERSISTENT_STACK_IDS.has(id)) return 1;
+        const stack = MIGRATION_STACK_BY_ID.get(id);
+        return stack === 1 || stack === CARGO_SLOTS.stackBulky || stack === CARGO_SLOTS.stackOrdinary
+          ? stack
+          : CARGO_SLOTS.stackOrdinary;
+      };
+      const packHold = (hold, capVolume) => {
+        if (!hold || typeof hold !== 'object' || Array.isArray(hold)) return;
+        if (!Array.isArray(hold.slots)) {
+          hold.slots = packItemsIntoSlots(hold.items || {}, upsFor);
+        }
+        if (!Number.isFinite(hold.slotCount) || hold.slotCount <= 0) {
+          hold.slotCount = slotCountForCargoCap(capVolume);
+        }
+      };
+      packHold(data.cargo, data.cargo && data.cargo.capVolume);
+      const bay = data.cargo && data.cargo.salvageBay;
+      if (bay && typeof bay === 'object' && !Array.isArray(bay)) {
+        if (!Array.isArray(bay.slots)) bay.slots = packItemsIntoSlots(bay.items || {}, upsFor);
+        // The bay bound derives from its volume cap through the same slot law
+        // (5× the hold's capacity, floored — see SALVAGE_BAY in systems/cargo.js).
+        bay.slotCount = slotCountForCargoCap(Math.max(600, (Number(data.cargo && data.cargo.capVolume) || 0) * 5));
+      }
+      // Holds parked aboard the pilot's other hulls pack the same way; they are uncapped
+      // stores, so every unit stays aboard exactly where it was.
+      const ownedShips = data.player && Array.isArray(data.player.ownedShips) ? data.player.ownedShips : [];
+      for (const owned of ownedShips) {
+        const hold = owned && owned.cargo;
+        if (hold && typeof hold === 'object' && !Array.isArray(hold) && !Array.isArray(hold.slots)) {
+          hold.slots = packItemsIntoSlots(hold.items || {}, upsFor);
+        }
+      }
+    },
+  },
+  {
+    from: 24,
+    to: 25,
+    // PORT-PRO-FIVE: five physical expeditions (TOWJAW, SWITCHBACK, BLACKBOX RUNS,
+    // GLASSWAKE, Kinetic Catalysts) join the envelope. Pre-v25 saves never had them —
+    // seed absent keys the way the pro-experience owners landed at v21.
+    fn(data) {
+      if (!data || typeof data !== 'object' || Array.isArray(data)) return;
+      for (const key of ['towjaw', 'derelictExpedition', 'convoyRaid', 'stormChase', 'kineticCatalysts']) {
+        if (!Object.hasOwn(data, key)) data[key] = null;
+      }
+    },
+  },
+  {
+    from: 25,
+    to: 26,
+    // The Adventure Pilot Tree (progression lead 2026-11-20): XP, level, points and skills ride
+    // player.pilot. Saves before v26 never earned any, so the key stays absent (the owner creates it
+    // on the first XP); a record that is present is normalized to the v26 shape.
+    // Building gates the advanced claim machines from v26: every Building skill covering a machine
+    // kind the save has already built is granted free, so nobody's board shrinks on load.
+    fn(data) {
+      if (!data || typeof data !== 'object' || Array.isArray(data)) return;
+      const player = data.player;
+      if (!player || typeof player !== 'object') return;
+      if (Object.hasOwn(player, 'pilot') && player.pilot == null) delete player.pilot;
+      const built = [];
+      const byId = data.sites && data.sites.byId;
+      if (byId && typeof byId === 'object') {
+        for (const site of Object.values(byId)) {
+          for (const m of (site && Array.isArray(site.machines) ? site.machines : [])) if (m && typeof m.defId === 'string') built.push(m.defId);
+        }
+      }
+      const grant = builderSkillsCovering(built);
+      if (!grant.length && !Object.hasOwn(player, 'pilot')) return;
+      const pilot = normalizeAdventurePilot(player.pilot);
+      for (const id of grant) {
+        if (pilot.nodes.includes(id)) continue;
+        pilot.nodes.push(id);
+        pilot.granted.push(id);
+        pilot.points.builder = (pilot.points.builder || 0) + 1;
+      }
+      player.pilot = normalizeAdventurePilot(pilot);
+    },
+  },
 ];
+
+// v23→v24 lookup: authored stack size per static commodity; persistent story items stack 1.
+const MIGRATION_STACK_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c.stack]));
+const PERSISTENT_STACK_IDS = new Set(PERSISTENT_CARGO.map((c) => c.id));
 
 /**
  * v10 → v11: seed world.records; strip runtime-only residency/frame smuggled keys from world overlay.

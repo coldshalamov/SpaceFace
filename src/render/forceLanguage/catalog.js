@@ -44,10 +44,15 @@ export const FORCE_FAMILIES = freeze({
 });
 
 export const FIELD_SIGNATURES = freeze({
-  seed: { lifecycle: FIELD_LIFECYCLES.seed, family: 'metric', name: 'Seed / frame lock', shape: 'unequal open anchor roots with late cross-load bridges', motion: 'staggered jaw engagement → independent ratchets → separate, unload and cool', mode: 'constraint', color: 0x54e5ed, accent: 0xffc36c, surfaces: 12 },
-  well: { lifecycle: FIELD_LIFECYCLES.well, family: 'metric', name: 'Well', shape: 'unequal inward channels around an empty throat', motion: 'outer intake arrives → differential shear and mature counterflow → supply stops and remaining material drains', mode: 'inward', color: 0x58bdff, accent: 0xb9a2ff, surfaces: 19 },
-  repulsor: { lifecycle: FIELD_LIFECYCLES.repulsor, family: 'metric', name: 'Repulsor', shape: 'separated bowed pressure crests and splayed ribs', motion: 'fronts arrive independently → outward crests buckle at contacts → coast, peel and cool', mode: 'outward', color: 0xffb766, accent: 0xffe1a4, surfaces: 23 },
-  cone: { lifecycle: FIELD_LIFECYCLES.cone, family: 'metric', name: 'Cone', shape: 'diverging banks with bowed transverse fronts', motion: 'source-to-tip arrival → unequal forward transport and countercurrents → cutoff overtakes remaining material', mode: 'forward', color: 0x54e5ed, accent: 0xb7f5ff, surfaces: 14 },
+  seed: { lifecycle: FIELD_LIFECYCLES.seed, family: 'metric', name: 'Seed / frame lock', shape: 'unequal open anchor roots with late cross-load bridges', motion: 'staggered jaw engagement → independent ratchets → separate, unload and cool', mode: 'constraint', color: 0x54e5ed, accent: 0xffc36c, surfaces: 0 },
+  well: { lifecycle: FIELD_LIFECYCLES.well, family: 'metric', name: 'Well', shape: 'unequal inward channels around an empty throat', motion: 'outer intake arrives → differential shear and mature counterflow → supply stops and remaining material drains', mode: 'inward', color: 0x58bdff, accent: 0xb9a2ff,
+    // Pull is drawn by the VFX kit (vfx/kit/powerFx.js); no folded surfaces of its own.
+    surfaces: 0 },
+  repulsor: { lifecycle: FIELD_LIFECYCLES.repulsor, family: 'metric', name: 'Repulsor', shape: 'separated bowed pressure crests and splayed ribs', motion: 'fronts arrive independently → outward crests buckle at contacts → coast, peel and cool', mode: 'outward', color: 0xffb766, accent: 0xffe1a4,
+    // Shove's repulsor is drawn by the VFX kit (vfx/kit/powerFx.js): no folded surfaces of its own.
+    // Hull-burst saucers that borrow this recipe still draw 23.
+    surfaces: 0, burstSurfaces: 23 },
+  cone: { lifecycle: FIELD_LIFECYCLES.cone, family: 'metric', name: 'Cone', shape: 'diverging banks with bowed transverse fronts', motion: 'source-to-tip arrival → unequal forward transport and countercurrents → cutoff overtakes remaining material', mode: 'forward', color: 0x54e5ed, accent: 0xb7f5ff, surfaces: 0 },
   sheet: { lifecycle: FIELD_LIFECYCLES.sheet, family: 'metric', name: 'Skim', shape: 'parallel intake banks and inward-facing scoops', motion: 'staggered intake → unequal strokes and delayed return eddies → shed downstream and dissipate', mode: 'collect', color: 0x79f0c8, accent: 0xd9ffe0, surfaces: 18 },
 });
 

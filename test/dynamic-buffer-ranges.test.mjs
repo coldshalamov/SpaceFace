@@ -1181,13 +1181,12 @@ test('active field-device geometry publishes each visible instance prefix', () =
     simTime: 2,
     settings: { video: {}, accessibility: {} },
     fields: {
+      // Skim fields: the folded-surface presenter's remaining tool (the five powers are drawn by
+      // the VFX kit). Three of them exercise the same ranged publication.
       active: [
-        { id: 'well', kind: 'well', center: { x: 0, z: 0 }, radius: 24, engaged: true },
-        { id: 'repulsor', kind: 'repulsor', center: { x: 80, z: 0 }, radius: 28, engaged: true },
-        {
-          id: 'cone', kind: 'cone', center: { x: -80, z: 0 }, radius: 36, engaged: true,
-          dir: { x: 1, z: 0 }, halfAngleRad: 0.5,
-        },
+        { id: 'skim-a', kind: 'sheet', center: { x: 0, z: 0 }, radius: 24, engaged: true, dir: { x: 1, z: 0 }, halfWidth: 20 },
+        { id: 'skim-b', kind: 'sheet', center: { x: 80, z: 0 }, radius: 28, engaged: true, dir: { x: 1, z: 0 }, halfWidth: 20 },
+        { id: 'skim-c', kind: 'sheet', center: { x: -80, z: 0 }, radius: 36, engaged: true, dir: { x: 1, z: 0 }, halfWidth: 20 },
       ],
     },
   };
@@ -1210,8 +1209,8 @@ test('active field-device geometry publishes each visible instance prefix', () =
   assert.equal(batch.owner.diagnostics.requestedUploadBytes, 0);
 
   fixture._updateFieldGeometry(1 / 60);
-  assert.equal(batch.count, 56, 'three active fields publish their full surface recipe');
-  assert.equal(batch.mesh.count, 56);
+  assert.equal(batch.count, 54, 'three active fields publish their full surface recipe');
+  assert.equal(batch.mesh.count, 54);
 
   // The first processing-eligible traversal force-publishes each complete initialized attribute.
   epoch = coordinator.arm();

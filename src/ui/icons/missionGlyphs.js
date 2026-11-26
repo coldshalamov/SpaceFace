@@ -22,6 +22,8 @@ export const MISSION_TYPE_GLYPHS = Object.freeze({
   bulk_trade: `<rect x="4.5" y="5" width="8" height="6" ${STROKE}/><rect x="4.5" y="13" width="8" height="6" ${STROKE}/><path ${STROKE} d="M16.8 6.5v11M14.9 8.4l1.9-1.9 1.9 1.9M14.9 15.6l1.9 1.9 1.9-1.9" opacity="0.85"/>`,
   // a target: ring, pip, four register ticks
   bounty_hunt: `<circle cx="12" cy="12" r="6.8" ${STROKE}/><circle cx="12" cy="12" r="1.4" ${STROKE}/><path ${STROKE} d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6" opacity="0.85"/>`,
+  // a derrick over a cut-away rock: work done inside it
+  works_contract: `<path ${STROKE} d="M3.5 13.5h17v6h-17z"/><path ${STROKE} d="M12 13.5V4.5M9 13.5l3-9 3 9M10.2 9.8h3.6" opacity="0.9"/><path ${STROKE} d="M12 13.5v3.2h4" opacity="0.8"/>`,
   // a drill stroke into rock
   mining_quota: `<path ${STROKE} d="M4 17 6 11l5-2.2 4.5 2.4 1.5 5.8Z"/><path ${STROKE} d="M20.5 4 12 12.5M17.6 4h2.9v2.9" opacity="0.9"/>`,
   // a recovery hook over a plate

@@ -31,6 +31,7 @@ export const SCREEN_LOADERS = Object.freeze([
   { load: () => import('../../src/ui/screens/gameOver.js'), name: 'gameOverScreen' },
   { load: () => import('../../src/ui/screens/crucibleDraft.js'), name: 'crucibleDraftScreen' },
   { load: () => import('../../src/ui/screens/crucibleDraft.js'), name: 'crucibleRefitScreen' },
+  { load: () => import('../../src/ui/pilotCards.js'), name: 'pilotCardsScreen' },
   { load: () => import('../../src/ui/screens/crucible.js'), name: 'crucibleScreen' },
   { load: () => import('../../src/ui/screens/crucible.js'), name: 'crucibleResultsScreen' },
   { load: () => import('../../src/ui/screens/settings.js'), name: 'settingsScreen' },

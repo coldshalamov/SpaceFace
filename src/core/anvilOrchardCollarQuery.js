@@ -527,6 +527,17 @@ export const ORCHARD_PUBLIC_MUTATORS = Object.freeze({
     'setRadius','setRoundRadius','setHalfHeight','setVoxel','propagateVoxelChange','combineVoxelStates']),
 });
 const observedObjects=new WeakMap(),mutatorInstallations=new WeakMap(),worldGates=new WeakMap();
+let activeObservedCount=0,activeWorldGateCount=0;
+function invokeOriginal(original,self,args){
+  switch(args.length){
+    case 0:return original.call(self);
+    case 1:return original.call(self,args[0]);
+    case 2:return original.call(self,args[0],args[1]);
+    case 3:return original.call(self,args[0],args[1],args[2]);
+    case 4:return original.call(self,args[0],args[1],args[2],args[3]);
+    default:return Reflect.apply(original,self,args);
+  }
+}
 /** Bootstrap-only observation. The default loader calls this before publishing its runtime.
  * Original receiver, arguments, return and exception flow are preserved. Unregistered objects
  * have no observer, and no observer runs user callbacks. Private raw-WASM writes are unsupported. */
@@ -544,18 +555,26 @@ export function installOrchardMutationObservation(R) {
     for(const row of rows) {
       const original=row.descriptor.value;
       const isWorld=row.className==='World';
-      const wrapper=function() {
-        const gate=isWorld && worldGates.get(this);
+      const wrapper=isWorld ? function() {
+        const gate=activeWorldGateCount>0 ? worldGates.get(this) : null;
         if(gate?.active && gate.enabled) {
           if(gate.phase==='solve' && gate.permit)gate.permit=false;
           else if(gate.phase==='idle')gate.serial++;
           else {gate.serial++;return undefined;}
         }
+        if(activeObservedCount===0)return invokeOriginal(original,this,arguments);
         const observer=observedObjects.get(this);
-        // Unobserved receivers (the per-tick bulk of body writes) take the bare call.
-        if(!observer?.active)return Reflect.apply(original,this,arguments);
+        if(!observer?.active)return invokeOriginal(original,this,arguments);
         observer.serial++;
-        try{return Reflect.apply(original,this,arguments);}
+        try{return invokeOriginal(original,this,arguments);}
+        finally{if(observer.active)observer.serial++;}
+      } : function() {
+        // Unobserved receivers (the per-tick bulk of body writes) take the bare call without Map lookup or Reflect.apply.
+        if(activeObservedCount===0)return invokeOriginal(original,this,arguments);
+        const observer=observedObjects.get(this);
+        if(!observer?.active)return invokeOriginal(original,this,arguments);
+        observer.serial++;
+        try{return invokeOriginal(original,this,arguments);}
         finally{if(observer.active)observer.serial++;}
       };
       Object.defineProperty(wrapper,'name',{value:original.name,configurable:true});
@@ -575,9 +594,10 @@ export function observeOrchardNativeObjects(lane,objects) {
   if(!lane?.observationEnabled || !lane.verify() || !Array.isArray(objects) || !objects.length || objects.some(object=>observedObjects.has(object)))return null;
   const state={active:true,serial:0},members=[...objects];
   for(const object of members)observedObjects.set(object,state);
+  activeObservedCount++;
   return Object.freeze({
     serial:()=>state.active?state.serial:null,
-    retire(){if(!state.active)return false;state.active=false;for(const object of members)if(observedObjects.get(object)===state)observedObjects.delete(object);return true;},
+    retire(){if(!state.active)return false;state.active=false;activeObservedCount--;for(const object of members)if(observedObjects.get(object)===state)observedObjects.delete(object);return true;},
   });
 }
 
@@ -587,11 +607,11 @@ export function observeOrchardWorld(lane) {
  if(!lane?.observationEnabled || !lane.verify() || worldGates.has(lane.world))return null;
  const gate={active:true,enabled:false,phase:'idle',permit:false,serial:0};worldGates.set(lane.world,gate);
  return Object.freeze({
-  enable(value=true){if(gate.active)gate.enabled=value===true;},
+  enable(value=true){if(gate.active){const next=value===true;if(next!==gate.enabled){gate.enabled=next;activeWorldGateCount+=next?1:-1;}}},
   phase(value){if(gate.active){gate.phase=value;gate.permit=false;}},
   permit(){if(!gate.active || gate.phase!=='solve')return false;gate.permit=true;return true;},
   serial:()=>gate.serial,
-  retire(){if(!gate.active)return false;gate.active=false;if(worldGates.get(lane.world)===gate)worldGates.delete(lane.world);return true;},
+  retire(){if(!gate.active)return false;if(gate.enabled){gate.enabled=false;activeWorldGateCount--;}gate.active=false;if(worldGates.get(lane.world)===gate)worldGates.delete(lane.world);return true;},
  });
 }
 

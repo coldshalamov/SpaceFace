@@ -32,6 +32,7 @@ import { hash32, mulberry32 } from '../core/rng.js';
 import { planGateScene, WING_MAX } from '../data/gateControl.js';
 import { isHostileToPlayer } from './scanner.js';
 import { makeShipEntitySpec } from './ships.js';
+import { findClearSpawnPoint } from './spawnClearance.js';
 import { indexedShipLikeScan } from '../world/livingWorldViews.js';
 
 const DAY_SECONDS = 600;
@@ -183,6 +184,17 @@ export const gateControlDirector = {
             pos: { x: base.x + Math.cos(ang) * r, z: base.z + Math.sin(ang) * r },
             ai: { archetype: 'passive', passive: true },
           });
+          // R11: the ring draw never checked live bodies — walk the shared bounded retry
+          // through the wing stream; an exhausted walk counts as a shortfall, not a stack.
+          const seat = findClearSpawnPoint(state, {
+            x: spec.pos.x, z: spec.pos.z,
+            radius: Number.isFinite(spec.radius) ? spec.radius : 10,
+            vel: spec.vel || null,
+            rng: stream,
+          });
+          if (!seat) continue;
+          spec.pos.x = seat.x;
+          spec.pos.z = seat.z;
           const ent = spawnEntity(spec);
           if (ent && ent.id != null) {
             ent.data = ent.data || {};
@@ -221,6 +233,11 @@ export const gateControlDirector = {
   _onEntityDestroyed(p) {
     const id = p && p.id;
     if (id == null) return;
+    // entity:destroyed queues after the map delete: a scene-spawned hull that recycled
+    // this id owns its slot row — drop the dead occupant's stale receipt.
+    const live = this.state && this.state.entities && this.state.entities.get
+      ? this.state.entities.get(id) : null;
+    if (p.entity && live && live !== p.entity) return;
     const g = ensureState(this.state);
     const scene = g.scene;
     if (!scene || !scene.entityIds.length) return;

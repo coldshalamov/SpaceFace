@@ -22,6 +22,8 @@ test('flight instruments retain their text nodes when the reading changes', asyn
       dial.update({ speed: 43, ref: 180 });
       const speed = { retained: numeral.firstChild === firstSpeedNode, text: numeral.textContent };
       const state = window.__BENCH_STATE;
+      state.nav.waypoint.sectorId = state.world.currentSectorId;
+      state.nav.waypoint.sectorName = 'Host Sector';
       const radar = createRadar({ state, bus: window.__BENCH_BUS });
       document.body.appendChild(radar.el);
       radar.draw();
@@ -38,6 +40,7 @@ test('flight instruments retain their text nodes when the reading changes', asyn
     });
     assert.equal(result.speed.text, '43');
     assert.equal(result.objective.changed, true, 'the real radar follows the changed waypoint');
+    assert.match(result.objective.text, /SECOND BEACON/, 'a named local fix wins on the visible radar key');
     assert.deepEqual([result.speed.retained, result.objective.retained], [true, true]);
   } finally {
     await browser.close();

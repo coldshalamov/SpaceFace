@@ -78,6 +78,7 @@ function boardDocument() {
   const make = (tag) => {
     const node = doc._make(tag);
     node.nodeType = 1;
+    node.ownerDocument = doc;
     node.replaceChildren = (...children) => {
       for (const old of node.children) old.parentNode = null; // detached, as in a real DOM
       node.children.length = 0; node.append(...children);
@@ -499,7 +500,7 @@ test('seed 4242: a launch that goes leaves focus alone (no grab onto the rebuilt
 });
 
 // Last in the file: rememberRacingResult is module state with no clear.
-test('seed 4242: a Retry that does not go puts focus back on the fresh Retry, not START', async () => {
+test('seed 4242: Retry keeps the Time Trial format and restores focus after a refused arm', async () => {
   const restoreScreen = saveScreen();
   rememberRacingResult({ racingContractId: 'practice_level_textile_outbound', raceElapsedS: 61.5,
     raceMode: 'time-trial', status: 'dnf', raceLapTimesS: [30, 31.5] });
@@ -507,7 +508,7 @@ test('seed 4242: a Retry that does not go puts focus back on the fresh Retry, no
   const descriptors = [];
   let deferred = null;
   installSimCommandSink((descriptor) => { descriptors.push(descriptor); return deferred ? deferred.promise : null; });
-  const b = mountBoard(h.ctx, { storage: memoryStorage() });
+  const b = mountBoard(h.ctx, { fit: { ...FIT, raceMode: 'race' }, storage: memoryStorage() });
   trackFocus(b);
   const retryButton = (root) => findButtons(root).find((btn) => btn.textContent === 'Retry in this flight');
   try {
@@ -520,6 +521,9 @@ test('seed 4242: a Retry that does not go puts focus back on the fresh Retry, no
     await flush();
     assert.equal(descriptors.length, 1);
     assert.equal(descriptors[0].op, 'racingArm');
+    assert.equal(descriptors[0].args.offer.params.racingContractId, 'practice_level_textile_outbound');
+    assert.equal(descriptors[0].args.offer.params.raceMode, 'time-trial');
+    assert.equal(descriptors[0].args.offer.params.raceOpponents, 0);
     resolve({ ok: false });
     await flush();
     const fresh = retryButton(b.root);

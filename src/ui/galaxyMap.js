@@ -1,4 +1,5 @@
 import { getCinderglassJobMapMarkers } from '../features/cinderglassJob/integration.js';
+import { worksObjectiveLine } from '../data/worksContractWords.js';
 import { getSalvageTenderMapMarkers, filterSalvageTenderMapContacts } from '../features/salvageTender/readModel.js';
 import { crackerRunWorkLoadRead, isCrackerRunWorkLoad } from './crackerRunGuidance.js';
 import { commodityDisplayName } from './commodityNames.js';
@@ -9,10 +10,15 @@ import { navigationFrameHtml } from './views/navigationFrame.js';
 import { CSS } from './views/navigationStyles.js';
 import { bindMapMarkup, MAP_CONTROLS, mapControlAttrs, mapControlLabel } from './map/mapControlMap.js';
 import { MAP_WORKBENCH_CSS } from './map/mapWorkbenchCss.js';
+import { chartContactRead } from './map/contactVisibility.js';
+import { createAtlasRelief } from './map/atlasRelief.js';
+import { createRockFieldPainter } from './map/rockFieldRegion.js';
+import { sectorTradeRead } from './map/chartTradeRead.js';
+import { CONTACT_JOB_PALETTE, TACTICAL_MAP_PALETTE, classifyContactRole, drawRoleGlyph, isBossContact } from './map/tacticalMapGrammar.js';
 import { injectChartLayouts } from './orrery/chartLayouts.js';
 import {
   CHART_INK, chartFont, setTracking, drawBand, drawBandRing, drawBead, drawHandBeam, drawLaneComet,
-  drawGlint, drawSensorLattice, drawSectorToken, drawLineReading, drawHoldRing, retrySectorTokens,
+  drawGlint, drawSectorToken, drawLineReading, drawHoldRing, retrySectorTokens,
   createZoomLever, createTabScale, drawFactionCrest, drawLineReadingLarge, drawPathPulse,
   sectorTokenUrl, factionCrestUrl, drawLabelLeader, trimPolylineSegments,
 } from './orrery/chartInstruments.js';
@@ -45,10 +51,11 @@ import { SECTORS } from '../data/sectors.js';
 import { lanternWardCradleApproach } from '../data/lanternWardNavigation.js';
 import { glyphForStationType } from '../data/stationGlyphs.js';
 import { gateTollFor } from '../data/travelChoices.js';
+import { estimatedFine, onboardIllicitCargo } from '../economy/customsRisk.js';
 import { wreckEcologyMarkers } from './wreckEcologyMarkers.js';
 import { chartMarkSizes } from '../data/modelTruth.js';
 import { asteroidScanGlyph } from '../data/mining.js';
-import { drawGlyph } from './glyphs.js';
+import { drawGlyph, glyphSvg } from './glyphs.js';
 import { COMMODITIES } from '../data/commodities.js';
 import { FACTION_META } from '../data/factions.js';
 import { BODY_SPECIALIZATION_BY_ID } from '../data/claimableBodies.js';
@@ -65,8 +72,10 @@ import { PLANET_SITE, anvilOrchardFramePosition } from '../data/planets.js';
 import {
   auditEdgeKey,
   gateAuditCatalogEntry,
+  gateTransitClosed,
   tideBand,
 } from '../data/worldPressure.js';
+import { activeDriveForState, routeEdgeDist, ROUTE_BASE_FUEL } from '../systems/routePlanner.js';
 import { MAP_FOCUS, takeMapOpenIntent, normalizeMapFocus, setMapOpen } from './mapAuthority.js';
 import { enhanceSelects, dataStateHtml } from './uiPrimitives.js';
 import { dpIcon, injectDeckplate } from './deckplate/index.js';
@@ -80,7 +89,7 @@ import { canNavigateToKnowledge, discoveryKnowledge, selectionKnowledgeLine } fr
 import {
   careersTabAvailability, careersTabHtml, careersOverviewLineHtml,
 } from './map/careersReadout.js';
-import { resolveWaypointPresentationPosition, resolveContract47aRecoveryTarget } from './navigationWaypoint.js';
+import { resolveWaypointPresentationEntity, resolveWaypointPresentationPosition, resolveContract47aRecoveryTarget } from './navigationWaypoint.js';
 import { sectorLawProfile } from './securityReadout.js';
 import { causeFor } from './causeLedger.js';
 import { uniqueWreckMapReadouts } from './uniqueWreckMapLayer.js';
@@ -91,6 +100,7 @@ import { pallasHiddenCacheMapReadouts, pallasHiddenCacheMapTarget } from './pall
 import { worldSiteMapMarkers } from './worldSiteMapLayer.js';
 import { getCounterweightCircuitMapMarkers } from '../features/counterweightCircuit/readModel.js';
 import { getBreakwaterSpurMapMarkers } from '../features/breakwaterSpur/readModel.js';
+import { getSwitchbackMapMarkers } from '../features/convoyRaid/mapMarkers.js';
 import { ceresArrivalChartTarget, ceresArrivalMapTarget } from '../story/ceresArrivalStory.js';
 import { orrinWitnessMapTarget } from '../data/orrinWitnessCase.js';
 import { sectorExplorationProgress } from '../world/explorationJournal.js';
@@ -98,6 +108,7 @@ import { chartFilingBounty, normalizeChartFiling } from '../data/surveyCharts.js
 import { mapFactionPresenceNodes } from '../data/factionPresence.js';
 import { sectorSignalFor, forecastTransitFor } from '../systems/sectorSim.js';
 import { isHostileToPlayer } from '../systems/scanner.js';
+import { kesslerScaleWaypoint } from '../systems/kesslerScaleWorksite.js';
 import { conflictPairsForSector, CONTESTED_SECTOR_BY_PAIR } from '../data/conflictZones.js';
 import { isPlayerWanted, heatLevelFor, heatClearSecondsForLevel } from '../systems/heat.js';
 import { regionalEcologyReadout } from '../systems/regionalEcology.js';
@@ -126,6 +137,7 @@ import {
   cameraLevel,
   pixelsPerWU,
   screenToGlobal,
+  MAP_SCREEN_AXIS,
   framePreset,
   MAP_PRESET_SPAN_WU,
   MAP_SPAN_MIN_WU,
@@ -700,6 +712,12 @@ export function localMapWaypointPosition(state, waypoint) {
   const sector = mapWaypointSector(state, waypoint);
   const current = currentSectorId(state);
   if (sector && current && sector !== current) return null;
+  const target = waypoint.stable ? resolveEntitySelection(state, waypoint.stable)
+    : resolveWaypointPresentationEntity(state, waypoint);
+  if ((target?.type === 'ship' || target?.type === 'drone')
+    && !chartContactRead(state, playerEntity(state)).sees(target)) {
+    return Number.isFinite(waypoint.pos?.x) && Number.isFinite(waypoint.pos?.z) ? waypoint.pos : null;
+  }
   return resolveWaypointPresentationPosition(state, waypoint);
 }
 
@@ -709,7 +727,7 @@ export function activeMapGoal(state) {
   const wpSector = mapWaypointSector(state, wp);
   const wpPos = wpSector && currentSectorId(state) && wpSector !== currentSectorId(state)
     ? (wp?.pos && Number.isFinite(wp.pos.x) && Number.isFinite(wp.pos.z) ? wp.pos : null)
-    : resolveWaypointPresentationPosition(state, wp);
+    : localMapWaypointPosition(state, wp);
   const trackedId = state.ui && state.ui.trackedMissionId;
   const active = (state.missions && state.missions.active) || [];
   const tracked = trackedId ? active.find((m) => m && m.status === 'active' && m.id === trackedId) : null;
@@ -733,7 +751,7 @@ export function activeMapGoal(state) {
       (wp && (wp.label || wp.sectorName || wp.reason))
       || (tracked && (tracked.title || tracked.name))
       || 'Plotted course',
-    ).replace(/\s+/g, ' ').trim(),
+    ).replace(/\s+\d+(?:\.\d+)?\s*(?:wu|u)\b/gi, '').replace(/\s+/g, ' ').trim(),
   };
 }
 
@@ -923,6 +941,19 @@ export function resolveMapOpenTarget(state, intent) {
         const midSector = mission.destSectorId || (mission.params && mission.params.sectorId) || null;
         if (midSector != null) sectorId = String(midSector);
       }
+    }
+  }
+
+  if (!missionId && !stationId && intent.selectionTarget === 'active-waypoint'
+      && normalizeMapFocus(intent.focus) === MAP_FOCUS.LOCAL) {
+    const scale = kesslerScaleWaypoint(state);
+    const waypoint = state?.nav?.waypoint;
+    if (scale && sectorId === scale.sectorId && currentSectorId(state) === scale.sectorId
+        && waypoint?.sectorId === scale.sectorId && waypoint.kind === 'story'
+        && waypoint.storyBeat === scale.storyBeat && waypoint.label === scale.label
+        && waypoint.pos?.x === scale.pos.x && waypoint.pos?.z === scale.pos.z
+        && intent.pos?.x === scale.pos.x && intent.pos?.z === scale.pos.z) {
+      return waypointClickTarget(waypoint, scale.pos, 0, 0, state);
     }
   }
 
@@ -1212,6 +1243,16 @@ function attachJumpToll(state, action) {
   return action;
 }
 
+/** Expected exposure before the jump owner rolls a departure scan. */
+export function resolveChartCustomsWarning(state) {
+  const exposed = [...onboardIllicitCargo(state).values()];
+  if (!exposed.length) return '';
+  const units = exposed.reduce((sum, stack) => sum + stack.qty, 0);
+  const fine = estimatedFine(exposed);
+  const fineLine = fine > 0 ? ` and fine you ${fine.toLocaleString('en-US')} cr` : '';
+  return `Customs may seize ${counted(units, 'unit', 'units')}${fineLine}. Check Cargo before jumping.`;
+}
+
 /** One line under the jump verb. The verb label itself stays the pinned words. */
 function paintJumpToll(btn, primary) {
   if (!btn || typeof document === 'undefined' || typeof btn.insertAdjacentElement !== 'function') return;
@@ -1454,12 +1495,12 @@ export function describeClaimMapMarker(body = {}, ledger = null, liveEntity = nu
   const pieces = [];
   if (specId === 'spec_refinery') {
     const stores = ledger && ledger.stores || {};
-    pieces.push(`${whole(stores.inputU)}/${whole(stores.inputCapU)}u ore`);
-    pieces.push(`${whole(stores.outputU)}/${whole(stores.outputCapU)}u ready`);
+    pieces.push(`${whole(stores.inputU)}/${whole(stores.inputCapU)} units ore`);
+    pieces.push(`${whole(stores.outputU)}/${whole(stores.outputCapU)} units ready`);
     if (ledger && ledger.throughput) pieces.push(`${Number(ledger.throughput.refineRatePerS || 0).toFixed(1)} ore/s`);
   } else if (specId === 'spec_relay') {
     const stores = ledger && ledger.stores || {};
-    pieces.push(`${whole(stores.inputU)}/${whole(stores.inputCapU)}u freight`);
+    pieces.push(`${whole(stores.inputU)}/${whole(stores.inputCapU)} units freight`);
     pieces.push(ledger && ledger.convoy ? `convoy ${whole(ledger.convoy.etaS)}s` : 'convoy standing by');
     pieces.push(`${whole(ledger && ledger.flows && ledger.flows.soldTotalCr)} cr sold`);
   } else if (specId === 'spec_bastion') {
@@ -2207,7 +2248,7 @@ export function systemZoneTarget(zone, sectorId, playerPos = null) {
   const approach = isAnvil ? planetaryApproach(pos, playerPos) : null;
   return { kind: 'zone', id: zone.id, sectorId, x: pos.x, z: pos.z,
     drawPos: { x: zone.x, z: zone.z }, radius: zone.radius, name: zone.name,
-    factionId: zone.factionId, threat: zone.threat,
+    factionId: zone.factionId, threat: zone.threat, chartNote: zone.reason,
     // Generic zone arrival stops inside Anvil's atmosphere. The authored planet has a
     // separate perimeter fix; an unrecognized planetary zone remains inspection-only.
     ...(isAnvil && approach ? { coursePos: approach, courseArrivalRadius: 80,
@@ -2235,6 +2276,17 @@ function cinderglassChartTargets(state, sectorId) {
 function counterweightChartTargets(state, sectorId) {
   return getCounterweightCircuitMapMarkers(state, sectorId).map(marker => ({
     id: marker.id, kind: 'poi', poiType: 'circuit', name: marker.label,
+    x: marker.pos.x, z: marker.pos.z,
+    drawPos: globalToSectorLocalForSector(marker.pos, sectorId), sectorId,
+    entityId: null, named: true, searchText: marker.label,
+  }));
+}
+
+// PORT-PRO-FIVE expeditions: fixed departure/site anchors drawn like the sibling
+// circuit sites, so a pilot can set a course to each before the proximity offer fires.
+function switchbackChartTargets(state, sectorId) {
+  return getSwitchbackMapMarkers(state, sectorId).map(marker => ({
+    id: marker.id, kind: 'poi', poiType: 'convoy_raid', name: marker.label,
     x: marker.pos.x, z: marker.pos.z,
     drawPos: globalToSectorLocalForSector(marker.pos, sectorId), sectorId,
     entityId: null, named: true, searchText: marker.label,
@@ -2423,7 +2475,7 @@ export function buildSystemModel(state, sectorId, options = {}) {
   }
   const ceresArrival = ceresArrivalChartTarget(state, sid);
   if (ceresArrival) points.push(ceresArrival);
-  points.push(...breakwaterChartTargets(state, sid), ...counterweightChartTargets(state, sid), ...cinderglassChartTargets(state, sid));
+  points.push(...breakwaterChartTargets(state, sid), ...counterweightChartTargets(state, sid), ...cinderglassChartTargets(state, sid), ...switchbackChartTargets(state, sid));
   // Orrin's accepted original resolves through the ordinary station target/click/course path.
   // The case reader deliberately supplies no nav state; this only gives the existing Customs
   // Gate point a persistent reason to be selected after the one-shot referral intent is gone.
@@ -2494,6 +2546,7 @@ export function buildLocalModel(state, isHostile, options = {}) {
   const contacts = [];
   const hostileFn = typeof isHostile === 'function' ? isHostile : null;
   const playerTeam = player && player.team;
+  const sensors = options.sensors || chartContactRead(state, player);
   visitLocalChartContacts(state, (e) => {
     if (!e || e.alive === false || !e.pos) return;
     if (player && e.id === player.id) return;
@@ -2504,6 +2557,7 @@ export function buildLocalModel(state, isHostile, options = {}) {
       && !(kind === 'payload' && explicitWorldSite) && !workLoad) return;
     let hostile = false;
     if (kind === 'ship' || kind === 'drone') {
+      if (!sensors.sees(e)) return;
       hostile = hostileFn ? !!hostileFn(e, playerTeam, state) : !!(e.data && e.data.hostile);
     }
     const mapKind = e.type === 'station' && e.data && e.data.isGate
@@ -2600,7 +2654,7 @@ export function buildLocalModel(state, isHostile, options = {}) {
     sectorId,
     player: player ? { id: player.id, x: player.pos.x, z: player.pos.z, rot: player.rot || 0 } : null,
     contacts: filterSalvageTenderMapContacts(state, contacts),
-    circuitSites: [...breakwaterChartTargets(state, sectorId), ...counterweightChartTargets(state, sectorId), ...cinderglassChartTargets(state, sectorId)],
+    circuitSites: [...breakwaterChartTargets(state, sectorId), ...counterweightChartTargets(state, sectorId), ...cinderglassChartTargets(state, sectorId), ...switchbackChartTargets(state, sectorId)],
     ownership: buildClaimOwnershipMarkers(state, sectorId, options.claimsSystem || null),
     bearings: discoveryBearingReadouts(state, sectorId),
     rumorCorroborations: frontierRumorCorroborations(state, sectorId),
@@ -2803,6 +2857,33 @@ export function commitCoursePayload(state, target) {
     const liveId = resolveCourseEntityId(state, target);
     if (liveId == null) delete payload.targetEntityId;
     else { payload.targetEntityId = liveId; payload.stable = target.stable; }
+  }
+  const waypoint = state?.nav?.waypoint;
+  if (payload?.pos && target?.kind === 'waypoint' && target.objective === true
+      && waypoint?.kind === 'mission' && target.missionId === waypoint.missionId
+      && state.ui?.trackedMissionId === waypoint.missionId
+      && (!waypoint.sectorId || waypoint.sectorId === currentSectorId(state))) {
+    const sameBody = waypoint.stable && payload.stable && payload.targetEntityId != null
+      && resolveEntitySelection(state, waypoint.stable)?.id === payload.targetEntityId;
+    const sameFix = !waypoint.stable && waypoint.targetEntityId == null && payload.targetEntityId == null
+      && payload.pos.x === waypoint.pos?.x && payload.pos.z === waypoint.pos?.z;
+    if (sameBody || sameFix) {
+      payload.waypointKind = 'mission';
+      payload.missionId = waypoint.missionId;
+    }
+  }
+  if (payload?.pos && target?.kind === 'waypoint' && target.objective === true
+      && waypoint?.kind === 'story' && waypoint.storyBeat === 1
+      && (target.id === 'active-map-goal' || target.id === 'active-waypoint')) {
+    const scale = kesslerScaleWaypoint(state);
+    if (scale && scale.sectorId === currentSectorId(state)
+        && waypoint.label === scale.label
+        && target.name === (target.id === 'active-waypoint' ? waypointMapLabel(waypoint) : scale.label)
+        && payload.pos.x === scale.pos.x && payload.pos.z === scale.pos.z
+        && payload.pos.x === waypoint.pos?.x && payload.pos.z === waypoint.pos?.z) {
+      Object.assign(payload, { waypointKind: 'story', storyBeat: scale.storyBeat,
+        label: scale.label, reason: scale.reason });
+    }
   }
   if (payload && target?.recoverySource) {
     payload.missionId = target.missionId;
@@ -3156,6 +3237,12 @@ export function resolveRouteEngageAction(state) {
     const total = executorLegCount(executor);
     const where = leg && total ? ` (leg ${leg}/${total})` : '';
     if (status === 'interrupted') {
+      const planned = nav.route?.legs?.[executor.legIndex];
+      const interrupted = executor.legs?.[executor.legIndex];
+      const sameLeg = planned && interrupted && planned.from === interrupted.fromSectorId
+        && planned.to === interrupted.toSectorId && planned.travelVia === interrupted.via;
+      const fuelBlock = driveFuelBlock(state, sameLeg ? planned : nav.route?.legs?.[0]);
+      if (fuelBlock) return { ...hidden, visible: true, label: mapControlLabel('resume'), reason: fuelBlock };
       const why = executor && executor.interruptReason
         ? ` — ${String(executor.interruptReason).replace(/[-_]+/g, ' ')}`
         : '';
@@ -3181,8 +3268,10 @@ export function resolveRouteEngageAction(state) {
         payload: { targetSectorId: dest.sectorId, mode: 'fuel' },
       };
     }
-    return { visible: true, enabled: false, label: mapControlLabel('engage'), reason: 'Click a destination on the chart, then Plot Course', event: null };
+    return { visible: true, enabled: false, label: mapControlLabel('engage'), reason: 'Plot a route to a distant sector to engage it here.', event: null };
   }
+  const fuelBlock = driveFuelBlock(state, nav.route.legs?.[0]);
+  if (fuelBlock) return { ...hidden, visible: true, reason: fuelBlock };
   const legs = routeLegCount(nav.route);
   return {
     visible: true,
@@ -3191,6 +3280,28 @@ export function resolveRouteEngageAction(state) {
     reason: legs ? `${counted(legs, 'leg', 'legs')} plotted — ready to fly` : 'Route plotted — ready to fly',
     event: 'nav:engageRoute',
   };
+}
+
+function driveFuelBlock(state, leg) {
+  const aboard = state.fuel?.current;
+  if (leg?.travelVia !== 'drive' || !Number.isFinite(leg.fuel) || !Number.isFinite(aboard)) return null;
+  const sectors = state.world?.sectors;
+  const from = sectors?.[leg.from] || SECTOR_BY_ID.get(leg.from);
+  const to = sectors?.[leg.to] || SECTOR_BY_ID.get(leg.to);
+  const tier = playerEntity(state)?.data?.derived?.jumpDriveTier;
+  const drive = tier ? activeDriveForState(state, tier) : null;
+  // A pilot may refit after plotting. The active drive and edge match the jump owner's quote;
+  // if the fit is absent from this view, keep the saved planner's quote.
+  const needed = drive && from && to
+    ? Math.ceil(ROUTE_BASE_FUEL * routeEdgeDist(from, to) * drive.tierFuelMult)
+    : leg.fuel;
+  if (aboard >= needed) return null;
+  const destination = sectorNameOf(state, leg.to);
+  const toll = jumpTollCr(state, leg.to);
+  const openGate = state.world?.currentSectorId === leg.from && from?.gates?.some(gate => gate?.to === leg.to)
+    && !gateTransitClosed(state, leg.from, leg.to) && (toll === 0 || state.player?.credits >= toll);
+  const next = openGate ? `Refuel or use Gate → ${destination}${toll ? ` (${toll} cr toll)` : ''}.` : 'Refuel before engaging.';
+  return `Drive leg to ${destination} needs ${needed} fuel (${Math.max(0, Math.floor(aboard))} aboard). ${next}`;
 }
 
 /** Legs on a plotted route. `world.computeRoute` returns `{legs:[...]}` — there is no `path`. */
@@ -3242,7 +3353,7 @@ const SCAN_RING_MS = 400;
 const LAYER_KIT_ICON = Object.freeze({
   route: 'route', mission: 'missions', market: 'market', events: 'warning',
   security: 'patrol', faction: 'factions', hazard: 'danger', services: 'station',
-  holdings: 'cargo', discovery: 'scan',
+  holdings: 'cargo', discovery: 'scan', traffic: 'shipworks',
 });
 const SERVICE_KIT_ICON = Object.freeze({
   trade: 'market', shipyard: 'shipworks', repair: 'repair', refuel: 'fuel',
@@ -3289,7 +3400,7 @@ function injectStyle() {
 const LAYER_DEFS = Object.freeze([
   { id: 'route', name: 'Route', icon: '<path d="M4 19 L10 12 L15 15 L20 5"/><circle cx="4" cy="19" r="1.8"/><circle cx="20" cy="5" r="1.8"/>' },
   { id: 'mission', name: 'Mission', icon: '<path d="M12 3 L21 12 L12 21 L3 12 Z"/><circle cx="12" cy="12" r="2"/>' },
-  { id: 'market', name: 'Pressure', icon: '<path d="M4 20h16"/><path d="M7.5 16v-5M12 16V7M16.5 16v-8"/>' },
+  { id: 'market', name: 'Markets', icon: '<path d="M4 20h16"/><path d="M7.5 16v-5M12 16V7M16.5 16v-8"/>' },
   { id: 'events', name: 'Events', icon: '<circle cx="12" cy="12" r="8"/><path d="M6 12h12M12 6v12"/>' },
   { id: 'security', name: 'Security', icon: '<path d="M12 3 L19 6 V11 C19 16 15.5 19.5 12 21 C8.5 19.5 5 16 5 11 V6 Z"/>' },
   { id: 'faction', name: 'Faction', icon: '<path d="M6 21V4"/><path d="M6 4h11l-3 4 3 4H6"/>' },
@@ -3297,12 +3408,26 @@ const LAYER_DEFS = Object.freeze([
   { id: 'services', name: 'Services', icon: '<circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M6.2 6.2l2 2M15.8 15.8l2 2M17.8 6.2l-2 2M8.2 15.8l-2 2"/>' },
   { id: 'holdings', name: 'Holdings', icon: '<path d="M12 3l8 4.5v9L12 21l-8-4.5v-9Z"/><path d="M4 7.5l8 4.5 8-4.5"/>' },
   { id: 'discovery', name: 'Discovery', icon: '<circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>' },
+  { id: 'traffic', name: 'Passing traffic', icon: '<path d="M4 8h13l3 4v5H4Z M9 8v9m5-9v9"/>' },
 ]);
 
+// MAPS-2: four decision lenses on chips (the full layer list stays one click deeper). Each chip
+// drives the layers that answer one question: where is it dangerous, where is the work, where does
+// a price pay, what is mine.
+export const MAP_LENSES = Object.freeze([
+  { id: 'danger', label: 'Danger', layers: Object.freeze(['security', 'hazard', 'events']),
+    icon: '<path d="M12 3 L21 19 H3 Z"/><path d="M12 9.5v4.5M12 16.6v.4"/>' },
+  { id: 'jobs', label: 'Jobs', layers: Object.freeze(['mission']),
+    icon: '<rect x="4" y="7" width="16" height="12" rx="1.5"/><path d="M9 7V5h6v2M4 12h16"/>' },
+  { id: 'trade', label: 'Trade', layers: Object.freeze(['market']),
+    icon: '<path d="M4 16 L10 10 L14 13 L20 6"/><path d="M15 6h5v5"/>' },
+  { id: 'yours', label: 'Yours', layers: Object.freeze(['holdings']),
+    icon: '<path d="M12 3l8 4.5v9L12 21l-8-4.5v-9Z"/><path d="M9 12l2 2 4-4"/>' },
+]);
 const LAYER_BANKS = Object.freeze([
-  { id: 'place', label: 'PLACE', layers: Object.freeze(['services', 'holdings', 'discovery']) },
-  { id: 'flow', label: 'FLOW', layers: Object.freeze(['route', 'mission', 'market']) },
-  { id: 'trouble', label: 'TROUBLE', layers: Object.freeze(['events', 'security', 'faction', 'hazard']) },
+  { id: 'place', label: 'Places', layers: Object.freeze(['services', 'holdings', 'discovery']) },
+  { id: 'flow', label: 'Navigation', layers: Object.freeze(['route', 'mission', 'market', 'traffic']) },
+  { id: 'trouble', label: 'Conditions', layers: Object.freeze(['events', 'security', 'faction', 'hazard']) },
 ]);
 
 const SERVICE_ICON_PATHS = Object.freeze({
@@ -3343,6 +3468,20 @@ export function serviceIconSvg(service) {
 }
 
 const LEGEND_SERVICES = Object.freeze(['trade', 'shipyard', 'repair', 'refuel', 'refine', 'missions']);
+const SERVICE_WORDS = Object.freeze({ trade: 'Market', shipyard: 'Shipyard', repair: 'Repair', refuel: 'Fuel',
+  refine: 'Refinery', missions: 'Jobs', ore_buy: 'Ore buyer' });
+const PLACE_SERVICES = Object.freeze(['trade', 'refuel', 'repair', 'shipyard', 'refine', 'ore_buy', 'missions']);
+const PLACE_SERVICE_TERMS = Object.freeze({
+  trade: 'market trader trade buy sell shop cargo', refuel: 'fuel refuel', repair: 'repair service hull',
+  shipyard: 'shipyard ships outfit upgrades', refine: 'refine refinery smelter',
+  ore_buy: 'ore buyer sell ore mining', missions: 'jobs missions contracts bounty',
+});
+const MAP_QUICK_KEY = Object.freeze([
+  { tone: 'station', name: 'Station', svg: strokeSvg('<circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.8"/><path d="M1 10h4m-4 4h4m14-4h4m-4 4h4"/>') },
+  { tone: 'gate', name: 'Jump gate', svg: strokeSvg('<path d="M9 4C4 6 4 18 9 20m6-16c5 2 5 14 0 16M10 12h4"/>') },
+  { tone: 'goal', name: 'Destination', svg: glyphSvg('guns_lock', 18) },
+  { tone: 'hostile', name: 'Hostile ship', svg: glyphSvg('fighter', 18) },
+]);
 
 // Chart marks that are not service pictograms. Anything the canvas invents a silhouette for should
 // be readable off the rail without a manual — otherwise the shape is decoration, not language.
@@ -3362,9 +3501,10 @@ const LEGEND_MARKS = Object.freeze([
 ]);
 
 const HINT_ROWS = Object.freeze([
-  ['Zoom / pan the table', 'Wheel · Drag'],
-  ['Inspect a mark', 'Click'],
-  ['Lay a course', 'Dbl-click'],
+  ['Move around the map', 'Drag'],
+  ['Zoom in or out', 'Scroll'],
+  ['Inspect a place', 'Click'],
+  ['Set a course', 'Double-click'],
   ['Lay the line (preview, release to set)', 'Drag from you'],
   ['Toggle overlays', 'Click a lens'],
   ['Inspector tabs', '← →'],
@@ -3386,17 +3526,29 @@ const HINT_ROWS = Object.freeze([
 // state that says so. It does not get filled with invented content, and it does not get a new
 // data system built behind it — D2/D9 reject growing a registry to feed a panel.
 
+// MAPS-2: four tabs, not nine. Place answers "what is here" (who owns it, its services, its danger:
+// the old Overview, Services and Threat); Route is the plotted course; Jobs is work (Missions and
+// Careers); Trade is prices. Discovery and History sit behind one Log link. Nothing is lost.
+// 08_INTERFACE §8 (2026-11-23): at most three — Here, Route, Jobs. Prices fold into Here (a
+// station's exchange is part of what is there) and the Log's survey record follows them.
 export const MAP_INSPECTOR_TABS = Object.freeze([
-  { id: 'overview', label: 'Overview' },
+  { id: 'place', label: 'Here' },
   { id: 'travel', label: 'Route' },
-  { id: 'missions', label: 'Missions' },
-  { id: 'economy', label: 'Economy' },
-  { id: 'threat', label: 'Threat' },
-  { id: 'careers', label: 'Careers' },
-  { id: 'services', label: 'Services' },
-  { id: 'discovery', label: 'Discovery' },
-  { id: 'history', label: 'History' },
+  { id: 'jobs', label: 'Jobs' },
 ]);
+/** The Log (survey Discovery + site History): a link under the tabs, one click away. */
+export const MAP_INSPECTOR_LOG_TAB = Object.freeze({ id: 'log', label: 'Log' });
+/** Where each retired tab id now lives (saved screen state, other screens' open intents, tests). */
+export const MAP_INSPECTOR_TAB_ALIASES = Object.freeze({
+  overview: 'place', threat: 'place', services: 'place',
+  missions: 'jobs', careers: 'jobs',
+  economy: 'place', trade: 'place',
+  discovery: 'place', history: 'place', log: 'place',
+});
+export function normalizeInspectorTab(id) {
+  if (MAP_INSPECTOR_TABS.some((t) => t.id === id)) return id;
+  return MAP_INSPECTOR_TAB_ALIASES[id] || null;
+}
 
 export const MAP_INSPECTOR_TAB_IDS = Object.freeze(MAP_INSPECTOR_TABS.map((t) => t.id));
 
@@ -3443,6 +3595,14 @@ export function resolveInspectorTabAvailability(state, target) {
   set('history', hasWorldSiteHistory, hasWorldSiteHistory
     ? 'Authoritative World Site activity'
     : 'Select a World Site with an activity ledger');
+  // The four tabs (and the Log) compose the sections above.
+  set('place', true, 'What is here: who holds it, its services and its danger');
+  set('jobs', out.missions.available || out.careers.available,
+    out.missions.available || out.careers.available ? 'Your active jobs and the work this place offers'
+      : 'No active jobs, and no work posted here. Dock at a station to take a contract.');
+  set('trade', true, 'Prices from your market memory and the best known places to buy and sell');
+  set('log', true, 'What you have charted here, and the history of a selected site');
+  // Three tabs (08_INTERFACE §8): Here also carries prices, charted sites and site history.
   return Object.freeze(out);
 }
 
@@ -3548,6 +3708,36 @@ function findStationRecord(state, stationId) {
     }
   }
   return null;
+}
+
+function stationServiceIds(state, stationId, sectorId) {
+  const live = findStationRecord(state, stationId)?.services;
+  const services = Array.isArray(live) ? live
+    : sectorRecordById(state, sectorId)?.stations?.find((station) => station.id === stationId)?.services;
+  return Array.isArray(services) ? PLACE_SERVICES.filter((id) => services.includes(id)) : [];
+}
+
+function stationChartServices(state, stationId, sectorId) {
+  return stationServiceIds(state, stationId, sectorId).slice(0, 3).map((id) => SERVICE_WORDS[id]).join(' · ');
+}
+
+function atlasFeatures(state, sectorId, layers, sx, sy, scale, ox = 0, oz = 0) {
+  const projected = [];
+  for (const zone of zonesForSector(sectorId)) {
+    const hazard = zoneTypeMeta(zone.type).hazard;
+    if (hazard && !layers.hazard) continue;
+    const kind = zone.type === 'planetary_mass' ? 4 : hazard ? 2 : 1;
+    const { x = 0, z = 0 } = zone.center || {};
+    projected.push([sx(ox + x), sy(oz + z), Math.max(1, (zone.radius || 300) * scale), kind]);
+  }
+  if (layers.discovery || layers.market) {
+    for (const field of sectorRecordById(state, sectorId)?.fields || []) {
+      const { x = 0, z = 0 } = field.center || {};
+      const radius = field.clusterRadius || field.radius || 300;
+      projected.push([sx(ox + x), sy(oz + z), Math.max(1, radius * scale), 3]);
+    }
+  }
+  return projected;
 }
 
 /** Live/static world position for a station id (live entity first, then the static record). */
@@ -3697,6 +3887,7 @@ function missionSummary(mission) {
   if (!mission) return 'Proceed to the objective';
   const progress = Math.max(0, Number(mission.objectiveProgress) || 0);
   const target = Math.max(1, Number(mission.objectiveTarget) || 1);
+  if (mission.params && mission.params.works) return worksObjectiveLine(mission);
   if (mission.type === 'mining_quota') return `Mine ${progress}/${target} units`;
   if (mission.type === 'bulk_haul') return `Haul ${progress}/${target} bulk units`;
   if (mission.type === 'bulk_trade') return `Sell ${progress}/${target} units`;
@@ -3844,12 +4035,32 @@ function noteKeyForTarget(t) {
 /** Safe HTML for one dynamic map-search row, including imported-save claim names. */
 export function mapSearchItemHtml(target, index = 0) {
   const t = target || {};
+  const symbol = t.objective ? 'guns_lock' : t.kind === 'station' ? 'station'
+    : t.kind === 'sector' ? 'iff_target' : t.kind === 'gate' ? 'component' : 'info';
+  const services = t.services || [];
   return `
-    <div class="gm-search-item k-row ${index === 0 ? 'selected' : ''}" data-idx="${index}"${index === 0 ? ' aria-selected="true"' : ''}>
-      <span class="gm-search-item-name k-row__name">${escapeMapHtml(t.name)}</span>
-      <div class="gm-search-item-detail k-row__sub">${escapeMapHtml(t.detail)}</div>
-    </div>
+    <button class="gm-search-item k-row ${index === 0 ? 'selected' : ''}" type="button" data-idx="${index}">
+      <span class="gm-search-symbol" aria-hidden="true">${glyphSvg(symbol, 21)}</span>
+      <span class="gm-search-place">
+        <strong class="gm-search-item-name k-row__name">${escapeMapHtml(t.name)}</strong>
+        <span class="gm-search-item-detail k-row__sub">${escapeMapHtml(t.detail)}</span>
+        ${services.length ? `<span class="gm-search-services">${services.map((id) => escapeMapHtml(SERVICE_WORDS[id])).join(' · ')}</span>` : ''}
+      </span>
+    </button>
   `;
+}
+
+export function mapSearchMatches(target, query) {
+  const words = String(query || '').trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const terms = [target.name, target.searchText, target.detail,
+    ...(target.services || []).map((id) => PLACE_SERVICE_TERMS[id])].filter(Boolean).join(' ').toLowerCase();
+  return words.every((word) => terms.includes(word));
+}
+
+function galaxySelectionSector(target, here) {
+  if (!target) return null;
+  if (target.kind === 'sector') return target.sectorId || target.id;
+  return target.sectorId && target.sectorId !== here ? target.sectorId : null;
 }
 
 /** Safe claim-inspector markup. Claim names are persisted and may originate in imported saves. */
@@ -3958,7 +4169,7 @@ function sectorCauseIntelHtml(cause) {
       </div>
       <div class="gm-meter"><i style="width:${Math.round(clamp01(cause.danger) * 100)}%; background:${dangerColor(cause.danger)};"></i></div>
       <div class="gm-ins-row">
-        <span>Price pressure</span>
+        <span>Price swing</span>
         <span class="gm-ins-row-val">${mapPressureLabel(cause.pricePressure)} ${mapPercent(cause.pricePressure, true)} · ${mapTrendWord('pricePressure', trend.pricePressure)}</span>
       </div>
       <div class="gm-ins-row">
@@ -4022,6 +4233,7 @@ export function getSearchTargets(state, level, curSecId, claimsSystem = null, is
   const knownStationIds = new Set();
   for (const p of systemModel.points) {
     if (Number.isFinite(p.x) && Number.isFinite(p.z)) {
+      const stationId = p.kind === 'station' ? p.stationId || p.id : null;
       targets.push({
         id: p.id,
         name: p.name,
@@ -4033,6 +4245,7 @@ export function getSearchTargets(state, level, curSecId, claimsSystem = null, is
         // sector-local, while x/z must stay global for the course action on the same target.
         drawPos: p.drawPos,
         stationId: p.stationId,
+        ...(stationId ? { services: stationServiceIds(state, stationId, curSecId) } : {}),
         entityId: p.entityId || null,
         stable: p.stable || null,
         targetSectorId: p.targetSectorId || null,
@@ -4050,7 +4263,8 @@ export function getSearchTargets(state, level, curSecId, claimsSystem = null, is
         closed: p.closed === true,
         ledger: p.ledger,
         history: p.history,
-        detail: `${p.kind.toUpperCase()} · ${factionNameOf(p.factionId)}${p.statusLine ? ` · ${p.statusLine}` : ''}`,
+        detail: stationId ? sectorNameOf(state, curSecId)
+          : `${p.kind.toUpperCase()} · ${factionNameOf(p.factionId)}${p.statusLine ? ` · ${p.statusLine}` : ''}`,
       });
       if (p.kind === 'station' && (p.stationId || p.id)) {
         knownStationIds.add(String(p.stationId || p.id));
@@ -4075,8 +4289,9 @@ export function getSearchTargets(state, level, curSecId, claimsSystem = null, is
   // only behind the charted-sector boundary; current-system points above retain their live
   // position and order, and their station ids suppress the matching catalog fallback.
   for (const sector of sectorRecords(state)) {
-    if (!sector?.id || !isSectorCharted(state, sector) || !Array.isArray(sector.stations)) continue;
-    for (const station of sector.stations) {
+    if (!sector?.id || !isSectorCharted(state, sector)) continue;
+    const stations = Array.isArray(sector.stations) ? sector.stations : SECTOR_BY_ID.get(sector.id)?.stations || [];
+    for (const station of stations) {
       const stationId = String(station?.id || '');
       if (!stationId || knownStationIds.has(stationId)) continue;
       const anchor = station.pos || station.anchor || station.position || null;
@@ -4095,10 +4310,12 @@ export function getSearchTargets(state, level, curSecId, claimsSystem = null, is
         z: frames.z,
         drawPos: frames.drawPos,
         stationId,
+        services: Array.isArray(station.services) ? PLACE_SERVICES.filter((id) => station.services.includes(id))
+          : stationServiceIds(state, stationId, sector.id),
         stationTypeId: station.stationTypeId || station.type || null,
         factionId: station.factionId || null,
         searchText: `${name} ${sectorName}`,
-        detail: `STATION · ${sectorName}`,
+        detail: sectorName,
       });
       knownStationIds.add(stationId);
     }
@@ -4276,7 +4493,7 @@ export const galaxyMapScreen = {
 
   // --- SLICE C: information in depth --------------------------------------------------------
   // Which inspector tab is showing. Exactly one at a time — that is the disclosure mechanism.
-  _activeTab: 'overview',
+  _activeTab: 'place',
   _tabButtons: [],
   _tabPanel: null,
   _lastTabHtml: null,
@@ -4603,7 +4820,8 @@ export const galaxyMapScreen = {
     hazard: true,
     services: true,
     holdings: true,
-    discovery: true
+    discovery: true,
+    traffic: false,
   },
   _cams: {
     galaxy: { cx: 0, cy: 0, zoom: 1.0 },
@@ -4629,7 +4847,8 @@ export const galaxyMapScreen = {
   mount(rootEl, ctx) {
     this._labelSolveReuse = null;
     this._clearFieldCache = null;
-    this._releaseSensorLattice();
+    this._atlas?.dispose();
+    this._atlas = undefined;
     injectStyle();
     this._ctx = ctx;
     installAftermathChartListener(ctx && ctx.bus, ctx && ctx.state);
@@ -4668,7 +4887,7 @@ export const galaxyMapScreen = {
     const legendHtml = LEGEND_SERVICES.map((svc) => `
             <div class="gm-legend-row k-row k-row--static fh-row">
               <span class="gm-legend-ico" aria-hidden="true">${dpIcon(SERVICE_KIT_ICON[svc] || 'station', 18)}</span>
-              <span>${svc === 'ore_buy' ? 'Ore buy' : svc[0].toUpperCase() + svc.slice(1)}</span>
+              <span>${SERVICE_WORDS[svc] || svc}</span>
             </div>`).join('');
     const markLegendHtml = LEGEND_MARKS.map((mark) => `
             <div class="gm-legend-row k-row k-row--static fh-row">
@@ -4677,14 +4896,31 @@ export const galaxyMapScreen = {
             </div>`).join('');
     const hintRowsHtml = HINT_ROWS.map(([label, keys]) => `
           <div class="gm-hint-row k-row k-row--static"><span>${label}</span><kbd>${keys}</kbd></div>`).join('');
-    rootEl.innerHTML = bindMapMarkup(navigationFrameHtml({ hintRowsHtml, layerButtonsHtml, legendHtml, markLegendHtml }));
+    const quickKeyHtml = MAP_QUICK_KEY.map(({ tone, name, svg }) =>
+      `<span data-map-symbol="${tone}">${svg}${name}</span>`).join('');
+    const lensChipsHtml = MAP_LENSES.map((lens) => {
+      const on = lens.layers.every((id) => this._layers[id]);
+      return `<button ${mapControlAttrs('lens')} class="gm-lens-chip k-word fh-key" type="button" data-lens="${lens.id}" aria-pressed="${on}" title="${lens.label} layer">
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${lens.icon}</svg>
+        <span>${lens.label}</span></button>`;
+    }).join('');
+    rootEl.innerHTML = bindMapMarkup(navigationFrameHtml({ lensChipsHtml, hintRowsHtml, layerButtonsHtml, legendHtml, markLegendHtml, quickKeyHtml }));
 
     this._body = rootEl.querySelector('.gm-viewport');
     this._canvas = rootEl.querySelector('canvas');
+    this._atlasCanvas = rootEl.querySelector('.gm-relief');
     this._g = this._canvas.getContext('2d');
     this._levelEl = rootEl.querySelector('[data-level]');
     this._inspectorDetails = rootEl.querySelector('.gm-inspector-details');
     this._setCourseButton = rootEl.querySelector('#gm-set-course-btn');
+    this._locateGoalButton = rootEl.querySelector('.gm-locate-goal');
+    this._locateGoalButton?.addEventListener('click', () => {
+      const state = this._ctx?.state;
+      if (!state) return;
+      const goal = getSearchTargets(state, 'system', currentSectorId(state), this._claimsSystem())
+        .find((target) => target.id === 'active-map-goal');
+      if (goal) this._selectSearchTarget(goal);
+    });
     this._engageButton = rootEl.querySelector('#gm-engage-route-btn');
     // ENGAGE ROUTE is the chart's one Lamp Key (ORRERY §3.6); with no route it stands as its silhouette.
     if (this._engageButton && this._engageButton.ownerDocument) {
@@ -5014,6 +5250,30 @@ export const galaxyMapScreen = {
       }
     }
 
+    // Lens chips: one press turns a lens's layers on or off together; the layer list follows.
+    const syncLensChips = () => {
+      for (const chip of Array.from(rootEl.querySelectorAll('.gm-lens-chip'))) {
+        const lens = MAP_LENSES.find((l) => l.id === chip.getAttribute('data-lens'));
+        if (lens) chip.setAttribute('aria-pressed', String(lens.layers.every((id) => this._layers[id])));
+      }
+      for (const btn of Array.from(rootEl.querySelectorAll('.gm-layer-btn'))) {
+        const on = !!this._layers[btn.getAttribute('data-layer')];
+        btn.classList.toggle('active', on);
+        btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+      }
+    };
+    this._syncLensChips = syncLensChips;
+    for (const chip of Array.from(rootEl.querySelectorAll('.gm-lens-chip'))) {
+      chip.addEventListener('click', () => {
+        const lens = MAP_LENSES.find((l) => l.id === chip.getAttribute('data-lens'));
+        if (!lens) return;
+        const next = !lens.layers.every((id) => this._layers[id]);
+        for (const id of lens.layers) this._layers[id] = next;
+        syncLensChips();
+        this.refresh();
+      });
+    }
+
     // Toggle layer click listeners
     const layerBtns = rootEl.querySelectorAll('.gm-layer-btn');
     layerBtns.forEach(btn => {
@@ -5023,6 +5283,7 @@ export const galaxyMapScreen = {
         if (this._layers[layer]) btn.classList.add('active');
         else btn.classList.remove('active');
         btn.setAttribute('aria-pressed', this._layers[layer] ? 'true' : 'false');
+        if (this._syncLensChips) this._syncLensChips();
 
         // Trigger scan ring center
         const w = this._canvas.width / this._dpr;
@@ -5046,7 +5307,17 @@ export const galaxyMapScreen = {
 
     // Wire search bar listeners
     const searchInput = rootEl.querySelector('.gm-search-input');
+    const searchContainer = rootEl.querySelector('.gm-search-container');
+    const placesButton = rootEl.querySelector('.gm-places-btn');
     const resultsContainer = rootEl.querySelector('.gm-search-results');
+    const placeFilters = rootEl.querySelector('.gm-place-filters');
+    const resultTitle = rootEl.querySelector('.gm-place-list-title');
+    const resultRows = rootEl.querySelector('#gm-place-results') || resultsContainer;
+    let service = '';
+    if (placeFilters) {
+      placeFilters.innerHTML = ['', ...PLACE_SERVICES].map((id) =>
+        `<button type="button" class="gm-place-filter" data-place-service="${id}" aria-pressed="${!id}">${id ? serviceIconSvg(id) : ''}${id ? SERVICE_WORDS[id] : 'All stations'}</button>`).join('');
+    }
 
     const clearSearchResults = () => {
       this._searchResultsList = [];
@@ -5063,47 +5334,79 @@ export const galaxyMapScreen = {
       && this._searchResultsQuery === searchInput.value.trim().toLowerCase()
     );
 
-    searchInput.addEventListener('input', () => {
+    this._dismissPlaceFinder = (restoreFocus = false) => {
+      if (resultsContainer.hidden) return false;
+      resultsContainer.hidden = true;
+      placesButton?.setAttribute('aria-expanded', 'false');
+      resultRows.innerHTML = '';
+      clearSearchResults();
+      if (restoreFocus) (placesButton || searchInput).focus();
+      return true;
+    };
+
+    const renderPlaces = ({ directory = false } = {}) => {
       const q = searchInput.value.trim().toLowerCase();
-      if (!q) {
-        resultsContainer.hidden = true;
-        resultsContainer.innerHTML = '';
-        clearSearchResults();
+      // A blank field is not a search. Browse opens the station directory on purpose;
+      // clearing the text must drop the list so Enter cannot plot the nearest station.
+      if (!q && !directory) {
+        this._dismissPlaceFinder();
         return;
       }
-
       const state = this._ctx && this._ctx.state;
       if (!state) { clearSearchResults(); return; }
+      const sectorId = currentSectorId(state);
 
       const targets = getSearchTargets(
         state,
-        levelForZoom(this._zoom),
-        currentSectorId(this._ctx.state),
+        q ? this._activeLevel() : 'system',
+        sectorId,
         this._claimsSystem(),
         this._isHostile,
       );
-      const searchGoal = activeMapGoal(state);
-      const searchPlayer = playerEntity(state);
-      const searchAnchor = (searchGoal && searchGoal.pos) || (searchPlayer && searchPlayer.pos) || null;
+      const anchor = (q && activeMapGoal(state)?.pos) || playerEntity(state)?.pos;
       const filtered = targets
-        .filter((t) => String(t.searchText || t.name || '').toLowerCase().includes(q))
-        .sort((a, b) => mapSearchTargetPriority(state, b) - mapSearchTargetPriority(state, a)
-          || compareMapSearchTargetDistance(a, b, searchAnchor));
+        .filter((t) => q ? mapSearchMatches(t, q) : (t.kind === 'station' && (!service || t.services?.includes(service))))
+        .sort((a, b) => (q ? mapSearchTargetPriority(state, b) - mapSearchTargetPriority(state, a)
+          : Number(b.sectorId === sectorId) - Number(a.sectorId === sectorId))
+          || compareMapSearchTargetDistance(a, b, anchor)
+          || a.name.localeCompare(b.name));
 
-      if (filtered.length === 0) {
-        resultsContainer.innerHTML = '<div class="gm-search-item gm-search-empty k-t-fine k-38">No results found</div>';
-        resultsContainer.hidden = false;
-        clearSearchResults();
-        return;
+      for (const filter of placeFilters?.querySelectorAll('[data-place-service]') || []) {
+        filter.setAttribute('aria-pressed', String(!q && filter.dataset.placeService === service));
       }
-
-      resultsContainer.innerHTML = filtered.map((t, idx) => mapSearchItemHtml(t, idx)).join('');
+      if (resultTitle) {
+        resultTitle.textContent = q ? counted(filtered.length, 'match', 'matches')
+          : service ? `${SERVICE_WORDS[service]} · ${counted(filtered.length, 'station', 'stations')}`
+            : 'Charted stations · nearest first';
+      }
+      resultRows.innerHTML = filtered.length ? filtered.map((t, idx) => mapSearchItemHtml(t, idx)).join('')
+        : `<p class="gm-search-empty">${q ? 'No results found. Try a station name or a service like fuel.' : 'No charted stations offer this service.'}</p>`;
       resultsContainer.hidden = false;
+      placesButton?.setAttribute('aria-expanded', 'true');
 
       this._searchResultsList = filtered;
       this._searchSelectedIdx = 0;
       this._searchResultsQuery = q;
+    };
+
+    searchInput.addEventListener('input', () => renderPlaces());
+    placesButton?.addEventListener('click', () => {
+      if (this._dismissPlaceFinder()) return;
+      searchInput.value = '';
+      service = '';
+      renderPlaces({ directory: true });
     });
+    searchContainer?.addEventListener('focusout', (ev) => {
+      if (ev.relatedTarget && !searchContainer.contains(ev.relatedTarget)) this._dismissPlaceFinder();
+    });
+    this._canvas.addEventListener('pointerdown', () => this._dismissPlaceFinder());
+
+    const selectPlace = (target) => {
+      if (!target) return;
+      searchInput.value = '';
+      this._dismissPlaceFinder();
+      this._selectSearchTarget(target);
+    };
 
     searchInput.addEventListener('keydown', (ev) => {
       // Arrows and Enter own the field only while a real result list is answering it; a stale,
@@ -5120,26 +5423,21 @@ export const galaxyMapScreen = {
         this._highlightSearchItem();
       } else if (ev.key === 'Enter') {
         ev.preventDefault();
-        const selected = list[this._searchSelectedIdx];
-        if (selected) {
-          this._selectSearchTarget(selected);
-          searchInput.value = '';
-          resultsContainer.hidden = true;
-          clearSearchResults();
-        }
+        selectPlace(list[this._searchSelectedIdx]);
       }
     });
 
     resultsContainer.addEventListener('click', (ev) => {
+      const filter = ev.target.closest('[data-place-service]');
+      if (filter) {
+        service = filter.dataset.placeService;
+        searchInput.value = '';
+        renderPlaces({ directory: true });
+        return;
+      }
       if (!searchResultsCurrent()) return;
       const itemEl = ev.target.closest('.gm-search-item');
-      const idx = itemEl && parseInt(itemEl.getAttribute('data-idx'));
-      if (idx != null && this._searchResultsList[idx]) {
-        this._selectSearchTarget(this._searchResultsList[idx]);
-        searchInput.value = '';
-        resultsContainer.hidden = true;
-        clearSearchResults();
-      }
+      if (itemEl) selectPlace(this._searchResultsList[Number(itemEl.dataset.idx)]);
     });
 
     // Close button
@@ -5151,7 +5449,7 @@ export const galaxyMapScreen = {
     this._canvas.addEventListener('pointerdown', (ev) => this._onPointerDown(ev));
     this._canvas.addEventListener('pointermove', (ev) => this._onMouseMove(ev));
     this._canvas.addEventListener('pointerup', (ev) => this._onPointerUp(ev));
-    this._canvas.addEventListener('pointercancel', () => this._onPointerCancel());
+    this._canvas.addEventListener('pointercancel', (ev) => this._onPointerCancel(ev));
     this._canvas.addEventListener('pointerleave', () => this._onMouseLeave());
     this._canvas.addEventListener('wheel', (ev) => this._onWheel(ev), { passive: false });
     this._canvas.addEventListener('click', (ev) => this._onCanvasClick(ev));
@@ -5284,10 +5582,14 @@ export const galaxyMapScreen = {
 
   onHide() {
     this._labelSolveReuse = null;
+    this._dismissPlaceFinder?.();
+    const searchInput = this._root?.querySelector('.gm-search-input');
+    if (searchInput) searchInput.value = '';
     setMapOpen(this._ctx && this._ctx.state, false);
     this._visible = false;
     this._iris = null;
-    this._releaseSensorLattice();
+    this._panEnded = false;
+    this._onPointerCancel();
     if (this._lockTimer) { clearTimeout(this._lockTimer); this._lockTimer = null; }
     this._lock = null;
     if (this._engageButton && this._engageButton.classList) this._engageButton.classList.remove('is-locking');
@@ -5366,7 +5668,7 @@ export const galaxyMapScreen = {
     for (const k of Object.keys(def.layers)) this._layers[k] = def.layers[k];
 
     const bag = mem.get('galaxyMap');
-    if (bag.activeTab && MAP_INSPECTOR_TAB_IDS.includes(bag.activeTab)) this._activeTab = bag.activeTab;
+    if (bag.activeTab && normalizeInspectorTab(bag.activeTab)) this._activeTab = normalizeInspectorTab(bag.activeTab);
     // A remembered commodity that no longer exists in the catalogue must not become a lens on
     // nothing; onShow re-validates through selectedMarketCommodityOnOpen either way.
     if (bag.selectedCommodity && COMMODITIES.some((c) => c.id === bag.selectedCommodity)) {
@@ -5741,6 +6043,11 @@ _stepAnimation(now) {
     const textEntry = !!(target
       && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable));
 
+    if (key === 'escape' && this._dismissPlaceFinder?.(true)) {
+      event.preventDefault();
+      return true;
+    }
+
     // The search input owns ordinary typing. Without this guard the final `n` in a query such as
     // "Helios Station" also reaches the map's global N shortcut, closes the screen, and leaves a
     // correctly-built result list hidden under the inactive map. Escape intentionally remains the
@@ -5757,6 +6064,7 @@ _stepAnimation(now) {
     // keep native Enter/Space behavior; the global UI input router normally filters them before
     // this handler, and this local guard keeps direct/synthetic dispatch safe too.
     if ((key === 'enter' || key === ' ' || key === 'spacebar')
+      && !target?.closest?.('button, select, a[href], [role="button"]')
       && this._selectedTarget && this._selectedTarget.kind === 'claim') {
       if (event && typeof event.preventDefault === 'function') event.preventDefault();
       this._activateSelectedCourse();
@@ -5822,6 +6130,10 @@ _stepAnimation(now) {
    * chart. Every other moment declines so the router's ordinary close stays untouched.
    */
   onEscape(event) {
+    if (this._dismissPlaceFinder?.(true)) {
+      event?.preventDefault();
+      return true;
+    }
     // the topmost thing the hub has open lets go first (menu, wire, palette, card); the chart stays
     if (this._hub && this._hub.escape()) {
       if (event && typeof event.preventDefault === 'function') event.preventDefault();
@@ -5902,17 +6214,19 @@ _stepAnimation(now) {
     // to walk every entity and rewrite byte-identical tracks ~60x/second. Decay is a pure function
     // of (timeS - lastSeenS), so re-observing at the same simTime cannot change any output — while
     // the chart is up over a paused sim that work was entirely wasted. Skip it.
-    if (nowS === this._localIntelSyncedAtS) return intel;
-    this._localIntelSyncedAtS = nowS;
+    const player = playerEntity(state);
+    const sensors = chartContactRead(state, player);
+    const readKey = `${nowS}:${sensors.key}`;
+    if (readKey === this._localIntelSyncedAtS) return intel;
+    this._localIntelSyncedAtS = readKey;
 
     intel.advance(nowS);
-    const player = playerEntity(state);
     const playerTeam = player && player.team;
     const hostileFn = typeof this._isHostile === 'function' ? this._isHostile : null;
     for (const e of indexedShipLikeScan(state)) {
       if (!e || e.alive === false || !e.pos) continue;
       if (player && e.id === player.id) continue;
-      if (e.type !== 'ship' && e.type !== 'drone') continue;
+      if ((e.type !== 'ship' && e.type !== 'drone') || !sensors.sees(e)) continue;
       let hostile = !!(e.data && e.data.hostile);
       if (hostileFn) {
         try { hostile = !!hostileFn(e, playerTeam, state); } catch (_) { /* keep the flag fallback */ }
@@ -5946,6 +6260,8 @@ _stepAnimation(now) {
 
   _updateInspector() {
     if (!HAS_DOC || !this._root) return;
+    // A retired tab id (saved state, another screen's intent, a fixture) lands on its new home.
+    this._activeTab = normalizeInspectorTab(this._activeTab) || 'place';
     const state = this._ctx && this._ctx.state;
     // The title block follows the selection (name + one sentence) — same beat as the inspector.
     this._syncPublicIdentity(state);
@@ -5993,7 +6309,7 @@ _stepAnimation(now) {
     // Only Overview consumes the per-kind model below. Building its route, market and mission
     // markup on every animation frame while another tab is visible discards all of that work.
     // Selection and navigation controls still project fresh state on every inspector update.
-    if (this._activeTab && this._activeTab !== 'overview') {
+    if (this._activeTab && this._activeTab !== 'place') {
       const primary = resolveGalaxyMapPrimaryAction(state, t);
       let label = 'Track Target';
       if (t.kind === 'sector') label = primary?.label || 'Plot Course';
@@ -6069,7 +6385,7 @@ _stepAnimation(now) {
             <span class="gm-ins-row-val">${law.level} · ${secPips}</span>
           </div>
           <div class="gm-ins-row">
-            <span>Jurisdiction</span>
+            <span>Held by</span>
             <span class="gm-ins-row-val"><span${entityAttr('faction:' + law.factionId)}>${escapeMapHtml(law.authority)}</span></span>
           </div>
           <div class="gm-ins-note" style="margin-top:6px;"><b style="color:var(--k-text-live);">ILLEGAL:</b> ${law.illegal}</div>
@@ -6199,7 +6515,7 @@ _stepAnimation(now) {
       html += `
         <div class="gm-ins-section">
           <div class="gm-ins-title">Navigation</div>
-          <div class="gm-ins-row"><span>Distance</span><span class="gm-ins-row-val">${stationDist != null ? stationDist + ' u' : 'Unknown'}</span></div>
+          <div class="gm-ins-row"><span>Distance</span><span class="gm-ins-row-val">${stationDist != null ? stationDist + ' m' : 'Unknown'}</span></div>
         </div>
       `;
 
@@ -6275,7 +6591,7 @@ _stepAnimation(now) {
 
         <div class="gm-ins-section">
           <div class="gm-ins-title">Manual search area</div>
-          <div class="gm-ins-row"><span>Range</span><span class="gm-ins-row-val">±${Math.round(Math.max(0, Number(t.radius) || 0))} u</span></div>
+          <div class="gm-ins-row"><span>Range</span><span class="gm-ins-row-val">±${Math.round(Math.max(0, Number(t.radius) || 0))} m</span></div>
           <div class="gm-ins-note">${escapeMapHtml(t.detail || 'Approximate frontier intelligence.')}</div>
           <div class="gm-ins-note">${escapeMapHtml(t.objective || 'Fly the area manually and pulse the scanner. No waypoint is set.')}</div>
         </div>
@@ -6286,6 +6602,7 @@ _stepAnimation(now) {
         <div class="gm-ins-section">
           <div class="gm-ins-kind">Zone record</div>
           <div class="gm-ins-target-name">${escapeMapHtml(t.name)}</div>
+          ${t.chartNote ? `<div class="gm-ins-note">${escapeMapHtml(t.chartNote)}</div>` : ''}
         </div>
 
         <div class="gm-ins-section">
@@ -6336,7 +6653,7 @@ _stepAnimation(now) {
           </div>
           <div class="gm-ins-row">
             <span>Range</span>
-            <span class="gm-ins-row-val">${dist != null ? dist + ' u' : 'Unknown'}</span>
+            <span class="gm-ins-row-val">${dist != null ? dist + ' m' : 'Unknown'}</span>
           </div>
         </div>
 
@@ -6369,8 +6686,8 @@ _stepAnimation(now) {
           <div class="gm-ins-row"><span>Type</span><span class="gm-ins-row-val">${workLoad ? escapeMapHtml(workLoad.classLine) : t.kind ? t.kind.toUpperCase() : 'UNKNOWN'}</span></div>
           <div class="gm-ins-row"><span>Faction</span><span class="gm-ins-row-val" style="color:${factionColorOf(t.factionId)}"><span${entityAttr('faction:' + t.factionId)}>${escapeMapHtml(contactFaction)}</span></span></div>
           <div class="gm-ins-row"><span>Hostile</span><span class="gm-ins-row-val" style="color:${t.hostile ? INK.red : INK.good}">${t.hostile ? 'YES' : 'NO'}</span></div>
-          <div class="gm-ins-row"><span>Distance</span><span class="gm-ins-row-val">${contactDist != null ? contactDist + ' u' : 'Unknown'}</span></div>
-          <div class="gm-ins-row"><span>Speed</span><span class="gm-ins-row-val">${contactSpeed} u/s</span></div>
+          <div class="gm-ins-row"><span>Distance</span><span class="gm-ins-row-val">${contactDist != null ? contactDist + ' m' : 'Unknown'}</span></div>
+          <div class="gm-ins-row"><span>Speed</span><span class="gm-ins-row-val">${contactSpeed} m/s</span></div>
         </div>
       `;
       buttonLabel = 'Track Target';
@@ -6393,6 +6710,15 @@ _stepAnimation(now) {
     }
     if (btn.textContent !== buttonLabel) btn.textContent = buttonLabel;
     paintJumpToll(btn, primary);
+    const customs = this._root?.querySelector('#gm-jump-customs');
+    if (customs) {
+      const route = state?.nav?.route;
+      const mayJump = primary?.kind === 'jump' || (routeLegCount(route) > 0
+        && route.legs.some(leg => leg?.from && leg.to && leg.from !== leg.to));
+      const warning = mayJump ? resolveChartCustomsWarning(state) : '';
+      if (customs.textContent !== warning) customs.textContent = warning;
+      if (customs.hidden !== !warning) customs.hidden = !warning;
+    }
     if (primary && primary.coursePayload) {
       if (btn.hidden) btn.hidden = false;
       if (btn.disabled) btn.disabled = false;
@@ -6410,16 +6736,49 @@ _stepAnimation(now) {
 
   _tabHtml(state, selectionHtml) {
     const avail = resolveInspectorTabAvailability(state, this._selectedTarget);
+    this._activeTab = normalizeInspectorTab(this._activeTab) || 'place';
     const info = avail[this._activeTab];
     if (info && !info.available) {
       // A tab with nothing behind it says so in words. This is the same contract as a disabled
       // action carrying its reason: an empty panel that explains itself teaches, a blank one does
       // not, and a fabricated one lies.
       return `<div class="gm-ins-section"><div class="gm-ins-title">${escapeMapHtml(
-        (MAP_INSPECTOR_TABS.find((t) => t.id === this._activeTab) || {}).label || '')}</div>
+        ([...MAP_INSPECTOR_TABS, MAP_INSPECTOR_LOG_TAB].find((t) => t.id === this._activeTab) || {}).label || '')}</div>
         <div class="gm-ins-note">${escapeMapHtml(info.reason)}</div></div>`;
     }
+    const avail2 = avail;
+    const join = (...parts) => parts.filter(Boolean).join('');
+    // The old Log's charted-sites list: shown under any selection, and with nothing selected only
+    // when it has World Sites to offer (so the plain Here stays three sections).
+    const chartedHtml = () => {
+      if (selectionHtml && avail2.history.available) return '';
+      const html = this._discoveryTabHtml(state);
+      return selectionHtml || /data-world-site-id=/.test(html) ? html : '';
+    };
     switch (this._activeTab) {
+      case 'place': return join(
+        this._overviewTabHtml(state, selectionHtml),
+        // With nothing selected Here stays compact; a selection brings its services, its prices
+        // (the old Trade tab) and its danger.
+        selectionHtml && avail2.services.available ? this._servicesTabHtml(state) : '',
+        // Trade lanes (the old Trade tab) join a selected station once you hold a price to rank:
+        // before the first market visit there is nothing to show, so nothing is shown.
+        selectionHtml && this._selectedTarget && this._selectedTarget.kind === 'station'
+          && state && state.economy && state.economy.marketIntel && Object.keys(state.economy.marketIntel).length
+          ? this._economyTabHtml(state) : '',
+        selectionHtml && avail2.threat.available ? this._threatTabHtml(state) : '',
+        // The old Log: a selected World Site's history; any other selection lists what you have
+        // charted around it. With nothing selected Here stays three sections.
+        selectionHtml && avail2.history.available ? this._historyTabHtml() : '',
+        chartedHtml());
+      case 'jobs': return join(
+        avail2.missions.available ? this._missionsTabHtml(state) : '',
+        avail2.careers.available ? this._careersTabHtml(state) : '');
+      case 'trade': return this._economyTabHtml(state);
+      case 'log': return join(
+        this._discoveryTabHtml(state),
+        avail2.history.available ? this._historyTabHtml()
+          : `<div class="gm-ins-section"><div class="gm-ins-title">History</div><div class="gm-ins-note">${escapeMapHtml(avail2.history.reason)}</div></div>`);
       case 'travel': return this._travelTabHtml(state);
       case 'missions': return this._missionsTabHtml(state);
       case 'economy': return this._economyTabHtml(state);
@@ -6629,7 +6988,7 @@ _stepAnimation(now) {
     const zoneMeta = zone ? zoneTypeMeta(zone.type) : null;
     const zoneThreatLvl = zone ? zoneThreat(zone.type) : 0;
     const zoneLine = zone
-      ? `${zone.name} (${zoneMeta ? zoneMeta.label : zone.type}${zoneThreatLvl ? ` · Threat ${zoneThreatLvl}` : ''})`
+      ? `${zone.name} · ${String(zoneMeta ? zoneMeta.label : zone.type).toLowerCase()}${zoneThreatLvl ? ` · ${zoneThreatLvl >= 3 ? 'dangerous' : zoneThreatLvl >= 2 ? 'some danger' : 'low danger'}` : ''}`
       : 'Open sector space';
     // inf-lane-chatter-chart: flying inside a lane the boards still flag says so under the zone
     // row — the live talk only; a cooled warning stays on the zone's own record.
@@ -6660,28 +7019,28 @@ _stepAnimation(now) {
       const wpBrg = compassOctant(wpPos.x - globalPos.x, wpPos.z - globalPos.z);
       const isMissionWp = !!(wp.missionId || wp.onboarding || wp.markerKind === 'mission-objective');
       const wpKind = isMissionWp
-        ? 'Mission Objective'
+        ? 'Job goal'
         : wp.stationId || wp.type === 'station'
-          ? 'Station Berth'
+          ? 'Station'
           : wp.type === 'gate'
-            ? 'Jump Gate'
-            : 'Navigation Fix';
-      const wpReason = String(wp.reason || wp.label || 'Manual course fix').trim();
+            ? 'Jump gate'
+            : 'Marked point';
+      const wpReason = String(wp.reason || wp.label || 'Manual course fix').replace(/\s+\d+(?:\.\d+)?\s*(?:wu|u)\b/gi, '').trim();
       wpHtml = `
         <div class="gm-ov-wp-box">
-          <div class="gm-ins-row"><span>Waypoint pin</span><span class="gm-ins-row-val" style="color:${INK.amberHot};">◆ ${escapeMapHtml(waypointMapLabel(wp))}</span></div>
-          <div class="gm-ins-row"><span>Marker type</span><span class="gm-ins-row-val">${escapeMapHtml(wpKind)} · ${escapeMapHtml(formatDistanceWU(wpDist))}${wpBrg ? ` ${wpBrg}` : ''}</span></div>
+          <div class="gm-ins-row"><span>Heading for</span><span class="gm-ins-row-val" style="color:${INK.amberHot};">◆ ${escapeMapHtml(waypointMapLabel(wp))}</span></div>
+          <div class="gm-ins-row"><span>${escapeMapHtml(wpKind)}</span><span class="gm-ins-row-val">${escapeMapHtml(formatDistanceWU(wpDist))} away</span></div>
           ${wpReason && wpReason.toLowerCase() !== waypointMapLabel(wp).toLowerCase()
             ? `<div class="gm-ins-note">${escapeMapHtml(wpReason)}</div>`
             : ''}
         </div>`;
     } else if (wp && mapWaypointSector(state, wp) && mapWaypointSector(state, wp) !== sectorId) {
       const remoteSector = mapWaypointSector(state, wp);
-      wpHtml = `<div class="gm-ov-wp-box"><div class="gm-ins-row"><span>Waypoint pin</span>
+      wpHtml = `<div class="gm-ov-wp-box"><div class="gm-ins-row"><span>Heading for</span>
         <span class="gm-ins-row-val">◆ ${escapeMapHtml(waypointMapLabel(wp))}</span></div>
         <div class="gm-ins-note">In ${escapeMapHtml(sectorNameOf(state, remoteSector))} — plot a route to reach it.</div></div>`;
     } else {
-      wpHtml = '<div class="gm-ins-note">No active waypoint pin — click any marker below or drag from your ship to set a fix.</div>';
+      wpHtml = '<div class="gm-ins-note">Nowhere marked yet. Click a place below, or drag from your ship to set a course.</div>';
     }
 
     const activeMissions = ((state.missions && state.missions.active) || []).filter((m) => m && m.status === 'active');
@@ -6715,52 +7074,57 @@ _stepAnimation(now) {
           ${switchers}
         </div>`;
     } else {
-      missionHtml = '<div class="gm-ins-note">No active contracts. Dock at a station and open Contracts to take work.</div>';
+      missionHtml = '<div class="gm-ins-note">No jobs yet. Dock at a station and open Jobs to take work.</div>';
     }
 
     // Section 3: Markers in Range & Symbol Key
     const markerEntries = this._overviewMarkersForState(state);
     this._overviewTargets = markerEntries.map((entry) => entry.target);
     const markersHtml = markerEntries.length
-      ? `<div class="gm-ov-markers">${markerEntries.map((m, idx) => `
-          <button ${mapControlAttrs('frame')} class="gm-site-row gm-ov-marker-row" type="button" data-overview-target="${idx}" aria-label="Inspect ${escapeMapHtml(m.name)} (${escapeMapHtml(m.tag)}, ${escapeMapHtml(m.meta)})">
-            <span class="gm-ov-marker-main">
-              <span class="gm-ov-marker-glyph" style="color:${m.color}" aria-hidden="true">${m.glyph}</span>
-              <span class="gm-ov-marker-name">${escapeMapHtml(m.name)}</span>
-              <span class="gm-ov-marker-tag">${escapeMapHtml(m.tag)}</span>
-            </span>
-            <span class="gm-ins-row-val gm-ov-marker-dist">${escapeMapHtml(m.meta)}</span>
-          </button>`).join('')}</div>`
+      ? `<div class="gm-ov-markers">${markerEntries.map((m, idx) => {
+        const tone = m.tag === 'GOAL' || m.tag === 'WAYPOINT'
+          ? ' data-marker-tone="goal"'
+          : m.tag === 'HOSTILE'
+            ? ' data-marker-tone="hostile"'
+            : '';
+        return `
+          <button ${mapControlAttrs('frame')} class="gm-site-row gm-ov-marker-row" type="button" data-overview-target="${idx}"${tone} aria-label="Inspect ${escapeMapHtml(m.name)} (${escapeMapHtml(m.tag)}, ${escapeMapHtml(m.meta)})">
+            <span class="gm-ov-marker-g" style="color:${m.color}" aria-hidden="true">${m.glyph}</span>
+            <span class="gm-ov-marker-n">${escapeMapHtml(m.name)}</span>
+            <span class="gm-ov-marker-k">${escapeMapHtml(m.tag)}</span>
+            <span class="gm-ov-marker-d">${escapeMapHtml(m.meta)}</span>
+          </button>`;
+      }).join('')}</div>`
       : '<div class="gm-ins-note">No contacts or stations in immediate range.</div>';
 
     const out = `
       <div class="gm-ins-section">
-        <div class="gm-ins-kind">Your ship &amp; sector</div>
+        <div class="gm-ins-kind">You are here</div>
         <div class="gm-ins-target-name"><span${entityAttr('sector:' + sectorId)}>${escapeMapHtml(sectorName)}</span></div>
-        <div class="gm-ins-row"><span>Jurisdiction</span><span class="gm-ins-row-val"><span${entityAttr('faction:' + law.factionId)}>${escapeMapHtml(law.authority)}</span> · ${escapeMapHtml(law.level)} ${securityPips(sec)}</span></div>
-        <div class="gm-ins-row"><span>Local zone</span><span class="gm-ins-row-val">${escapeMapHtml(zoneLine)}</span></div>
+        <div class="gm-ins-row"><span>Held by</span><span class="gm-ins-row-val"><span${entityAttr('faction:' + law.factionId)}>${escapeMapHtml(law.authority)}</span> · ${escapeMapHtml(law.level)} ${securityPips(sec)}</span></div>
+        <div class="gm-ins-row"><span>Area</span><span class="gm-ins-row-val">${escapeMapHtml(zoneLine)}</span></div>
         ${hereChatterHtml}
-        <div class="gm-ins-row"><span>Ship fix</span><span class="gm-ins-row-val">(${Math.round(localPos.x)}, ${Math.round(localPos.z)}) u · Hdg ${headingBrg} · ${speed} u/s</span></div>
+        <div class="gm-ins-row"><span>Speed</span><span class="gm-ins-row-val">${speed > 1 ? `${speed} m/s` : 'Holding still'}</span></div>
         ${careersInner}
       </div>
       <div class="gm-ins-section">
-        <div class="gm-ins-title" style="color:${INK.amberHot};">Mission &amp; Waypoint Fix</div>
+        <div class="gm-ins-title" style="color:${INK.amberHot};">Your goal</div>
         ${wpHtml}
         ${missionHtml}
       </div>
       <div class="gm-ins-section">
-        <div class="gm-ins-title">Markers on Chart &amp; Key</div>
+        <div class="gm-ins-title">Nearby</div>
         ${markersHtml}
         <div class="gm-ov-key-grid" role="list" aria-label="Chart symbol key">
           <span class="gm-ov-key-item" role="listitem"><b style="color:#fcf9f0">⊙</b> You</span>
-          <span class="gm-ov-key-item" role="listitem"><b style="color:${INK.amberHot}">◆</b> Goal Pin</span>
+          <span class="gm-ov-key-item" role="listitem"><b style="color:${INK.amberHot}">◆</b> Your goal</span>
           <span class="gm-ov-key-item" role="listitem"><b style="color:#f2d9a6">⬢ ⚒ ⛏ ⚙ ⛨ ◬ ✧</b> Station types</span>
           <span class="gm-ov-key-item" role="listitem"><b style="color:#f2d9a6">▪</b> Other station</span>
           <span class="gm-ov-key-item" role="listitem"><b style="color:#8fcbff">⊂⊃</b> Jump Gate</span>
           <span class="gm-ov-key-item" role="listitem"><b style="color:${INK.red}">◆</b> Hostile</span>
           <span class="gm-ov-key-item" role="listitem"><b style="color:#b8c7d9">➤</b> Ship / Drone</span>
           <span class="gm-ov-key-item" role="listitem"><b style="color:#8fcbff">◇</b> Scan / Site</span>
-          <span class="gm-ov-key-item" role="listitem"><b style="color:#e8e2d4">▸</b> Off-View Rim</span>
+          <span class="gm-ov-key-item" role="listitem"><b style="color:#e8e2d4">▸</b> Off screen</span>
         </div>
         <div class="gm-ins-note"><b>Drag from your ship</b> to preview a course; click any marker to inspect or double-click to set course.</div>
       </div>`;
@@ -6847,7 +7211,7 @@ _stepAnimation(now) {
         return `
         <button ${mapControlAttrs('lane')} class="gm-tl-row" type="button" data-gm-lane="${escapeMapHtml(lane.destinationId)}">
           <span class="gm-tl-head"><span>${sourceGlyph} ${escapeMapHtml(lane.commodityName)}</span><span class="gm-tl-profit" style="color:${relColor}">${modelish ? '~' : ''}+${profit} cr</span></span>
-          <span class="gm-tl-sub">${escapeMapHtml(lanePath)} · ${Math.max(0, Math.floor(lane.units))}u · ${perMin}/min · risk ${riskPct}%${ageLabel}${modelDelta}</span>
+          <span class="gm-tl-sub">${escapeMapHtml(lanePath)} · ${Math.max(0, Math.floor(lane.units))} units · ${perMin} per minute · risk ${riskPct}%${ageLabel}${modelDelta}</span>
         </button>`;
       }).join('')
       // The build map's named live symptom (§11.11 #8): this pane was correct-but-blank until two
@@ -6901,7 +7265,7 @@ _stepAnimation(now) {
       <div class="gm-ins-section">
         <div class="gm-ins-title">Hold</div>
         <div class="gm-ins-row"><span>Credits</span><span class="gm-ins-row-val">${credits} cr</span></div>
-        <div class="gm-ins-row"><span>Cargo</span><span class="gm-ins-row-val">${cargo}/${cargoCap} u</span></div>
+        <div class="gm-ins-row"><span>Cargo</span><span class="gm-ins-row-val">${cargo}/${cargoCap}</span></div>
       </div>
       <div class="gm-ins-section">
         <div class="gm-ins-title">Trade lanes · profit/min</div>
@@ -6953,7 +7317,7 @@ _stepAnimation(now) {
         <div class="gm-ins-kind">Threat assessment</div>
         <div class="gm-ins-target-name"><span${entityAttr('sector:' + sectorId)}>${escapeMapHtml(sectorNameOf(state, sectorId))}</span></div>
         <div class="gm-ins-row"><span>Security</span><span class="gm-ins-row-val">${law.level} · ${securityPips(sec)}</span></div>
-        <div class="gm-ins-row"><span>Jurisdiction</span><span class="gm-ins-row-val"><span${entityAttr('faction:' + law.factionId)}>${escapeMapHtml(law.authority)}</span></span></div>
+        <div class="gm-ins-row"><span>Held by</span><span class="gm-ins-row-val"><span${entityAttr('faction:' + law.factionId)}>${escapeMapHtml(law.authority)}</span></span></div>
         <div class="gm-ins-row"><span>Hazards</span><span class="gm-ins-row-val">${hazards}</span></div>
         <div class="gm-ins-row"><span>Events</span><span class="gm-ins-row-val">${escapeMapHtml(conflictLine)}</span></div>
         <div class="gm-ins-row"><span>Holdings</span><span class="gm-ins-row-val">${escapeMapHtml(holdingsLine)}</span></div>
@@ -7334,7 +7698,7 @@ _stepAnimation(now) {
 
     if (!this._tabButtons.length) {
       host.innerHTML = MAP_INSPECTOR_TABS.map((tab) => `
-        <button ${mapControlAttrs('tab')} class="gm-tab k-word k-word--fine fh-key fh-key--legend" type="button" role="tab" id="gm-tab-${tab.id}" data-tab="${tab.id}"
+        <button ${mapControlAttrs('tab')} class="gm-tab k-word k-word--fine fh-key fh-key--legend${tab.id === 'log' ? ' gm-tab--log' : ''}" type="button" role="tab" id="gm-tab-${tab.id}" data-tab="${tab.id}"
                 aria-controls="gm-tabpanel" aria-selected="false" tabindex="-1">${tab.label}</button>`).join('');
       this._tabButtons = Array.from(host.querySelectorAll('.gm-tab'));
       for (const btn of this._tabButtons) {
@@ -7393,7 +7757,8 @@ _stepAnimation(now) {
   },
 
   _setTab(id, { focus = false, defer = false } = {}) {
-    if (!id || MAP_INSPECTOR_TAB_IDS.indexOf(id) < 0) return false;
+    id = normalizeInspectorTab(id);
+    if (!id) return false;
     const state = this._ctx && this._ctx.state;
     const avail = resolveInspectorTabAvailability(state, this._selectedTarget);
     // An unavailable tab still SELECTS — it renders its reason. Refusing the selection outright
@@ -7499,17 +7864,16 @@ _stepAnimation(now) {
     if (!HAS_DOC || !this._weatherEl) return;
     const snap = this._weatherSnapshot(state);
     if (!snap) return;
-    // Render through the enumerated bank, strongest first, so the list itself carries the
-    // ranking. The magnitude stays where it is already legible — the `pool / 140` figure and
-    // the two-segment bar above — so no third, differently scaled number rides this line.
+    // Surface the likely cause only when it describes a meaningful risk.
     const phrases = [];
     const ordered = snap.terms.slice().sort((a, b) => b.value - a.value);
     for (const term of ordered) {
+      if (term.id === 'insecure' && term.value < 0.26) continue;
       const phrase = WEATHER_TERM_PHRASES[term.id];
       if (!phrase) continue; // enumerated ids only — an unknown id renders nothing
       phrases.push(phrase);
     }
-    const termText = phrases.length ? phrases.join(' · ') : 'baseline only';
+    const termText = phrases.join(' · ');
     const key = [
       Math.round(snap.pressureCombat),
       Math.round(snap.pressureCivil),
@@ -7520,17 +7884,22 @@ _stepAnimation(now) {
     this._lastWeatherKey = key;
     const combatPct = Math.round((snap.pressureCombat / 140) * 100);
     const civilPct = Math.round((snap.pressureCivil / 140) * 100);
-    this._weatherEl.setAttribute('data-weather-level', String(snap.level || '').toLowerCase());
+    const level = String(snap.level || '').toLowerCase();
+    const caption = level === 'hot' ? 'High encounter risk' : level === 'working' ? 'Rising encounter risk' : 'Quiet traffic';
+    this._weatherEl.setAttribute('data-weather-level', level);
+    // Quiet is already said once, in the chart's head ("All quiet · no fighting or danger nearby");
+    // the gauge speaks only when the risk is rising, so a quiet chart has no orphan caption.
+    if (level === 'hot' || level === 'working') this._weatherEl.style.removeProperty('display');
+    else this._weatherEl.style.setProperty('display', 'none', 'important');
     this._weatherEl.innerHTML = `
       <div class="gm-weather-head">
-        <span class="gm-weather-word">${snap.level}</span>
-        <span class="gm-weather-data">pressure ${snap.pool}/140</span>
+        <span class="gm-weather-word">${caption}</span>
       </div>
-      <div class="gm-weather-bar" role="img" aria-label="Encounter pressure ${snap.pool} of 140">
+      <div class="gm-weather-bar" role="img" aria-label="Encounter risk ${snap.pool} of 140">
         <i class="gm-weather-seg gm-weather-seg--combat" style="width:${combatPct}%"></i>
         <i class="gm-weather-seg gm-weather-seg--civil" style="width:${civilPct}%"></i>
       </div>
-      <div class="gm-weather-terms">${escapeMapHtml(termText)}</div>
+      ${termText ? `<div class="gm-weather-terms">${escapeMapHtml(termText)}</div>` : ''}
     `;
   },
 
@@ -7611,7 +7980,7 @@ _stepAnimation(now) {
       this._deckTableEl.innerHTML = `
         <div class="gm-deck-empty">
           <div class="gm-deck-empty-title">No viable deck route</div>
-          <div class="gm-deck-empty-body">Dock and scan markets, or carry cargo to seed HERE liquidation lanes.</div>
+          <div class="gm-deck-empty-body">Dock and scan markets to see the best sell routes from here.</div>
         </div>`;
       return;
     }
@@ -7817,6 +8186,23 @@ _stepAnimation(now) {
    *  collapsed section costs nothing, which is what makes disclosure cheap enough to default to. */
   _updateRailSections(state) {
     if (!HAS_DOC || !this._root || !state) return;
+    const goal = activeMapGoal(state);
+    if (this._locateGoalButton) {
+      const button = this._locateGoalButton;
+      const current = currentSectorId(state);
+      const canLocate = goal?.sectorId && goal.sectorId !== current
+        ? isSectorCharted(state, sectorRecordById(state, goal.sectorId)) : !!goal?.pos;
+      if (button.hidden === canLocate) button.hidden = !canLocate;
+      if (canLocate) {
+        const type = goal.markerKind === 'mission-objective' ? 'Current objective' : 'Your course';
+        const sector = sectorNameOf(state, goal.sectorId || current);
+        const fields = [['.gm-locate-type', type], ['.gm-locate-name', goal.label], ['.gm-locate-sector', sector]];
+        for (const [selector, value] of fields) {
+          const field = button.querySelector(selector);
+          if (field && field.textContent !== value) field.textContent = value;
+        }
+      }
+    }
     const openOf = (name) => {
       const sec = this._root.querySelector(`[data-rail-sec="${name}"]`);
       return sec && sec.open ? sec : null;
@@ -7828,11 +8214,6 @@ _stepAnimation(now) {
     if (countEl) countEl.textContent = missions.length ? String(missions.length) : '';
     const bmCountEl = this._root.querySelector('[data-bookmark-count]');
     if (bmCountEl) bmCountEl.textContent = this._bookmarks.length ? String(this._bookmarks.length) : '';
-    const lensCountEl = this._root.querySelector('[data-lens-count]');
-    if (lensCountEl) {
-      const on = LAYER_DEFS.filter((l) => this._layers[l.id]).length;
-      lensCountEl.textContent = `${on}/${LAYER_DEFS.length}`;
-    }
 
     const missionsHost = openOf('missions') && this._root.querySelector('#gm-rail-missions');
     if (missionsHost) {
@@ -7912,7 +8293,7 @@ _stepAnimation(now) {
         data-rail-alt="${mode}" data-route-option="${mode}"${same ? ' aria-selected="true"' : ''}
         data-route-hops="${alt.legs.length}" data-route-fuel="${Math.round(alt.totalFuel || 0)}">
         <span class="gm-rail-item-t k-row__name">${label}${same ? ' <span class="gm-rail-item-tag">plotted</span>' : ''}</span>
-        <span class="gm-rail-item-s k-row__sub">${counted(alt.totalHops, 'hop', 'hops')} · ${Math.round(alt.totalFuel || 0)}F${Number.isFinite(alt.totalToll) ? ` · ${alt.totalToll} cr toll` : ''} · worst leg ${Math.round(worst * 100)}% interdict${mode === 'spine' ? ' · fly the marked Ceres approach' : ''}</span>
+        <span class="gm-rail-item-s k-row__sub">${counted(alt.totalHops, 'jump', 'jumps')} · ${Math.round(alt.totalFuel || 0)} fuel${Number.isFinite(alt.totalToll) ? ` · ${alt.totalToll} cr toll` : ''} · ${worst >= 0.35 ? 'ambush likely' : worst >= 0.15 ? 'some ambush risk' : 'quiet lanes'}${mode === 'spine' ? ' · fly the marked Ceres approach' : ''}</span>
       </button>`);
     }
     if (!rows.length) return '<div class="gm-ins-note">No alternative path to that sector through charted space.</div>';
@@ -8484,20 +8865,22 @@ _stepAnimation(now) {
     // Selecting a search result frames the result. The camera is driven in the GLOBAL frame in every
     // branch — which is what makes "search, then zoom out, then zoom back in" land on the same
     // object instead of on whatever each level's private camera last remembered.
-    if (target.kind === 'sector') {
+    const here = currentSectorId(state);
+    const galaxySector = galaxySelectionSector(target, here);
+    if (galaxySector) {
       // A galaxy node carries GRAPH coordinates (`target.x`/`target.y`), not world units. The
       // sector's authored origin is its global position; deriving it from the id rather than
       // multiplying the graph coordinate keeps one authority for sector origins.
-      const origin = sectorGlobalOrigin(target.sectorId || target.id);
+      const origin = sectorGlobalOrigin(galaxySector);
       // Frame your sector and the pick together, so the course the preview beam shows stays on the
       // glass (a pick framed alone ran the beam off the chart).
-      const both = this._galaxyFrame([currentSectorId(state), target.sectorId || target.id]);
+      const both = this._galaxyFrame([here, galaxySector]);
       this._camera = setSpan(
         setFocus(this._cameraOrInit(), both ? both.focusGlobal : { x: origin.x, z: origin.z }),
         both ? both.spanWU : spanForZoom(LEVEL_SYSTEM_AT - 0.5), // galaxy scale
       );
       this._syncLegacyFromCamera();
-      if (!both) {
+      if (!both && target.kind === 'sector') {
         // The legacy galaxy camera is in graph units; centre it on the picked NODE.
         this._cams.galaxy.cx = target.x;
         this._cams.galaxy.cy = target.y;
@@ -8519,17 +8902,11 @@ _stepAnimation(now) {
       );
       this._syncLegacyFromCamera();
     } else {
-      this._zoom = LEVEL_LOCAL_AT + 0.5; // local scale
-      this._targetZoom = this._zoom;
-      const cam = this._cams.local;
-      cam.cx = target.x;
-      cam.cy = target.z;
-      // LOCAL is unmigrated, but the camera must not be left stale behind it, or the next zoom-out
-      // would leave the object the player just searched for.
       this._camera = setSpan(
         setFocus(this._cameraOrInit(), { x: target.x, z: target.z }),
-        spanForZoom(this._zoom),
+        MAP_PRESET_SPAN_WU.local,
       );
+      this._syncLegacyFromCamera();
     }
 
     this.refresh();
@@ -8549,17 +8926,13 @@ _stepAnimation(now) {
 
 _onMouseDown(ev) {
     if (ev.button !== 0) return;
-    const level = this._activeLevel();
-    const cam = this._cams[level];
     this._dragging = true;
     this._dragStart = {
       mx: ev.clientX,
       my: ev.clientY,
-      cx: cam.cx,
-      cy: cam.cy,
       // Frozen cameras make this safe: the drag anchor is a value, not a reference that later
       // camera moves could mutate underneath the drag.
-      camera: level !== 'local' ? this._cameraOrInit() : null,
+      camera: this._cameraOrInit(),
     };
   },
 
@@ -8572,11 +8945,12 @@ _onMouseDown(ev) {
    * dragging the table still pans it.
    */
   _onPointerDown(ev) {
-    if (!ev || ev.button !== 0) return;
+    if (!ev || ev.button !== 0 || ev.isPrimary === false) return;
     if (this._hub) this._hub.closeAll();
     const rect = this._canvas.getBoundingClientRect();
     const x = ev.clientX - rect.left;
     const y = ev.clientY - rect.top;
+    this._panEnded = false;
     this._lineGesture = false;
     if (this._isYouAt(x, y)) {
       this._beginLine(x, y, ev);
@@ -8651,6 +9025,7 @@ _onMouseDown(ev) {
   },
 
   _onPointerUp(ev) {
+    if (ev?.isPrimary === false) return;
     this._hold = null;
     if (this._line) {
       const rect = this._canvas.getBoundingClientRect();
@@ -8664,22 +9039,23 @@ _onMouseDown(ev) {
       this._endLine({ commit: !!this._line.snap });
       return;
     }
+    this._panEnded = this._dragStart?.moved === true;
     this._onMouseUp();
+    if (this._canvas?.style) this._canvas.style.cursor = 'grab';
   },
 
-  _onPointerCancel() {
+  _onPointerCancel(ev) {
+    if (ev?.isPrimary === false) return;
     this._hold = null;
     if (this._line) this._endLine({ commit: false });
     this._onMouseUp();
   },
 
 _onMouseMove(ev) {
-    const level = this._activeLevel();
-    const cam = this._cams[level];
+    if (ev.isPrimary === false) return;
     const rect = this._canvas.getBoundingClientRect();
     const mx = ev.clientX - rect.left;
     const my = ev.clientY - rect.top;
-    this._pointer = { x: mx, y: my };
 
     // Laying a line: the beam follows the pointer and snaps to the mark it passes.
     if (this._line) {
@@ -8692,38 +9068,31 @@ _onMouseMove(ev) {
       this._wake();
       return;
     }
-    // A still press becomes a line; a press that moves is a pan.
-    if (this._hold && Math.hypot(mx - this._hold.x, my - this._hold.y) > 5) this._hold = null;
-    if (this._dragging && this._hub) this._hub.cancelHover();
-
     if (this._dragging && this._dragStart) {
       const dx = ev.clientX - this._dragStart.mx;
       const dy = ev.clientY - this._dragStart.my;
-
-      if (level !== 'local' && this._dragStart.camera) {
-        // SLICE B — pan the unified camera in the GLOBAL frame. Dragging right must move the chart
-        // right, i.e. the camera moves LEFT, hence the negated delta. Panning from the drag START
-        // camera rather than accumulating per-move keeps the grab point exactly under the cursor.
-        const pxPerWU = pixelsPerWU(this._dragStart.camera, { width: rect.width, height: rect.height });
-        if (pxPerWU > 0) {
-          this._camera = panBy(this._dragStart.camera, { x: -dx / pxPerWU, z: -dy / pxPerWU });
-          this._syncLegacyFromCamera();
-          this._draw();
-          this._wake();
-          return;
+      if (!this._dragStart.moved) {
+        if (Math.hypot(dx, dy) <= 5) return;
+        this._dragStart.moved = true;
+        this._hold = null;
+        this._hub?.cancelHover();
+        if (ev.pointerId != null && this._canvas.setPointerCapture) {
+          try { this._canvas.setPointerCapture(ev.pointerId); } catch (_) { /* a synthetic event cannot capture */ }
         }
+        this._canvas.style.cursor = 'grabbing';
       }
 
-      // LOCAL keeps the legacy pan (flipped-sign scope frame, unmigrated).
-      const baseScale = this._view ? this._view.baseScale : 1;
-      cam.cx = this._dragStart.cx + dx / (baseScale * this._zoom);
-      cam.cy = this._dragStart.cy + dy / (baseScale * this._zoom);
+      const pxPerWU = pixelsPerWU(this._dragStart.camera, { width: rect.width, height: rect.height });
+      if (pxPerWU > 0) {
+        this._camera = panBy(this._dragStart.camera, { x: -MAP_SCREEN_AXIS * dx / pxPerWU, z: -MAP_SCREEN_AXIS * dy / pxPerWU });
+        this._syncLegacyFromCamera();
+      }
       this._draw();
       this._wake();
       return;
     }
 
-    // Hover hit test; the lattice lens follows the pointer on the next frame.
+    // Hover and course previews share the same mark hit test.
     const best = pickMapTargetAt(this._clickTargets, mx, my);
     if (best !== this._hoverTarget) {
       if ((best && best.id) !== (this._hoverTarget && this._hoverTarget.id)) this._hoverSince = this._nowMs();
@@ -8731,7 +9100,7 @@ _onMouseMove(ev) {
     }
     this._drawPending = true;
     this._wake();
-    this._canvas.style.cursor = best ? 'pointer' : (this._isYouAt(mx, my) ? 'grab' : 'crosshair');
+    this._canvas.style.cursor = this._isYouAt(mx, my) ? 'crosshair' : best ? 'pointer' : 'grab';
     // a dwell on a mark opens its card (a still, a hold or a drag never does)
     if (this._hub) this._hub.hover(this._hold ? null : best, { x: mx, y: my });
   },
@@ -8748,7 +9117,6 @@ _onMouseLeave() {
     this._dragStart = null;
     this._hold = null;
     this._hoverTarget = null;
-    this._pointer = null;
     this._draw();
     this._wake();
   },
@@ -8762,76 +9130,13 @@ _onMouseLeave() {
     const w = rect.width, h = rect.height;
     const factor = ev.deltaY < 0 ? 1.15 : 1 / 1.15;
 
-    // SLICE B — cursor-anchored zoom through the unified camera, on the migrated levels.
-    //
-    // This also repairs a defect the migration exposed rather than introduced: `cam.zoom` was
-    // initialised to 1.0/1.5/1.5 and then NEVER ASSIGNED anywhere in this file, while the draw sites
-    // scaled by `baseScale * cam.zoom`. So wheeling INSIDE a level changed `this._zoom` (and hence
-    // which level would be chosen) but could not change the drawn scale at all — and the pan
-    // compensation below still ran, so a wheel that produced no zoom silently PANNED the chart
-    // sideways. Zoom now moves the camera's span, which the draw sites actually read.
-    const level = this._activeLevel();
-    if (level !== 'local') {
-      const camera = this._cameraOrInit();
-      const viewport = this._cameraViewport(w, h);
-      const oldLevel = cameraLevel(camera);
-      // The world point under the cursor, in the actionable frame. The module guarantees it stays
-      // under the cursor across the zoom, including when the span clamps at a stop.
-      const cursorGlobal = screenToGlobal(camera, { x: mx, y: my }, viewport);
-      this._camera = zoomAt(camera, cursorGlobal, factor);
-      const newLevel = cameraLevel(this._camera);
-      this._syncLegacyFromCamera();
-      // Crossing a threshold preserves focusGlobal by construction, so the iris is now marking a
-      // change of DETAIL, not a change of place — which is the whole point of ADR D3.
-      if (oldLevel !== newLevel) this._triggerIris(newLevel);
-      this._draw();
-      this._wake();
-      return;
-    }
-
-    // LOCAL is deliberately still on the legacy path (ADR D3 orders local last; it carries the
-    // remembered/dead-reckoned contact memory and a flipped-sign scope frame). Unchanged behaviour.
-    const oldZoom = this._zoom;
-    const nextZoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, this._zoom * factor));
-    const oldLevel = levelForZoom(oldZoom);
-    const newLevel = levelForZoom(nextZoom);
-
-    this._zoom = nextZoom;
-    this._targetZoom = nextZoom;
-    this._syncScaleButtons();
-
-    if (oldLevel === newLevel) {
-      const cam = this._cams[newLevel];
-      const baseScale = this._view ? this._view.baseScale : 1;
-      const sign = -1;
-      // The scope centres on the clear field (see _drawLocal), so the zoom anchors there too.
-      const field = this._clearField(w, h);
-      const ox = field.x + field.width / 2;
-      const oy = field.y + field.height / 2;
-      // _drawLocal scales by `baseScale * cam.zoom`, so the notch must move cam.zoom — anchoring on
-      // `this._zoom` while cam.zoom stayed frozen slid the scope instead of magnifying it.
-      const oldCamZoom = Number(cam.zoom) > 0 ? cam.zoom : 1.5;
-      const newCamZoom = oldCamZoom * (nextZoom / oldZoom);
-      const wx = cam.cx + sign * (mx - ox) / (baseScale * oldCamZoom);
-      const wy = cam.cy + sign * (my - oy) / (baseScale * oldCamZoom);
-
-      cam.zoom = newCamZoom;
-      cam.cx = wx - sign * (mx - ox) / (baseScale * newCamZoom);
-      cam.cy = wy - sign * (my - oy) / (baseScale * newCamZoom);
-    } else {
-      // The next entry into LOCAL starts from the fitted scope again.
-      if (this._cams.local) this._cams.local.zoom = 1.5;
-      // Threshold crossing reads as passing through a membrane, not a hard clip.
-      this._triggerIris(newLevel);
-      // Leaving LOCAL hands control to the camera, so the camera must adopt where LOCAL actually
-      // was. Without this the first zoom out of LOCAL would jump to wherever the camera was last
-      // left — the "abruptly switching maps" behaviour this wave exists to remove.
-      this._camera = setSpan(
-        setFocus(this._cameraOrInit(), { x: this._cams.local.cx, z: this._cams.local.cy }),
-        spanForZoom(nextZoom),
-      );
-      this._syncLegacyFromCamera();
-    }
+    const camera = this._cameraOrInit();
+    const viewport = this._cameraViewport(w, h);
+    const cursorGlobal = screenToGlobal(camera, { x: mx, y: my }, viewport);
+    this._camera = zoomAt(camera, cursorGlobal, factor);
+    const level = cameraLevel(this._camera);
+    this._syncLegacyFromCamera();
+    if (cameraLevel(camera) !== level) this._triggerIris(level);
 
     this._draw();
     this._wake();
@@ -8839,7 +9144,7 @@ _onMouseLeave() {
 
 _onCanvasClick(ev) {
     // The click that ends a laid line is part of that gesture, not a second selection.
-    if (this._suppressClickUntil && this._nowMs() < this._suppressClickUntil) return;
+    if (this._panEnded || (this._suppressClickUntil && this._nowMs() < this._suppressClickUntil)) return;
     const rect = this._canvas.getBoundingClientRect();
     const mx = ev.clientX - rect.left;
     const my = ev.clientY - rect.top;
@@ -8856,6 +9161,7 @@ _onCanvasClick(ev) {
   },
 
 _onCanvasDblClick(ev) {
+    if (this._panEnded) return;
     const rect = this._canvas.getBoundingClientRect();
     const mx = ev.clientX - rect.left;
     const my = ev.clientY - rect.top;
@@ -8964,41 +9270,15 @@ _onCanvasDblClick(ev) {
     if (this._g) this._g.setTransform(dpr, 0, 0, dpr, 0, 0);
   },
 
-  _releaseSensorLattice() {
-    const canvas = this._sensorLatticeCache?.canvas;
-    if (canvas) { canvas.width = 0; canvas.height = 0; }
-    this._sensorLatticeCache = null;
-  },
-
-  _drawSensorLattice(g, w, h, a) {
-    const pointer = this._pointer;
-    const fallback = () => drawSensorLattice(g, w, h, { pointer, a });
-    const doc = this._canvas?.ownerDocument;
-    if (!doc?.createElement || typeof g.drawImage !== 'function') { fallback(); return; }
-    let cache = this._sensorLatticeCache;
-    if (!cache) {
-      let canvas, context;
-      try { canvas = doc.createElement('canvas'); context = canvas.getContext('2d'); } catch (_) { /* direct fallback */ }
-      if (!context && canvas) { canvas.width = 0; canvas.height = 0; }
-      cache = this._sensorLatticeCache = { canvas: context ? canvas : null, context };
+  _paintAtlas(w, h, originX, originY, tile, features = [], opts = {}) {
+    if (!this._atlasCanvas || !(w > 2 && h > 2)) return false;
+    if (this._atlas === undefined) {
+      this._atlas = createAtlasRelief(this._atlasCanvas, () => {
+        this._drawPending = true;
+        this._wake();
+      });
     }
-    if (!cache.context) { fallback(); return; }
-    const dpr = this._dpr || 1;
-    const cw = this._canvas.width, ch = this._canvas.height;
-    const px = Number.isFinite(pointer?.x) ? pointer.x : null;
-    const py = Number.isFinite(pointer?.y) ? pointer.y : null;
-    if (cache.cw !== cw || cache.ch !== ch || cache.dpr !== dpr
-        || cache.w !== w || cache.h !== h || cache.px !== px || cache.py !== py || cache.a !== a) {
-      // One transparent layer at the chart's exact backing resolution. Its points and pointer
-      // lens do not change with the animated scan; avoid resubmitting thousands of identical dots.
-      if (cache.canvas.width !== cw) cache.canvas.width = cw;
-      if (cache.canvas.height !== ch) cache.canvas.height = ch;
-      cache.context.setTransform(dpr, 0, 0, dpr, 0, 0);
-      cache.context.clearRect(0, 0, w, h);
-      drawSensorLattice(cache.context, w, h, { pointer, a });
-      Object.assign(cache, { cw, ch, dpr, w, h, px, py, a });
-    }
-    g.drawImage(cache.canvas, 0, 0, w, h);
+    return this._atlas?.paint(w, h, originX, originY, Math.max(w * 0.9, h, tile), features, opts) || false;
   },
 
 _draw() {
@@ -9025,13 +9305,6 @@ _draw() {
     if (this._lastDrawLevel !== level) {
       this._lastDrawLevel = level;
       this._domRefreshPending = true;
-    }
-
-    // Update search placeholder to match the active scale.
-    const searchInput = this._root && this._root.querySelector('.gm-search-input');
-    if (searchInput) {
-      const placeholder = level === 'local' ? 'Search local space… (Press /)' : level === 'system' ? 'Search system… (Press /)' : 'Search galaxy… (Press /)';
-      if (searchInput.placeholder !== placeholder) searchInput.placeholder = placeholder;
     }
 
     const levelLabel = level.toUpperCase();
@@ -9539,8 +9812,8 @@ _draw() {
     const target = this._previewTarget();
     const laying = !!this._line;
     const you = this._youScreen;
-    if (target && target.kind === 'sector') {
-      const sid = target.sectorId || target.id;
+    const sid = galaxySelectionSector(target, currentSectorId(state));
+    if (sid) {
       const plan = this._previewPathTo(sid);
       if (!plan) return;
       const pts = plan.ids.map((id) => screenOf.get(id)).filter(Boolean);
@@ -9772,16 +10045,15 @@ _draw() {
     const cam = this._cams.galaxy;
 
     this._view = { level: 'galaxy', baseScale: graphScale, pxPerWU: pixelsPerWU(camera, viewport), camera };
-    const sx = (x) => viewport.x + w / 2 + (x - cam.cx) * graphScale;
-    const sy = (y) => viewport.y + h / 2 + (y - cam.cy) * graphScale;
+    const sx = (x) => viewport.x + w / 2 + MAP_SCREEN_AXIS * (x - cam.cx) * graphScale;
+    const sy = (y) => viewport.y + h / 2 + MAP_SCREEN_AXIS * (y - cam.cy) * graphScale;
     const nodeById = new Map(model.nodes.map((n) => [n.id, n]));
     const reduced = !!this._reduceMotion;
     const now = this._nowMs();
     const animT = this._animT || 0;
     const dpr = this._dpr || 1;
 
-    // ORRERY: the sensor lattice behind the chart, brightening in a lens under the pointer.
-    this._drawSensorLattice(g, w, h, 0.11);
+    this._paintAtlas(w, h, sx(0), sy(0), graphScale * 9);
 
     const field = this._clearField(w, h);
     const fieldPad = 14;
@@ -9902,7 +10174,70 @@ _draw() {
       const count = strength > 0.6 ? 2 : 1;
       for (let k = 0; k < count; k += 1) {
         const u = reduced ? (0.5 + k * 0.2) : (animT * (0.05 + strength * 0.07) + phase + k / count) % 1;
-        drawLaneComet(g, a.x, a.y, b.x, b.y, u, { len: reduced ? 10 : 34 + strength * 22, a: 0.55 + strength * 0.4, trim: tokenR + 2 });
+        drawLaneComet(g, a.x, a.y, b.x, b.y, u, { len: reduced ? 6 : 14, a: 0.17 + strength * 0.12, trim: tokenR + 2 });
+      }
+    }
+
+    // MAPS-2 lenses: read once per frame. Trade reads prices only through chartTradeRead (the price
+    // model is being rebuilt; that file is the seam). Jobs count the posted offers the player has seen.
+    // Both reads are cached per second of game time and per selected good: a pan or an animation
+    // frame reuses them.
+    const lensKey = `${Math.floor(Number(state.simTime) || 0)}|${this._selectedCommodity}|${this._layers.market ? 1 : 0}${this._layers.mission ? 1 : 0}`;
+    const lensCache = this._lensCache && this._lensCache.key === lensKey && this._lensCache.state === state ? this._lensCache : null;
+    const galaxyTrade = lensCache ? lensCache.trade : (this._layers.market ? sectorTradeRead(state, this._selectedCommodity, SECTORS) : null);
+    let galaxyJobs = lensCache ? lensCache.jobs : null;
+    let galaxyTrackedSector = lensCache ? lensCache.tracked : null;
+    if (this._layers.mission && !lensCache) {
+      galaxyJobs = new Map();
+      const stationSector = new Map();
+      for (const sec of SECTORS) for (const st of sec.stations || []) if (st && st.id) stationSector.set(String(st.id), sec.id);
+      const boards = (state.missions && state.missions.boards) || {};
+      for (const stationId of Object.keys(boards)) {
+        const sid = stationSector.get(String(stationId));
+        const offers = boards[stationId] && Array.isArray(boards[stationId].offers) ? boards[stationId].offers : [];
+        if (!sid || !offers.length) continue;
+        const row = galaxyJobs.get(sid) || { count: 0, best: 0 };
+        for (const o of offers) { row.count += 1; row.best = Math.max(row.best, Math.round(Number(o && o.reward_cr) || 0)); }
+        galaxyJobs.set(sid, row);
+      }
+      const tracked = trackedMissionOf(state);
+      galaxyTrackedSector = tracked ? (tracked.destSectorId || (tracked.params && tracked.params.sectorId) || null) : null;
+    }
+    if (!lensCache) this._lensCache = { key: lensKey, state, trade: galaxyTrade, jobs: galaxyJobs, tracked: galaxyTrackedSector };
+    let tradeMarginLabel = null;
+    // The trade arrow: from the best known place to buy the selected good to the best place to sell
+    // it, labelled with the margin per unit.
+    if (galaxyTrade && galaxyTrade.arrow) {
+      const a = screenOf.get(galaxyTrade.arrow.from);
+      const b = screenOf.get(galaxyTrade.arrow.to);
+      if (a && b) {
+        const len = Math.hypot(b.x - a.x, b.y - a.y);
+        if (len > tokenR * 2.5) {
+          const ux = (b.x - a.x) / len;
+          const uy = (b.y - a.y) / len;
+          const sx0 = a.x + ux * (tokenR + 6);
+          const sy0 = a.y + uy * (tokenR + 6);
+          const ex = b.x - ux * (tokenR + 10);
+          const ey = b.y - uy * (tokenR + 10);
+          g.save();
+          g.strokeStyle = 'rgba(127, 220, 138, 0.85)';
+          g.fillStyle = 'rgba(127, 220, 138, 0.95)';
+          g.lineWidth = 2;
+          g.setLineDash([8, 6]);
+          g.beginPath(); g.moveTo(sx0, sy0); g.lineTo(ex, ey); g.stroke();
+          g.setLineDash([]);
+          g.beginPath();
+          g.moveTo(ex + ux * 8, ey + uy * 8);
+          g.lineTo(ex - uy * 6, ey + ux * 6);
+          g.lineTo(ex + uy * 6, ey - ux * 6);
+          g.closePath(); g.fill();
+          g.restore();
+          tradeMarginLabel = {
+            text: `${commodityMapLabel(this._selectedCommodity)} +${galaxyTrade.arrow.margin.toLocaleString('en-US')} cr each`,
+            x: (sx0 + ex) / 2 + uy * 22, y: (sy0 + ey) / 2 - ux * 22,
+            mx: (sx0 + ex) / 2, my: (sy0 + ey) / 2, nx: uy, ny: -ux,
+          };
+        }
       }
     }
 
@@ -9941,10 +10276,12 @@ _draw() {
     // Draw Nodes
     const labelCandidates = [];
     const hoverId = this._hoverTarget ? this._hoverTarget.id : null;
+    const selectedSector = galaxySelectionSector(this._selectedTarget, model.currentSectorId || currentSectorId(state));
     const snapId = this._line && this._line.snap ? this._line.snap.id : null;
     const shipAt = model.player && model.player.drawPos
       ? { x: sx(model.player.drawPos.x), y: sy(model.player.drawPos.z) } : null;
     const crestRects = [];
+    const deferredBadges = [];
     const opTag = mapOperatorLabel(state);
     let tagOnToken = false;
     const chartedCount = model.nodes.filter((nn) => nn.charted).length;
@@ -9998,7 +10335,24 @@ _draw() {
 
       // The token: the sector's produced art (or its bone fallback), lifted under the pointer.
       const lift = (n.id === hoverId || n.id === snapId) ? this._liftAmount(now) : 0;
-      if (ground && this._layers.faction && n.ownerId) drawTokenAura(g, x, y, r, ground.colours, n.ownerId, { a: stale ? 0.5 : 1 });
+      // MAPS-2 Danger lens: pirate and war heat as a soft red glow under the token.
+      if (this._layers.security) {
+        const rec = sectorRecordById(state, n.id);
+        const sec = Number.isFinite(n.security) ? n.security : Number(rec && rec.security);
+        const heat = Math.max(0, Math.min(1, (Number.isFinite(sec) ? (1 - sec) * 0.7 : 0)
+          + (Number(rec && rec.enemyDensity) || 0) * 0.35
+          + (eventSignal ? eventSignal.wars * 0.3 + eventSignal.tense * 0.12 : 0) - 0.25));
+        if (heat > 0.05 && typeof g.createRadialGradient === 'function') {
+          const gr = g.createRadialGradient(x, y, r * 0.6, x, y, r * 2.6);
+          gr.addColorStop(0, `rgba(255, 70, 52, ${(0.42 * heat).toFixed(3)})`);
+          gr.addColorStop(1, 'rgba(255, 70, 52, 0)');
+          g.save();
+          g.fillStyle = gr;
+          g.beginPath(); g.arc(x, y, r * 2.6, 0, Math.PI * 2); g.fill();
+          g.restore();
+        }
+      }
+      if (ground && this._layers.faction && n.ownerId) drawTokenAura(g, x, y, r, ground.colours, n.ownerId, { a: n.current ? 0.55 : 0.28 });
       const drawnR = drawSectorToken(g, n.id, x, y, tokenSize, {
         dpr, lift, stale, berths: sectorBerthCount(state, n.id), onReady: this._tokenReadyHandler(),
       });
@@ -10074,7 +10428,7 @@ _draw() {
       }
 
       // Selection: a lit band round the token — the only lit ring on the table.
-      if (this._selectedTarget && this._selectedTarget.id === n.id) {
+      if (selectedSector === n.id) {
         drawBandRing(g, x, y, drawnR + 5, { band: 7, bandA: 0.3, edge: 2, edgeA: 1 });
       }
 
@@ -10082,6 +10436,7 @@ _draw() {
       // belong to it travel together, so the rows can never orphan from their name).
       const nodeInField = inGalaxyField(x, y);
       const nodeLines = [n.name];
+      if (selectedSector === n.id && this._selectedTarget.kind !== 'sector') nodeLines.push(this._selectedTarget.name);
       if (n.current && opTag && shipAt && Math.hypot(shipAt.x - x, shipAt.y - y) <= r) {
         nodeLines.push(opTag);
         tagOnToken = true;
@@ -10092,13 +10447,15 @@ _draw() {
         ? galaxyPresenceMarkerRows(n.presence)
         : [];
       for (const row of presenceRows) nodeLines.push(`◆ ${row.label}`);
-      if (stale) nodeLines.push('STALE');
+      if (stale) nodeLines.push('OLD CHART');
       if (nodeInField) {
         const cand = makeMapLabelCandidate(g, {
           id: `sector:${n.id}`,
           kind: n.current ? 'gate' : 'station',
-          maxLeader: 104,
-          selected: !!(this._selectedTarget && this._selectedTarget.id === n.id),
+          priority: n.current ? 960 : undefined,
+          force: !!n.current,
+          maxLeader: n.current ? 44 : 104,
+          selected: selectedSector === n.id,
           text: n.name,
           lines: nodeLines,
           x,
@@ -10107,6 +10464,7 @@ _draw() {
           color: n.current ? CHART_INK.lit(1) : (stale ? CHART_INK.bone(0.62) : CHART_INK.lit(0.92)),
           secondaryColor: null,
         });
+        cand.isCurrent = !!n.current;
         // On a crowded chart a two-word name may set on two lines to keep its seat by the token.
         const words = String(n.name || '').split(/\s+/).filter(Boolean);
         if (words.length >= 2) {
@@ -10123,17 +10481,93 @@ _draw() {
         const marketData = bestKnownSectorMarket(state, record, this._selectedCommodity);
         if (marketData) {
           const tint = memoryTint(marketData.ageS);
+          const text = `Sells ${marketData.sell} cr`;
+          const hasJobs = !!(this._layers.mission && galaxyJobs && galaxyJobs.get(n.id) && galaxyJobs.get(n.id).count > 0)
+            || galaxyTrackedSector === n.id;
+          const py = y + drawnR + (hasJobs ? 46 : 26);
           g.save();
-          g.globalAlpha *= tint.alpha;
           g.font = chartFont(650, 12, { stretch: 'normal' });
-          g.textAlign = 'left'; g.textBaseline = 'middle';
-          g.lineJoin = 'round';
-          g.strokeStyle = 'rgba(5, 7, 10, 0.86)'; g.lineWidth = 4;
-          const text = `BEST ${marketData.sell}`;
-          g.strokeText(text, x + drawnR + 6, y);
-          g.fillStyle = tint.key === 'fresh' ? CHART_INK.phos(1) : CHART_INK.bone(0.72);
-          g.fillText(text, x + drawnR + 6, y);
+          const sw = g.measureText(text).width;
           g.restore();
+          const rect = { x: x - sw / 2 - 4, y: py - 9, width: sw + 8, height: 18 };
+          // Other sectors' fixed price lines enter crestRects before solving; the player's own
+          // sector label solves first so its own badge never pushes "YOU" beside another sector.
+          if (!n.current) crestRects.push(rect);
+          deferredBadges.push({
+            isCurrent: !!n.current,
+            kind: 'price',
+            x,
+            y,
+            drawnR,
+            rect,
+            draw(dy = 0) {
+              g.save();
+              g.globalAlpha *= tint.alpha;
+              g.font = chartFont(650, 12, { stretch: 'normal' });
+              g.textAlign = 'center'; g.textBaseline = 'middle';
+              g.lineJoin = 'round';
+              g.strokeStyle = 'rgba(5, 7, 10, 0.86)'; g.lineWidth = 4;
+              g.strokeText(text, x, py + dy);
+              g.fillStyle = tint.key === 'fresh' ? CHART_INK.phos(1) : CHART_INK.bone(0.72);
+              g.fillText(text, x, py + dy);
+              g.restore();
+            },
+          });
+        }
+      }
+
+      // MAPS-2 Trade lens: which way this sector's best price is moving (only when known).
+      if (this._layers.market && galaxyTrade) {
+        const tr = galaxyTrade.bySector.get(n.id);
+        if (tr && tr.trend) {
+          const tx = x - drawnR - 10;
+          const ty = y;
+          g.save();
+          g.fillStyle = tr.trend === 'rising' ? '#7fdc8a' : tr.trend === 'falling' ? '#ff7a62' : CHART_INK.bone(0.7);
+          g.beginPath();
+          if (tr.trend === 'rising') { g.moveTo(tx, ty - 6); g.lineTo(tx + 5, ty + 3); g.lineTo(tx - 5, ty + 3); }
+          else if (tr.trend === 'falling') { g.moveTo(tx, ty + 6); g.lineTo(tx + 5, ty - 3); g.lineTo(tx - 5, ty - 3); }
+          else { g.rect(tx - 5, ty - 1.5, 10, 3); }
+          g.fill();
+          g.restore();
+        }
+      }
+
+      // MAPS-2 Jobs lens: how much work is posted here and the best pay, the tracked job lit.
+      if (this._layers.mission && galaxyJobs) {
+        const jobs = galaxyJobs.get(n.id);
+        const tracked = galaxyTrackedSector === n.id;
+        if ((jobs && jobs.count > 0) || tracked) {
+          const text = jobs && jobs.count > 0 ? `${counted(jobs.count, 'job')} · ${jobs.best.toLocaleString('en-US')} cr` : 'Tracked job';
+          g.save();
+          g.font = chartFont(650, 12, { stretch: 'normal' });
+          const tw = g.measureText(text).width;
+          g.restore();
+          const bx = x - tw / 2 - 6;
+          const by = y + drawnR + 20;
+          const rect = { x: bx - 2, y: by - 2, width: tw + 16, height: 22 };
+          if (!n.current) crestRects.push(rect);
+          deferredBadges.push({
+            isCurrent: !!n.current,
+            kind: 'jobs',
+            x,
+            y,
+            drawnR,
+            rect,
+            draw(dy = 0) {
+              g.save();
+              g.font = chartFont(650, 12, { stretch: 'normal' });
+              g.textAlign = 'center'; g.textBaseline = 'top';
+              g.fillStyle = tracked ? 'rgba(52, 36, 10, 0.92)' : 'rgba(8, 12, 16, 0.86)';
+              g.fillRect(bx, by + dy, tw + 12, 18);
+              g.strokeStyle = tracked ? '#f2b950' : CHART_INK.bone(0.35);
+              g.lineWidth = 1;
+              g.strokeRect(bx + 0.5, by + dy + 0.5, tw + 11, 17);
+              g.fillStyle = tracked ? '#ffd890' : CHART_INK.bone(0.9);
+              g.fillText(text, x, by + dy + 3);
+              g.restore();
+            },
+          });
         }
       }
 
@@ -10203,7 +10637,9 @@ _draw() {
     const galaxyReserved = [];
     this._goalLabelPlacement = null;
     const goalRingR = tokenR + 7;
-    if (goalNode) {
+    const goalInThisSector = !!(goalNode && state.world && goalNode.id === state.world.currentSectorId);
+    if (goalInThisSector) this._goalLabelPlacement = false;
+    if (goalNode && !goalInThisSector) {
       const gx = sx(goalNode.x), gy = sy(goalNode.y);
       const goalText = `GOAL · ${String(goal.label || 'OBJECTIVE').toUpperCase().slice(0, 22)}`;
       g.save();
@@ -10212,7 +10648,7 @@ _draw() {
       const goalTextWidth = g.measureText(goalText).width;
       setTracking(g, 0, 12);
       g.restore();
-      const goalLabelPos = goalLabelPlacement(goalTextWidth, gx, gy, w, h, routeScreenSegs, goalRingR + 8);
+      const goalLabelPos = goalLabelPlacement(goalTextWidth, gx, gy, w, h, routeScreenSegs, goalRingR + 8, 8, crestRects);
       galaxyReserved.push({
         x: goalLabelPos.rectX - 4,
         y: goalLabelPos.rectY - 3,
@@ -10244,12 +10680,13 @@ _draw() {
         const a = screenOf.get(leg.from);
         const b = screenOf.get(leg.to);
         if (!a || !b || !Number.isFinite(Number(leg.fuel))) return;
+        // plain words: "27 FUEL", not the "LEG 2 · 27F" shorthand
         const risk = Number(leg.interdict) > 0.25 ? '  ·  WATCHED' : '';
         labelCandidates.push(makeMapLabelCandidate(g, {
           id: `leg:${i}`,
           kind: 'zone',
-          text: `LEG ${i + 1} · ${Math.round(Number(leg.fuel))}F${risk}`,
-          lines: [`LEG ${i + 1} · ${Math.round(Number(leg.fuel))}F${risk}`],
+          text: `${Math.round(Number(leg.fuel))} FUEL${risk}`,
+          lines: [`${Math.round(Number(leg.fuel))} FUEL${risk}`],
           x: (a.x + b.x) / 2,
           y: (a.y + b.y) / 2,
           anchorRadius: 8,
@@ -10269,9 +10706,90 @@ _draw() {
     }
     if (goalNode) wellDiscs.push({ x: sx(goalNode.x), y: sy(goalNode.y), r: goalRingR + 4 });
     this._edgeScalePxPerWU = graphScale / SECTOR_ORIGIN_LATTICE_WU;
-    const galaxyLabelLayout = this._placeLabels(labelCandidates, w, h, {
-      reserved: galaxyReserved, discs: wellDiscs, segments: laneSegs,
-    });
+    // Seat the player's own sector label first (exempt from its own fixed job/price badges) so
+    // "YOU" stays anchored right beside the player's token instead of drifting next to another node.
+    const currentCandidates = labelCandidates.filter((c) => c.isCurrent);
+    const otherCandidates = labelCandidates.filter((c) => !c.isCurrent);
+    const currentLayout = currentCandidates.length
+      ? this._placeLabels(currentCandidates, w, h, {
+        reserved: galaxyReserved, discs: wellDiscs, segments: laneSegs,
+      })
+      : [];
+    const currentPlacedRects = [];
+    for (const pl of currentLayout) {
+      if (pl && pl.visible) {
+        const rect = { x: pl.x, y: pl.y, width: pl.width, height: pl.height };
+        currentPlacedRects.push(rect);
+        galaxyReserved.push(rect);
+        crestRects.push(rect);
+      }
+    }
+    const badgeOverlaps = (a, b, pad = 4) => a.x < b.x + b.width + pad && a.x + a.width + pad > b.x
+      && a.y < b.y + b.height + pad && a.y + a.height + pad > b.y;
+    const currentBadges = deferredBadges.filter((b) => b.isCurrent);
+    if (currentBadges.length) {
+      let topY = Infinity;
+      let bottomY = -Infinity;
+      for (const b of currentBadges) {
+        topY = Math.min(topY, b.rect.y);
+        bottomY = Math.max(bottomY, b.rect.y + b.rect.height);
+      }
+      const stackH = bottomY - topY;
+      let dy = 0;
+      const hitsCurrentLabel = (shift) => currentBadges.some((b) => {
+        const shifted = { x: b.rect.x, y: b.rect.y + shift, width: b.rect.width, height: b.rect.height };
+        return currentPlacedRects.some((r) => badgeOverlaps(shifted, r, 4));
+      });
+      if (hitsCurrentLabel(0)) {
+        let maxLabelBottom = -Infinity;
+        for (const r of currentPlacedRects) maxLabelBottom = Math.max(maxLabelBottom, r.y + r.height);
+        const downShift = Math.max(0, maxLabelBottom + 6 - topY);
+        const upShift = (currentBadges[0].y - currentBadges[0].drawnR - 12 - stackH) - topY;
+        const downFits = topY + downShift + stackH <= field.y + field.height - 6;
+        const upFits = topY + upShift >= field.y + 6 && !hitsCurrentLabel(upShift);
+        if (downFits) dy = downShift;
+        else if (upFits) dy = upShift;
+        else dy = downShift;
+      }
+      for (const b of currentBadges) {
+        b.dy = dy;
+        const placedRect = { x: b.rect.x, y: b.rect.y + dy, width: b.rect.width, height: b.rect.height };
+        galaxyReserved.push(placedRect);
+        crestRects.push(placedRect);
+      }
+    }
+    // MAPS-2 Trade lens: the buy→sell margin, drawn over the tokens so nothing hides it.
+    if (tradeMarginLabel) {
+      g.save();
+      g.font = chartFont(700, 12, { stretch: 'normal' });
+      g.textAlign = 'center'; g.textBaseline = 'middle';
+      const tw = g.measureText(tradeMarginLabel.text).width;
+      // Off the arrow on whichever side leaves the fixed plates (jobs badges, prices) readable: it
+      // sat on Vesta Forge's "1 job" badge and cut it to "1 jo".
+      if (Number.isFinite(tradeMarginLabel.mx)) {
+        const hits = (px, py) => crestRects.some((b) => px - tw / 2 - 7 < b.x + b.width && px + tw / 2 + 7 > b.x
+          && py - 11 < b.y + b.height && py + 11 > b.y);
+        for (const k of [22, -22, 40, -40, 58, -58]) {
+          const px = tradeMarginLabel.mx + tradeMarginLabel.nx * k;
+          const py = tradeMarginLabel.my + tradeMarginLabel.ny * k;
+          if (!hits(px, py)) { tradeMarginLabel.x = px; tradeMarginLabel.y = py; break; }
+        }
+      }
+      galaxyReserved.push({ x: tradeMarginLabel.x - tw / 2 - 7, y: tradeMarginLabel.y - 11, width: tw + 14, height: 22 });
+      g.fillStyle = 'rgba(6, 14, 10, 0.92)';
+      g.fillRect(tradeMarginLabel.x - tw / 2 - 7, tradeMarginLabel.y - 11, tw + 14, 22);
+      g.strokeStyle = 'rgba(127, 220, 138, 0.7)';
+      g.strokeRect(tradeMarginLabel.x - tw / 2 - 6.5, tradeMarginLabel.y - 10.5, tw + 13, 21);
+      g.fillStyle = '#9ff0a8';
+      g.fillText(tradeMarginLabel.text, tradeMarginLabel.x, tradeMarginLabel.y);
+      g.restore();
+    }
+    const otherLayout = otherCandidates.length
+      ? this._placeLabels(otherCandidates, w, h, {
+        reserved: galaxyReserved, discs: wellDiscs, segments: laneSegs,
+      })
+      : [];
+    const galaxyLabelLayout = [...currentLayout, ...otherLayout];
     this._lastLabelLayout = galaxyLabelLayout;
     // The ground goes down once the labels are solved (its holder names keep off them), behind
     // everything drawn so far: the field-edge fade above would otherwise erase it inside the clip and
@@ -10285,6 +10803,9 @@ _draw() {
       try { ground.paint(g, { obstacles, requestRedraw: () => { galaxyMapScreen._drawPending = true; galaxyMapScreen._wake(); } }); } catch (_) { /* the chart reads without its ground */ }
       g.restore();
     }
+    for (const badge of deferredBadges) {
+      if (inGalaxyField(badge.x, badge.y)) badge.draw(badge.dy || 0);
+    }
     for (const placement of galaxyLabelLayout) {
       if (placement.visible) drawMapLabelBlock(g, placement);
     }
@@ -10294,7 +10815,7 @@ _draw() {
       let gx = sx(goalNode.x), gy = sy(goalNode.y);
       const routeHeadsHere = !this._line && this._layers.route && routeDest && routeDest === goal.sectorId;
       if (inGalaxyField(gx, gy)) {
-        drawMapGoalMarker(g, gx, gy, goal.label, w, this._goalLabelPlacement || null, goalRingR, routeHeadsHere ? 'hand' : 'bone');
+        drawMapGoalMarker(g, gx, gy, goal.label, w, this._goalLabelPlacement === false ? false : (this._goalLabelPlacement || null), goalRingR, routeHeadsHere ? 'hand' : 'bone');
       } else {
         // Off the clear field the goal stands as a tick on its border, pointing the way.
         const tick = edgeTickOnField(field, field.x + field.width / 2, field.y + field.height / 2, gx, gy,
@@ -10410,8 +10931,8 @@ _drawSystem(g, state, w, h) {
     const cam = this._cams.system;
 
     this._view = { level: 'system', baseScale: pxPerWU, pxPerWU, camera, contentSpanWU: span };
-    const sx = (x) => viewport.x + w / 2 + (x - cam.cx) * pxPerWU;
-    const sz = (z) => viewport.y + h / 2 + (z - cam.cy) * pxPerWU;
+    const sx = (x) => viewport.x + w / 2 + MAP_SCREEN_AXIS * (x - cam.cx) * pxPerWU;
+    const sz = (z) => viewport.y + h / 2 + MAP_SCREEN_AXIS * (z - cam.cy) * pxPerWU;
     const labelCandidates = [];
     const edgeTicks = [];
     const reduced = !!this._reduceMotion;
@@ -10430,7 +10951,8 @@ _drawSystem(g, state, w, h) {
       edgeTicks.push(edgeTickOnField(field, fieldCx, fieldCy, x, y, color, shape, target));
     };
 
-    this._drawSensorLattice(g, w, h, 0.06);
+    const relief = this._paintAtlas(w, h, sx(0), sz(0), pxPerWU * 5400,
+      atlasFeatures(state, model.sectorId, this._layers, sx, sz, pxPerWU));
 
     g.save();
     g.beginPath();
@@ -10481,7 +11003,7 @@ _drawSystem(g, state, w, h) {
     // Zones: regions of the sector as pools of light. Overlapping zones MERGE: each pool's light is laid
     // with 'lighten' (the brighter light wins, no darker Venn lens), and each rim is a band of light
     // clipped out of every other pool, so a cluster of zones wears one lit outline.
-    const pools = model.zones.filter((z) => !(z.hazard && this._layers.hazard))
+    const pools = model.zones.filter((z) => !z.hazard)
       .map((z) => ({ z, ...warpDisc(sx(z.x), sz(z.z), z.radius * pxPerWU) }));
     // The pools live inside the sector: clipped to the gate ring's inner edge.
     g.save();
@@ -10490,11 +11012,11 @@ _drawSystem(g, state, w, h) {
     g.globalCompositeOperation = 'lighten';
     const poolOwner = (state.world && state.world.sectors && state.world.sectors[model.sectorId] && state.world.sectors[model.sectorId].owner) || (SECTOR_BY_ID.get(model.sectorId) || {}).factionId || null;
     const poolTint = this._layers.faction ? dominionRgb(poolOwner, factionColorOf(poolOwner)).join(',') : '236,230,216';
-    for (const pool of pools) {
+    for (const pool of relief ? [] : pools) {
       const grad = g.createRadialGradient ? g.createRadialGradient(pool.x, pool.y, 0, pool.x, pool.y, pool.r) : null;
       if (grad) {
-        grad.addColorStop(0, `rgba(${poolTint},0.3)`);
-        grad.addColorStop(0.7, `rgba(${poolTint},0.12)`);
+        grad.addColorStop(0, `rgba(${poolTint},0.12)`);
+        grad.addColorStop(0.7, `rgba(${poolTint},0.08)`);
         grad.addColorStop(1, `rgba(${poolTint},0.04)`);
       }
       g.fillStyle = grad || CHART_INK.bone(0.06);
@@ -10510,11 +11032,12 @@ _drawSystem(g, state, w, h) {
         g.arc(other.x, other.y, Math.max(1, other.r - 1), 0, Math.PI * 2, true);
         g.clip('evenodd');
       }
-      drawBandRing(g, pool.x, pool.y, pool.r, { rgb: poolTint, band: 7, bandA: 0.34, edge: 1.6, edgeA: 0.8 });
+      drawBandRing(g, pool.x, pool.y, pool.r, { rgb: poolTint, band: 0, edge: 1, edgeA: 0.46 });
       g.restore();
     }
     g.restore();
     for (const z of model.zones) {
+      if (z.hazard && !this._layers.hazard) continue;
       const zd = warpDisc(sx(z.x), sz(z.z), z.radius * pxPerWU);
       const x = zd.x, y = zd.y, rr = zd.r;
 
@@ -10541,7 +11064,7 @@ _drawSystem(g, state, w, h) {
         g.fillStyle = CHART_INK.danger(0.06);
         g.beginPath(); g.arc(x, y, rr, 0, Math.PI * 2); g.fill();
         g.restore();
-        drawBandRing(g, x, y, rr, { rgb: '255,80,56', band: 7, bandA: 0.2, edge: 1.8, edgeA: 0.85 });
+        drawBandRing(g, x, y, rr, { rgb: '214,145,115', band: 0, edge: 1.3, edgeA: 0.76, dash: [5, 4] });
         const hazardGlyph = HAZARD_CANVAS_GLYPHS[z.type] || 'warn';
         drawGlyph(g, hazardGlyph, x, y, 14, { color: INK.red });
         labelCandidates.push(makeMapLabelCandidate(g, {
@@ -10561,8 +11084,9 @@ _drawSystem(g, state, w, h) {
         const zoneLabel = makeMapLabelCandidate(g, {
           id: `zone:${z.id}`,
           kind: 'zone',
-          text: z.name + (z.threat ? ` · THREAT ${z.threat}` : '') + chatterSuffix,
-          lines: [z.name + (z.threat ? ` · THREAT ${z.threat}` : '') + chatterSuffix],
+          // Plain words: a danger word, never "THREAT 1" (only a zone with real danger says so).
+          text: z.name + (z.threat >= 2 ? ` · ${z.threat >= 3 ? 'dangerous' : 'some danger'}` : '') + chatterSuffix,
+          lines: [z.name + (z.threat >= 2 ? ` · ${z.threat >= 3 ? 'dangerous' : 'some danger'}` : '') + chatterSuffix],
           x,
           y,
           anchorRadius: 3,
@@ -10598,7 +11122,7 @@ _drawSystem(g, state, w, h) {
         g.save();
         g.fillStyle = `rgba(${CLASS_RGB.ore},0.1)`;
         g.beginPath(); g.arc(fx, fy, fr, 0, Math.PI * 2); g.fill();
-        const grains = Math.max(10, Math.min(40, Math.round(fr * 0.9)));
+        const grains = relief ? 0 : Math.max(10, Math.min(40, Math.round(fr * 0.9)));
         for (let i = 0; i < grains; i += 1) {
           const a = i * 2.39996 + cosmeticHash01(String(f.id) + i) * 0.6;
           const rr = Math.sqrt((i + 0.5) / grains) * fr * 0.92;
@@ -10607,7 +11131,7 @@ _drawSystem(g, state, w, h) {
           g.beginPath(); g.arc(fx + Math.cos(a) * rr, fy + Math.sin(a) * rr * 0.86, s, 0, Math.PI * 2); g.fill();
         }
         g.restore();
-        drawBandRing(g, fx, fy, fr, { rgb: CLASS_RGB.ore, band: 6, bandA: 0.2, edge: 1.4, edgeA: 0.6 });
+        drawBandRing(g, fx, fy, fr, { rgb: CLASS_RGB.ore, band: 0, edge: 1, edgeA: 0.36, dash: [2, 3] });
         // What it is and the ore it carries, named at the field's crown through the label solver.
         labelCandidates.push(makeMapLabelCandidate(g, {
           id: `field:${f.id || glyph}`,
@@ -10671,11 +11195,23 @@ _drawSystem(g, state, w, h) {
 
         const phaseLabel = bearing.statusLabel || (bearing.manualSearch ? 'RUMOR SEARCH'
           : bearing.phase === 'salvaged' ? 'SALVAGED' : fixed ? 'FIXED' : 'READ BEARING');
+        // MAPS-2: a rumoured find says what it is and what to do, beside a search marker.
+        const rumourNoun = /cache/i.test(String(bearing.name || '')) ? 'cache' : String(bearing.name || 'find').toLowerCase();
+        const isRumourSearch = !!(rumorTarget || bearing.manualSearch || /rumou?r/i.test(String(bearing.statusLabel || "")));
+        const bearingText = isRumourSearch ? `Rumoured ${rumourNoun}: search here` : `${phaseLabel} · ${bearing.name}`;
+        if (isRumourSearch) {
+          g.save();
+          g.strokeStyle = CHART_INK.lit(0.92);
+          g.lineWidth = 1.8;
+          g.beginPath(); g.arc(x - 2, y - 2, 6, 0, Math.PI * 2); g.stroke();
+          g.beginPath(); g.moveTo(x + 2.5, y + 2.5); g.lineTo(x + 7.5, y + 7.5); g.stroke();
+          g.restore();
+        }
         labelCandidates.push(makeMapLabelCandidate(g, {
           id: `bearing:${bearing.wreckId}`,
           kind: 'bearing',
-          text: `${phaseLabel} · ${bearing.name}`,
-          lines: [`${phaseLabel} · ${bearing.name}`],
+          text: bearingText,
+          lines: [bearingText],
           x,
           y,
           anchorRadius: fixed ? 10 : radiusPx + 6,
@@ -10787,10 +11323,9 @@ _drawSystem(g, state, w, h) {
       const pointLines = [displayName];
       if (p.statusLine) pointLines.push(p.statusLine);
       let marketTint = null;
-      let services = [];
-      if (this._layers.services && (isStation || isGate)) {
-        const record = findStationRecord(state, p.stationId || p.id);
-        services = record && record.services ? record.services : [];
+      if (this._layers.services && isStation && !p.closed) {
+        const services = stationChartServices(state, p.stationId || p.id, model.sectorId);
+        if (services) pointLines.push(services);
       }
 
       if (this._layers.market && isStation) {
@@ -10834,10 +11369,6 @@ _drawSystem(g, state, w, h) {
         }
         if (alts.length) pointLabel.alts = alts;
         labelCandidates.push(pointLabel);
-      }
-
-      if (isStation && services.length > 0) {
-        drawServicePictograms(g, x, y + 22, services);
       }
 
       // Mission relevance: a lit ring round a station a contract names.
@@ -11021,7 +11552,7 @@ _drawSystem(g, state, w, h) {
 
     // THE GROUND: the holder's hue washes the field behind everything drawn
     // (src/ui/orrery/chartWorld.js), centred on the sector's seat — no dial rim to light.
-    if (this._layers.faction) {
+    if (this._layers.faction && !relief) {
       const owner = (state.world && state.world.sectors && state.world.sectors[model.sectorId] && state.world.sectors[model.sectorId].owner) || (SECTOR_BY_ID.get(model.sectorId) || {}).factionId || null;
       g.save();
       g.globalCompositeOperation = 'destination-over';
@@ -11052,6 +11583,219 @@ _drawSystem(g, state, w, h) {
     return model;
   },
 
+  /** Every rock of the current sector (dormant field records + woken live rocks), cached per field version. */
+  _surveyRocks(state, sectorId) {
+    const field = state.world && state.world.asteroidField;
+    // Keyed on membership (counts), not field.version: the version bumps on every rock pose
+    // update, while the list holds references whose positions are read live.
+    const count = field && Array.isArray(field.rocks) ? field.rocks.length : 0;
+    const key = `${sectorId}|${count}|${state.entityList ? state.entityList.length : 0}`;
+    if (this._surveyRockKey === key && this._surveyRockList) return this._surveyRockList;
+    const list = [];
+    for (const rec of (field && Array.isArray(field.rocks)) ? field.rocks : []) {
+      if (!rec || rec.alive === false || rec.liveEntityId != null || !rec.pos) continue;
+      if (rec.homeSectorId && sectorId && rec.homeSectorId !== sectorId) continue;
+      list.push(rec);
+    }
+    for (const e of Array.isArray(state.entityList) ? state.entityList : []) {
+      if (e && e.type === 'asteroid' && e.alive !== false && e.pos) list.push(e);
+    }
+    this._surveyRockKey = key;
+    this._surveyRockList = list;
+    return list;
+  },
+
+  /**
+   * The local survey under the marks: a quiet grid, hazards hatched, the lanes traffic flies, the
+   * rock fields shaped by the actual rocks, and the fog past the ship's sensor range with the scan
+   * bubble as one ring. Drawn inside the field clip, before contacts.
+   */
+  _drawLocalSurvey(g, state, model, { sx, sz, localScale, field, origin, focus, shipX, shipY, reduced, labelCandidates }) {
+    // 1. Survey grid, aligned to the sector origin, in round metres.
+    const step = surveyGridStep(localScale);
+    const stepPx = step * localScale;
+    const ox = sx(origin.x);
+    const oy = sz(origin.z);
+    g.save();
+    g.strokeStyle = 'rgba(150, 196, 216, 0.055)';
+    g.lineWidth = 1;
+    g.beginPath();
+    for (let x = ox + Math.ceil((field.x - ox) / stepPx) * stepPx; x <= field.x + field.width; x += stepPx) {
+      g.moveTo(Math.round(x) + 0.5, field.y); g.lineTo(Math.round(x) + 0.5, field.y + field.height);
+    }
+    for (let y = oy + Math.ceil((field.y - oy) / stepPx) * stepPx; y <= field.y + field.height; y += stepPx) {
+      g.moveTo(field.x, Math.round(y) + 0.5); g.lineTo(field.x + field.width, Math.round(y) + 0.5);
+    }
+    g.stroke();
+    g.restore();
+
+    // 2. Lanes traffic flies: faint dashed corridors station↔station and station↔its nearest gate.
+    const ports = model.contacts.filter((c) => (c.kind === 'station' || c.kind === 'gate') && !c.foreign && !c.remembered);
+    const stations = ports.filter((c) => c.kind === 'station' && !c.hostile);
+    const gates = ports.filter((c) => c.kind === 'gate');
+    const lanes = [];
+    for (let i = 0; i < stations.length; i += 1) {
+      for (let j = i + 1; j < stations.length; j += 1) lanes.push([stations[i], stations[j]]);
+      let best = null;
+      let bestD = Infinity;
+      for (const gt of gates) {
+        const d = Math.hypot(gt.x - stations[i].x, gt.z - stations[i].z);
+        if (d < bestD) { bestD = d; best = gt; }
+      }
+      if (best) lanes.push([stations[i], best]);
+    }
+    if (lanes.length) {
+      const half = Math.max(5, Math.min(14, 45 * localScale));
+      g.save();
+      g.strokeStyle = 'rgba(176, 210, 226, 0.16)';
+      g.lineWidth = 1;
+      g.setLineDash([6, 7]);
+      g.beginPath();
+      for (const [a, b] of lanes) {
+        const ax = sx(a.x); const ay = sz(a.z); const bx = sx(b.x); const by = sz(b.z);
+        const len = Math.hypot(bx - ax, by - ay);
+        if (len < 30) continue;
+        const nx = -(by - ay) / len * half;
+        const ny = (bx - ax) / len * half;
+        g.moveTo(ax + nx, ay + ny); g.lineTo(bx + nx, by + ny);
+        g.moveTo(ax - nx, ay - ny); g.lineTo(bx - nx, by - ny);
+      }
+      g.stroke();
+      g.setLineDash([]);
+      g.restore();
+    }
+
+    // 3. Hazards, hatched, with a plain name.
+    const record = sectorRecordById(state, model.sectorId);
+    const HAZARD_WORD = { nebula: 'Nebula', radiation: 'Radiation', debris: 'Debris', dense_asteroid: 'Dense rocks' };
+    for (const hz of (record && record.hazards) || []) {
+      if (!hz || !hz.center || !(hz.radius > 0)) continue;
+      const x = sx(origin.x + hz.center.x);
+      const y = sz(origin.z + hz.center.z);
+      const r = hz.radius * localScale;
+      if (x + r < field.x || x - r > field.x + field.width || y + r < field.y || y - r > field.y + field.height) continue;
+      const hot = hz.type === 'radiation';
+      g.save();
+      g.beginPath();
+      g.arc(x, y, r, 0, Math.PI * 2);
+      g.fillStyle = surveyHatch(g, hot ? '255, 120, 80' : '160, 196, 224') || (hot ? 'rgba(255,120,80,0.08)' : 'rgba(160,196,224,0.06)');
+      g.globalAlpha = hot ? 0.9 : 0.6;
+      g.fill();
+      g.globalAlpha = 1;
+      g.strokeStyle = hot ? 'rgba(255, 128, 88, 0.5)' : 'rgba(170, 200, 224, 0.32)';
+      g.setLineDash([5, 5]);
+      g.stroke();
+      g.setLineDash([]);
+      g.restore();
+      const word = HAZARD_WORD[hz.type] || 'Hazard';
+      if (r > 24) {
+        labelCandidates.push(makeMapLabelCandidate(g, { id: `hazard:${hz.type}:${hz.center.x}:${hz.center.z}`, kind: 'zone', text: word,
+          lines: [word], x, y, anchorRadius: Math.min(r, 60), area: true, priority: 480, color: hot ? '#ff9a7a' : CHART_INK.bone(0.8) }));
+      }
+    }
+
+    // 4. Rock fields shaped by the actual rocks (the minimap's painter), cached on an oversized
+    // layer so a pan only moves it; rebuilt on zoom, sector, a far pan, or a changed field (lazily).
+    const rocks = this._surveyRocks(state, model.sectorId);
+    if (rocks.length && typeof document !== 'undefined') {
+      const pad = 160;
+      const dpr = this._dpr || 1;
+      const layerW = field.width + pad * 2;
+      const layerH = field.height + pad * 2;
+      if (!this._surveyRockCanvas) {
+        this._surveyRockCanvas = document.createElement('canvas');
+        this._surveyRockPainter = createRockFieldPainter(document);
+      }
+      const L = this._surveyRockLayer || (this._surveyRockLayer = { key: '', fx: NaN, fz: NaN, s: NaN, cx: 0, cy: 0, version: -1, at: -Infinity });
+      const fieldVersion = state.world?.asteroidField?.version ?? 0;
+      const now = this._nowMs();
+      const sizeKey = `${model.sectorId}|${Math.round(layerW)}|${Math.round(layerH)}|${dpr}`;
+      const shiftX = MAP_SCREEN_AXIS * (L.fx - focus.x) * localScale;
+      const shiftY = MAP_SCREEN_AXIS * (L.fz - focus.z) * localScale;
+      const stale = sizeKey !== L.key
+        || !(Math.abs(localScale / L.s - 1) < 0.004)
+        || !(Math.abs(shiftX) < pad * 0.8 && Math.abs(shiftY) < pad * 0.8)
+        || (fieldVersion !== L.version && now - L.at > 1500);
+      if (stale) {
+        const c = this._surveyRockCanvas;
+        const pw = Math.max(1, Math.round(layerW * dpr));
+        const ph = Math.max(1, Math.round(layerH * dpr));
+        if (c.width !== pw) c.width = pw;
+        if (c.height !== ph) c.height = ph;
+        const rg = c.getContext('2d');
+        rg.setTransform(1, 0, 0, 1, 0, 0);
+        rg.clearRect(0, 0, pw, ph);
+        rg.setTransform(dpr, 0, 0, dpr, 0, 0);
+        const baseX = field.x - pad;
+        const baseY = field.y - pad;
+        this._surveyRockPainter.paint(rg, rocks, (x, z) => ({ x: sx(x) - baseX, y: sz(z) - baseY }), localScale, layerW, layerH, {
+          dpr, padWorld: 60, minPx: 4, maxPx: 22, density: true,
+          fill: 'rgba(96, 146, 172, 0.12)', contour: 'rgba(168, 214, 234, 0.5)',
+        });
+        Object.assign(L, { key: sizeKey, fx: focus.x, fz: focus.z, s: localScale, cx: baseX, cy: baseY, version: fieldVersion, at: now });
+        this._surveyRockRebuilds = (this._surveyRockRebuilds || 0) + 1;
+      }
+      const dx = L.cx + MAP_SCREEN_AXIS * (L.fx - focus.x) * localScale;
+      const dy = L.cy + MAP_SCREEN_AXIS * (L.fz - focus.z) * localScale;
+      g.drawImage(this._surveyRockCanvas, dx, dy, layerW, layerH);
+    }
+
+    // 4b. A charted field whose rocks are not loaded yet still shows where it lies: a faint dashed
+    // outline at its authored extent, so its name never floats over nothing.
+    for (const deposit of (record && record.fields) || []) {
+      const c0 = deposit && deposit.center;
+      if (!c0) continue;
+      const gx = origin.x + (Number(c0.x) || 0);
+      const gz = origin.z + (Number(c0.z) || 0);
+      const rW = Number(deposit.clusterRadius || deposit.radius) || 300;
+      let near = 0;
+      for (let i = 0; i < rocks.length && near < 3; i += 1) {
+        const rp = rocks[i].pos;
+        if ((rp.x - gx) ** 2 + (rp.z - gz) ** 2 < rW * rW) near += 1;
+      }
+      if (near >= 3) continue;
+      const r = rW * localScale;
+      if (r < 10) continue;
+      // Not loaded yet: the same painter over stand-in rocks scattered (deterministically, from the
+      // field id) across its authored extent, at lower contrast — a field shape, not a guess at rocks.
+      const n = Math.max(18, Math.min(60, Number(deposit.count) || 36));
+      let seed = 2166136261;
+      for (const ch of String(deposit.id || 'field')) seed = Math.imul(seed ^ ch.charCodeAt(0), 16777619) >>> 0;
+      const rnd = () => { seed = (Math.imul(seed, 1103515245) + 12345) >>> 0; return seed / 4294967296; };
+      const standIns = [];
+      for (let i = 0; i < n; i += 1) {
+        const a = rnd() * Math.PI * 2;
+        const d = Math.sqrt(rnd()) * rW * 0.9;
+        standIns.push({ type: 'asteroid', alive: true, radius: 14, pos: { x: gx + Math.cos(a) * d, z: gz + Math.sin(a) * d } });
+      }
+      if (!this._surveyRockPainter) this._surveyRockPainter = createRockFieldPainter(document);
+      this._surveyRockPainter.paint(g, standIns, (x, z) => ({ x: sx(x), y: sz(z) }), localScale, field.x + field.width + 16, field.y + field.height + 16, {
+        dpr: this._dpr || 1, padWorld: Math.max(60, rW * 0.22), minPx: 5, maxPx: 22,
+        fill: 'rgba(96, 146, 172, 0.07)', contour: 'rgba(168, 214, 234, 0.26)',
+      });
+    }
+
+    // 5. What the ship senses is sharp; past its sensor range the chart is fogged. The scan bubble
+    // is one ring.
+    const sensorRange = Number(state.ui && state.ui.radarRange) > 0 ? Number(state.ui.radarRange) : 4000;
+    const rangePx = sensorRange * localScale;
+    if (rangePx > 24) {
+      g.save();
+      g.beginPath();
+      g.rect(field.x - 8, field.y - 8, field.width + 16, field.height + 16);
+      g.arc(shipX, shipY, rangePx, 0, Math.PI * 2, true);
+      g.fillStyle = 'rgba(2, 5, 9, 0.46)';
+      g.fill('evenodd');
+      g.strokeStyle = CHART_INK.ice(0.34);
+      g.lineWidth = 1.2;
+      g.beginPath();
+      g.arc(shipX, shipY, rangePx, 0, Math.PI * 2);
+      g.stroke();
+      g.restore();
+    }
+    void reduced;
+  },
+
 _drawLocal(g, state, w, h) {
     // Fed by _draw before dispatch, so memory survives a trip out to SYSTEM and back.
     const model = this._localModelForState(state);
@@ -11060,7 +11804,6 @@ _drawLocal(g, state, w, h) {
       if (contact && !contact.remembered) liveContactCount += 1;
     }
     this._localLiveContacts = liveContactCount;
-    const cam = this._cams.local;
     const wp = state.nav && state.nav.waypoint;
     const wpPos = localMapWaypointPosition(state, wp);
     // An inspected mission fix is separate from the player's armed course. Revalidate it on
@@ -11086,83 +11829,55 @@ _drawLocal(g, state, w, h) {
     const px = player ? player.pos.x : 0;
     const pz = player ? player.pos.z : 0;
 
-    // The local scope favors the immediate field: fit on a high percentile of what is worth
-    // seeing (foreign furniture, remembered contacts and rocks never vote; the goal always does),
-    // so a lone straggler falls off-frame into an edge tick instead of setting the scale.
-    let span = 1500;
-    const fitSpans = [];
-    for (const c of model.contacts) {
-      if (c.remembered || c.foreign || c.kind === 'asteroid') continue;
-      fitSpans.push(Math.hypot(c.x - px, c.z - pz));
-    }
-    if (this._layers.holdings) {
-      for (const marker of model.ownership) fitSpans.push(Math.hypot(marker.x - px, marker.z - pz));
-    }
-    for (const bearing of model.bearings) {
-      const point = bearing.fixedPos || bearing.center;
-      if (!point) continue;
-      const uncertainty = bearing.fixedPos ? 0 : bearing.radius;
-      fitSpans.push(Math.hypot(point.x - px, point.z - pz) + uncertainty);
-    }
-    if (wpPos) {
-      fitSpans.push(Math.hypot(wpPos.x - px, wpPos.z - pz));
-    }
-    if (missionFix) fitSpans.push(Math.hypot(missionFix.x - px, missionFix.z - pz));
-    let m = 0;
-    if (fitSpans.length) {
-      fitSpans.sort((a, b) => a - b);
-      m = fitSpans[Math.min(fitSpans.length - 1, Math.ceil(fitSpans.length * 0.85) - 1)] || 0;
-    }
-    if (m > 0) span = Math.max(700, m * 1.55);
-
-    // The clear field: between the rails, the heading and the foot. The scope centres on the ship
-    // inside it; anything outside it stands as an edge tick on its border, pointing the way.
+    // Local, System and Galaxy share zoom, orientation, and the physical point under the cursor.
+    const camera = this._cameraOrInit();
+    const viewport = this._cameraViewport(w, h);
+    const localScale = pixelsPerWU(camera, viewport);
+    const focus = camera.focusGlobal;
     const field = this._clearField(w, h);
     const fieldCx = field.x + field.width / 2;
     const fieldCy = field.y + field.height / 2;
-    const baseScale = (Math.min(field.width, field.height) * 0.9) / span;
-    this._view = { level: 'local', baseScale };
-    const sx = (x) => fieldCx - (x - cam.cx) * baseScale * cam.zoom;
-    const sz = (z) => fieldCy - (z - cam.cy) * baseScale * cam.zoom;
+    this._view = { level: 'local', baseScale: localScale, pxPerWU: localScale, camera };
+    const sx = (x) => fieldCx + MAP_SCREEN_AXIS * (x - focus.x) * localScale;
+    const sz = (z) => fieldCy + MAP_SCREEN_AXIS * (z - focus.z) * localScale;
     const labelCandidates = [];
     const edgeTicks = [];
     setMapCanvasAriaLabel(this._canvas, 'local', this._layers.holdings ? model.ownership : []);
 
     const offView = (x, y) => x < field.x + 12 || y < field.y + 12 || x > field.x + field.width - 12 || y > field.y + field.height - 12;
-    // Off-field marks ride the scope's outer ring at their true bearing: one radius, read like a
-    // compass rose, never floating at the field's edge.
-    const pinRadius = Math.min(field.width, field.height) * 0.46 + 16;
     const pushEdgeTick = (x, y, color, shape, target) => {
       if (edgeTicks.length >= 24) return null;
-      const tick = ringPinTick(sx(px), sz(pz), pinRadius, x, y, color, shape, target);
+      const tick = edgeTickOnField(field, fieldCx, fieldCy, x, y, color, shape, target);
       edgeTicks.push(tick);
       return tick;
     };
 
-    this._drawSensorLattice(g, w, h, 0.055);
+    const origin = sectorGlobalOrigin(model.sectorId) || { x: 0, z: 0 };
+    // MAPS-2: the local survey sits on a quiet dark chart ground (the atlas paper, no sky art, no
+    // ore smudges); rock fields are drawn from the real rocks by _drawLocalSurvey.
+    const relief = this._paintAtlas(w, h, sx(origin.x), sz(origin.z), localScale * 3200, [], { quiet: true });
 
-    // Range rings: bands of light round the ship, each reading its radius on its crown.
+    if (this._layers.discovery || this._layers.market) {
+      for (const deposit of sectorRecordById(state, model.sectorId)?.fields || []) {
+        const point = deposit.center || {};
+        const x = sx(origin.x + (Number(point.x) || 0));
+        const y = sz(origin.z + (Number(point.z) || 0));
+        const radius = (Number(deposit.clusterRadius || deposit.radius) || 300) * localScale;
+        if (radius < 26 || offView(x, y)) continue;
+        const name = `${FIELD_NAME_BY_TYPE[deposit.type] || 'Ore'} field`;
+        labelCandidates.push(makeMapLabelCandidate(g, { id: `field:${deposit.id}`, kind: 'zone', text: name,
+          lines: [name], x, y, anchorRadius: radius + 2, area: true, priority: 490, color: CHART_INK.bone(0.92) }));
+      }
+    }
+
     const shipX = sx(px), shipY = sz(pz);
     const ringBase = Math.min(field.width, field.height) * 0.46;
     const localOwner = (state.world && state.world.sectors && state.world.sectors[model.sectorId] && state.world.sectors[model.sectorId].owner) || (SECTOR_BY_ID.get(model.sectorId) || {}).factionId || null;
-    const localTint = this._layers.faction ? dominionRgb(localOwner, factionColorOf(localOwner)) : [236, 230, 216];
-    const localTintStr = `${Math.round(localTint[0] * 0.55 + 236 * 0.45)},${Math.round(localTint[1] * 0.55 + 230 * 0.45)},${Math.round(localTint[2] * 0.55 + 216 * 0.45)}`;
-    for (const rr of [0.33, 0.66, 1.0]) {
-      drawBandRing(g, shipX, shipY, ringBase * rr, { rgb: localTintStr, band: 8, bandA: rr === 1 ? 0.4 : 0.32, edge: 1.7, edgeA: rr === 1 ? 0.78 : 0.62 });
-    }
-    // Minor graduations on the outer ring: an instrument, not a circle.
     g.save();
-    g.strokeStyle = CHART_INK.bone(0.34);
-    g.lineWidth = 1.5;
-    for (let i = 0; i < 72; i += 1) {
-      const a = (i / 72) * Math.PI * 2;
-      const len = i % 6 === 0 ? 9 : 4;
-      g.beginPath();
-      g.moveTo(shipX + Math.cos(a) * ringBase, shipY + Math.sin(a) * ringBase);
-      g.lineTo(shipX + Math.cos(a) * (ringBase - len), shipY + Math.sin(a) * (ringBase - len));
-      g.stroke();
-    }
-    g.restore();
+    g.beginPath();
+    g.rect(field.x - 8, field.y - 8, field.width + 16, field.height + 16);
+    g.clip();
+    this._drawLocalSurvey(g, state, model, { sx, sz, localScale, field, origin, focus, shipX, shipY, reduced, labelCandidates });
 
     if (this._layers.discovery) {
       for (const site of model.circuitSites || []) {
@@ -11179,7 +11894,7 @@ _drawLocal(g, state, w, h) {
         const point = bearing.fixedPos || bearing.center;
         if (!point) continue;
         const x = sx(point.x), y = sz(point.z);
-        const radiusPx = fixed ? 0 : bearing.radius * baseScale * cam.zoom;
+        const radiusPx = fixed ? 0 : bearing.radius * localScale;
         const rumorTarget = frontierRumorMapTarget(bearing);
         const manualTarget = rumorTarget || vestaOreCacheMapTarget(bearing) || pallasHiddenCacheMapTarget(bearing);
         if (offView(x, y)) {
@@ -11219,11 +11934,23 @@ _drawLocal(g, state, w, h) {
 
         const phaseLabel = bearing.statusLabel || (bearing.manualSearch ? 'RUMOR SEARCH'
           : bearing.phase === 'salvaged' ? 'SALVAGED' : fixed ? 'FIXED' : 'READ BEARING');
+        // MAPS-2: a rumoured find says what it is and what to do, beside a search marker.
+        const isRumourSearch = !!(rumorTarget || bearing.manualSearch || /rumou?r/i.test(String(bearing.statusLabel || "")));
+        const rumourNoun = /cache/i.test(String(bearing.name || '')) ? 'cache' : String(bearing.name || 'find').toLowerCase();
+        const bearingText = isRumourSearch ? `Rumoured ${rumourNoun}: search here` : `${phaseLabel} · ${bearing.name}`;
+        if (isRumourSearch) {
+          g.save();
+          g.strokeStyle = CHART_INK.lit(0.92);
+          g.lineWidth = 1.8;
+          g.beginPath(); g.arc(x - 2, y - 2, 6, 0, Math.PI * 2); g.stroke();
+          g.beginPath(); g.moveTo(x + 2.5, y + 2.5); g.lineTo(x + 7.5, y + 7.5); g.stroke();
+          g.restore();
+        }
         labelCandidates.push(makeMapLabelCandidate(g, {
           id: `bearing:${bearing.wreckId}`,
           kind: 'bearing',
-          text: `${phaseLabel} · ${bearing.name}`,
-          lines: [`${phaseLabel} · ${bearing.name}`],
+          text: bearingText,
+          lines: [bearingText],
           x,
           y,
           anchorRadius: fixed ? 10 : radiusPx + 6,
@@ -11272,19 +11999,8 @@ _drawLocal(g, state, w, h) {
       }
     }
 
-    // Scan sweep: a wedge of ice turning round the ship while the scope is reading contacts.
-    if (!reduced && this._scanPhase != null) {
-      const a0 = this._scanPhase;
-      g.save();
-      const grad = g.createRadialGradient ? g.createRadialGradient(shipX, shipY, 0, shipX, shipY, ringBase) : null;
-      if (grad) { grad.addColorStop(0, CHART_INK.ice(0.0)); grad.addColorStop(1, CHART_INK.ice(0.10)); }
-      g.fillStyle = grad || CHART_INK.ice(0.05);
-      g.beginPath(); g.moveTo(shipX, shipY); g.arc(shipX, shipY, ringBase, a0 - 0.5, a0); g.closePath(); g.fill();
-      g.strokeStyle = CHART_INK.ice(0.45);
-      g.lineWidth = 1.5;
-      g.beginPath(); g.moveTo(shipX, shipY); g.lineTo(shipX + Math.cos(a0) * ringBase, shipY + Math.sin(a0) * ringBase); g.stroke();
-      g.restore();
-    }
+    // (MAPS-2: the turning scan wedge is gone; the scan bubble is the one sensor ring drawn by
+    // _drawLocalSurvey, and the fog past it says what the ship has not sensed.)
 
     // THE HAND at local scale: the course from the ship to its fix, drawn in, a packet running it.
     const courseKey = wpPos ? `${Math.round(wpPos.x)},${Math.round(wpPos.z)}` : null;
@@ -11293,26 +12009,13 @@ _drawLocal(g, state, w, h) {
     if (wpPos && this._layers.route) {
       let ex = sx(wpPos.x), ey = sz(wpPos.z);
       if (offView(ex, ey)) {
-        wpTick = ringPinTick(shipX, shipY, pinRadius, ex, ey, this._line ? INK.ink0 : INK.amberHot, 'waypoint', waypointClickTarget(wp, wpPos, ex, ey, state) || undefined);
+        wpTick = edgeTickOnField(field, fieldCx, fieldCy, ex, ey, this._line ? INK.ink0 : INK.amberHot, 'waypoint', waypointClickTarget(wp, wpPos, ex, ey, state) || undefined);
         ex = wpTick.x; ey = wpTick.y;
       }
       const progress = reduced ? 1 : Math.min(1, Math.max(0, (this._nowMs() - (this._routeDrawStart == null ? -1e9 : this._routeDrawStart)) / 520));
       drawHandBeam(g, [{ x: shipX, y: shipY }, { x: ex, y: ey }], {
         progress: 1 - Math.pow(1 - progress, 3), pulseT: reduced || this._line ? null : animT, head: false, alpha: this._line ? 0.4 : 1, tone: this._line ? 'bone' : 'hand',
       });
-    }
-
-    // Rock thinning: dense belts collapse into a faint texture of the nearest rocks.
-    let asteroidDrawSet = null;
-    {
-      const rocks = [];
-      for (const c of model.contacts) {
-        if (c.kind === 'asteroid') rocks.push({ id: c.id, d: Math.hypot(c.x - px, c.z - pz) });
-      }
-      if (rocks.length > 80) {
-        rocks.sort((a, b) => a.d - b.d);
-        asteroidDrawSet = new Set(rocks.slice(0, 80).map((rock) => rock.id));
-      }
     }
 
     // Only gates that can actually claim a label may force a disambiguating octant.
@@ -11327,13 +12030,32 @@ _drawLocal(g, state, w, h) {
     // infrastructure, hostiles and waypoints collapse into edge ticks instead.
     const hoverId = this._hoverTarget ? this._hoverTarget.id : null;
     const snapId = this._line && this._line.snap ? this._line.snap.id : null;
+    const groupedMarks = new Map();
+    const targetId = state.player?.targetId;
+    let rockMarks = 0;
     for (const c of model.contacts) {
-      if (c.kind === 'asteroid' && asteroidDrawSet && !asteroidDrawSet.has(c.id)) continue;
+      const reached = c.id === hoverId || c.id === snapId || c.id === this._selectedTarget?.id
+        || (targetId != null && c.entityId === targetId);
+      const isRock = c.kind === 'asteroid';
+      const isTraffic = c.kind === 'ship' && !c.hostile;
+      const scanned = isRock && c.scanHighlightUntil > nowS;
+      if (isTraffic && !reached && !this._layers.traffic) continue;
+      if (isRock && !reached && !scanned && (!this._layers.discovery || localScale < 0.95 || rockMarks >= 18)) continue;
       const x = sx(c.x), y = sz(c.z);
       const off = offView(x, y);
+      if (!off && !reached && !scanned && (isTraffic || isRock || c.hostile)) {
+        const block = isRock ? 22 : 32;
+        const bucket = `${isRock ? 'rock' : c.hostile ? 'hostile' : 'traffic'}:${Math.floor(x / block)}:${Math.floor(y / block)}`;
+        const group = groupedMarks.get(bucket);
+        if (group) { group.count += 1; continue; }
+        groupedMarks.set(bucket, { x, y, hostile: c.hostile, count: 1 });
+      }
+      if (isRock && !off) rockMarks += 1;
       const displayName = c.kind === 'gate'
         ? disambiguateGateLabel(c.name, c.x, c.z, px, pz, localGateNameCounts)
         : c.name;
+      const services = c.kind === 'station' && this._layers.services && !c.closed && !c.foreign
+        ? stationChartServices(state, c.stationId || c.id, model.sectorId) : '';
 
       // Remembered contacts are memory, not sensor return: faded at the dead-reckoned position
       // inside an uncertainty ring; no edge tick and no click target (a course to a ghost is nothing).
@@ -11364,11 +12086,12 @@ _drawLocal(g, state, w, h) {
             });
           if (tick && (c.kind === 'station' || c.kind === 'gate' || c.hostile) && edgeTicks.length <= 4) {
             const dist = Math.hypot((Number(c.x) || 0) - px, (Number(c.z) || 0) - pz);
+            const edgeName = `${displayName} · ${formatDistanceWU(dist)}`;
             labelCandidates.push(makeMapLabelCandidate(g, {
               id: `edge:${c.id}`,
               kind: c.kind,
-              text: `${displayName} · ${formatDistanceWU(dist)}`,
-              lines: [`${displayName} · ${formatDistanceWU(dist)}`],
+              text: edgeName,
+              lines: services ? [edgeName, services] : [edgeName],
               x: tick.x,
               y: tick.y,
               anchorRadius: 14,
@@ -11381,7 +12104,7 @@ _drawLocal(g, state, w, h) {
         continue;
       }
 
-      const contactMark = chartMarkSizes(c, baseScale * cam.zoom);
+      const contactMark = chartMarkSizes(c, localScale);
       this._clickTargets.push({
         sx: x, sy: y, radiusPx: Math.max(contactMark.pipPx, c.kind === 'asteroid' ? 6 : 11), kind: c.kind, id: c.id, x: c.x, z: c.z,
         entityId: c.entityId, stationId: c.stationId, stable: c.stable || null, name: displayName, factionId: c.factionId,
@@ -11412,34 +12135,60 @@ _drawLocal(g, state, w, h) {
           g.restore();
         }
       } else if (c.kind === 'gate') {
-        drawGateMark(g, x, y, Math.atan2(c.z - pz, c.x - px));
+        drawGateMark(g, x, y, Math.atan2(MAP_SCREEN_AXIS * (c.z - pz), MAP_SCREEN_AXIS * (c.x - px)));
       } else if (c.kind === 'station') {
-        drawStationMark(g, x, y);
-      } else if (c.hostile) {
-        // Hostile: a red diamond and its velocity, in red.
+        // MAPS-2: the station's type inside the minimap's hexagon, its services as pips beneath.
+        const stEntity = resolveEntityById(state, c.id);
+        const stHostile = !!(stEntity && this._isHostile && player && this._isHostile(stEntity, player.team, state))
+          || /pirate|camp/.test(String(c.stationTypeId || ''));
+        drawSurveyStation(g, x, y, c.stationTypeId, c.closed ? [] : stationServiceIds(state, c.stationId || c.id, model.sectorId),
+          { hostile: stHostile });
+      } else {
+        // MAPS-2: live ships use the minimap's grammar — a hostile is drawn by its job (shape and
+        // hue), traffic by its role, a friend hollow with a pip — with a short velocity tail.
+        const ent = resolveEntityById(state, c.id);
+        const classified = classifyContactRole(ent || { type: 'ship', data: {} });
+        const role = c.hostile && classified === 'civilian' ? 'skirmish' : classified;
+        const friendly = !c.hostile && !!(ent && player && ent.team != null && ent.team === player.team);
+        const stance = c.hostile ? 'hostile' : friendly ? 'friendly' : 'neutral';
+        const color = c.hostile ? (CONTACT_JOB_PALETTE[role] || TACTICAL_MAP_PALETTE.hostile)
+          : friendly ? TACTICAL_MAP_PALETTE.friendly : TACTICAL_MAP_PALETTE.neutral;
+        let heading = Number.isFinite(c.rot) ? c.rot : 0;
         if (c.vx != null) {
-          const pvx = -(c.vx / 3) * baseScale * cam.zoom;
-          const pvz = -(c.vz / 3) * baseScale * cam.zoom;
+          const pvx = MAP_SCREEN_AXIS * (c.vx / 3) * localScale;
+          const pvz = MAP_SCREEN_AXIS * (c.vz / 3) * localScale;
           const len = Math.hypot(pvx, pvz);
           if (len > 0.1) {
-            const mult = len > 26 ? 26 / len : 1;
-            drawBand(g, (cx) => { cx.moveTo(x, y); cx.lineTo(x + pvx * mult, y + pvz * mult); }, { rgb: '255,80,56', band: 4, bandA: 0.22, edge: 1.6, edgeA: 0.9 });
+            heading = Math.atan2(c.vz, c.vx);
+            const mult = len > 26 ? 26 / len : len < 8 ? 8 / len : 1;
+            g.save();
+            g.strokeStyle = color;
+            g.globalAlpha = c.hostile ? 0.8 : 0.5;
+            g.lineWidth = 1.4;
+            g.lineCap = 'round';
+            g.beginPath(); g.moveTo(x, y); g.lineTo(x + pvx * mult, y + pvz * mult); g.stroke();
+            g.restore();
           }
         }
-        drawHostileMark(g, x, y, c.rot || 0);
-      } else {
-        drawShipChevron(g, x, y, c.rot || 0, null);
+        // Screen heading of world heading h is atan2(AX·sin h, AX·cos h); the glyph's nose is −y.
+        drawRoleGlyph(g, role, stance, x, y, Math.atan2(MAP_SCREEN_AXIS * Math.sin(heading), MAP_SCREEN_AXIS * Math.cos(heading)) + Math.PI / 2, {
+          color, scale: 1.25, selected: !!(this._selectedTarget && this._selectedTarget.id === c.id),
+          boss: c.hostile && !!ent && isBossContact(ent),
+        });
       }
       if (foreignFade) g.restore();
 
       const selected = !!(this._selectedTarget && this._selectedTarget.id === c.id);
       if ((c.kind === 'station' || c.kind === 'gate' || selected || c.hostile || c.named)
         && (!foreignFade || selected)) {
+        // A gate says where it goes.
+        const gateTo = c.kind === 'gate' ? resolveEntityById(state, c.id)?.data?.gateTo : null;
+        const context = c.statusLine || services || (gateTo ? 'to ' + (SECTOR_NAME_BY_ID.get(gateTo) || humanizeId(gateTo)) : '');
         labelCandidates.push(makeMapLabelCandidate(g, {
           id: `contact:${c.id}`,
           kind: c.kind,
           text: displayName,
-          lines: c.statusLine ? [displayName, c.statusLine] : [displayName],
+          lines: context ? [displayName, context] : [displayName],
           x,
           y,
           anchorRadius: Math.max(contactMark.nameplatePx, c.kind === 'station' || c.kind === 'gate' ? 16 : 11),
@@ -11450,6 +12199,17 @@ _drawLocal(g, state, w, h) {
         }));
       }
     }
+    g.save();
+    g.font = chartFont(650, 12, { stretch: 'normal' });
+    g.textAlign = 'right'; g.textBaseline = 'bottom';
+    for (const group of groupedMarks.values()) {
+      if (!group.hostile || group.count <= 1) continue;
+      g.fillStyle = CHART_INK.glass(0.92);
+      g.fillRect(group.x - 38, group.y - 19, 26, 16);
+      g.fillStyle = '#f39885';
+      g.fillText(`×${group.count}`, group.x - 14, group.y - 5);
+    }
+    g.restore();
 
     // Player: the SAME fix mark used at SYSTEM and GALAXY scale, at the scope's centre.
     this._youScreen = { x: shipX, y: shipY };
@@ -11485,26 +12245,6 @@ _drawLocal(g, state, w, h) {
         drawBead(g, ex, ey, 2.4, { bloom: 2.4, bloomA: 0.28 });
       }
     }
-
-    // Range readings on the rings' crowns (phosphor: numbers the world tells you).
-    g.save();
-    g.font = chartFont(640, 12, { stretch: 'normal' });
-    g.textAlign = 'left'; g.textBaseline = 'middle';
-    g.lineJoin = 'round';
-    // Read the radius off the scale the rings are actually drawn at (the wheel moves cam.zoom).
-    const ringUnits = Math.round(ringBase / (baseScale * (Number(cam.zoom) > 0 ? cam.zoom : 1.5)));
-    for (let i = 0; i < 3; i++) {
-      const frac = [0.33, 0.66, 1.0][i];
-      const rrPx = ringBase * frac;
-      const label = formatDistanceWU(Math.round(ringUnits * frac));
-      const lx = shipX + rrPx * 0.707 + 6;
-      const ly = shipY - rrPx * 0.707 - 6;
-      g.strokeStyle = 'rgba(5, 7, 10, 0.86)'; g.lineWidth = 4;
-      g.strokeText(label, lx, ly);
-      g.fillStyle = CHART_INK.phos(0.9);
-      g.fillText(label, lx, ly);
-    }
-    g.restore();
 
     // Empty-space reassurance (remembered marks do not count as company).
     const liveContacts = this._localLiveContacts;
@@ -11582,7 +12322,7 @@ _drawLocal(g, state, w, h) {
     if (missionFix) {
       let x = sx(missionFix.x), y = sz(missionFix.z);
       if (offView(x, y)) {
-        const tick = ringPinTick(shipX, shipY, pinRadius, x, y, INK.ink0, 'waypoint', missionFix);
+        const tick = edgeTickOnField(field, fieldCx, fieldCy, x, y, INK.ink0, 'waypoint', missionFix);
         edgeTicks.push(tick); x = tick.x; y = tick.y;
       } else {
         missionFixScreen = { x, y };
@@ -11602,7 +12342,7 @@ _drawLocal(g, state, w, h) {
       let wx = sx(wpPos.x);
       let wy = sz(wpPos.z);
       if (offView(wx, wy)) {
-        const tick = wpTick || ringPinTick(shipX, shipY, pinRadius, wx, wy, this._line ? INK.ink0 : INK.amberHot, 'waypoint', waypointClickTarget(wp, wpPos, wx, wy, state) || undefined);
+        const tick = wpTick || edgeTickOnField(field, fieldCx, fieldCy, wx, wy, this._line ? INK.ink0 : INK.amberHot, 'waypoint', waypointClickTarget(wp, wpPos, wx, wy, state) || undefined);
         edgeTicks.push(tick);
         wx = tick.x; wy = tick.y;
       } else {
@@ -11613,10 +12353,12 @@ _drawLocal(g, state, w, h) {
       const objectiveLabel = waypointMapLabel(wp);
       const wpDist = Math.hypot((Number(wpPos.x) || 0) - px, (Number(wpPos.z) || 0) - pz);
       const wpBrg = compassOctant((Number(wpPos.x) || 0) - px, (Number(wpPos.z) || 0) - pz);
+      // Plain words (08_INTERFACE §8): what it is and how far — no "NAV WAYPOINT", no compass heading.
       const wpKindTag = wp && (wp.missionId || wp.onboarding || wp.markerKind === 'mission-objective')
-        ? 'MISSION'
-        : wp && wp.kind === 'claim_defense' ? 'RAID ALERT' : 'NAV WAYPOINT';
-      const wpSubLine = `${wpKindTag} · ${formatDistanceWU(wpDist)}${wpBrg ? ` · ${wpBrg}` : ''}`;
+        ? 'JOB'
+        : wp && wp.kind === 'claim_defense' ? 'RAID ALERT' : '';
+      void wpBrg;
+      const wpSubLine = `${wpKindTag ? `${wpKindTag} · ` : ''}${formatDistanceWU(wpDist)} away`;
       labelCandidates.push(makeMapLabelCandidate(g, {
         id: 'objective:active-waypoint',
         kind: 'objective',
@@ -11634,11 +12376,7 @@ _drawLocal(g, state, w, h) {
       const stub = waypointTetherReserveRect(shipX, shipY, wpScreen.x, wpScreen.y);
       if (stub) localReserved.push(stub);
     }
-    for (const frac of [0.33, 0.66, 1.0]) {
-      const rrPx = ringBase * frac;
-      localReserved.push({ x: shipX + rrPx * 0.707 + 4, y: shipY - rrPx * 0.707 - 16, width: 64, height: 20 });
-    }
-    this._edgeScalePxPerWU = baseScale * cam.zoom;
+    this._edgeScalePxPerWU = localScale;
     const labelLayout = this._placeLabels(labelCandidates, w, h, { reserved: localReserved,
       recoveryLabelId: missionFix ? `objective:${missionFix.id}` : null });
     this._lastLabelLayout = labelLayout;
@@ -11684,12 +12422,12 @@ _drawLocal(g, state, w, h) {
         });
       }
     }
-    this._drawEdgeScale(g, field, baseScale * cam.zoom);
-    // THE GROUND: the holder's hue washes the scope and lights its outer ring, behind everything.
-    if (this._layers.faction) {
+    g.restore();
+    this._drawEdgeScale(g, field, localScale);
+    if (this._layers.faction && !relief) {
       g.save();
       g.globalCompositeOperation = 'destination-over';
-      try { drawSystemGround(g, w, h, { x: shipX, y: shipY, r: ringBase, ownerId: localOwner, fallbackHex: factionColorOf(localOwner), dashed: false }); } catch (_) { /* the chart reads without its ground */ }
+      try { drawSystemGround(g, w, h, { x: fieldCx, y: fieldCy, r: ringBase, ownerId: localOwner, fallbackHex: factionColorOf(localOwner), rim: false }); } catch (_) { /* the chart reads without its ground */ }
       g.restore();
     }
   },
@@ -11708,10 +12446,10 @@ function drawUniqueWreckBearingMarker(g, x, y, radiusPx, options = {}) {
     g.fillStyle = CHART_INK.bone(0.035 * a);
     g.beginPath(); g.arc(x, y, rr, 0, Math.PI * 2); g.fill();
     g.restore();
-    drawBandRing(g, x, y, rr, { band: selected ? 8 : 6, bandA: 0.16 * a, edge: selected ? 2 : 1.5, edgeA: 0.62 * a });
+    drawBandRing(g, x, y, rr, { band: 0, edge: selected ? 1.6 : 1, edgeA: (selected ? 0.74 : 0.36) * a, dash: [5, 5] });
     g.save();
-    g.strokeStyle = CHART_INK.bone(0.85 * a);
-    g.lineWidth = 2;
+    g.strokeStyle = CHART_INK.bone(0.5 * a);
+    g.lineWidth = 1.2;
     for (const angle of [0, Math.PI / 2, Math.PI, Math.PI * 1.5]) {
       const ax = Math.cos(angle), ay = Math.sin(angle);
       g.beginPath();
@@ -11793,79 +12531,151 @@ function drawRumorCorroborationArrows(g, arrows, cx, cy, alpha = 1) {
 // amber cross = point of interest, chevron = ship, open red diamond = hostile, rock = asteroid.
 // ---------------------------------------------------------------------------------------------
 
-/** Station: chamfered brass plate with a center pip — a building, never a dot. */
+// Opaque landmark marks stay legible over the terrain.
+// ── MAPS-2 local survey marks ────────────────────────────────────────────────────────────────
+// Service pips under a station icon: one small square per service, the same colour every time.
+const SURVEY_SERVICE_PIP = Object.freeze({
+  trade: '#f2b950', repair: '#4fbf8f', refuel: '#6ec3d8', shipyard: '#a89ae0',
+  missions: '#e8e2d4', refine: '#ff9a5c', ore_buy: '#c9a26a',
+});
+const SURVEY_SERVICE_ORDER = Object.freeze(['trade', 'refuel', 'repair', 'shipyard', 'refine', 'ore_buy', 'missions']);
+
 /**
- * Station: a berth ring with mooring arms.
- *
- * Was a chamfered square with a centre pip — legible, but it said "generic facility", and at 11px
- * it was the same visual weight as everything else on the table. A station is a place you dock, so
- * it is drawn as a hub with arms you could tie up to: a brass ring, a dark core, and four short
- * mooring stubs on the diagonals. The diagonals matter — they keep the arms clear of the label
- * plate, which always sits on an axis.
+ * A station on the survey: the minimap's hexagon (so the two maps speak one language) with its
+ * type drawn inside — market crate, refinery flame, mine pick, foundry gear, military chevron,
+ * cache diamond, research star — and its services as pips beneath. A hostile station is red.
  */
-function drawStationMark(g, x, y) {
-  // A station is a place you dock: a lit hub inside a berth ring of light, four mooring arms on the
-  // diagonals (clear of the label, which always sits on an axis).
-  const r = 8.5;
-  drawGlow(g, x, y, 26, CLASS_RGB.station, 0.6);
-  drawBandRing(g, x, y, r, { rgb: CLASS_RGB.station, band: 7, bandA: 0.3, edge: 1.9, edgeA: 0.98 });
+export function drawSurveyStation(g, x, y, typeId, services = [], { hostile = false, foreign = false, size = 9 } = {}) {
+  const ink = hostile ? '#ff6a52' : '#8fd3e6';
   g.save();
-  g.strokeStyle = `rgba(${CLASS_RGB.station},0.95)`;
-  g.lineWidth = 2;
-  g.lineCap = 'butt';
-  for (let i = 0; i < 4; i += 1) {
-    const a = Math.PI / 4 + i * (Math.PI / 2);
-    const ca = Math.cos(a), sa = Math.sin(a);
+  g.translate(x, y);
+  g.globalAlpha = foreign ? 0.45 : 1;
+  g.lineJoin = 'round';
+  g.lineCap = 'round';
+  g.beginPath();
+  for (let i = 0; i < 6; i += 1) {
+    const a = (Math.PI / 3) * i - Math.PI / 6;
+    if (i === 0) g.moveTo(Math.cos(a) * size, Math.sin(a) * size); else g.lineTo(Math.cos(a) * size, Math.sin(a) * size);
+  }
+  g.closePath();
+  g.fillStyle = 'rgba(8, 18, 26, 0.94)';
+  g.fill();
+  g.strokeStyle = ink;
+  g.lineWidth = 1.6;
+  g.stroke();
+  const k = size * 0.42;
+  g.fillStyle = ink;
+  g.strokeStyle = ink;
+  g.lineWidth = 1.4;
+  g.beginPath();
+  const type = String(typeId || '');
+  if (/black|pirate|cache|camp/.test(type)) {
+    g.moveTo(0, -k * 1.15); g.lineTo(k * 1.05, 0); g.lineTo(0, k * 1.15); g.lineTo(-k * 1.05, 0); g.closePath(); g.stroke();
+    g.beginPath(); g.arc(0, 0, k * 0.3, 0, Math.PI * 2); g.fill();
+  } else if (/trade|hub|market/.test(type)) {
+    g.rect(-k, -k, k * 2, k * 2); g.stroke();
+    g.beginPath(); g.moveTo(-k, 0); g.lineTo(k, 0); g.stroke();
+  } else if (/refin/.test(type)) {
+    g.moveTo(0, -k * 1.2); g.quadraticCurveTo(k * 1.1, 0, 0, k); g.quadraticCurveTo(-k * 1.1, 0, 0, -k * 1.2); g.fill();
+  } else if (/min/.test(type)) {
+    g.moveTo(-k, k); g.lineTo(k * 0.6, -k * 0.6); g.moveTo(-k * 0.2, -k); g.quadraticCurveTo(k * 0.9, -k * 1.1, k, k * 0.1); g.stroke();
+  } else if (/fab|foundry/.test(type)) {
+    g.arc(0, 0, k * 0.62, 0, Math.PI * 2); g.stroke();
     g.beginPath();
-    g.moveTo(x + ca * (r + 1.5), y + sa * (r + 1.5));
-    g.lineTo(x + ca * (r + 5.5), y + sa * (r + 5.5));
+    for (let i = 0; i < 4; i += 1) {
+      const a = (Math.PI / 2) * i + Math.PI / 4;
+      g.moveTo(Math.cos(a) * k * 0.62, Math.sin(a) * k * 0.62); g.lineTo(Math.cos(a) * k * 1.15, Math.sin(a) * k * 1.15);
+    }
     g.stroke();
+  } else if (/milit|customs|navy/.test(type)) {
+    g.moveTo(-k, -k * 0.4); g.lineTo(0, k * 0.7); g.lineTo(k, -k * 0.4); g.moveTo(-k, -k * 1.1); g.lineTo(0, 0); g.lineTo(k, -k * 1.1); g.stroke();
+  } else if (/research|lab|science/.test(type)) {
+    g.moveTo(0, -k * 1.2); g.lineTo(k * 0.3, -k * 0.3); g.lineTo(k * 1.2, 0); g.lineTo(k * 0.3, k * 0.3);
+    g.lineTo(0, k * 1.2); g.lineTo(-k * 0.3, k * 0.3); g.lineTo(-k * 1.2, 0); g.lineTo(-k * 0.3, -k * 0.3); g.closePath(); g.fill();
+  } else {
+    g.rect(-k * 0.5, -k * 0.5, k, k); g.fill();
+  }
+  // Service pips: a short row under the hexagon.
+  const pips = SURVEY_SERVICE_ORDER.filter((s) => services.includes(s));
+  if (pips.length && !foreign) {
+    const pip = 4;
+    const gap = 2;
+    const total = pips.length * pip + (pips.length - 1) * gap;
+    let px0 = -total / 2;
+    for (const s of pips) {
+      g.fillStyle = SURVEY_SERVICE_PIP[s];
+      g.fillRect(px0, size + 4, pip, pip);
+      px0 += pip + gap;
+    }
   }
   g.restore();
-  drawBead(g, x, y, 3.6, { bloom: 2.4, bloomA: 0.3 });
 }
 
-/**
- * Gate: an aperture with jaws, opening along its link.
- *
- * Was a plain teal circle with one tick, which read as "small planet" as often as "door". A gate is
- * a threshold you pass THROUGH, so the ring is now broken on the axis of travel and two jaws frame
- * the opening — the mark itself shows you the way through, and the direction is legible without the
- * tick having to carry it alone.
- */
-function drawGateMark(g, g_x, g_y, angle = 0) {
-  // A gate is a threshold: two jaws of light with the mouth open on the axis of travel, and a lit
-  // tongue leaving the mouth the way the lane goes.
-  const x = g_x, y = g_y, r = 7.5;
-  const gap = 0.62;
-  drawGlow(g, x, y, 24, CLASS_RGB.gate, 0.55);
-  const style = { rgb: CLASS_RGB.gate, band: 7, bandA: 0.3, edge: 2.1, edgeA: 0.98 };
-  drawBand(g, (c) => c.arc(x, y, r, angle + gap, angle + Math.PI - gap), style);
-  drawBand(g, (c) => c.arc(x, y, r, angle + Math.PI + gap, angle + Math.PI * 2 - gap), style);
-  const ca = Math.cos(angle), sa = Math.sin(angle);
-  drawBand(g, (c) => { c.moveTo(x + ca * 2, y + sa * 2); c.lineTo(x + ca * (r + 6), y + sa * (r + 6)); },
-    { rgb: CLASS_RGB.gate, band: 5, bandA: 0.26, edge: 2, edgeA: 0.98 });
-  drawBead(g, x + ca * (r + 6), y + sa * (r + 6), 2.2, { bloom: 2.4, bloomA: 0.3 });
+let surveyHatchPattern = null;
+let surveyHatchFor = null;
+function surveyHatch(g, rgb) {
+  if (surveyHatchPattern && surveyHatchFor === g) return surveyHatchPattern;
+  if (typeof document === 'undefined' || typeof g.createPattern !== 'function') return null;
+  const c = document.createElement('canvas');
+  c.width = 8; c.height = 8;
+  const hg = c.getContext('2d');
+  if (!hg) return null;
+  hg.strokeStyle = `rgba(${rgb}, 0.42)`;
+  hg.lineWidth = 1.1;
+  hg.beginPath(); hg.moveTo(-1, 9); hg.lineTo(9, -1); hg.moveTo(-1, 1); hg.lineTo(1, -1); hg.moveTo(7, 9); hg.lineTo(9, 7); hg.stroke();
+  surveyHatchPattern = g.createPattern(c, 'repeat');
+  surveyHatchFor = g;
+  return surveyHatchPattern;
 }
 
-/**
- * Point of interest: a survey cross with an open centre.
- *
- * A bare plus sign is the single most generic mark available. Breaking the centre and adding fine
- * end serifs turns it into a surveyor's register mark — the same drafting vocabulary as the corner
- * registration on the table, so the family reads as one instrument.
- */
-function drawPoiMark(g, x, y) {
-  // A point of interest: a small lit diamond in its own soft light.
-  drawGlow(g, x, y, 20, '236,230,216', 0.34);
+/** The survey grid step in metres: the smallest round step that leaves at least `minPx` between lines. */
+export function surveyGridStep(pxPerMetre, minPx = 72) {
+  for (const step of [50, 100, 250, 500, 1000, 2500, 5000, 10000]) if (step * pxPerMetre >= minPx) return step;
+  return 25000;
+}
+
+function drawStationMark(g, x, y) {
   g.save();
-  g.fillStyle = CHART_INK.bone(0.14);
-  g.beginPath(); g.arc(x, y, 8, 0, Math.PI * 2); g.fill();
-  g.fillStyle = CHART_INK.lit(0.95);
-  const s = 4.2;
+  g.translate(x, y);
+  g.fillStyle = CHART_INK.glass(0.94);
+  g.strokeStyle = '#b9d9cc';
+  g.lineWidth = 1.6;
+  g.beginPath(); g.arc(0, 0, 9.5, 0, Math.PI * 2); g.fill(); g.stroke();
   g.beginPath();
-  g.moveTo(x, y - s); g.lineTo(x + s, y); g.lineTo(x, y + s); g.lineTo(x - s, y);
-  g.closePath(); g.fill();
+  g.moveTo(-14, -3); g.lineTo(-9, -3); g.moveTo(9, -3); g.lineTo(14, -3);
+  g.moveTo(-14, 3); g.lineTo(-9, 3); g.moveTo(9, 3); g.lineTo(14, 3);
+  g.stroke();
+  g.beginPath(); g.arc(0, 0, 3.6, 0, Math.PI * 2); g.stroke();
+  g.restore();
+}
+
+function drawGateMark(g, x, y, angle = 0) {
+  g.save();
+  g.translate(x, y);
+  g.rotate(angle);
+  g.fillStyle = CHART_INK.glass(0.92);
+  g.beginPath(); g.arc(0, 0, 12, 0, Math.PI * 2); g.fill();
+  g.strokeStyle = '#bcb7d9';
+  g.lineWidth = 2.1;
+  g.beginPath(); g.arc(0, 0, 9, 0.55, Math.PI - 0.55); g.stroke();
+  g.beginPath(); g.arc(0, 0, 9, Math.PI + 0.55, Math.PI * 2 - 0.55); g.stroke();
+  g.beginPath(); g.moveTo(-4, 0); g.lineTo(4, 0); g.stroke();
+  g.restore();
+}
+
+function drawPoiMark(g, x, y) {
+  g.save();
+  g.translate(x, y);
+  g.strokeStyle = CHART_INK.bone(0.64);
+  g.lineWidth = 1.1;
+  g.beginPath();
+  g.moveTo(-6, -2); g.lineTo(-6, -6); g.lineTo(-2, -6);
+  g.moveTo(2, -6); g.lineTo(6, -6); g.lineTo(6, -2);
+  g.moveTo(6, 2); g.lineTo(6, 6); g.lineTo(2, 6);
+  g.moveTo(-2, 6); g.lineTo(-6, 6); g.lineTo(-6, 2);
+  g.stroke();
+  g.fillStyle = CHART_INK.bone(0.68);
+  g.fillRect(-1, -1, 2, 2);
   g.restore();
 }
 
@@ -11928,21 +12738,18 @@ function drawManufacturedTravelRoute(g, route, sx, sz, useDrawFrame, warp = null
   g.restore();
 }
 
-/** Neutral ship: a heading chevron in quiet ink. */
+/** Traffic: a cargo hull on its actual heading. */
 function drawShipChevron(g, x, y, rot, color) {
-  // a contact wears its class hue (traffic: the radar's blue-grey) with a soft halo, so the local scope
-  // reads at a glance the way the radar does
-  if (!color) drawGlow(g, x, y, 17, CLASS_RGB.neutral, 0.42);
   g.save();
-  g.fillStyle = color ? CHART_INK.bone(0.12) : `rgba(${CLASS_RGB.neutral},0.16)`;
-  g.beginPath(); g.arc(x, y, 8.5, 0, Math.PI * 2); g.fill();
   g.translate(x, y);
-  g.rotate(Math.PI + (rot || 0));
-  if (!color) g.scale(1.3, 1.3);
-  g.fillStyle = color || `rgba(${CLASS_RGB.neutral},0.98)`;
+  g.rotate(rot || 0);
+  g.fillStyle = CHART_INK.glass(0.92);
+  g.strokeStyle = color || 'rgba(169,191,198,.76)';
+  g.lineWidth = 1.25;
   g.beginPath();
-  g.moveTo(6.5, 0); g.lineTo(-5, -4.2); g.lineTo(-2.8, 0); g.lineTo(-5, 4.2);
-  g.closePath(); g.fill();
+  g.moveTo(7, 0); g.lineTo(3, -4); g.lineTo(-6, -4); g.lineTo(-6, 4); g.lineTo(3, 4);
+  g.closePath(); g.fill(); g.stroke();
+  g.beginPath(); g.moveTo(0, -4); g.lineTo(0, 4); g.stroke();
   g.restore();
 }
 
@@ -11998,8 +12805,9 @@ function drawPlayerFixMark(g, x, y, rot, options = {}) {
     g.stroke();
   }
 
-  // Heading triangle. Same `Math.PI + rot` convention as every other oriented mark on this canvas.
-  g.rotate(Math.PI + (rot || 0));
+  // Heading in the chart camera's global axes.
+  // World heading → screen heading through the chart's axis (the flight camera's picture).
+  g.rotate(Math.atan2(MAP_SCREEN_AXIS * Math.sin(rot || 0), MAP_SCREEN_AXIS * Math.cos(rot || 0)));
   g.fillStyle = CHART_INK.lit(1);
   g.beginPath();
   g.moveTo(6 * scale, 0);
@@ -12013,23 +12821,18 @@ function drawPlayerFixMark(g, x, y, rot, options = {}) {
   drawBead(g, x, y, 1.6 * scale, { bloom: 4, bloomA: 0.3 });
 }
 
-/** Hostile: a red open diamond, rotated to heading — threat reads before color-blind shape. */
+/** A red fighter silhouette with swept wings and an oriented nose. */
 function drawHostileMark(g, x, y, rot) {
-  drawGlow(g, x, y, 24, CLASS_RGB.hostile, 0.7);
   g.save();
-  g.fillStyle = CHART_INK.danger(0.2);
-  g.beginPath(); g.arc(x, y, 10, 0, Math.PI * 2); g.fill();
   g.translate(x, y);
-  g.rotate(Math.PI + (rot || 0));
-  g.scale(1.3, 1.3);
-  g.fillStyle = CHART_INK.danger(0.92);
+  g.rotate(rot || 0);
+  g.fillStyle = '#da735e';
+  g.strokeStyle = CHART_INK.glass(0.95);
+  g.lineWidth = 1.5;
   g.beginPath();
-  g.moveTo(6.5, 0); g.lineTo(0, -4.6); g.lineTo(-6.5, 0); g.lineTo(0, 4.6);
-  g.closePath();
-  g.fill();
-  g.strokeStyle = 'rgba(255, 200, 190, 0.9)';
-  g.lineWidth = 1;
-  g.stroke();
+  g.moveTo(8, 0); g.lineTo(-3, -7); g.lineTo(-6, -6); g.lineTo(-3, -2);
+  g.lineTo(-7, 0); g.lineTo(-3, 2); g.lineTo(-6, 6); g.lineTo(-3, 7);
+  g.closePath(); g.stroke(); g.fill();
   g.restore();
 }
 
@@ -12154,100 +12957,6 @@ function drawEdgeTick(g, x, y, color, shape, angle = null) {
 }
 
 /** Service pictograms under stations: tiny stroke icons sharing the DOM chip language. */
-function drawServicePictograms(g, cx, cy, services) {
-  if (!g || !services || !services.length) return;
-  // The services a berth offers, as a row of its pictograms in quiet light — no box around each.
-  const size = 12;
-  const totalW = services.length * size;
-  let x = cx - totalW / 2 + size / 2;
-  g.save();
-  for (const svc of services) {
-    drawServicePictogram(g, svc, x, cy, 3.8, CHART_INK.bone(0.78));
-    x += size;
-  }
-  g.restore();
-}
-
-/** One service pictogram, canvas twin of the DOM chip SVGs. */
-function drawServicePictogram(g, svc, x, y, r, color) {
-  const key = String(svc || '').toLowerCase();
-  g.save();
-  g.strokeStyle = color;
-  g.fillStyle = color;
-  g.lineWidth = 1;
-  switch (key) {
-    case 'trade':
-      g.beginPath(); g.arc(x, y, r * 0.8, 0, Math.PI * 2); g.stroke();
-      g.beginPath(); g.moveTo(x, y - r * 0.45); g.lineTo(x, y + r * 0.45); g.stroke();
-      break;
-    case 'shipyard':
-      g.beginPath();
-      g.moveTo(x - r, y + r * 0.6); g.lineTo(x - r, y - r * 0.4); g.lineTo(x, y - r);
-      g.lineTo(x + r, y - r * 0.4); g.lineTo(x + r, y + r * 0.6);
-      g.stroke();
-      break;
-    case 'repair':
-      g.beginPath(); g.moveTo(x - r * 0.7, y + r * 0.7); g.lineTo(x + r * 0.7, y - r * 0.7); g.stroke();
-      g.beginPath(); g.arc(x + r * 0.55, y - r * 0.55, r * 0.4, 0, Math.PI * 2); g.stroke();
-      break;
-    case 'refuel':
-      g.beginPath();
-      g.moveTo(x, y - r);
-      g.lineTo(x + r * 0.7, y + r * 0.3);
-      g.arc(x, y + r * 0.3, r * 0.7, 0, Math.PI, false);
-      g.closePath(); g.stroke();
-      break;
-    case 'refine':
-      g.beginPath();
-      g.moveTo(x - r, y - r * 0.5); g.lineTo(x + r, y - r * 0.5); g.lineTo(x + r * 0.4, y + r); g.lineTo(x - r * 0.4, y + r);
-      g.closePath(); g.stroke();
-      break;
-    case 'missions':
-      g.beginPath();
-      g.moveTo(x, y - r); g.lineTo(x + r, y); g.lineTo(x, y + r); g.lineTo(x - r, y);
-      g.closePath(); g.stroke();
-      break;
-    case 'ore_buy':
-      g.beginPath();
-      for (let i = 0; i < 6; i += 1) {
-        const a = (i / 6) * Math.PI * 2 - Math.PI / 6;
-        const vx = x + Math.cos(a) * r * 0.9;
-        const vy = y + Math.sin(a) * r * 0.9;
-        if (i === 0) g.moveTo(vx, vy);
-        else g.lineTo(vx, vy);
-      }
-      g.closePath(); g.stroke();
-      break;
-    case 'black_market':
-      g.beginPath();
-      g.moveTo(x - r, y - r * 0.6); g.lineTo(x + r, y - r * 0.6); g.lineTo(x, y + r);
-      g.closePath(); g.stroke();
-      break;
-    case 'module_craft':
-      g.beginPath(); g.rect(x - r * 0.8, y - r * 0.8, r * 1.6, r * 1.6); g.stroke();
-      g.beginPath();
-      g.moveTo(x, y - r * 0.45); g.lineTo(x, y + r * 0.45);
-      g.moveTo(x - r * 0.45, y); g.lineTo(x + r * 0.45, y);
-      g.stroke();
-      break;
-    case 'scan':
-      g.beginPath(); g.arc(x, y, r * 0.7, 0, Math.PI * 2); g.stroke();
-      g.beginPath();
-      g.moveTo(x, y - r); g.lineTo(x, y - r * 0.4);
-      g.moveTo(x, y + r * 0.4); g.lineTo(x, y + r);
-      g.moveTo(x - r, y); g.lineTo(x - r * 0.4, y);
-      g.moveTo(x + r * 0.4, y); g.lineTo(x + r, y);
-      g.stroke();
-      break;
-    default:
-      g.font = FONT_MONO(700, 7);
-      g.textAlign = 'center'; g.textBaseline = 'middle';
-      g.fillText(String(key || '?')[0].toUpperCase(), x, y + 0.5);
-  }
-  g.restore();
-}
-
-// glyph helpers
 function hazardTypeGlyph(type) {
   switch (type) {
     // \uFE0E keeps ☢ a monochrome text glyph (it defaults to color emoji on emoji-font platforms).
@@ -12334,8 +13043,7 @@ function splitReading(text) {
 const CHART_LOCK_MS = 520;
 
 /**
- * An edge tick for a mark outside the clear field: pinned where the ray from the field's centre
- * (the ship, at LOCAL) toward the mark leaves the field, inset so the tick and its pointer stay in.
+ * Pin an off-screen mark inside the current viewport even after panning away from the ship.
  */
 function edgeTickOnField(field, cx, cy, x, y, color, shape, target) {
   const inset = 16;
@@ -12354,11 +13062,6 @@ function edgeTickOnField(field, cx, cy, x, y, color, shape, target) {
   return { x: tx, y: ty, color, shape, target, angle: Math.atan2(dy, dx) };
 }
 
-/** An off-field mark pinned to an instrument's ring at its true bearing from the ring's centre. */
-function ringPinTick(cx, cy, radius, x, y, color, shape, target) {
-  const angle = Math.atan2(y - cy, x - cx);
-  return { x: cx + Math.cos(angle) * radius, y: cy + Math.sin(angle) * radius, color, shape, target, angle };
-}
 
 const CHART_CONTEXT_METHODS = Object.freeze([
   'save', 'restore', 'beginPath', 'closePath', 'moveTo', 'lineTo', 'arc', 'ellipse', 'rect', 'stroke', 'fill',
@@ -12481,8 +13184,8 @@ function drawMapLabelBlock(g, placement) {
     const tx = placement.x + 5;
     const ty = placement.y + 3 + index * 15;
     if (typeof g.strokeText === 'function') {
-      g.strokeStyle = 'rgba(5, 7, 10, 0.86)';
-      g.lineWidth = 4;
+      g.strokeStyle = 'rgba(9, 22, 31, 0.88)';
+      g.lineWidth = 2.4;
       g.strokeText(lines[index], tx, ty);
     }
     g.fillStyle = fill;
@@ -12493,9 +13196,13 @@ function drawMapLabelBlock(g, placement) {
 }
 
 function waypointMapLabel(wp) {
-  const raw = wp && (wp.mapLabel || wp.label || wp.reason || wp.sectorName || 'Waypoint');
-  const label = String(raw || 'Waypoint').replace(/\s+/g, ' ').trim();
-  return (label || 'Waypoint').slice(0, 28);
+  const mapLabel = wp?.onboarding ? wp.label || wp.mapLabel : wp?.mapLabel;
+  const raw = mapLabel || wp?.label || wp?.reason || wp?.sectorName || 'Waypoint';
+  // Producers append a distance with a unit ("Beacon 419 u"); the chart prints its own distance in
+  // metres, so the producer's number goes (the radar strips it the same way). A label fits whole
+  // or reads "Waypoint" — never clipped mid-word.
+  const label = String(raw || 'Waypoint').replace(/\s+\d+(?:\.\d+)?\s*(?:wu|u)\b/gi, '').replace(/\s+/g, ' ').trim();
+  return label && label.length <= 28 ? label : 'Waypoint';
 }
 
 /**
@@ -12571,6 +13278,9 @@ function drawMapGoalMarker(g, x, y, label, viewportWidth = Infinity, labelPos = 
   g.moveTo(x, by - d); g.lineTo(x + d, by); g.lineTo(x, by + d); g.lineTo(x - d, by);
   g.closePath();
   g.fill();
+  // labelPos === false: the ring speaks alone (a goal inside the sector you are in, seen from the
+  // galaxy, is already named by YOU; its plate only covered the neighbours' job badges)
+  if (labelPos === false) { g.restore(); return; }
   g.font = chartFont(700, 13);
   setTracking(g, 0.06, 13);
   const width = g.measureText ? g.measureText(text).width : 0;
@@ -12663,9 +13373,10 @@ function segmentHitsRect(x1, y1, x2, y2, rx, ry, rw, rh) {
  * Each candidate side is scored by how many drawn route segments cross its rect; out-of-viewport
  * sides are penalised harder. Ties keep the classic right-side placement (first entry).
  */
-function goalLabelPlacement(textWidth, x, y, viewportWidth, viewportHeight, routeSegs, offset = 21, padding = 8) {
+function goalLabelPlacement(textWidth, x, y, viewportWidth, viewportHeight, routeSegs, offset = 21, padding = 8, obstacles = null) {
   const textHeight = 12;
   const segs = Array.isArray(routeSegs) ? routeSegs : [];
+  const blocks = Array.isArray(obstacles) ? obstacles : [];
   let best = null;
   for (const side of GOAL_LABEL_SIDES) {
     const tx = x + side.dx * offset;
@@ -12676,6 +13387,10 @@ function goalLabelPlacement(textWidth, x, y, viewportWidth, viewportHeight, rout
     let score = 0;
     for (const seg of segs) {
       if (segmentHitsRect(seg.x1, seg.y1, seg.x2, seg.y2, rectX, rectY, textWidth, textHeight)) score += 2;
+    }
+    // a fixed plate (a jobs badge) is text under text: worse than crossing a beam
+    for (const b of blocks) {
+      if (b && rectX < b.x + b.width && rectX + textWidth > b.x && rectY < b.y + b.height && rectY + textHeight > b.y) score += 6;
     }
     if (Number.isFinite(viewportWidth)
       && (rectX < padding || rectX + textWidth > viewportWidth - padding)) score += 5;

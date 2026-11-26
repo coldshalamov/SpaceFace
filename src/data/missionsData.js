@@ -217,7 +217,7 @@ const RANK_STEP_BY_FACTION = Object.freeze({
 });
 const ALLIED_RETAINER_FACTION = 'faction_dmc';
 const RANK_CONTRACT_FACTIONS = Object.freeze([
-  ['faction_scn', 'Concord cleared escort', 'escort'],
+  ['faction_scn', 'Concord wants an escort', 'escort'],
   ['faction_mts', 'Meridian known haul', 'cargo_delivery'],
   ['faction_dmc', 'Drift shift quota', 'mining_quota'],
   ['faction_reach', 'Reach crew run', 'bounty_hunt'],
@@ -2785,7 +2785,7 @@ export const STORY_BEATS = [
   // cinder board, the Compost Run, the Nest, and the register contract on Elroy. The
   // physical contracts post one at a time from embodiedMissions.bookContracts; the world
   // steps between them record through the systems that already emit their signals.
-  { beat: 1, id: 'honest_work',    objective: 'Run the sealed alloys to Tycho, weigh the crate on Scale 4, and feed the infested hauler\'s pods to the CR-FEED intake.',
+  { beat: 1, id: 'honest_work',    objective: 'Deliver the sealed alloys to Tethys Trade Hub. Weigh the crate at Scale 4, then take the hauler’s ore pods to the refinery intake at Ceres.',
     headlineVerb: 'weigh', setPiece: 'alloy run + Scale 4 + infested hauler furnace detail',
     reward: { credits: 600, unlock: 'trade_tutorial' }, introduces: 'weighing', next: 2 },
   { beat: 2, id: 'first_blood',    objective: 'Run the cinder board, feed a garden its first stage, meet the Nest — then take the name on the register.',

@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "e1a70cb19651446a7d2bb372cd7d91db89a37a0d34a16190ac5771106ec78a57",
+  "contentHash": "ed7718fd7cc231394c135c7c1ef236785731f168b17b2c21daf33a8c544318a3",
   "dynamicGroups": [
     {
       "id": "sf.render.prospector-skiff.node.lod0-motion-hull-core-hook-drive-core.dynamic",
@@ -5228,14 +5228,52 @@
       "uri": "prospector_skiff.glb"
     },
     "sourceManifest": {
-      "bytes": 39602,
-      "sha256": "5499121288ab7c64dcec717b3b068b77bda15fca24f2cb344337b035c45fdc02",
+      "bytes": 40523,
+      "sha256": "91b122b31e014bb77067393d07b0c6e1d49914106420dd693ac05efedfecd26b",
       "uri": "assets/ships/render-packages/inputs/prospector-skiff.json"
     }
   },
   "render": {
-    "bytes": 929324,
-    "sha256": "20b57fc610b64fe4a05715ccfa153192bd3f91b8debf7a74708f7403d5db1831",
+    "bytes": 636176,
+    "resources": [
+      {
+        "bytes": 5381,
+        "mimeType": "image/ktx2",
+        "sha256": "4993f33a8ebc93a831f53b4e186fb9b973f0c6bff795d4fa6ab62e577c54536e",
+        "uri": "../_shared/images/4993f33a8ebc93a831f53b4e186fb9b973f0c6bff795d4fa6ab62e577c54536e.ktx2"
+      },
+      {
+        "bytes": 72992,
+        "mimeType": "image/ktx2",
+        "sha256": "884bbcbe84ab33145fea429c34b4449673ded6de8b62030df2ddfcbc5b7649d5",
+        "uri": "../_shared/images/884bbcbe84ab33145fea429c34b4449673ded6de8b62030df2ddfcbc5b7649d5.ktx2"
+      },
+      {
+        "bytes": 58536,
+        "mimeType": "image/ktx2",
+        "sha256": "a03642a3514a022dbcb614a6bf4f25dc429b28ac3f63e74b47b38af11bf398a4",
+        "uri": "../_shared/images/a03642a3514a022dbcb614a6bf4f25dc429b28ac3f63e74b47b38af11bf398a4.ktx2"
+      },
+      {
+        "bytes": 114191,
+        "mimeType": "image/ktx2",
+        "sha256": "adcfa5e58c377955c526929e74127f71d02f2cdf4149ad5339a79b9a203225a3",
+        "uri": "../_shared/images/adcfa5e58c377955c526929e74127f71d02f2cdf4149ad5339a79b9a203225a3.ktx2"
+      },
+      {
+        "bytes": 6409,
+        "mimeType": "image/ktx2",
+        "sha256": "d73dd0e53f86d9885c33a38b9634ea7132c379beb39c26db6668a9d2b7e8d065",
+        "uri": "../_shared/images/d73dd0e53f86d9885c33a38b9634ea7132c379beb39c26db6668a9d2b7e8d065.ktx2"
+      },
+      {
+        "bytes": 35770,
+        "mimeType": "image/ktx2",
+        "sha256": "d885628d06409dacfb6baa69d8c90cd130e5215ec40a49da91e4e60bd6e05ab3",
+        "uri": "../_shared/images/d885628d06409dacfb6baa69d8c90cd130e5215ec40a49da91e4e60bd6e05ab3.ktx2"
+      }
+    ],
+    "sha256": "7db3c9fd627f5393fd60c1136bc7af6a427166a62eeb7be84278373a202c291e",
     "uri": "render.glb"
   },
   "runtime": {
@@ -7941,7 +7979,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/prospector_skiff.glb"
   },
-  "runtimeHash": "676a6c03eb365134524ce44ef651d8f733083a0a03edf43d0d0459db6d67c087",
+  "runtimeHash": "6de91f79a3dcab14fe79ad6440c39b98e6341b918f937adacd60dc48a563c821",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

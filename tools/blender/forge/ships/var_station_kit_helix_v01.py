@@ -24,7 +24,29 @@ COLORS = {
 PANES = (0.0, 45.0, 90.0, 135.0, 180.0, 225.0, 270.0, 315.0)
 
 
+def signature(s):
+    """The helix core: seal panes climbing the inside of the ring on a spiral ribbon."""
+    plates = []
+    for i in range(6):
+        t = i / 5.0
+        a = 40.0 + 220.0 * t
+        plates.append(K.tangent_box(a, 21.0, 8.0 + 18.0 * t, 1.0, 10.0, 4.5))
+    F.boxes(s, 'HelixPlates', plates, 'stripe', bevel=0.05)
+    pts = [K.polar(21.0, 40.0 + 220.0 * (i / 15.0), 8.0 + 18.0 * (i / 15.0)) for i in range(16)]
+    F.sweep(s, 'HelixRibbon', pts, 0.8, 0.8, material='paint2', bevel=0.02)
+    for k, z in enumerate((10.0, 16.0, 22.0)):
+        F.ring(s, f'HelixRing{k}', (0.0, 0.0, z), 18.0, 0.5, axis=(0, 0, 1),
+               material='gunmetal', segments=28, sides=6)
+    s.detail = 1
+    for i, t in enumerate((0.15, 0.5, 0.85)):
+        a = 40.0 + 220.0 * t
+        F.light(s, f'HelixPaneLamp{i}', K.polar(21.8, a, 8.0 + 18.0 * t), 'glow_cyan.helix',
+                size=0.4)
+    s.detail = 0
+
+
 def dress(s):
+    K.interior(s, 'stripe', 'glow_cyan.helix')
     # audit band: pale cladding, a white-glass seal course at mid-height
     K.ring_wall(s, 'AuditBand', K.SHELL_R + 0.8, 10.0, 24.0, 2.2, 'paint', segs=56)
     K.ring_wall(s, 'SealCourse', K.SHELL_R + 1.1, 15.5, 18.5, 2.6, 'stripe', segs=56)
@@ -60,6 +82,7 @@ def dress(s):
                 size=0.4)
     F.light(s, 'SealLamp', (0.0, 0.0, 40.6), 'glow_cyan.helix', size=0.7)
     s.detail = 0
+    signature(s)
 
 
 def build():

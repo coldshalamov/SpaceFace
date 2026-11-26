@@ -1047,6 +1047,27 @@ export function createOpeningSubmissionPlan(options = {}) {
     globalProgramKeys: options.globalProgramKeys,
     openingProgramKeys,
   });
+  // The producer walks may yield before this capture. Matching geometry and textures do
+  // not prove that the producer observed the current material program on every draw leaf.
+  const admittedProgramKeys = new Set(firstPlayablePipelineSet.openingProgramKeys
+    .map(({ key }) => key));
+  const uncoveredSubject = programCompileSubjects.find(({ programSubjectKey }) => (
+    !admittedProgramKeys.has(programSubjectKey)
+  ));
+  const uncoveredLeaf = drawLeaves.find(({ id, materialIds }) => (
+    materialIds.length === 0 || id === uncoveredSubject?.leafId
+  ));
+  const missingSubject = uncoveredLeaf?.id === uncoveredSubject?.leafId ? uncoveredSubject : null;
+  const uncoveredProgramLeaf = uncoveredLeaf ? {
+    leafId: uncoveredLeaf.id,
+    leafName: uncoveredLeaf.name,
+    rootId: uncoveredLeaf.rootId,
+    reason: missingSubject ? 'missing-opening-program-key' : 'missing-material-program',
+    materialId: missingSubject?.materialId ?? null,
+    materialType: missingSubject?.materialType ?? null,
+    programSubjectKey: missingSubject?.programSubjectKey ?? null,
+    producerSawLeaf: options.producerCensus?.drawLeafIds?.includes(uncoveredLeaf.id) ?? null,
+  } : null;
   const resourceIdentitySets = collectResourceIdentitySets(
     compileSubjects,
     route,
@@ -1122,6 +1143,7 @@ export function createOpeningSubmissionPlan(options = {}) {
     resourceIdentityCensusMatches,
     shadowResources,
     programCompileSubjects,
+    uncoveredProgramLeaf,
     firstPlayablePipelineSet,
     producerCensus: options.producerCensus || null,
     // These references are intentionally not serialized. They are the exact live leaves/textures
@@ -1145,6 +1167,7 @@ export function createOpeningSubmissionPlan(options = {}) {
       && roots.every((root) => root.blocking === false || root.drawLeafCount > 0)
       && blockingRootsHaveVerifiedBoundaryHashes
       && resourceIdentityCensusMatches
+      && !uncoveredProgramLeaf
       && firstPlayablePipelineSet.complete === true,
   };
   if (!blockingRootsHaveVerifiedBoundaryHashes) {
@@ -1166,6 +1189,13 @@ export function createOpeningSubmissionPlan(options = {}) {
       rootId: null,
       role: 'firstPlayablePipelineSet',
       reason: firstPlayablePipelineSet.reason,
+    });
+  }
+  if (uncoveredProgramLeaf) {
+    plan.blockingReasons.push({
+      rootId: uncoveredProgramLeaf.rootId,
+      role: 'openingDrawLeafCoverage',
+      reason: uncoveredProgramLeaf.reason,
     });
   }
   const liveReferences = new Set([

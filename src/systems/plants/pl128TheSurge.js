@@ -23,6 +23,7 @@ import { hash32 } from '../../core/rng.js';
 import { BUBBLE_MULTIPLIERS } from '../../data/stationBubbles.js';
 import { makeShipEntitySpec } from '../ships.js';
 import { queuePhysicsImpulse } from '../../core/physicsAuthority.js';
+import { isOpeningSettling } from '../../onboarding/opportunityAdmission.js';
 
 export const PL_128_SURGE_EVENT = 'plants:pl128:surge';
 export const PL_128_PARTED_EVENT = 'plants:pl128:parted';
@@ -325,7 +326,11 @@ export function createPl128TheSurge() {
       this._accum += step;
       if (this._accum < 1) return;             // 1 Hz below here
       this._accum = 0;
-      if (!this._surge && shiftIndex !== this._lastShift) {
+      // R16 calm at the start: the shift horn waits until the opening and its first job have the
+      // harbour to themselves (it used to fire on the first tick of a New Game — six hulls racing
+      // through the berth lane while the pilot learned to throw, and a tug pair shoving a pilot who
+      // swung across it). The shift that is due when the opening settles still sounds.
+      if (!this._surge && shiftIndex !== this._lastShift && !isOpeningSettling(s)) {
         this._lastShift = shiftIndex;
         this._startSurge(station, now);
       }

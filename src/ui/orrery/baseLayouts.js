@@ -1,9 +1,11 @@
 // Survey dossier. The game owns the claim, its investments and all command handlers.
 import { runtimeAssetUrl } from '../../core/runtimeAssetUrl.js';
+import { SCROLL_EXTENT_CSS } from './scrollExtent.js';
 const screen = '#screens .screen.panel.sf-menu.orr-base';
 const surveyArt = runtimeAssetUrl('assets/ui/backdrops/base-survey.webp', import.meta.url);
 const page = '#screens .orr-base #sf-base';
 const css = `
+${SCROLL_EXTENT_CSS}
 ${screen} {
   --base-ink: var(--dp-ink, #efece3);
   --base-dim: #bac6ca;
@@ -29,7 +31,16 @@ ${page} {
   pointer-events:auto; font:400 15px/1.45 "Instrument Sans",system-ui,sans-serif; color:var(--base-ink);
 }
 ${page} > * { flex-shrink:0; }
+/* the scroller folds at its rim (the house dissolve, scrollExtent.js): the relay section's row
+   heads were cut mid-glyph above the foot band and read as broken text, not "more below"
+   (bench 1440x900). The page's own --base-pad bottom padding already out-runs the 20px fold, so
+   the fade lands on empty column at scroll end (RC-49). base.js wires syncScrollExtent after
+   every render. */
+${page}[data-overflow="1"] { -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 32px), rgb(0 0 0 / .45) calc(100% - 13px), transparent); mask-image:linear-gradient(180deg, #000 calc(100% - 32px), rgb(0 0 0 / .45) calc(100% - 13px), transparent); }
+${page}[data-overflow="0"] { -webkit-mask-image:none; mask-image:none; }
+${page} > .orr-extent::before { left:-12px !important; }
 ${page} .base-hero {
+  position:relative; z-index:4;
   min-height:clamp(148px, 20vh, 205px); box-sizing:border-box; display:flex; flex-direction:column;
   align-items:flex-start; justify-content:flex-end; gap:5px; padding:22px var(--base-pad);
   margin:0 calc(-1 * var(--base-pad)); border-bottom:1px solid var(--base-line);
@@ -63,14 +74,17 @@ ${page} .base-plan-body, ${page} .desc, ${page} .effect, ${page} .risk { font-si
 ${page} .base-plan > button { grid-column:2; grid-row:1 / span 3; }
 ${page} .base-sec-h { display:flex; align-items:center; gap:10px; margin:4px 0 -6px; color:#e2e9e9; }
 ${page} .base-sec-h::after { content:""; flex:1; height:1px; background:var(--base-line); }
-${page} .base-slots { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(126px,100%),1fr)); gap:8px; }
+${page} .base-slots { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(176px,100%),1fr)); gap:8px; }
 ${page} .base-slot, ${page} .base-slot:hover {
-  display:flex; flex-direction:column; justify-content:center; min-width:0; padding:10px 12px;
+  display:grid; grid-template-columns:40px minmax(0,1fr); align-items:center; gap:2px 10px;
+  min-width:0; padding:10px 12px;
   background:#1c2b34; border:1px solid var(--base-line); border-top:2px solid #72a9b1; border-radius:5px;
 }
-${page} .base-slot .eff { color:var(--base-water); font:500 13px/1.4 "Instrument Sans",system-ui,sans-serif; text-transform:none; }
-${page} .base-slot.empty, ${page} .base-slot.empty:hover { padding:0; border:1px dashed #546571; background:#111c24; }
-${page} .base-well { display:flex; align-items:center; min-height:44px; }
+${page} .base-slot__thumb { grid-column:1; grid-row:1 / span 2; }
+${page} .base-slot .nm { grid-column:2; min-width:0; overflow-wrap:anywhere; }
+${page} .base-slot .eff { grid-column:2; color:var(--base-water); font:500 13px/1.4 "Instrument Sans",system-ui,sans-serif; text-transform:none; }
+${page} .base-slot.empty, ${page} .base-slot.empty:hover { display:flex; align-items:center; padding:0; border:1px dashed #546571; background:#111c24; }
+${page} .base-well { display:flex; align-items:center; min-height:44px; width:100%; }
 ${page} .base-well button { width:100%; }
 ${page} .base-specializations, ${page} .orr-base__cands { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
 ${page} .base-spec, ${page} .base-spec:hover {
@@ -80,7 +94,8 @@ ${page} .base-spec, ${page} .base-spec:hover {
 }
 ${page} .base-spec.active, ${page} .base-spec.active:hover { border-color:#678786; background:#1a3035; }
 ${page} .base-spec-head { display:flex; align-items:center; gap:10px; margin-bottom:4px; width:100%; }
-${page} .base-spec-head svg { flex:none; color:var(--base-water); }
+${page} .base-spec-head > svg { flex:none; color:var(--base-water); }
+${page} .base-spec__thumb { flex:none; }
 ${page} .base-spec .verb { font:600 14px/1.4 "Instrument Sans",system-ui,sans-serif; color:var(--base-ink); }
 ${page} .base-spec .risk { color:#d7c2a4; }
 ${page} .base-spec .k-word { margin-top:auto; }
@@ -97,15 +112,17 @@ ${page} .base-ledger-v--sub { font-size:13px; color:var(--base-dim); }
 ${page} .is-threat { color:var(--dp-danger-hot,#ffab9a); }
 ${page} .base-shop { display:grid; gap:0; }
 ${page} .base-mod, ${page} .base-mod:hover {
-  display:grid; grid-template-columns:minmax(0,1.8fr) minmax(100px,.9fr) minmax(115px,.7fr);
-  gap:4px 16px; align-items:center; padding:14px 3px;
+  display:grid; grid-template-columns:44px minmax(0,1.8fr) minmax(100px,.9fr) minmax(115px,.7fr);
+  gap:4px 14px; align-items:center; padding:14px 3px;
   background:transparent; border:0; border-bottom:1px solid var(--base-line);
 }
-${page} .base-mod .nm, ${page} .base-mod .desc { grid-column:1; }
-${page} .base-mod .meta { grid-column:2; grid-row:1 / span 2; font-size:13px; color:#c5d5da; }
-${page} .base-mod button { grid-column:3; grid-row:1 / span 2; justify-self:end; }
+${page} .base-mod__thumb { grid-column:1; grid-row:1 / span 2; }
+${page} .base-mod .nm, ${page} .base-mod .desc { grid-column:2; }
+${page} .base-mod .meta { grid-column:3; grid-row:1 / span 2; font-size:13px; color:#c5d5da; }
+${page} .base-mod button { grid-column:4; grid-row:1 / span 2; justify-self:end; }
 ${page} .orr-base__built { color:var(--base-water); font-size:13px; }
 ${page} .base-freight { display:flex; flex-wrap:wrap; gap:8px; }
+${page} .base-freight__thumb { --sf-thumb-size:22px; padding:1px; }
 ${page} .k-word, ${screen} .base-foot .k-word, ${screen} .base-jump button, ${page} .orr-base__cand {
   display:inline-flex; align-items:center; justify-content:center; gap:6px; min-height:38px;
   padding:6px 12px; border:1px solid #596c78; border-radius:5px; clip-path:none;
@@ -140,9 +157,10 @@ ${screen} .base-foot .orr-base__lamp { font-size:14px !important; letter-spacing
   ${page} .base-specializations { grid-template-columns:1fr; }
   ${page} .base-spec { gap:5px; }
   ${page} .base-ledger-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
-  ${page} .base-mod { grid-template-columns:minmax(0,1fr) auto; }
-  ${page} .base-mod .meta { grid-column:1; grid-row:3; }
-  ${page} .base-mod button { grid-column:2; grid-row:1 / span 3; max-width:14ch; }
+  ${page} .base-mod { grid-template-columns:44px minmax(0,1fr) auto; }
+  ${page} .base-mod__thumb { grid-column:1; grid-row:1 / span 2; }
+  ${page} .base-mod .meta { grid-column:2; grid-row:3; }
+  ${page} .base-mod button { grid-column:3; grid-row:1 / span 3; max-width:14ch; }
   ${screen} .base-foot { gap:6px; }
   ${screen} .base-dispatch-state { flex:1; order:-1; }
   ${screen} .base-jump { order:-2; }
@@ -152,8 +170,10 @@ ${screen} .base-foot .orr-base__lamp { font-size:14px !important; letter-spacing
   ${page} { gap:11px; }
   ${page} .base-hero { background-position:63% center; background-image:linear-gradient(90deg,#0a141cee,#0d1722a6 75%,#10182060),url("${surveyArt}"); }
   ${page} .base-hero > * { max-width:100%; }
-  ${page} .base-plan, ${page} .base-mod { grid-template-columns:minmax(0,1fr); }
-  ${page} .base-plan > button, ${page} .base-mod button { grid-column:1; grid-row:auto; justify-self:start; max-width:100%; }
+  ${page} .base-plan { grid-template-columns:minmax(0,1fr); }
+  ${page} .base-mod { grid-template-columns:44px minmax(0,1fr); }
+  ${page} .base-mod .meta { grid-column:1 / -1; }
+  ${page} .base-plan > button, ${page} .base-mod button { grid-column:1 / -1; grid-row:auto; justify-self:start; max-width:100%; }
   ${page} .orr-base__cands { grid-template-columns:1fr; gap:5px; }
   ${page} .orr-base__cand-range { flex-basis:auto; margin-left:auto; }
   ${screen} .orr-base__esc { display:none; }

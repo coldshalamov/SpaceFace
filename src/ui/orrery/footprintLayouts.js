@@ -36,10 +36,13 @@ ${S} > .k-stage.fp-stage { grid-area:stage; display:grid !important; grid-templa
   column-gap:clamp(20px, 2.6vw, 60px) !important; row-gap:0 !important; min-height:0 !important; position:relative; }
 ${S} .fp-dialhost { grid-column:1; grid-row:1; position:relative; min-width:0; min-height:0; }
 /* the dial's neighbour: scrolling reading, then the verbs, then the record — verbs stay clear of the fold */
-/* ui-polish-395: .fp-reading wears 1px bone ~18% / radius 10 / faint fill; densify 8→6.
-   Was unbound Newgrounds plate over the soft pool (no border / no radius / no fill). */
+/* ui-polish-395: .fp-reading wears the promise-scale hairline card; densify 8→6.
+   Was unbound Newgrounds plate over the soft pool (no border / no radius / no fill). The first
+   alphas (.18/.025) vanished against the lit backdrop — the Records Wall finding — so the face
+   sits on the house E0 tokens (bench 2026-11-15). */
 ${S} .fp-reading { grid-column:2; grid-row:1; position:relative; min-width:0; min-height:0; max-width:calc(680px * var(--fp-s, 1)); display:flex; flex-direction:column; gap:clamp(12px, 2.1vh, 26px); max-height:100%;
-  box-sizing:border-box; padding:16px 18px 14px; border:1px solid rgb(${BONE} / .18); border-radius:10px; background:rgb(${BONE} / .025); }
+  box-sizing:border-box; padding:16px 18px 14px; border:1px solid rgb(${BONE} / .3); border-radius:10px; background:var(--sf-face, rgb(8 11 16 / .8));
+  box-shadow:var(--sf-edge, inset 0 1px 0 rgb(236 230 216 / .1), inset 0 -1px 0 rgb(0 0 0 / .5)); }
 @media (max-height:820px) { ${S} .fp-reading { border-radius:8px; } }
 @media (max-height:460px) { ${S} .fp-reading { border-radius:8px; } }
 @media (max-height:400px) { ${S} .fp-reading { border-radius:6px; } }

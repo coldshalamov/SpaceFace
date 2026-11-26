@@ -289,6 +289,7 @@ function mountTestFixture(options = {}) {
   const prevWin = globalThis.window;
   const prevPerf = globalThis.performance;
   const prevGetComputedStyle = globalThis.getComputedStyle;
+  const prevRaf = globalThis.requestAnimationFrame;
 
   const doc = new HudDocument();
   const hudRoot = doc.createElement('div');
@@ -311,6 +312,10 @@ function mountTestFixture(options = {}) {
     matchMedia: () => ({ matches: false, addEventListener() {}, removeEventListener() {} }),
   };
   globalThis.performance = { now: () => 1000 };
+  // Next-frame work (pulse/latch class re-arms — the no-forced-reflow pattern) queues here and
+  // runs when the test asks for the next frame via fx.flushRaf().
+  const rafQueue = [];
+  globalThis.requestAnimationFrame = (fn) => { rafQueue.push(fn); return rafQueue.length; };
   globalThis.getComputedStyle = (element) => ({
     display: element?.style?.display === 'none' ? 'none' : (element?.style?.display || 'block'),
     getPropertyValue: () => '',
@@ -422,12 +427,18 @@ function mountTestFixture(options = {}) {
       state.tick += 1;
       hudInstance.frame(dt);
     },
+    flushRaf() {
+      const pending = rafQueue.splice(0);
+      for (const fn of pending) fn();
+    },
     restore() {
       hudInstance.destroy();
       globalThis.document = prevDoc;
       globalThis.window = prevWin;
       globalThis.performance = prevPerf;
       globalThis.getComputedStyle = prevGetComputedStyle;
+      if (prevRaf === undefined) delete globalThis.requestAnimationFrame;
+      else globalThis.requestAnimationFrame = prevRaf;
     },
   };
 }
@@ -605,6 +616,7 @@ test('shield collapse triggers electronic disruption glitch on HUD', () => {
     // Shield collapses to 0
     fx.player.shield = 0;
     fx.step(1 / 60);
+    fx.flushRaf();
 
     assert.equal(fx.hud.getDisrupted(), true, 'shield collapse must trigger sf-hud--glitch class');
     const glitchOverlay = fx.hudRoot.querySelector('.sf-hud-glitch-overlay');
@@ -621,6 +633,7 @@ test('combat:emp event triggers electronic disruption glitch', () => {
     assert.equal(fx.hud.getDisrupted(), false);
 
     fx.bus.emit('combat:emp', { targetId: fx.player.id });
+    fx.flushRaf();
     assert.equal(fx.hud.getDisrupted(), true, 'EMP event must trigger disruption');
   } finally {
     fx.restore();
@@ -635,6 +648,7 @@ test('full mode EMP keeps glitch plus audio blip and adds no words', () => {
   fx.bus.on('toast', (p) => toasts.push(p));
   try {
     fx.bus.emit('combat:emp', { targetId: fx.player.id });
+    fx.flushRaf();
     assert.equal(fx.hud.getDisrupted(), true, 'full mode keeps the flash');
     assert.ok(audio.some((p) => p && p.id === 'ui_deny'), 'full mode keeps the restrained blip');
     assert.equal(toasts.length, 0, 'full mode adds no replacement words');
@@ -726,7 +740,11 @@ test('missile locking executes multi-stage convergence animation (Acquiring -> T
     assert.equal(lockRing.classList.contains('locked'), true);
     assert.equal(lockLabel.textContent, 'LOCKED');
     assert.equal(lockBrackets.style.transform, 'scale(1)');
-    assert.equal(lockRing.classList.contains('sf-lockring--latch'), true, 'latch animation triggered');
+    // The latch class re-arms on the next animation frame (token + rAF) — no forced reflow.
+    assert.equal(lockRing.classList.contains('sf-lockring--latch'), false,
+      'latch class is removed now and re-adds on the next animation frame');
+    fx.flushRaf();
+    assert.equal(lockRing.classList.contains('sf-lockring--latch'), true, 'latch animation re-arms next frame');
     assert.equal(audioPlayed, true, 'lock_acquired audio cue fired on rising edge');
   } finally {
     fx.restore();

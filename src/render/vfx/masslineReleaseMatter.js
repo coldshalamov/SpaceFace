@@ -43,22 +43,19 @@ export class MasslineReleaseMatter {
     const loaded=plan.windowOpen||plan.stage==='released';
     const alpha=fade*(plan.reducedFlash?.58:1)*(.62+plan.proximity*.24);
     const basis=Number.isFinite(body?.rot)?body.rot:plan.startAngle;
+    // No circular arcs around latched/held bodies (owner 2026-11-23): while merely held,
+    // keep the receiver clean; when an aiming window or release rating is active, paint a
+    // pair of short straight tangent flanking ticks along the body's heading rather than a ring.
+    if(plan.stage==='held'){this.clear();return false;}
     this.batch.begin(now,reduced,plan.reducedFlash);p.slot=s;
-    for(let i=0;i<3;i++){
-      // Three unequal open seats occupy less than half the circumference. Their
-      // folds carry current; there is no repeated tiled annulus or fake blast radius.
-      const angle=basis+s.seed*.4+i*2.13,span=.72+i*.15+quality*.045;
-      const feed=clamp((age-i*.055)/.20),lift=w*(.72+i*.18);
-      const drift=reduced?0:Math.sin(motion*(1.5+i*.37)+i*2.1)*w*.15;
-      const cutoff=plan.stage==='released'?clamp((now-this.receiverReleasedAt-.06-i*.035)/.27)-.1:-.1;
-      p.piece(4,s.x,s.z,angle,-span*.5,span*.5,w*(.80-i*.10),lift,0,0,
-        r+drift,i*2.3,alpha,feed,cutoff,loaded?1.15:.67);
-      // Independently travelling charge seats meet the loaded lip, then discharge.
-      const at=reduced?.34:(motion*(.39+i*.11)+s.seed+i*.29)%1;
-      const a=angle-span*.46+span*.76*at;
-      const x=s.x+Math.cos(a)*(r+w*.5),z=s.z+Math.sin(a)*(r+w*.5);
-      p.piece(2,x,z,a+Math.PI/2,-w*.85,w*(1.15+i*.15),w*.55,lift*.55,w*.24,0,0,
-        i*1.7,alpha*(.45+.45*Math.sin(Math.PI*at)),feed,cutoff+.12,loaded?1.45:.8);
+    const len=clamp(r*.65+quality*1.4,4,14),lift=w*.55;
+    const cutoff=plan.stage==='released'?clamp((now-this.receiverReleasedAt-.06)/.27)-.1:-.1;
+    const feed=clamp(age/.16);
+    const c=Math.cos(basis),sn=Math.sin(basis);
+    for(let side=-1;side<=1;side+=2){
+      const ox=s.x-sn*side*(r+w*.45),oz=s.z+c*side*(r+w*.45);
+      p.piece(2,ox,oz,basis,-len*.45,len*.55,w*.48,lift,w*.18*side,0,0,
+        side>0?1.7:3.1,alpha*(loaded?1:.78),feed,cutoff,loaded?1.35:.85);
     }
     this.batch.end();return this.mesh.visible;
   }

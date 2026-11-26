@@ -368,12 +368,14 @@ function fakeDom() {
 
 const w2sCenter = () => ({ x: 720, y: 450, onScreen: true });
 
-test('INF-012: shape and label name the exit owner', () => {
+test('INF-012: both exits say THROW — the Line speaks one grammar, director 2026-11-23', () => {
   const self = resolveReleaseCue({ x: 100, y: 100, onScreen: true }, { kind: 'self', onSolution: true });
-  const thrown = resolveReleaseCue({ x: 100, y: 100, onScreen: true }, { kind: 'throw', onSolution: true });
-  assert.match(self.ariaLabel, /self-sling/);
-  assert.match(thrown.ariaLabel, /throw/);
-  assert.notEqual(self.ariaLabel, thrown.ariaLabel, 'the two exits never share one cue');
+  const thrown = resolveReleaseCue({ x: 100, y: 100, onScreen: true }, { kind: 'throw', onSolution: false });
+  assert.equal(self.label, 'THROW');
+  assert.equal(thrown.label, 'THROW');
+  assert.match(self.ariaLabel, /throw window open/);
+  assert.match(thrown.ariaLabel, /throw window lining-up/);
+  assert.doesNotMatch(`${self.label} ${self.ariaLabel} ${thrown.ariaLabel}`, /ALIGN|RELEASE|LET GO|SELF-SLING/i);
 });
 
 test('INF-012: arming the throw swaps the cue without overlap or stale targets', () => {
@@ -397,7 +399,8 @@ test('INF-012: arming the throw swaps the cue without overlap or stale targets',
   masslineHud._updateSelfMark(dom, latchedSelf, state, w2sCenter);
   assert.equal(dom.throwEl.style.display, 'none');
   assert.equal(dom.selfEl.style.display, 'block');
-  assert.match(dom.selfLabel.textContent, /RELEASE|ALIGN/, 'the chevron carries its own live label');
+  assert.equal(dom.selfLabel.textContent, 'THROW', 'the Line speaks one grammar, director 2026-11-23');
+  assert.doesNotMatch(dom.selfLabel.textContent, /RELEASE|ALIGN|SELF-SLING|LET GO/);
 });
 
 // --- INF-013: relative-mass interpretation --------------------------------------------------

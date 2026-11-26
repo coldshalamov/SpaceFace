@@ -1,31 +1,17 @@
+<!-- HISTORY-2026-11-20 -->
+> **History, not instructions (2026-11-20).** This file no longer assigns, orders or blocks any work.
+> States such as READY, TAKEN, HOLD, PARKED and NEEDS-PACKET mean nothing now. Read it for facts
+> about what was built or planned. The rule and the live board are in the root `AGENTS.md` and
+> `design/overhaul/12_PIPELINE.md`.
+
 # The work queue — four lanes
 
-**This is the only place work comes from.** The design it builds is `design/game/`. How work runs:
-`PLAYBOOK.md`; worker rules: `PROTOCOL.md`; where things stand: `HANDOFF.md`.
+The design it built is `design/game/`. How work ran: `PLAYBOOK.md`; worker rules: `PROTOCOL.md`;
+where things stood: `HANDOFF.md`.
 
-## How to take work
-
-You are told your lane: **Agent 1, 2, 3 or 4**. Take the **first `READY` row in your own lane**, top
-to bottom. Change its State to `TAKEN agent<N>` and commit that one line
-(`git commit -m "queue: agent<N> takes <ID>" -- design/program/fleet/QUEUE.md`), then do the job: the
-packet in `packets/<ID>.md`, or, where the row says "spec:", the spec it names. When done set
-`BUILT <commit hash>` and commit. If your lane has no `READY` row you may take one from a **higher-
-numbered** (easier) lane — never from a lower-numbered lane. Never take a `TAKEN` row.
-
-**Frontend rule (owner, 2026-11-11):** rows marked **[FE]** are screens/HUD/popups/visuals — never Devin. They go to a
-Sonnet sub-agent (lead-run) or, if routine, Gemini Flash; the lead looks at every one on screen.
-
-| Lane | Who | What lives here |
-|---|---|---|
-| **1** | the strongest model available (Claude Opus/Fable class) | taste, creative writing, art and 3D, architecture, diagnosis, **reviewing what others built on screen**, writing packets for lanes 2–4 |
-| **2** | strong coder (Devin SWE-2 Max at its best) | large engineering packets that name the seam: performance, controls, mobile camera/HUD, landing parked work |
-| **3** | solid coder (Devin SWE-2 Max, Gemini Flash) | fully specified medium packets: data tables, wiring an existing system, one world reaction, recon drafts |
-| **4** | any agent (Gemini Flash) | mechanical work that cannot go wrong: exact text, exact lists, run-and-report |
-
-States: `READY` · `TAKEN agent<N>` · `BUILT <hash>` (worker says done) · `DONE` (Lane 1 looked) ·
-`REDO <one sentence>` · `HOLD <on what>` · `NEEDS-PACKET` (Lane 1 writes it first).
-**Nothing is `DONE` until Lane 1 has looked at it on screen** (if it is visible). After a batch, run
-`npm run gate`; red → fix or revert before anything else lands.
+States the rows below use (they mean nothing now): `READY` · `TAKEN agent<N>` · `BUILT <hash>`
+(worker said done) · `DONE` (Lane 1 looked) · `REDO <one sentence>` · `NEEDS-PACKET` (Lane 1 wrote
+it first).
 
 ---
 
@@ -47,18 +33,36 @@ so **the lead verifies every finding and signs off** before anything acts on it.
 Resume from the first open player route below when the owner asks for a whole-game pass. The lead can
 run disjoint investigations in parallel. Keep the latest outcome and next action on this board.
 See [the current checkpoint](QUALITY.md) for measurements and landed fixes.
+The [first-hour design](../../game/20_THE_FIRST_HOUR.md) defines the player decisions these routes
+need to support. Each owner integrates the result through the actual mode, station, or job board.
+Use the [whole-game completion program](../../../build_map.md#whole-game-completion-program) and
+its [batch checklist](../../../build_map.md#checklist-for-each-integrated-batch) to run late stress
+and progression work alongside the opening repairs.
 
 | ID | Player route and next action | State |
 |---|---|---|
-| QUAL-01 | Windows browser and desktop launch → close → relaunch. Trace the occasional native hidden/minimized first-picture hold and verify the packaged updater. | TAKEN Codex. `c4da41846047` retries once when the renderer dies during initial navigation, preserves the save origin, and waits for fresh paint. The injected fixture and launch policy passed. Live intermittent first picture and packaged updater remain open. |
-| QUAL-02 | Adventure New Game → fly → save/Continue → berth → first story delivery. Verify preserved chart courses, paid jumps and sealed cargo recovery in the ordinary route. | TAKEN Codex. Two public F5/F9 cycles returned to flight in Electron. The berth and story route remain open. |
-| QUAL-03 | Adventure opening and crowded Helios. Isolate the largest repeatable CPU/GPU cost and compare fresh poses and hitches on the same route. | TAKEN Codex. Latest retained backend pair drew 8.77 to 8.48/s under combined input. Drawn ship gap p95 fell from 211 to 178 ms and worker step p95 from 49 to 39 ms. The separate Nocturne candidate was dropped after a live slowdown. See [checkpoint](QUALITY.md#worker-launcher-and-render-follow-up). |
-| QUAL-04 | Ordinary Swarm round 1 → next round and Retry. Find the early-round pacing loss and verify first-input protection after Retry. | TAKEN Codex |
-| QUAL-05 | Public Gauntlet launch → combat → Retry. Grade camera and motion, then trace the first-visibility pop-ins to their real owner. | TAKEN Codex. Latest locked combined-input pair reached Rearm in both arms. Active draws went 15.65 to 15.26/s. The worst moving hull gap fell 414 to 220 ms, while p95 grew 105 to 121 ms. Cadence, rock approach and Retry remain open. See [checkpoint](QUALITY.md#worker-launcher-and-render-follow-up). |
-| QUAL-06 | Public Circuits → choose Time Trial → gate → F8 → gate → finish or leave. Verify the new attempt can earn boost and keeps its own result. | TAKEN Codex. F8 resets the public attempt on its grid. Campaign heading, comms and yard guidance verified absent. Scored finish remains open. |
-| QUAL-07 | World motion freezes during thrust, turning and fire. Measure authoritative ticks, ship pose and draw cadence in Foundry, then cover Pause, minimize/return and load. | TAKEN Codex. `24dd46889364` recovers expired reply credit when its timer is late. The bundled Supply Pod replay drew 9.77/s with no active backpressure. Locked Adventure Pause, Resume, native minimize and restore passed with fresh steering and 129 world units of displacement. The original retail freeze, the straight-thrust case beside a rock, and sustained cadence remain open. See [checkpoint](QUALITY.md#worker-launcher-and-render-follow-up). |
-| QUAL-08 | Phone launch and flight. Measure touch input and sustained cadence, and verify physical-device behavior when available. Opus owns visual and UI changes. | READY |
-| QUAL-09 | Adventure freight, fabrication and asteroid workbench. Keep active contract cargo aboard during unrelated spending and preserve separately owned convoy freight. Verify through the normal owner routes. | TAKEN Codex |
+| QUAL-01 | Windows browser and desktop launch → controllable flight → close → relaunch. Verify the updater and trace the native first-picture hold. | TAKEN Codex. Unpacked candidates reached both modes and native movies use byte ranges. Continue restored the paid Quick Save in Tethys. The latest pinned Swarm took 22.57 s from Launch to the visible first wave. Another took 29.47 s and the separate stock runs 40–41 s. Narrowing the speculative batch warm reduced the measured pass from 8.53 s to 0.70 s with the same paid fit, sealed picture and 17 room bodies. Close cold and warm launch performance, then verify packaged updating. |
+| QUAL-02 | Adventure New Game → fly → save/Continue → berth → first story delivery. Verify preserved chart courses, paid jumps, customs disclosure and sealed cargo recovery in the ordinary route. | TAKEN Codex. Fresh New Game passed visible 47-A Scan and Mine, the Helios berth and assay, then saved and restored the first 760-credit delivery. Furnace paid 480 credits for a manual F tow and three original pod receipts. The pilot saw the customs risk, sold eligible cargo, jettisoned the two exposed units, paid the 180-credit toll and saved Cinder Marks at 21,820 credits and zero debt. The headed pilot reopened the earned 2/3 Quick, selected the original Cinder Two wreck with O, steered, latched with F and saved. Load Game restored the exact attached wreck. Verify the newly encountered wreck's save path, player-led combat, Rook settlement and the post-fix RMB service pick. |
+| QUAL-03 | Adventure opening and crowded Helios. Isolate the largest repeatable CPU/GPU cost and compare fresh poses and hitches on the same route. | TAKEN Codex. Native Round 20 still delivers 21.09 draws and 11.04 fresh world poses/s at 0.602 sim/wall. Matched warm headless fixed steps took 25.06 ms median and 38.70 ms p95. Game-side Physics and Tactical AI lead. Cinder Quick still blocked 300 ms in capture, including 159 ms in native physics export and compaction. Reduce the measured active-step and live-save stalls, then recheck controls under load. See [measurements](QUALITY.md#integrated-batch--november-19-2026). |
+| QUAL-04 | Ordinary Swarm round 1 → next round and Retry. Find the early-round pacing loss and verify first-input protection after Retry. | TAKEN Codex. The headed Easy Hornet chose a free gun and flew with zero Scrap. The pilot flew out through the Foundry gap, saw the return cue and flew back on the same ship life. Retirement Again restored the exact fit and accepted W. First draw was 5.89–9.74 s. Reduce the measured late renderer waits and verify native defeat, the five-second Retry target, a deliberate paid purchase and banking. |
+| QUAL-05 | Public Gauntlet launch → combat → Retry. Grade camera and motion, then trace the first-visibility pop-ins to their real owner. | TAKEN Codex. A decoded wreck keeps its warm marker until its authored model can draw. The public Foundry check rendered two authored wrecks and had no relevant contact. Verify draw-before-contact for the same live body. The Round 5 ring and fallback render. The worker now honors the exact READY endpoint when F arrives and verifies its generation. The alternate reserve entrance and spent-charge rule passed the worker replay. The native reserve still died before an accepted latch. Verify the full counter. See [measurements](QUALITY.md#follow-up-on-the-first-hour). |
+| QUAL-06 | Public Circuits → choose Time Trial → gate → F8 → gate → finish or leave. Verify the new attempt can earn boost and keeps its own result. | TAKEN Codex. Time Trial and Pack finished Textile Belt clean. The three-heat native Cup saved and restored a 5/18 Bronze. Pallas now keeps the ranked Long Arm briefing in front of unsolicited Workshop. The native pilot started its timer, latched the load and Abandoned. Quick Save kept the cancellation, 1,700 credits and the existing 60-credit Soft Berth Bronze. Finish The Long Arm and verify Pack records. |
+| QUAL-07 | World motion freezes during thrust, turning and fire. Measure authoritative ticks, ship pose and draw cadence in Foundry, then cover Pause, minimize/return and load. | TAKEN Codex. Expired reply credit recovers when its timer is late. The time-effects owner now preserves UI pause when a worker speed request arrives. Locked Adventure Pause, Resume and minimize/restore passed with fresh steering. The original retail freeze, the straight-thrust case beside a rock, and sustained cadence remain open. |
+| QUAL-08 | Phone launch and flight. Measure touch input and sustained cadence, and verify physical-device behavior when available. | TAKEN Codex. Mounted touch supports Scan and Field Build. The dock command clears a live Tethys decision, and returns to center on close in four mounted layouts. Compact desktop keeps the selected asteroid Detail in view. Verify crowded live HUD, physical touch, docking and captions. |
+| QUAL-09 | Adventure freight, fabrication and asteroid workbench. Keep active contract cargo aboard during unrelated spending and preserve separately owned convoy freight. Verify through the normal owner routes. | TAKEN Codex. Native Dione Target Practice paid 280 once and the workbench passed tunnel, survey, ore, re-entry and Quick Save. Native Ceres Industry bought one Iron for 17 credits and refined two into one Refined Metals. Sealed freight stayed aboard and the course stayed tracked. An earlier dock-to-station stall remains intermittent. Worker-owned Relay dispatch paid for one manifested 60-u convoy and preserved the sealed cargo. Verify the rendered convoy route. |
+
+First-hour priorities within these rows:
+
+| Routes | Playable handoff | Next acceptance |
+|---|---|---|
+| QUAL-01/08 | Fresh and returning launch, moving intro, title navigation and settings | Record cold boot to usable title. Exercise the default and reduced-motion routes, then controller and touch. |
+| QUAL-04/05/07 | Match choice → hull → equipment → flight → first fight → next round or Retry | Confirm the approved fit and spend reach flight. See the first threat before contact, steer while using a tool, and observe the result/Retry route. Use a matched cadence run to tune the largest shared cost. |
+| QUAL-04/05 | Practice and scheduled combat challenges | Show what practice keeps and what the daily and weekly rules change before launch. Fly that setup, then reset practice or inspect the scored result. |
+| QUAL-02/03 | First latch and throw → first dock → tracked contract → delivery → Continue | Show one relevant target at a time. Preserve berth, cargo, pay and mission state across save or recovery. Verify approach readability on the gameplay camera. |
+| QUAL-06/09 | Optional Circuits, jobs, markets, mining and workbench | Score and reset a Circuit. Take a distinct service or job from selection through result and safe return. |
+
+Work on unresolved steps in parallel when owners are disjoint. Close a route from the integrated
+build. Keep only the evidence required to reproduce a failure or judge an accepted change.
 
 ## PR intake — landing the open pull requests properly (lead-run, 2026-11-14)
 
@@ -88,7 +92,7 @@ reviews every commit; lane agents do not take them.
 |---|---|---|
 | L1-REVIEW | Look at every visible `BUILT` row on screen (ui-bench shots; `npm run player-truth -- --mode=swarm --start-round=N --out=<dir>`; fly it) and mark `DONE` or `REDO <sentence>`. Today: G19-01, G08-01, C01-01, G18-03, G18-04, PERF-02a, the plants. Repeat every session. | READY (repeat) |
 | LOOK-01 one grade | Concept A applied and tuned on screen in 4 passes (771c32c1, 37c9ddcd, 5b11ca4c, ca53d481, 4f828c87): warm key, blue shadows, ambient/fill restored, darkest moods floored, bloom only on true lights, exposure ~+3%, empty space deep indigo. Capture: `design/game/look/captures/2026-11-11-after-look-pass.png` | BUILT (owner to judge) |
-| LOOK-03 | A rock turns pure white mid-fight (hit flash, pale albedo over the key, or a highlight) — find the cause, fix in its owner | HOLD (not reproduced in rounds 2/3/5; diagnostics 53d5d274 + scanner ready — rerun on the next sighting) |
+| LOOK-03 | A rock turns pure white mid-fight (hit flash, pale albedo over the key, or a highlight) — find the cause, fix in its owner | DONE 932915b4ad (reproduced 2026-11-19: crystal-surface field ore wore the optic-lattice diamond skin; renderer now refuses every surface tag without a lattice id) |
 | LOOK-04-the-look | Owner 2026-11-12: bold, readable, cheap — energy bands, emissive-only bloom, role rims, indigo shadow, fixed res + CAS/FXAA (packet has the root causes) | TAKEN lead (bench building: Sonnet) |
 | NINTH-MOUTH-CUT-01 | The Mouth's rock walls stop reading as flat polygons: port PR #945's shadeRegions mechanism onto LOOK-04's rock family (AUDIT-14 capture 04-ceres-ninth-mouth.png is the before) | DONE 6c7d8fe58c — lead looked: before/after at the pocket reads sculpted cut stone (indigo shadow, warm crests, stepped facets); 147 render tests red-first + bench lint clean. Follow-up: stand-in LOD window (~5 s after long teleports) still lacks the rock role (`visualOverrides.standInMaterialFor` — one file, out of the packet's allowance). Root cause of the AUDIT-14 "C-shaped hole" was that stand-in window, not the mesh. |
 | FUNGUS-01-progressive-infestation | Owner 2026-11-15: plan a story-led spread from clean areas to increasingly infested eligible structures, with creepy brown, fleshy alien growth and organic folds. Decide how saved sector Bloom tide and local ecology contamination relate; publish deterministic severity and changes from the simulation to bounded, attached visual growth, with clear/sever recovery and LOD limits. Preserve intentional Understory faction and garden identities; verify the ordinary route and save/load. | NEEDS-PACKET |
@@ -99,6 +103,8 @@ reviews every commit; lane agents do not take them.
 | TITLE-01 two doors [FE] | Title shows ADVENTURE and SWARM side by side; New Game one-press default launch, form behind Custom; Swarm PLAY one click to round 1 | NEEDS-PACKET (after the menu-frame agent) |
 | PERF-03 | Swarm 20 draws too much: measure draw calls per owner, cut the biggest with an identical picture (11.9 fps / 0.15 % idle today) | BUILT b9daa415 (debris merged: 7.2 → 9.0 fps, draws 222 → 137); hostile hulls are the rest → PERF-08 |
 | PERF-08 | One draw per enemy kind (instanced hostile hulls; 174 fighter draws/frame at round 20) | HOLD on PERF-04 (renderer.js) |
+| PERF-09-sim-hot-repeats | Swarm wave 15 sim step is 22.6 ms mean on a quiet host (`node --cpu-prof scripts/sim-crowd-stress.mjs --ticks=600 --warmup=240`, director 2026-11-20). Cut three repeated costs with no behaviour change: (1) `ensureActivityClassified` from `tacticalAI.update` re-runs `classifyWorld` every tick because every projectile spawn bumps the entity-index membership version (1.4 ms/tick); (2) `resolveCollisionProxyManifest` is called per body per tick from `sg02DynamicBodyOwner._syncRecord` and `physics._syncProjectileBroadphase` (0.6 ms/tick); (3) `liveSwarmRun` runs `validateRunState` on every projectile query and propulsion resolve (0.2 ms/tick). Prove each with the same profile before/after and `check:sim` unchanged | READY |
+| LOOK-STANDIN-01 | Nearby ships never load their real model: on a New Game every ship within 900 WU stays on its admission stand-in ("flat blue ghost") or draws nothing for 30 s+ (`resolvingMarkerFallbackReason: no-resident-record`; `ship_atlas` #568 at 386 WU is SOLID with 0 drawables; pelicans `admissionStandInPending` all 30 s). Owner: "dozens of models flooding the screen and not loaded, crashing into invisible objects". Find why the canonical record never becomes resident for these hulls, make it load (or show its own body) within 2 s, and never leave a solid ship with nothing drawn. Probe: `node scripts/fleet/game-lock.mjs run -- node .devshots/director/standin-probe.mjs` (director 2026-11-20) | READY |
 | PERF-02b local prediction | Draw the player's ship from their own input on the main thread (client-side prediction), reconciled to the worker — the cure for input lag and flicker | HOLD on PERF-02a review |
 | PERF-02 | `src/core/wholeSimBrowserWorker.js` holds the sim clock after 250 ms without a main-thread heartbeat (`LOCAL_HEARTBEAT_HOLD_MS`) and stops at 4 un-ACKed replies (`LOCAL_MAX_UNACKED`), so a saturated main thread slows the world. Loosen after PERF-03 frees headroom | DONE dc5f5c03 + f7404e82 (sim/wall 0.67 → 0.99, fps 7.1 → 10.4, apply p95 8.8 → 7.3 ms — lead accepted) |
 | G11-01-never-freeze | The freeze plan end to end (measure quietly → one clock → adaptive playout → cheaper sim) | BUILT in slices. Adaptive playout, bounded clock debt and cheaper economy/physics/AI/save/trace checks pass. Quiet live targets remain open |
@@ -180,8 +186,8 @@ reviews every commit; lane agents do not take them.
 | C01-04-each-round-fields-its-cast | Every round's cast matches its name (formations, enemy mix) | BUILT 4757ab20 (lead looks at round 7 next) |
 | C01-05-the-room-does-the-twist | Nine round mechanics (Delivery, Lights Out, Highway Robbery theft, The Law, Yardmaster, Chain Gang, Everything Must Go, Black Friday, Quiet) | BUILT e43158f9..6388156e + 0157280f + lead 656e7b79 (manifest scope) — looks r13/r29 in receipt; lead looked r12 |
 | G11-02-one-clock-the-rest | World decoration (idle spins, lamps, shader time) follows `presentedAdvanceRatio()` | BUILT 7b137486 + lead fix 2c54dea0 (sim-timed lamps stay on the sim clock) |
-| PERF-04 | Prewarm the flight shader keys and verify zero late programs with at most 1 s added to click-to-first-playable flight in Adventure and Swarm | PARKED — unmeasured working-tree change saved to .devshots/fleet/parked/PERF-04-working-tree-2026-11-13.patch (render files freed for the look pass) |
-| PLANT-NEXT | Build the next OPEN physical world reaction in `INFERENCE_PLANTS.md` exactly as written | HOLD (flash plants needed lead fixes 3 of 4; PL-09 reverted — rules added to the packet) |
+| PERF-04 | Prewarm the flight shader keys and verify zero late programs with at most 1 s added to click-to-first-playable flight in Adventure and Swarm | BUILT bb9d8cef6e (2026-11-20: ported from the parked patch, HEAD + port hunks only; same pipeline tests as HEAD) — owner flight with all fixes: 31.7 fps, 3 freezes/139 s |
+| PLANT-NEXT | Build the next OPEN physical world reaction in `INFERENCE_PLANTS.md` exactly as written | CLOSED (owner 2026-11-19: the start sector is overcrowded — no new world content until it is thinned) |
 | PL-04-REDO | Rebuild the cargo-scramble plant by the rules (own events, canonical spawn, no stale ids) | BUILT 1332907a (own events, canonical spawn, generation checks — lead reviewed) |
 | PL-03 scavenger half | Real salvor hull dispatched from the nearest yard through the existing salvor/job seam; turns back if the wreck is emptied | BUILT 7c744edb (lead-review) |
 | PL-08-applause | Station lamps flash at a slingshot kill | BUILT 1ff73ce9 |
@@ -196,7 +202,7 @@ reviews every commit; lane agents do not take them.
 | ID | Job | State |
 |---|---|---|
 | DOC-01 label the old plans | 88 files bannered, readers pass (10483e2e) | DONE |
-| PLANT-RADIO | Build the next OPEN **section E** (radio line) row of `INFERENCE_PLANTS.md`: the exact line, one data row, one event key — copy the pattern of PL-52 (`src/data/flavor/040-band.js`, `src/systems/bandRadio.js`). Max one per two physical plants shipped | HOLD (radio ahead of physical 3:2; last PL-60 a96f601d reviewed) |
+| PLANT-RADIO | Build the next OPEN **section E** (radio line) row of `INFERENCE_PLANTS.md`: the exact line, one data row, one event key — copy the pattern of PL-52 (`src/data/flavor/040-band.js`, `src/systems/bandRadio.js`). Max one per two physical plants shipped | CLOSED (owner 2026-11-19: the start sector is overcrowded — no new world content until it is thinned) |
 | PERF-01-ADVENTURE-RUN | Execute the existing locked Adventure diagnostic matrix against the pinned source manifest and report the measurements | BUILT (8 of 12 arms, sector crossing stopped the run before skip-render and trace) |
 | PERF-01-SWARM-RUN | Run the locked Swarm 20 diagnostic matrix against the pinned source and report the measurements | DONE. Eight matched arms; cinematic work contaminated flight results. Follow-up in PERF-06 |
 | PERF-01-ADVENTURE-RENDER-RUN | Measure render-off and no-post on the same quiet Adventure scene, with a traced baseline | DONE. Six matched arms; render-off +11.0 fps, no-post −5.9 fps on this route |

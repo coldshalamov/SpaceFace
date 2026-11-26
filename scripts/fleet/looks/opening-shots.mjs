@@ -1,7 +1,9 @@
 // LOOK-05A look: the first sector's opening in one run (spawn, the marked tow can, the derelict carrier,
 // the Helios approach) plus what Nocturne (local lights / media) actually holds in each place.
 //   node scripts/fleet/game-lock.mjs run -- node scripts/fleet/looks/opening-shots.mjs <outPrefix>
-import { chromium } from 'playwright';
+import { chromium as rawChromium } from 'playwright';
+import { quietChromium } from '../../lib/quietLaunch.mjs';
+const chromium = quietChromium(rawChromium);
 import { spawn } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';

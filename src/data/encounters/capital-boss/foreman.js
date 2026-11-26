@@ -8,7 +8,7 @@ import { freezeDeep, hullActor, ballast, sector, lane, packet, beat, score,
 export const FOREMAN = freezeDeep({
   id: 'capital_boss_foreman',
   shape: { situation: 'set_piece', place: 'arena_ring', twist: 'named', actor: 'mirrorjaw_foreman' },
-  placeName: 'Crucible mirror lane',
+  placeName: 'Pit mirror lane',
   twist: 'The plated prow is a wall you cannot shoot through. Its charge cannot turn; its stern can be worked.',
   subsystemRoles: SUBSYSTEM_ROLES,
   actors: [hullActor({ label: 'MIRRORJAW FOREMAN', archetype: 'mirrorjaw_foreman', hull: 720,

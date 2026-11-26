@@ -336,6 +336,32 @@ html body #screens :is(.fh-key, .k-word)[data-rack-restock]:disabled {
 html body #screens .orr-station .sx-sw-verbs .sx-sw-verb[data-verb]:disabled,
 html body #screens .orr-station .sx-sw-verbs .sx-sw-verb[data-verb][aria-disabled="true"] {
   opacity:.45; cursor:not-allowed; }
+/* §8 press: the dressed keys answer a press with a deeper face, and hover/focus colour changes ride
+   the house 80ms cut instead of snapping (menus only; never in flight). Reduced motion keeps the
+   instant snap. */
+html body #screens .orr-station .sx-sw-verbs .k-word.sx-sw-verb[data-verb],
+html body #screens > :not(.sx-observatory):not(.of-title):not([data-screen="drill"]) .fh-key[data-rack-upgrade],
+html body #screens > :not(.sx-observatory):not(.of-title):not([data-screen="drill"]) .fh-key[data-rack-restock],
+html body #screens .orr-station :is(.fh-key, .k-word)[data-rack-upgrade],
+html body #screens .orr-station :is(.fh-key, .k-word)[data-rack-restock],
+.orr-station .orr-chain__source,
+.orr-station .orr-chain__wayout {
+  transition:background-color var(--dp-d-cut, 80ms) linear, border-color var(--dp-d-cut, 80ms) linear, color var(--dp-d-cut, 80ms) linear;
+}
+html.sf-reduce-motion body #screens .orr-station .sx-sw-verbs .k-word.sx-sw-verb[data-verb],
+html.sf-reduce-motion body #screens .orr-station :is(.fh-key, .k-word)[data-rack-upgrade],
+html.sf-reduce-motion body #screens .orr-station :is(.fh-key, .k-word)[data-rack-restock],
+html.sf-reduce-motion .orr-station .orr-chain__source,
+html.sf-reduce-motion .orr-station .orr-chain__wayout { transition:none; }
+html body #screens .orr-station .sx-sw-verbs .k-word.sx-sw-verb[data-verb]:not(:disabled):active,
+html body #screens .orr-station :is(.fh-key, .k-word)[data-rack-upgrade]:not(:disabled):active,
+html body #screens .orr-station :is(.fh-key, .k-word)[data-rack-restock]:not(:disabled):active,
+.orr-station .orr-chain__source:not(:disabled):active,
+.orr-station .orr-chain__wayout:not(:disabled):active {
+  --dpk-fill:rgb(236 230 216 / .18);
+  color:#fff !important; background-color:rgb(236 230 216 / .18) !important;
+  border-color:rgb(236 230 216 / .85) !important;
+}
 /* the ledger's empty board and archive status read as sentences, not faint engraved caps */
 .orr-station .sx-ledger .st-ledger-board-empty {
   font-family:var(--dp-face-read, "Instrument Sans", system-ui, sans-serif) !important;

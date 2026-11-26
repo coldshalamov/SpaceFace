@@ -182,11 +182,11 @@ export function kesslerStarterWorkReply(state, stationId, choiceId) {
     ? `Kessler lays a finger across the first column. “Your cutting ticket: ${receipt.rewardCr} cr paid. That bought your work at the face, not the ore in your hold.”`
     : `Kessler leaves the first column uninitialled. “Your first cutting ticket is ${receipt.outcome}. No ticket pay. A half-worked face does not become a finished shift because you came home.”`;
   const stock = slip
-    ? `${slip.freeIron}u free iron are still aboard. You can keep them or review a separate sale at Market.`
+    ? `${slip.freeIron} units of free iron are still aboard. You can keep them or review a separate sale at Market.`
     : held > 0 ? 'Iron is aboard, but none is free to sell. Reserved cargo stays with its contract.'
       : 'No iron is aboard now. An empty hold by itself is not a delivery receipt.';
   const sold = sale
-    ? `He turns the second slip toward you. “The latest Helios iron sale after that ticket: ${sale.qty}u for ${sale.total} cr. That stock reached the buyer. Two columns, two receipts. Keep both.”`
+    ? `He turns the second slip toward you. “The latest Helios iron sale after that ticket: ${sale.qty} units for ${sale.total} cr. That stock reached the buyer. Two columns, two receipts. Keep both.”`
     : '“No later Helios iron sale is on this recent ledger. Cutting, collecting and selling are three different things.”';
   const next = original.missionOffer
     ? `The next posting is “${original.missionOffer.title}.” Read its terms below before accepting.`

@@ -67,6 +67,7 @@ export function isShove(impulse, tuning = STILL_EVEN_TUNING) {
 }
 
 export const stillEvenPlant = {
+  modes: ['flight'],
   name: 'plants110',
 
   init(ctx) {

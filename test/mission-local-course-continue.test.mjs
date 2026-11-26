@@ -6,6 +6,8 @@ import { save } from '../src/save/saveSystem.js';
 import { resolveAutopilotTarget } from '../src/systems/flightV3.js';
 import { resolveWaypointPresentationPosition } from '../src/ui/navigationWaypoint.js';
 import { commitCoursePayload } from '../src/ui/galaxyMap.js';
+import { buildFirstTradeOffer } from '../src/data/economyContractTemplates.js';
+import { CONTRACT_47A_B0_TAG } from '../src/systems/missionShared.js';
 
 const FIX = { x: -15187.322021484375, z: 7062.294677734375 };
 const SECTOR = 'sector_ceres_belt';
@@ -97,6 +99,30 @@ test('trade guidance and normal story restoration are unchanged', () => {
   const trade = { kind: 'trade', label: 'Provisions', sectorId: SECTOR, commodityId: 'cmdty_food', pos: FIX };
   h.state.nav.waypoint = trade; h.restore(); assert.deepEqual(h.state.nav.waypoint, trade);
   h.state.nav.waypoint = null; h.restore(); assert.equal(h.state.nav.waypoint.kind, 'story');
+});
+test('Continue keeps the tracked sealed delivery ahead of the earlier Cold Start mission', () => {
+  const h = harness();
+  h.state.world.currentSectorId = 'sector_helios_prime';
+  Object.assign(h.state.player.cargo, { usedVolume: 0, usedMass: 0 });
+  h.state.missions.active = [{
+    id: 'cold-start', status: 'active', type: 'cargo_delivery', storyTag: CONTRACT_47A_B0_TAG,
+    stationId: 'station_helios', destStationId: 'station_helios', destSectorId: 'sector_helios_prime',
+    params: { sampleRecovered: false }, targetEntityIds: [],
+  }];
+  const offer = buildFirstTradeOffer(47);
+  h.state.missions.boards[offer.stationId] = { slots: [offer] };
+  assert.equal(h.mission.acceptMission(offer.id), true);
+  const deliveryId = h.state.ui.trackedMissionId;
+  const nav = h.saver._serializeNav();
+  const missionsSnapshot = h.saver._serializeMissions();
+  assert.equal(nav.waypoint.missionId, deliveryId);
+  h.saver._clearMissionRuntimeForRestore();
+  h.saver._restoreMissions(missionsSnapshot);
+  h.restore(nav);
+  assert.equal(h.state.ui.trackedMissionId, deliveryId);
+  assert.equal(h.state.nav.waypoint.stationId, 'station_tethys');
+  assert.equal(h.state.missions.active.find((mission) => mission.id === deliveryId).params.sealedRemaining, 8);
+  assert.equal(h.state.player.cargo.items[offer.cargo.cmdtyId], 8);
 });
 for (const id of [47, 'transient-target']) test(`a recycled ${typeof id} entity handle cannot acquire the restored local course`, () => {
   const h = harness();

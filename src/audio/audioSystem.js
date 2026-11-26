@@ -27,7 +27,7 @@ import {
 } from '../presentation/causalVfxGrammar.js';
 import { combatVerbRecipe, installCombatVerbCueDispatch } from './combatVerbCues.js';
 import { installWorldFeelSeams } from './worldFeelSeams.js';
-import { AFTERMATH_HUSH, admitAftermathHush, cloakBurnCue, distressCallCue, mineArmedCue, mineDetonationCue, miningNoiseDangerCue, playAdmittedEarCue, wardedShotCue, wreckMemorialLine } from './combatFeedbackEar.js';
+import { AFTERMATH_HUSH, admitAftermathHush, cloakBurnCue, distressCallForRun, mineArmedCue, mineDetonationCue, miningNoiseDangerCue, playAdmittedEarCue, wardedShotCue, wreckMemorialLine } from './combatFeedbackEar.js';
 import { bindMinimalActionAudio } from './minimalActionAudio.js';
 import {
   bindBombAudio,
@@ -46,6 +46,7 @@ import { entityIndexLaneVersion, indexedWorldRecordEntity } from '../world/livin
 import { ceresActivityActorWorldRecordId } from '../data/trafficPresentationReads.js';
 import { isRunSealed } from '../core/runSeal.js';
 import { isSwarmGlass } from '../ui/swarmGlass.js';
+import { openingThrowPayoffWait } from '../onboarding/openingQuiet.js';
 
 /** Remote-engine candidate lanes — hoisted so the 10 Hz census doesn't mint an array
  * per run (ship|drone|freighter members). */
@@ -107,7 +108,15 @@ import {
   VISUAL_EVENT_BUS,
   ENVIRONMENT_CLASSES,
 } from './environmentMix.js';
-import { playRecipe, releaseVoice, disposeVoice, getNoiseBuffer } from './synth.js';
+import {
+  playRecipe,
+  releaseVoice,
+  disposeVoice,
+  getNoiseBuffer,
+  recipeBakeInfo,
+  bakedVoiceRate,
+  renderRecipeToBuffer,
+} from './synth.js';
 import { cueVariantFor } from './cueVariants.js';
 import {
   admitLayerVoice,
@@ -121,6 +130,7 @@ import {
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { isOpticEnergyBolt, isOpticOrdnance, opticMaterialOf } from '../combat/opticField.js';
 import { pickupHoldIsFull, successfulPickupAmount } from '../core/pickupAcceptance.js';
+import { slotUnitsFit, unitsPerSlotForDef } from '../data/cargoSlots.js';
 import { COMMODITIES } from '../data/commodities.js';
 import { SECTOR_PALETTE_CLASSES } from '../data/sectors.js';
 import { DRIVE_FAMILIES, resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
@@ -287,6 +297,18 @@ export function isBossBody(entity) {
 }
 
 export const MAX_AUDIO_VOICES = 12;
+// PERF — voice creation rate, not just concurrency, used to hit the cap: every play() minted
+// 4-9 native nodes and _gcVoices disposed them a second later. Transient recipes now render
+// once to a PCM buffer through the same playRecipe graph (offline, unit gain/rate) and replay
+// through the resident-sample path — one BufferSource into a pooled thin shell. Continuous
+// recipes keep the live-synth path; steal ranking, distance culling, tick-collapse and the
+// limiter are untouched.
+export const BAKE_MAX_SECONDS = 12;          // longer transient recipes stay live-synth
+export const BAKE_PAD_SECONDS = 0.08;        // render margin after the computed tail
+export const BAKE_MAX_INFLIGHT = 2;          // concurrent offline renders
+export const BAKE_CACHE_CAP = 64;            // baked recipes kept resident
+export const BAKE_CACHE_MAX_BYTES = 24 * 1024 * 1024; // mono PCM, LRU-evicted
+export const BAKED_SHELL_POOL_CAP = 8;       // retired thin shells kept per shape signature
 // Sustained-beam voices (INST-34). _onFire routes these to a per-owner loop drone instead of a
 // one-shot per fire tick, and _startBeam/_frame resume honour the owner's own voice.
 const DEFAULT_BEAM_RECIPE_ID = 'sfx_wpn_beam_laser';
@@ -1042,16 +1064,27 @@ export function payoffCaption(event, payload) {
   const name = payload && typeof payload.name === 'string' ? payload.name.trim() : '';
   if (event === 'tech:researched') return 'Research complete.';
   if (event === 'ship:purchased') return name ? `Ship purchased: ${name}.` : 'Ship purchased.';
-  if (event === 'achievement:unlocked') return name ? `Achievement: ${name}.` : 'Achievement unlocked.';
+  if (event === 'achievement:unlocked') return name ? `On your record: ${name}.` : 'On your record.';
   if (event === 'career:ladder:completed') return 'Rank attained.';
   return null;
 }
 
+/** Research is an Adventure payoff. A Swarm fight does not say it. Achievements still do. */
+export function payoffCaptionForRun(state, event, payload) {
+  if (event === 'tech:researched' && isSwarmGlass(state)) return null;
+  return payoffCaption(event, payload);
+}
+
 export const DEATH_CAPTION = 'Ship lost.';
 export const RESPAWN_CAPTION = 'Back in the fight.';
+// DEMO-ADV-2: how long a payoff earned during the opening's throw lesson waits for the throw. Past
+// this the moment is gone and the line is dropped rather than spoken late over the next instruction.
+export const OPENING_PAYOFF_HOLD_MS = 25000;
+// Bounded: the opening's throw can earn a level and a deed, not a queue.
+const OPENING_PAYOFF_HOLD_CAP = 4;
 
 export function missionMomentCaption(event) {
-  if (event === 'mission:accepted') return 'Mission accepted.';
+  if (event === 'mission:accepted') return 'The job is yours.';
   if (event === 'mission:completed') return 'Mission complete.';
   return null;
 }
@@ -1065,10 +1098,11 @@ export const FIELD_LIFE_CAPTIONS = Object.freeze({
   'massline:snareArmed': Object.freeze({ text: 'Snare armed.', assertive: false }),
   'massline:snareCut': Object.freeze({ text: 'Snare cut.', assertive: false }),
   'massSeed:deployed': Object.freeze({ text: 'Mass seed deployed.', assertive: false }),
-  'massSeed:locking': Object.freeze({ text: 'Seed locking.', assertive: false }),
-  'massSeed:locked': Object.freeze({ text: 'Seed locked.', assertive: false }),
-  'massSeed:warning': Object.freeze({ text: 'Seed unstable.', assertive: true }),
-  'massSeed:collapsing': Object.freeze({ text: 'Seed collapses.', assertive: false }),
+  // R18 plain words: the power is Pin; say what it is doing.
+  'massSeed:locking': Object.freeze({ text: 'Pin setting.', assertive: false }),
+  'massSeed:locked': Object.freeze({ text: 'Pin holding.', assertive: false }),
+  'massSeed:warning': Object.freeze({ text: 'Pin slipping.', assertive: true }),
+  'massSeed:collapsing': Object.freeze({ text: 'Pin broke.', assertive: false }),
 });
 
 export function fieldLifeCaption(event) {
@@ -1621,7 +1655,8 @@ export function resolveDryFireReadiness(player, state) {
     const heat = Number.isFinite(w._heat) ? w._heat : 0;
     // Homing tubes only release with a lock; an unlocked tube counts as blocked-by-lock.
     const lockBlocked = w.tracking === 'homing' && !locked;
-    const blocked = venting || lockBlocked
+    const mountLocked = Number.isFinite(w._lockUntil) && simT < w._lockUntil;
+    const blocked = venting || mountLocked || lockBlocked
       || (cap != null && cap < costNow)
       || heat >= heatMax;
     if (blocked) { anyBlocked = true; continue; }
@@ -2511,6 +2546,7 @@ export const MINE_EVENT_CUE_MAP = Object.freeze({
   'drill:rockCreak': 'rockCreak',
   'drill:caveIn': 'caveIn',
   'drill:gasVent': 'ventRelief',
+  'drill:fill': 'machinePlaced',
   'heat:critical': 'heatCritical',
   'heat:vented': 'ventRelief',
   'site:machineInstalled': 'machinePlaced',
@@ -2542,6 +2578,8 @@ export const MINE_LAW_EVENT_ROWS = Object.freeze([
   Object.freeze({ row: 'Roof span cracking', heard: 'low stone groan, once', cue: 'rockCreak', source: 'drill:rockCreak' }),
   Object.freeze({ row: 'Cave-in', heard: 'roof drop, rubble landing', cue: 'caveIn', source: 'drill:caveIn' }),
   Object.freeze({ row: 'Pocket vented open', heard: 'relief hiss, no fire', cue: 'ventRelief', source: 'drill:gasVent' }),
+  // A block packed into a dug cell seats the way a machine does.
+  Object.freeze({ row: 'Packed fill set', heard: 'firm mechanical seat', cue: 'machinePlaced', source: 'drill:fill' }),
 ]);
 
 // Presentation cue ids whose physical voice the mine takes over while screen `drill` is up. The
@@ -2693,6 +2731,22 @@ export const audio = {
     rt.masterGain = null; rt.limiter = null; rt.sfxBus = null; rt.musicBus = null;
     rt.voices = [];               // active SFX voices (pooled, cap MAX_AUDIO_VOICES)
     rt.loops = {};                // keyed sustained voices: beam/mining/per-owner weapon beams
+    // PCM bake cache + thin-shell pool: baked AudioBuffers survive an init/context swap
+    // (buffers are context-portable), but node shells belong to one AudioContext.
+    if (rt._bakeCache) {
+      rt._bakeBytes = 0;
+      for (const [id, e] of rt._bakeCache) {
+        if (!e || !e.buffer) rt._bakeCache.delete(id);
+        else rt._bakeBytes += e.bytes || 0;
+      }
+    } else {
+      rt._bakeCache = new Map();
+      rt._bakeBytes = 0;
+    }
+    rt._bakeQueue = [];
+    rt._bakeInflight = 0;
+    rt._bakeDisabled = false;
+    rt._shellPool = new Map();
     rt.stems = { A: null, B: null, C: null, D: null, E: null };
     rt.stemGains = { A: null, B: null, C: null, D: null, E: null };
     rt.musicState = 'calm';
@@ -3006,7 +3060,7 @@ export const audio = {
     // player is inside the radius; the sting is the wanted-alert, not a menu click, once.
     bus.on('distress:call', (p) => playAdmittedEarCue(
       this,
-      distressCallCue(p),
+      distressCallForRun(p, { swarm: isSwarmGlass(this.state) }),
       this.state && Number.isFinite(this.state.tick) ? this.state.tick : 0,
     ));
     // mines:detonated had no listener. The blast is the ear; hull damage stays
@@ -3189,7 +3243,7 @@ export const audio = {
     // hull swell reads over whatever was playing.
     bus.on('tech:researched', (p) => {
       this.play('sfx_tech_researched', { gain: 0.6, captionOwned: true });
-      this._emitNamedCaption(payoffCaption('tech:researched', p));
+      this._emitNamedCaption(payoffCaptionForRun(this.state, 'tech:researched', p));
     });
     bus.on('ship:purchased', (p) => {
       this._duckMusic();
@@ -3198,10 +3252,20 @@ export const audio = {
     });
     // Achievements and career promotions: previously silent or text-only. An unlocked deed gets
     // the fanfare (and ducks the bed, like a mission resolve); a rank-up gets the warm chord.
+    // DEMO-ADV-2: while the opening's throw lesson is asking for the throw, the deed it earns is
+    // held and played once the throw lands (see _holdForOpeningThrow) — the picture and the sound
+    // still arrive, but not over the sentence that asked for them.
     bus.on('achievement:unlocked', (p) => {
-      this._duckMusic();
-      this.play('sfx_achievement_fanfare', { gain: 0.75, captionOwned: true });
-      this._emitNamedCaption(payoffCaption('achievement:unlocked', p));
+      // A lifetime deed unlocked during a Swarm round is recorded but not spoken over the fight
+      // (DEMO-SWARM-UX-2: 'Six Figures' at Scrap 0 on the first frame).
+      if (p && p.announce === false) return;
+      const play = () => {
+        this._duckMusic();
+        this.play('sfx_achievement_fanfare', { gain: 0.75, captionOwned: true });
+        this._emitNamedCaption(payoffCaption('achievement:unlocked', p));
+      };
+      if (this._holdForOpeningThrow(play)) return;
+      play();
     });
     bus.on('career:ladder:completed', (p) => {
       this.play('sfx_promotion_chord', { gain: 0.7, captionOwned: true });
@@ -3217,13 +3281,17 @@ export const audio = {
       this.play(voice.id, { gain: voice.gain, rate: voice.rate, captionOwned: true });
       this._emitNamedCaption(saleCaption(p));
     });
-    bus.on('sector:enter', (p) => {
+    const onSectorEnter = (p) => {
       rt._activeCombatEncounters.clear();
       rt._doctrineThreatUntil = -1e9;
       this._sessionBoundaryReset();
       this._applyThemeMatrix(p && p.sectorId);
       this._markMusicDirty();
-    });
+    };
+    bus.on('sector:enter', onSectorEnter);
+    // A Swarm arena is its own sector identity. It emits swarm:arenaEntered instead of
+    // sector:enter, so the theme matrix and encounter memory must reset on it too.
+    bus.on('swarm:arenaEntered', onSectorEnter);
     bus.on('ship:boostStart', (p) => {
       // Boost activation: a dedicated breathy whoosh, distinct from explosions.
       // Player-only (NPCs spam this).
@@ -3486,6 +3554,7 @@ export const audio = {
     bus.on('drill:rockCreak', (p) => this._onMineCue('rockCreak', p));
     bus.on('drill:caveIn', (p) => this._onMineCue('caveIn', p));
     bus.on('drill:gasVent', (p) => this._onMineCue('ventRelief', p));
+    bus.on('drill:fill', (p) => this._onMineCue('machinePlaced', p));
     bus.on('drill:scanPulse', (p) => this._onMineCue('assayPing', p));
     bus.on('drill:warn', (p) => {
       const key = MINE_EVENT_CUE_MAP[`drill:warn/${(p && p.reason) || ''}`];
@@ -3908,6 +3977,7 @@ export const audio = {
     let ctx;
     try { ctx = new AC(); } catch (_) { return null; }
     rt.ctx = ctx;
+    rt._shellPool = new Map(); // node shells belong to the context that minted them
 
     // master -> limiter -> destination
     // Start the graph silent: createGain() defaults to 1.0, and the first gesture often lands on
@@ -4604,9 +4674,16 @@ export const audio = {
     // Occluded positional voices ride the shared lowpass that feeds their bus.
     if (occluded) targetBus = rt._occlusionFilters[busName];
 
+    // A baked transient replays one BufferSource through a pooled thin shell instead of
+    // re-minting its whole synth graph — the buffer was rendered by the same playRecipe
+    // graph, so rate/detune/peak land identical by construction. synthPeak <= 0 means a
+    // resident/designed sample carries 100% of the body; the silent synth layer is skipped.
+    const isLoopRecipe = !!recipe.loop || (recipe.type && String(recipe.type).startsWith('continuous'));
+    const bakedBuffer = (synthPeak > 0 && !isLoopRecipe) ? this._bakedBufferFor(recipeId, recipe) : null;
+
     let dest = targetBus;
     let panner = null;
-    if (pan !== 0 && ctx.createStereoPanner) {
+    if (pan !== 0 && ctx.createStereoPanner && !bakedBuffer) {
       panner = ctx.createStereoPanner();
       panner.pan.value = pan;
       panner.connect(targetBus);
@@ -4617,11 +4694,41 @@ export const audio = {
     if (!this._reserveVoiceSlot(mixCueStaysReadable(recipeId, opts) || this._isPriorityVoice(recipeId, opts))) {
       return null;
     }
-    const voice = playRecipe(ctx, recipe, dest, {
-      peakGain: synthPeak, detune: opts.detune || 0, rate, lockRate,
-      id: rt._nextVoiceId++, trackId: opts.trackId || null,
-      startTime: opts.startTime,
-    }, rt._caches);
+    let voice;
+    const voiceT0 = opts.startTime !== undefined ? opts.startTime : ctx.currentTime;
+    if (bakedBuffer) {
+      voice = this._playBakedVoice(ctx, recipe, targetBus, {
+        buffer: bakedBuffer, t0: voiceT0, rate, lockRate,
+        detune: opts.detune || 0, peak: synthPeak, pan,
+        sendLevel: (rt._environmentMix && Number.isFinite(recipe.reverbMix) && recipe.reverbMix > 0)
+          ? Math.min(1, recipe.reverbMix) * 0.9 : 0,
+        trackId: opts.trackId || null,
+      });
+      // An exotic context without buffer sources falls back to the identical synth voice.
+      if (!voice) {
+        if (pan !== 0 && ctx.createStereoPanner) {
+          panner = ctx.createStereoPanner();
+          panner.pan.value = pan;
+          panner.connect(targetBus);
+          dest = panner;
+        }
+        voice = playRecipe(ctx, recipe, dest, {
+          peakGain: synthPeak, detune: opts.detune || 0, rate, lockRate,
+          id: rt._nextVoiceId++, trackId: opts.trackId || null,
+          startTime: opts.startTime,
+        }, rt._caches);
+      }
+    } else if (synthPeak <= 0 && !isLoopRecipe) {
+      voice = this._thinSampleCarrier(ctx, recipe, dest, voiceT0, opts.trackId || null);
+    } else {
+      voice = playRecipe(ctx, recipe, dest, {
+        peakGain: synthPeak, detune: opts.detune || 0, rate, lockRate,
+        id: rt._nextVoiceId++, trackId: opts.trackId || null,
+        startTime: opts.startTime,
+      }, rt._caches);
+    }
+    if (!voice) return null;
+    if (!voice.id) voice.id = rt._nextVoiceId++;
     voice.busName = busName;
     voice.recipeId = recipeId;
     voice.dist = heardDist;
@@ -4629,12 +4736,13 @@ export const audio = {
     voice.critical = !!opts.critical;
     voice.warning = !!opts.warning;
     voice.refusalSource = opts.refusalSource || null;
-    voice._panner = panner;
-    voice.loop = !!recipe.loop || (recipe.type && String(recipe.type).startsWith('continuous'));
+    voice._panner = panner || (voice._bakedShell && voice._bakedShell.panner) || null;
+    voice.loop = isLoopRecipe;
     voice.role = busName === 'engine' ? 'engineLoop' : (recipe.category === 'weapon' && voice.loop ? 'weaponLoop' : busName);
     // Authored reverb sends (recipe.reverbMix): an extra wet tap into the shared environment
-    // send so this voice's tail rides the active room beyond the bus-level mix.
-    if (rt._environmentMix && Number.isFinite(recipe.reverbMix) && recipe.reverbMix > 0) {
+    // send so this voice's tail rides the active room beyond the bus-level mix. A baked
+    // shell owns its send already; synth and thin voices mint it here as before.
+    if (rt._environmentMix && Number.isFinite(recipe.reverbMix) && recipe.reverbMix > 0 && !voice._bakedShell) {
       try {
         const wet = ctx.createGain();
         wet.gain.value = Math.min(1, recipe.reverbMix) * 0.9;
@@ -4666,7 +4774,8 @@ export const audio = {
     const v = rt.voices[idx];
     if (!v) return;
     try { releaseVoice(rt.ctx, v); } catch (_) {}
-    disposeVoice(v);
+    if (v._bakedShell) this._retireBakedShell(v);
+    else disposeVoice(v);
     if (v._panner) { try { v._panner.disconnect(); } catch (_) {} }
     rt.voices.splice(idx, 1);
     if (rt.loops) {
@@ -4723,6 +4832,257 @@ export const audio = {
 
   _evictIfFull() {
     this._reserveVoiceSlot(false);
+  },
+
+  // ---- baked transient voices ----------------------------------------------------
+  // A transient recipe's synth graph is deterministic modulo rate/detune/peak — exactly
+  // what a BufferSource + gain re-applies — so the graph is rendered once to a resident
+  // PCM buffer and replays through a pooled thin shell (one new native node per play).
+  // `_bakeCache` is LRU by lastUse; misses keep the ordinary synth path forever.
+
+  _bakedBufferFor(recipeId, recipe) {
+    const rt = this.rt;
+    if (!rt || rt._bakeDisabled || !recipe) return null;
+    const cache = rt._bakeCache || (rt._bakeCache = new Map());
+    const entry = cache.get(recipeId);
+    if (entry) {
+      if (entry.buffer) {
+        entry.lastUse = rt.ctx ? rt.ctx.currentTime : 0;
+        return entry.buffer;
+      }
+      return null; // queued / rendering / failed / ineligible — synth path meanwhile
+    }
+    const info = recipeBakeInfo(recipe, AUDIO_RECIPE_BY_ID);
+    if (!info || info.seconds > BAKE_MAX_SECONDS) {
+      cache.set(recipeId, { status: 'skip' });
+      return null;
+    }
+    cache.set(recipeId, { status: 'queued' });
+    (rt._bakeQueue || (rt._bakeQueue = [])).push(recipeId);
+    this._pumpBakeQueue();
+    return null;
+  },
+
+  _pumpBakeQueue() {
+    const rt = this.rt;
+    const ctx = rt && rt.ctx;
+    if (!rt || !ctx || !rt._bakeQueue) return;
+    while ((rt._bakeInflight || 0) < BAKE_MAX_INFLIGHT && rt._bakeQueue.length) {
+      const recipeId = rt._bakeQueue.shift();
+      const entry = rt._bakeCache && rt._bakeCache.get(recipeId);
+      if (!entry || entry.status !== 'queued') continue;
+      this._startBake(recipeId, entry);
+    }
+  },
+
+  _startBake(recipeId, entry) {
+    const rt = this.rt;
+    const ctx = rt && rt.ctx;
+    const recipe = AUDIO_RECIPE_BY_ID[recipeId];
+    const OAC = typeof globalThis !== 'undefined'
+      && (globalThis.OfflineAudioContext || globalThis.webkitOfflineAudioContext);
+    if (!rt || !ctx || !recipe || !OAC) {
+      if (entry) entry.status = 'failed';
+      if (!OAC && rt) rt._bakeDisabled = true; // no offline renderer: synth path forever
+      return;
+    }
+    const info = recipeBakeInfo(recipe, AUDIO_RECIPE_BY_ID);
+    if (!info || info.seconds > BAKE_MAX_SECONDS) { entry.status = 'skip'; return; }
+    const sampleRate = ctx.sampleRate || 48000;
+    const frames = Math.max(128, Math.ceil((info.seconds + BAKE_PAD_SECONDS) * sampleRate));
+    let off;
+    try { off = new OAC(1, frames, sampleRate); } catch (_) { entry.status = 'failed'; return; }
+    entry.status = 'rendering';
+    rt._bakeInflight = (rt._bakeInflight || 0) + 1;
+    const done = (buffer) => {
+      rt._bakeInflight = Math.max(0, (rt._bakeInflight || 0) - 1);
+      if (this.rt !== rt) { this._pumpBakeQueue(); return; }
+      if (buffer && buffer.length > 0) {
+        entry.status = 'ready';
+        entry.buffer = buffer;
+        entry.bytes = (buffer.length || 0) * 4;
+        entry.lastUse = ctx.currentTime || 0;
+        rt._bakeBytes = (rt._bakeBytes || 0) + entry.bytes;
+        this._evictBakeCache();
+      } else {
+        entry.status = 'failed';
+      }
+      this._pumpBakeQueue();
+    };
+    const fail = () => {
+      rt._bakeInflight = Math.max(0, (rt._bakeInflight || 0) - 1);
+      if (entry) entry.status = 'failed';
+      this._pumpBakeQueue();
+    };
+    let rendered;
+    try {
+      // The offline context runs at the live context's sample rate, so the shared
+      // caches (noise buffer, distortion curves, recipeById) all hit — no duplicate
+      // noise buffer is minted for baking.
+      rendered = renderRecipeToBuffer(off, recipe, rt._caches || (rt._caches = {}));
+    } catch (_) { fail(); return; }
+    if (rendered && typeof rendered.then === 'function') rendered.then(done, fail);
+    else if (rendered) done(rendered);
+    else fail();
+  },
+
+  _evictBakeCache() {
+    const rt = this.rt;
+    const cache = rt && rt._bakeCache;
+    if (!cache) return;
+    while (cache.size > BAKE_CACHE_CAP || (rt._bakeBytes || 0) > BAKE_CACHE_MAX_BYTES) {
+      let oldestId = null;
+      let oldest = Infinity;
+      for (const [id, e] of cache) {
+        if (!e || !e.buffer) continue;
+        const last = Number.isFinite(e.lastUse) ? e.lastUse : 0;
+        if (last < oldest) { oldest = last; oldestId = id; }
+      }
+      if (oldestId == null) break;
+      const e = cache.get(oldestId);
+      rt._bakeBytes = Math.max(0, (rt._bakeBytes || 0) - (e.bytes || 0));
+      cache.delete(oldestId);
+    }
+  },
+
+  /**
+   * Play a baked PCM voice. The shell is the voice's persistent wiring — master gain,
+   * the layer gain the buffer feeds, and the optional panner/environment-send legs —
+   * retired to `rt._shellPool` by `_retireBakedShell` and reused on the next play of the
+   * same shape. Only the one-shot BufferSource is minted per play. Rate/detune map to
+   * the source; peak maps to the layer gain; envelope shape lives in the buffer, so the
+   * audible result is the same graph the synth path would have produced.
+   */
+  _playBakedVoice(ctx, recipe, targetBus, o) {
+    const rt = this.rt;
+    if (!ctx || typeof ctx.createBufferSource !== 'function'
+      || typeof ctx.createGain !== 'function' || !o.buffer) return null;
+    const needPanner = o.pan !== 0 && typeof ctx.createStereoPanner === 'function';
+    const needSend = o.sendLevel > 0 && rt._environmentMix && rt._environmentMix.send;
+    const key = (needPanner ? 'p' : '') + (needSend ? 's' : '');
+    const pool = rt._shellPool || (rt._shellPool = new Map());
+    let list = pool.get(key);
+    let shell = list && list.pop() || null;
+    if (!shell) {
+      shell = {
+        key,
+        vGain: ctx.createGain(),
+        layerGain: ctx.createGain(),
+        panner: needPanner ? ctx.createStereoPanner() : null,
+        send: needSend ? ctx.createGain() : null,
+      };
+    }
+    // Interior edges — a pooled shell may have had them severed by a generic disconnect;
+    // connect() to an existing input is a no-op, so re-arm unconditionally.
+    try { shell.layerGain.connect(shell.vGain); } catch (_) {}
+    if (shell.panner) { try { shell.vGain.connect(shell.panner); } catch (_) {} }
+    if (shell.send) { try { shell.vGain.connect(shell.send); } catch (_) {} }
+    // Params: a reused shell may carry a stale release ramp — cancel before the new values.
+    const now = ctx.currentTime;
+    try { shell.vGain.gain.cancelScheduledValues(now); } catch (_) {}
+    try { shell.vGain.gain.value = 1; } catch (_) {}
+    try { shell.layerGain.gain.cancelScheduledValues(now); } catch (_) {}
+    try { shell.layerGain.gain.value = Math.max(0.0001, o.peak == null ? 1 : o.peak); } catch (_) {}
+    // Transient out edges: into the bus (through the panner when panned) and the env send.
+    if (shell.panner) {
+      try { shell.panner.pan.value = Math.max(-1, Math.min(1, o.pan)); } catch (_) {}
+      try { shell.panner.connect(targetBus); } catch (_) {}
+    } else {
+      try { shell.vGain.connect(targetBus); } catch (_) {}
+    }
+    if (shell.send) {
+      try { shell.send.gain.value = o.sendLevel; } catch (_) {}
+      try { shell.send.connect(rt._environmentMix.send); } catch (_) {}
+    }
+
+    const info = recipeBakeInfo(recipe, AUDIO_RECIPE_BY_ID) || { releaseS: 0.05 };
+    const layerRate = Math.max(0.25, bakedVoiceRate(recipe, { rate: o.rate, lockRate: o.lockRate }, AUDIO_RECIPE_BY_ID) || 1);
+    let src;
+    try { src = ctx.createBufferSource(); } catch (_) { src = null; }
+    if (!src) {
+      // Shell popped but unusable — detach its transient edges and hand it back.
+      if (shell.panner) { try { shell.panner.disconnect(); } catch (_) {} }
+      else { try { shell.vGain.disconnect(); } catch (_) {} }
+      if (shell.send) { try { shell.send.disconnect(); } catch (_) {} }
+      let back = list;
+      if (!back) { back = []; pool.set(key, back); }
+      if (back.length < BAKED_SHELL_POOL_CAP) back.push(shell);
+      return null;
+    }
+    src.buffer = o.buffer;
+    try { src.playbackRate.value = layerRate; } catch (_) {}
+    if (o.detune && src.detune) { try { src.detune.value = o.detune; } catch (_) {} }
+    try { src.connect(shell.layerGain); } catch (_) {}
+    const end = o.t0 + o.buffer.duration / layerRate + 0.02;
+    try { src.start(o.t0); } catch (_) {}
+    try { src.stop(end); } catch (_) {}
+    const sub = {
+      gain: shell.layerGain,
+      tail: { stopAt: end, releaseDur: info.releaseS },
+      sources: [src], extra: [], nodes: [src],
+      sampleLayer: true, baked: true,
+    };
+    const voice = {
+      id: 0, recipe, loop: false,
+      gain: shell.vGain, sources: [src], extra: [],
+      nodes: [src], subVoices: [sub],
+      startedAt: o.t0, releaseDur: info.releaseS, stopAt: end,
+      _stopped: false, trackId: o.trackId || null,
+      callGain: Math.max(0.0001, Math.min(1, o.peak == null ? 1 : o.peak)) * (recipe.gainMult || 1),
+      filter: null, _bakedShell: shell,
+    };
+    if (shell.send) voice._reverbSend = shell.send;
+    return voice;
+  },
+
+  /**
+   * A resident/designed sample carrying 100% of a transient voice needs no synth graph
+   * at all — just the master gain the sample layer plugs into. Same slot/GC semantics
+   * as a synth voice (the sample layer extends stopAt on attach).
+   */
+  _thinSampleCarrier(ctx, recipe, dest, t0, trackId) {
+    const vGain = ctx.createGain();
+    try { vGain.gain.value = 1; } catch (_) {}
+    try { vGain.connect(dest); } catch (_) {}
+    return {
+      id: 0, recipe, loop: false,
+      gain: vGain, sources: [], extra: [],
+      nodes: [vGain], subVoices: [],
+      startedAt: t0, releaseDur: 0.12, stopAt: t0 + 0.25,
+      _stopped: false, trackId: trackId || null,
+      callGain: 0, filter: null,
+    };
+  },
+
+  /**
+   * Retire a baked voice's persistent graph to the shell pool instead of disposing it.
+   * Transient members (buffer sources, attached sample-layer gains) are disconnected
+   * like any voice teardown; the shell's interior edges and the pool shape survive.
+   * The shared `v._panner.disconnect()` line at the call sites owns the panner's out edge.
+   */
+  _retireBakedShell(voice) {
+    const rt = this.rt;
+    const shell = voice && voice._bakedShell;
+    if (!rt || !shell) return;
+    voice._bakedShell = null;
+    const keep = shell.keep || (shell.keep = new Set(
+      [shell.vGain, shell.layerGain, shell.panner, shell.send].filter(Boolean)));
+    for (const n of voice.nodes || []) {
+      if (n && !keep.has(n)) { try { n.disconnect(); } catch (_) {} }
+    }
+    for (const sub of voice.subVoices || []) {
+      if (!sub) continue;
+      for (const s of sub.sources || []) { try { s && s.disconnect(); } catch (_) {} }
+      if (sub.gain && !keep.has(sub.gain)) { try { sub.gain.disconnect(); } catch (_) {} }
+    }
+    // Transient out edges. With a panner the shared v._panner.disconnect() cuts it;
+    // without one the master itself carried the bus edge.
+    if (!shell.panner) { try { shell.vGain.disconnect(); } catch (_) {} }
+    if (shell.send) { try { shell.send.disconnect(); } catch (_) {} }
+    const pool = rt._shellPool || (rt._shellPool = new Map());
+    let list = pool.get(shell.key);
+    if (!list) { list = []; pool.set(shell.key, list); }
+    if (list.length < BAKED_SHELL_POOL_CAP) list.push(shell);
   },
 
   _playerPos() {
@@ -5521,19 +5881,41 @@ export const audio = {
   _onPickupHoldChanged(refusal = null) {
     if (!this.rt) return;
     const cargo = this.state?.player?.cargo;
-    const valid = cargo && Number.isFinite(cargo.capVolume) && cargo.capVolume > 0
+    // Slot law (CARGO-BUILD-1): a refusal latches as the commodity it was for and clears the
+    // moment the bag can stack one unit of it again. Holds without slot data keep the volume latch.
+    const slotted = !!(cargo && (Array.isArray(cargo.slots) || Number.isFinite(cargo.slotCount)));
+    const valid = !slotted && cargo && Number.isFinite(cargo.capVolume) && cargo.capVolume > 0
       && Number.isFinite(cargo.usedVolume);
     const free = valid ? cargo.capVolume - cargo.usedVolume : Infinity;
-    let unit = this.rt._pickupHoldRefusedUnit || 0;
-    if (free >= unit) unit = 0;
-    if (refusal?.commodityId && valid) {
+    const defFor = (commodityId) => {
       const registry = this.state.content?.commodities;
-      const def = (Array.isArray(registry) ? registry.find(c => c.id === refusal.commodityId)
-        : registry?.[refusal.commodityId]) || COMMODITIES.find(c => c.id === refusal.commodityId);
-      const refusedUnit = def?.volPerU > 0 ? def.volPerU : 1;
-      if (free < refusedUnit) unit = Math.max(unit, refusedUnit);
+      return (Array.isArray(registry) ? registry.find(c => c.id === commodityId)
+        : registry?.[commodityId]) || COMMODITIES.find(c => c.id === commodityId);
+    };
+    let unit = this.rt._pickupHoldRefusedUnit || 0;
+    let refusedId = this.rt._pickupHoldRefusedCommodity || null;
+    if (slotted) {
+      if (unit > 0 && refusedId
+          && slotUnitsFit(cargo.slots || [], cargo.slotCount, refusedId, unitsPerSlotForDef(defFor(refusedId))) >= 1) {
+        unit = 0;
+        refusedId = null;
+      } else if (!refusedId) unit = 0;
+    } else if (free >= unit) unit = 0;
+    if (refusal?.commodityId && (slotted || valid)) {
+      const def = defFor(refusal.commodityId);
+      if (slotted) {
+        if (unit === 0
+            && slotUnitsFit(cargo.slots || [], cargo.slotCount, refusal.commodityId, unitsPerSlotForDef(def)) < 1) {
+          unit = 1;
+          refusedId = refusal.commodityId;
+        }
+      } else {
+        const refusedUnit = def?.volPerU > 0 ? def.volPerU : 1;
+        if (free < refusedUnit) unit = Math.max(unit, refusedUnit);
+      }
     }
     this.rt._pickupHoldRefusedUnit = unit;
+    this.rt._pickupHoldRefusedCommodity = refusedId;
     const full = pickupHoldIsFull(cargo) || unit > 0;
     const crossed = full && !this.rt._pickupHoldFull;
     this.rt._pickupHoldFull = full;
@@ -5804,6 +6186,46 @@ export const audio = {
   _emitNamedCaption(text, opts = {}) {
     if (!text) return;
     this._emitPresentationCaption(text, { channel: 'cue', ...opts });
+  },
+
+  // DEMO-ADV-2 (item 2): the opening's throw lesson is one voice. A deed earned BY that throw (the
+  // lesson rock is a hull thrown with the Line — "Light Ships Are Ammunition") used to speak its
+  // caption and fanfare over the sentence asking for the throw. The payoff is held and played once
+  // when the throw lands, checked on the audio frame (the same clock the one-shots ride).
+  //
+  // Review (DEMO-ADV-2-R2): the hold keyed off `rescue.current === 'swing'`, which onboarding
+  // clears in the SAME dispatch that earns the deed — so `achievement:unlocked` reached this
+  // listener with the lesson already closed and the caption spoke anyway. The wait now outlasts
+  // that clear: it ends when the instruction asking for the throw has left the tracker (the rail's
+  // next tick, ~0.2 s later), which is the moment the payoff is no longer talking over it.
+  _holdForOpeningThrow(play) {
+    const rt = this.rt;
+    if (!rt || rt._destroyed) return false;
+    if (!openingThrowPayoffWait(this.state)) return false;
+    const held = rt._openingPayoffs || (rt._openingPayoffs = []);
+    // Every payoff the beat is owed still speaks, once, after the throw. A deed and the level it
+    // paid are different facts; dropping one to "keep it to one line" would lose the other.
+    if (held.length >= OPENING_PAYOFF_HOLD_CAP) held.shift();
+    held.push({ play, atWall: typeof performance !== 'undefined' ? performance.now() : Date.now() });
+    return true;
+  },
+
+  /** Replay held opening payoffs once the throw lesson has closed. Called from the audio frame. */
+  _drainOpeningPayoffs() {
+    const rt = this.rt;
+    const held = rt && rt._openingPayoffs;
+    if (!held || !held.length) return;
+    const closed = !openingThrowPayoffWait(this.state);
+    const nowWall = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    const keep = [];
+    for (const rec of held) {
+      // The beat it belonged to is gone: a payoff held this long is history, not a receipt.
+      if (nowWall - rec.atWall > OPENING_PAYOFF_HOLD_MS) continue;
+      if (!closed) { keep.push(rec); continue; }
+      try { rec.play(); } catch (_) {}
+    }
+    held.length = 0;
+    for (const rec of keep) held.push(rec);
   },
 
   _captionFieldLife(event) {
@@ -8919,6 +9341,8 @@ export const audio = {
     const rt = this.rt, ctx = rt && rt.ctx;
     if (!ctx || rt._lifecycleSuspended || ctx.state !== 'running') return;
     this._stepWantedSearchAudio();
+    // DEMO-ADV-2: a payoff held by the opening's throw lesson replays here the frame it lands.
+    this._drainOpeningPayoffs();
     const nowWall = (typeof performance !== 'undefined' ? performance.now() : Date.now()) / 1000;
     const now = ctx.currentTime;
 
@@ -9313,7 +9737,8 @@ export const audio = {
       const v = rt.voices[i];
       if (v.loop && !v._stopped) continue; // sustaining
       if (v.stopAt !== Infinity && now >= v.stopAt) {
-        disposeVoice(v);
+        if (v._bakedShell) this._retireBakedShell(v);
+        else disposeVoice(v);
         if (v._panner) { try { v._panner.disconnect(); } catch (_) {} }
         rt.voices.splice(i, 1);
         // also clear from loops map if present

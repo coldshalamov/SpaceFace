@@ -90,7 +90,7 @@ test('counts show up only as progress riding on a sentence', () => {
   );
   assert.match(
     objectiveText(blank('bulk_haul', { objectiveProgress: 10, objectiveTarget: 40, destStationId: 'station_helios' })),
-    /^Tether-haul 10\/40u bulk ore to Helios Station$/,
+    /^Tether-haul 10\/40 units bulk ore to Helios Station$/,
   );
 });
 

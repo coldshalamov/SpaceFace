@@ -19,6 +19,8 @@ import { SECTORS } from '../data/sectors.js';
 import { stationBerthRefusal } from '../data/frontierRumors.js';
 import { forecastTransitFor, sectorSignalFor } from '../systems/sectorSim.js';
 import { authoredTenderHaul } from '../missions/tenderHaul.js';
+import { slotFitFor, unitsPerSlotFor } from '../systems/cargo.js';
+import { slotCountForCargoCap, slotUnitsFit } from '../data/cargoSlots.js';
 import { book4MissionChips } from './book4Choice.js';
 import {
   smugglingPreflightCopy,
@@ -56,6 +58,7 @@ const TASK_TIME_FALLBACK = {
   bulk_trade: 30,
   bounty_hunt: 60,
   mining_quota: 45,
+  works_contract: 240,
   salvage_retrieval: 30,
   escort: 90,
   patrol_clear: 45,
@@ -400,7 +403,7 @@ function tenderRackOutsLine(slotRanks) {
     const units = tenderLadderUnits(def);
     const price = Math.max(0, Math.round(Number(def.price) || 0));
     const techGated = def.requiresTech ? ', tech-gated' : '';
-    return `${def.name} (+${units}u @${price.toLocaleString('en-US')} cr${techGated})`;
+    return `${def.name} (+${units} units @${price.toLocaleString('en-US')} cr${techGated})`;
   }).filter(Boolean);
   return outs.length ? outs.join(', ') : 'fit a bigger hold at the shipworks';
 }
@@ -573,7 +576,7 @@ export function missionRouteScope(m, state) {
     };
   }
   if (Number.isFinite(distance) && distance > 0) {
-    return { kind: 'info', text: `${Math.round(distance).toLocaleString('en-US')}u route` };
+    return { kind: 'info', text: `${Math.round(distance).toLocaleString('en-US')} m route` };
   }
   return null;
 }
@@ -639,7 +642,7 @@ export function missionBriefingDiagram(m, state, originLabel) {
   const distance = Number(m && m.distance);
   const span = jumps > 0
     ? `${counted(jumps, 'jump', 'jumps')}`
-    : (Number.isFinite(distance) && distance > 0 ? `${Math.round(distance).toLocaleString('en-US')}u` : null);
+    : (Number.isFinite(distance) && distance > 0 ? `${Math.round(distance).toLocaleString('en-US')} m` : null);
   const danger = intel ? intel.danger : null;
   // missionTimePacing prefixes its chip 'Critical ' / 'Tight ' exactly when those bands apply.
   const chipText = (pacing && pacing.chip && pacing.chip.text) || '';
@@ -719,14 +722,16 @@ export function missionTimePacing(m, state) {
   const tight = critical || timeLimit <= TIMER_TIGHT_S || (slack != null && slack < 1.6);
   return {
     chip: {
-      kind: critical ? 'bad' : (tight || uncertain ? 'warn' : 'ok'),
+      kind: critical ? 'bad' : (tight || !routeKnown ? 'warn' : 'ok'),
       text: (critical ? 'Critical ' : (tight ? 'Tight ' : '')) + `${fmtClock(timeLimit)} ${intakeWindow ? 'intake window' : 'timer'}${uncertain ? ' · est' : ''}`,
     },
     warning: critical
       ? 'Timer is critical; accept only if the route is staged and the ship is ready to launch.'
       : (tight
         ? `Timer is tight for the route distance; refuel, repair, and launch directly after accepting.${uncertain ? ` Window is an estimate — ${uncertain}.` : ''}`
-        : (uncertain ? `Window is an estimate — ${uncertain}.` : null)),
+        // An unknown ship speed on a roomy timer is the game's bookkeeping, not the pilot's
+        // problem: the chip already says "est". Only an uncharted route is worth a sentence.
+        : (!routeKnown ? `Window is an estimate — ${uncertain}.` : null)),
     slack,
     estimateS: estimate,
     basis: { shipSpeed, routeKnown },
@@ -858,21 +863,20 @@ export function missionPreflight(m, state) {
 
   const cargoNeed = missionCargoFootprint(m);
   if (cargoNeed.qty > 0) {
-    const cargo = state && state.player && state.player.cargo || {};
-    const cap = Number.isFinite(cargo.capVolume) ? cargo.capVolume : 0;
-    const used = Number.isFinite(cargo.usedVolume) ? cargo.usedVolume : 0;
-    const free = Math.max(0, cap - used);
     const oneLoad = ONE_LOAD_CARGO_TYPES.has(m && m.type);
     if (oneLoad) {
-      // The sim's _acceptPreflight rejects on free hold, before collateral/upfront charges. Keep
-      // this exact gate here so the dossier cannot expose an accept button the sim will refuse.
-      if (free < cargoNeed.volume) blockers.push(`Need ${fmtHoldUnits(cargoNeed.volume)}u cargo capacity for this contract`);
+      // The sim's _acceptPreflight rejects on free slots, before collateral/upfront charges.
+      // Same gate here — slotFitFor is what addCargo will actually admit.
+      const p = (m && m.params) || {};
+      const fit = p.cmdtyId ? slotFitFor(state, p.cmdtyId) : 0;
+      const fits = fit >= cargoNeed.qty;
+      if (!fits) blockers.push(`Need ${fmtHoldUnits(cargoNeed.qty)} units of hold space for this contract`);
       chips.push({
-        kind: free < cargoNeed.volume ? 'bad' : 'ok',
-        text: `${fmtHoldUnits(cargoNeed.volume)}u hold required`,
+        kind: fits ? 'ok' : 'bad',
+        text: `${fmtHoldUnits(cargoNeed.qty)} units hold required`,
       });
     } else {
-      chips.push({ kind: 'info', text: `${cargoNeed.qty.toLocaleString('en-US')}u quota` });
+      chips.push({ kind: 'info', text: `${cargoNeed.qty.toLocaleString('en-US')} units quota` });
     }
     const staging = missionCargoStaging(m, state);
     if (staging && staging.chip) chips.push(staging.chip);
@@ -922,12 +926,12 @@ export function missionPreflight(m, state) {
     }
     const tenderCargo = state && state.player && state.player.cargo || {};
     const capVolume = Number.isFinite(tenderCargo.capVolume) ? tenderCargo.capVolume : 0;
-    const usedVolume = Number.isFinite(tenderCargo.usedVolume) ? tenderCargo.usedVolume : 0;
-    const freeHold = Math.max(0, capVolume - usedVolume);
+    const tenderCmdtyId = tenderParams.cmdtyId || null;
+    const freeHold = tenderCmdtyId ? Math.min(lotUnits, slotFitFor(state, tenderCmdtyId)) : 0;
     if (lotUnits > 0 && freeHold < lotUnits) {
       chips.push({
         kind: 'warn',
-        text: `CAUTION — the lot is ${fmtHoldUnits(lotUnits)}u; this hold carries ${fmtHoldUnits(freeHold)}u`,
+        text: `CAUTION — the lot is ${fmtHoldUnits(lotUnits)} units; this hold stacks ${fmtHoldUnits(freeHold)} units`,
       });
       // Only the racks this hull's cargo slots can take are named. When even the fullest fit
       // (the hull's base hold plus the best rack in every cargo slot — a rack already fitted is
@@ -937,11 +941,13 @@ export function missionPreflight(m, state) {
       const bestRack = tenderBestRackUnits(slotRanks);
       const hull = tenderHullDef(state);
       const baseHold = Math.max(0, Number(hull && hull.cargo) || 0);
-      const fullFitFree = bestRack == null
-        ? null
-        : Math.max(capVolume, baseHold + bestRack) - usedVolume;
+      const fullCapSlots = bestRack == null ? null
+        : slotCountForCargoCap(Math.max(capVolume, baseHold + bestRack));
+      const fullFitFree = fullCapSlots == null || !tenderCmdtyId ? null
+        : slotUnitsFit(tenderCargo.slots || [], fullCapSlots, tenderCmdtyId,
+            unitsPerSlotFor(state, tenderCmdtyId));
       if (fullFitFree != null && fullFitFree < lotUnits) {
-        warnings.push(`The lot cannot ride one hold on this hull, even fully racked (${fmtHoldUnits(Math.max(0, fullFitFree))}u at best). The honest plan is two runs: haul what fits, sell it into the desk, and come back for the rest — the window is already running.`);
+        warnings.push(`The lot cannot ride one hold on this hull, even fully racked (${fmtHoldUnits(Math.max(0, fullFitFree))} units at best). The honest plan is two runs: haul what fits, sell it into the desk, and come back for the rest — the window is already running.`);
       } else {
         warnings.push(`The lot cannot ride one hold at this fit. The honest outs: ${tenderRackOutsLine(slotRanks)}. A two-run plan under-racked still accepts — the window is already running.`);
       }

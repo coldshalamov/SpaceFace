@@ -221,6 +221,7 @@ export function stepCapitalBossFight(r,o) {
     }
   } else if(r.actIndex>=0 && r.clock>=r.nextAt) {
     const act=s.acts[r.actIndex];let selected=null;
+    const sequenceBeforeSelection=r.sequence;
     // Answer range camping with a visible, committed authored attack, never an offscreen tax.
     // Keep the low-cost opening lesson first. Destroying this attack's hardware still defeats it.
     if(s.rangeResponse && r.sequence>=act.opening.length &&
@@ -233,7 +234,10 @@ export function stepCapitalBossFight(r,o) {
       const n=r.sequence++,id=n<act.opening.length?act.opening[n]:act.pattern[(n-act.opening.length)%act.pattern.length];
       const b=getBeat(s,id);if(usable(b)) {selected=b;break;}
     }
-    if(selected) {
+    if(selected && o.canStartCast?.(r, selected)===false) {
+      r.sequence=sequenceBeforeSelection;
+      order(r.phase);wingGate(r.phase==='recovery');
+    } else if(selected) {
       const b=selected;r.castOrdinal++;r.telemetry.casts++;r.phase='tell';r.recovery=null;
       r.cast={id:`${r.fightId}:${r.castOrdinal}`,beatId:b.id,startedAt:r.clock,locked:b.trackTicks===0,
         fired:false,hitKeys:[],heading:lockedHeading(boss,target,b,disabled,r.mirror),shapes:resolveBossShapes(b,boss,target,r.mirror)};

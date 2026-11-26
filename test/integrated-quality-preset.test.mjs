@@ -163,7 +163,8 @@ test('the automatic demo posture keeps Auto so the adaptive controller stays liv
   assert.equal(video.qualityPreset, 'low');
   assert.equal(video.qualityMode, 'auto', 'the auto-applied preset must not persist a Manual choice');
   assert.equal(video.renderScale, 1, 'the auto posture keeps the native integrated scale');
-  assert.equal(video.frameCap, 30);
+  assert.equal(video.frameCap, 0,
+    'an Auto posture writes no explicit frame cap: the presentation governor picks 30 or 60');
   assert.equal(video.bloomLevels, 2, 'the authored two-level halo is restored');
   assert.equal(video.particleQuality, 'medium', 'the authored sky/particle tier is restored');
   assert.equal(video.sharpen, false, 'no legacy unsharp on a native frame');

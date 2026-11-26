@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { listShotIds, resolveShot } from './lib/uiBenchCatalog.mjs';
 import { parseBenchArgs, runUiBenchBatch } from './lib/uiBenchBatch.mjs';
 import { createBenchArrival } from './lib/uiBenchArrival.mjs';
+import { findBannedPlayerWords } from './lib/playerWords.mjs';
 
 try { os.setPriority(os.constants.priority.PRIORITY_LOW); } catch { /* yield to the game */ }
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
@@ -66,6 +67,9 @@ async function shoot(page, id, outDir, base) {
   const file = path.join(outDir, `${safeName(id)}.png`);
   await page.screenshot({ path: file, timeout: args.timeoutMs });
   const report = await page.evaluate(() => window.BENCH.report());
+  // Words a player must never read, checked against what the screen actually shows.
+  report.bannedWords = findBannedPlayerWords(await page.evaluate(() => document.body.innerText))
+    .map(hit => `"${hit.word}" (${hit.why}): …${hit.excerpt}…`);
   const effectiveMode = await page.evaluate(() => ({
     reducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches,
     forcedColors: matchMedia('(forced-colors: active)').matches,
@@ -267,10 +271,11 @@ function describe(before, after) {
 }
 function printFindings(report) {
   const rows = [['tangled', 'ON TOP OF'], ['buried', 'BURIED'], ['severed', 'CUT OFF'], ['overlaps', 'OVERLAP'],
-    ['clipped', 'CLIPPED'], ['offscreen', 'OFF FRAME'], ['dead', 'EMPTY BOX'], ['controlReachability', 'UNREACHABLE']];
+    ['clipped', 'CLIPPED'], ['offscreen', 'OFF FRAME'], ['dead', 'EMPTY BOX'], ['controlReachability', 'UNREACHABLE'],
+    ['bannedWords', 'BANNED WORD']];
   let total = 0;
   for (const [key, tag] of rows) for (const row of report[key] || []) { console.log(`  ${tag}  ${row}`); total++; }
-  if (!total) console.log('  measured: no tangled, buried, cut-off or offscreen type, no empty boxes, and primary controls reachable');
+  if (!total) console.log('  measured: no tangled, buried, cut-off or offscreen type, no empty boxes, no banned words, and primary controls reachable');
   return total;
 }
 function bgUrl(value) {

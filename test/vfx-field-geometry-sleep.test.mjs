@@ -33,7 +33,7 @@ test('all five live field routes produce the authored surface counts, without ol
 });
 
 test('transition retires force boundaries, animates body breakup, then sleeps without repeated uploads',()=>{
- const system=harness([field('repulsor')]);system._updateFieldGeometry(0);system.state.simTime=.5;system._updateFieldGeometry(.5);
+ const system=harness([field('sheet')]);system._updateFieldGeometry(0);system.state.simTime=.5;system._updateFieldGeometry(.5);
  const fg=system._fieldGeom;system.state.fields.active=[];system._updateFieldGeometry(0);
  assert.equal(fg.stats.active,0);assert.ok(fg.mesh.count>3,'retain the authored body through breakup');
  for(let i=0;i<fg.mesh.count;i++)assert.notEqual(fg.batch.attributes[7].getY(i),1,'force boundary retired');

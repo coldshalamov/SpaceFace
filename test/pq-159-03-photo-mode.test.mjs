@@ -167,7 +167,7 @@ function installMiniDom() {
   };
 }
 
-test('pause lists Photo and presentation flags are HUD-off, free camera, no filters', () => {
+test('photo presentation flags are HUD-off, free camera, no filters; the pause sheet hides Photo', () => {
   assert.equal(PHOTO_LABEL, 'Photo');
   assert.equal(PHOTO_CAPTURE_LABEL, 'Capture');
   assert.equal(PHOTO_FILTERS_DEFAULT, false);
@@ -175,7 +175,8 @@ test('pause lists Photo and presentation flags are HUD-off, free camera, no filt
 
   const pauseSrc = readFileSync(new URL('../src/ui/screens/pause.js', import.meta.url), 'utf8');
   assert.match(pauseSrc, /export const pauseScreen/);
-  assert.match(pauseSrc, /PHOTO_LABEL/, 'pause must expose the Photo action');
+  assert.match(pauseSrc, /PHOTO_LABEL/, 'pause still names Photo for the mode it can enter');
+  assert.match(pauseSrc, /PAUSE_MEDIA_ON_SHEET = false/, 'Photo stays off the pause sheet');
   assert.match(pauseSrc, /enterPhoto/, 'pause must enter photo mode');
 
   const flags = photoModeFlags();
@@ -228,7 +229,7 @@ test('pause lists Photo and presentation flags are HUD-off, free camera, no filt
     pauseScreen.mount(root, ctx);
     const buttons = root.querySelectorAll('button');
     const labels = buttons.map((b) => b.textContent);
-    assert.ok(labels.includes('Photo'), `pause words must list Photo; got ${labels.join(', ')}`);
+    assert.ok(!labels.includes('Photo'), `pause words must hide Photo until the pad can run it; got ${labels.join(', ')}`);
   } finally {
     dom.restore();
   }

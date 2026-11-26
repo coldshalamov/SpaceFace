@@ -2,6 +2,7 @@ import { globalToFrame } from '../core/coordinates.js';
 import { entityWeaponBlocked } from '../combat/runtime.js';
 import { isHostileToPlayer } from '../systems/scannerReadModel.js';
 import { resolveEntitySelection } from '../ui/sim/stableSelection.js';
+import { resolvePlottedSeamWorkpoint, resolveWaypointPresentationEntity } from '../ui/navigationWaypoint.js';
 import { readFrameOrigin } from './frameCoordinates.js';
 import { CAMERA_DIRECTOR_COMBAT_MAX_ZOOM } from './tabletopPolicy.js';
 import { ORCHARD_GEOMETRY } from '../data/anvilOrchardBody.js';
@@ -33,6 +34,8 @@ const INDUSTRIAL_EXIT_RANGE = 380;
 const INDUSTRIAL_ENTER_SPEED = 55;
 const INDUSTRIAL_EXIT_SPEED = 75;
 const INDUSTRIAL_SAFE_NDC = 0.72;
+const SEAM_MARKER_ID = 'onboarding:seam';
+const RAID_MARKER_ID = 'onboarding:raid';
 // Gate approach is a presentation-only cinematic envelope. Authored gates can be much larger than
 // combat contacts, so this ceiling intentionally exceeds the player's manual 330 wu zoom limit.
 // It is never reachable outside an active entity-targeted gate autopilot lease.
@@ -181,6 +184,32 @@ export function resolveIndustrialWorkpoint(state, player, out = {}) {
     }
   } else return null;
   out.entity = selected; out.component = component; out.x = x; out.z = z;
+  return out;
+}
+
+// A lesson can frame its live rock before the pilot can aim at it. The marker supplies the
+// occupant generation, so a reused ID cannot take the view.
+function resolveTrainingRockWorkpoint(state, out) {
+  const waypoint = resolvePlottedSeamWorkpoint(state) || state?.nav?.waypoint;
+  if (waypoint?.onboarding !== true || (waypoint.markerId !== SEAM_MARKER_ID && waypoint.markerId !== RAID_MARKER_ID)
+      || waypoint.presentationEntityGeneration == null || state.ui?.fieldBuildActive) return null;
+  const rock = resolveWaypointPresentationEntity(state, waypoint);
+  if (rock?.type !== 'asteroid' || !Number.isFinite(rock.pos?.x) || !Number.isFinite(rock.pos?.z)
+      || !presentationAllowsPlayerFacingAction(rock, state)) return null;
+  let held = null;
+  if (waypoint.markerId === RAID_MARKER_ID) {
+    const raid = state.onboarding?.raid;
+    const line = state.player?.tether;
+    if (!raid?.active || !line?.active || line.targetId !== raid.ids?.raider || rock.id !== raid.ids?.throwRock
+        || rock.data?.raidRole !== 'throwRock') return null;
+    held = entityFor(state, line.targetId);
+    if (held?.data?.onboardingRaid !== true) return null;
+  }
+  out.entity = rock;
+  out.component = waypoint.markerId;
+  out.x = rock.pos.x;
+  out.z = rock.pos.z;
+  out.held = held;
   return out;
 }
 
@@ -678,7 +707,7 @@ export function createCameraDirector() {
   // masslineImpacts observer owns the bounded ballistic lifetime and its impact receipt;
   // the camera only reads it, and never creates a second throw tracker in simulation state.
   let lastTetherTick = -Infinity;
-  const industrialPoint = { entity: null, component: '', x: 0, z: 0 };
+  const industrialPoint = { entity: null, component: '', x: 0, z: 0, held: null };
   let industrialCandidate = null, industrialComponent = '', industrialGeneration = null;
   let industrialHeldS = 0, industrialZoomRevision = null, industrialZoomOverride = null;
   let industrialCutter = null, industrialCutterScanAt = -Infinity;
@@ -943,7 +972,9 @@ export function createCameraDirector() {
         }
       }
 
-      const work = resolveIndustrialWorkpoint(state, player, industrialPoint);
+      const work = resolveIndustrialWorkpoint(state, player, industrialPoint)
+        || resolveTrainingRockWorkpoint(state, industrialPoint);
+      const raidWork = work?.component === RAID_MARKER_ID;
       const workChanged = work?.entity !== industrialCandidate
         || (work?.component || '') !== industrialComponent
         || (work?.entity?.occupantGeneration ?? null) !== industrialGeneration;
@@ -967,7 +998,7 @@ export function createCameraDirector() {
         && (output.mode === CameraDirectorMode.FOLLOW || output.mode === CameraDirectorMode.INDUSTRIAL)
         && industrialZoomOverride !== work.entity
         && workDistance <= (industrialActive ? INDUSTRIAL_EXIT_RANGE : INDUSTRIAL_ENTER_RANGE)
-        && workSpeed <= (industrialActive ? INDUSTRIAL_EXIT_SPEED : INDUSTRIAL_ENTER_SPEED);
+        && (raidWork || workSpeed <= (industrialActive ? INDUSTRIAL_EXIT_SPEED : INDUSTRIAL_ENTER_SPEED));
       industrialHeldS = workEligible ? industrialHeldS + frameDt : 0;
       if (workEligible && (industrialActive || industrialHeldS >= INDUSTRIAL_SELECTION_HOLD_S)) {
         requestedMode = CameraDirectorMode.INDUSTRIAL;
@@ -1023,33 +1054,37 @@ export function createCameraDirector() {
         const px = Number.isFinite(view.playerLocalX) ? view.playerLocalX : player.pos.x - frameOrigin.x;
         const pz = Number.isFinite(view.playerLocalZ) ? view.playerLocalZ : player.pos.z - frameOrigin.z;
         const wx = work.x - frameOrigin.x, wz = work.z - frameOrigin.z;
+        const safeNdc = raidWork ? CAMERA_DIRECTOR_SAFE_NDC : INDUSTRIAL_SAFE_NDC;
         // Site lamps and Orchard socket guides sit above their planar sensor positions. A
         // conservative 24-WU sphere keeps that visible work cue inside the same fit.
-        const pr = entityRadius(player), wr = 24;
+        const pr = entityRadius(player);
+        const wr = (raidWork || work.component === SEAM_MARKER_ID) ? Math.max(24, entityRadius(work.entity)) : 24;
         let minX = Math.min(px - pr, wx - wr), maxX = Math.max(px + pr, wx + wr);
         let minZ = Math.min(pz - pr, wz - wr), maxZ = Math.max(pz + pr, wz + wr);
         let desiredX = (minX + maxX) * .5, desiredZ = (minZ + maxZ) * .5;
         let required = Math.max(
-          requiredZoomForLocal(px, pz, pr, desiredX, desiredZ, tanHalf, aspect, sinTilt, cosTilt, INDUSTRIAL_SAFE_NDC),
-          requiredZoomForLocal(wx, wz, wr, desiredX, desiredZ, tanHalf, aspect, sinTilt, cosTilt, INDUSTRIAL_SAFE_NDC),
+          requiredZoomForLocal(px, pz, pr, desiredX, desiredZ, tanHalf, aspect, sinTilt, cosTilt, safeNdc),
+          requiredZoomForLocal(wx, wz, wr, desiredX, desiredZ, tanHalf, aspect, sinTilt, cosTilt, safeNdc),
         );
-        // The actual payload edge may enrich this selected work shot, but a distant load must
-        // never turn the yard into a tiny master shot or steal another owner's tether camera.
+        // A held Raider completes the lesson's three-body composition. Ordinary work shots
+        // still include only a nearby payload edge and respect the existing zoom ceiling.
         const tether = state?.player?.tether;
-        const held = tether?.active ? entityFor(state, tether.targetId) : null;
-        if (held && (held.type === 'payload' || held.data?.tetherPayload === true)
-            && Math.hypot(held.pos.x - work.x, held.pos.z - work.z) <= 220) {
+        const held = raidWork ? work.held : (tether?.active ? entityFor(state, tether.targetId) : null);
+        const workPayload = held && (held.type === 'payload' || held.data?.tetherPayload === true)
+          && Math.hypot(held.pos.x - work.x, held.pos.z - work.z) <= 220;
+        if (held && (raidWork || workPayload)) {
           const dx = player.pos.x - held.pos.x, dz = player.pos.z - held.pos.z, d = Math.hypot(dx, dz);
-          const edge = Math.min(Math.max(0, entityRadius(held) - 8), d);
+          const edge = raidWork ? 0 : Math.min(Math.max(0, entityRadius(held) - 8), d);
+          const hr = raidWork ? entityRadius(held) : 8;
           const hx = held.pos.x - frameOrigin.x + (d > 0 ? dx / d * edge : 0);
           const hz = held.pos.z - frameOrigin.z + (d > 0 ? dz / d * edge : 0);
-          const x0 = Math.min(minX, hx - 8), x1 = Math.max(maxX, hx + 8);
-          const z0 = Math.min(minZ, hz - 8), z1 = Math.max(maxZ, hz + 8);
+          const x0 = Math.min(minX, hx - hr), x1 = Math.max(maxX, hx + hr);
+          const z0 = Math.min(minZ, hz - hr), z1 = Math.max(maxZ, hz + hr);
           const fx = (x0 + x1) * .5, fz = (z0 + z1) * .5;
           const fit = Math.max(
-            requiredZoomForLocal(px, pz, pr, fx, fz, tanHalf, aspect, sinTilt, cosTilt, INDUSTRIAL_SAFE_NDC),
-            requiredZoomForLocal(wx, wz, wr, fx, fz, tanHalf, aspect, sinTilt, cosTilt, INDUSTRIAL_SAFE_NDC),
-            requiredZoomForLocal(hx, hz, 8, fx, fz, tanHalf, aspect, sinTilt, cosTilt, INDUSTRIAL_SAFE_NDC),
+            requiredZoomForLocal(px, pz, pr, fx, fz, tanHalf, aspect, sinTilt, cosTilt, safeNdc),
+            requiredZoomForLocal(wx, wz, wr, fx, fz, tanHalf, aspect, sinTilt, cosTilt, safeNdc),
+            requiredZoomForLocal(hx, hz, hr, fx, fz, tanHalf, aspect, sinTilt, cosTilt, safeNdc),
           );
           if (fit <= CAMERA_DIRECTOR_ENGINE_MAX_ZOOM) {
             minX = x0; maxX = x1; minZ = z0; maxZ = z1;
@@ -1100,7 +1135,7 @@ export function createCameraDirector() {
         const zoom = transitionElapsed < INDUSTRIAL_EASE_S ? transitionStartZoom + (desiredZoom - transitionStartZoom) * ease : output.zoom + (desiredZoom - output.zoom) * alpha;
         // During the ease and on narrow screens, the piloted ship always wins over an unfitted
         // remote point. The normal target cue remains honest when the work point cannot fit.
-        const safeTan = INDUSTRIAL_SAFE_NDC * tanHalf, depth = Math.max(0, zoom - pr);
+        const safeTan = safeNdc * tanHalf, depth = Math.max(0, zoom - pr);
         const maxDz = Math.max(0, (safeTan * depth - pr) / (sinTilt + safeTan * cosTilt));
         fz = clamp(fz, pz - maxDz, pz + maxDz);
         const remain = Math.max(0, depth - cosTilt * Math.abs(fz - pz));

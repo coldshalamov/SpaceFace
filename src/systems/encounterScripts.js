@@ -282,7 +282,7 @@ const toll = {
     if (live.phase !== 'offer') return;
     if (choiceId === 'pay') {
       const amount = live.vars.amount | 0;
-      if ((state.player.credits | 0) < amount) {
+      if ((Number(state.player.credits) || 0) < amount) {
         d.say(live, 'bark', 'toll_broke_ack');
         return toll.choose(d, live, state, 'refuse');
       }
@@ -425,7 +425,7 @@ const patrolScan = {
       const fine = d.fineEstimate();
       if (fine <= 0) return;
       const cost = Math.round(fine * 0.3);
-      if ((state.player.credits | 0) < cost) return;    // cannot afford → choice unavailable
+      if ((Number(state.player.credits) || 0) < cost) return; // cannot afford → choice unavailable
       // The economy writer returns its decision on this synchronous intent. Do not tell the
       // patrol the pilot paid (or despawn/close the offer) unless the wallet debit committed.
       const payment = { fine, encounterId: live.id, result: null };
@@ -647,7 +647,7 @@ const ambush = {
     if (choiceId === 'buyout') {
       // Credits-priced contract buyout (327 ghost): the quiet honors a paid contract.
       const amount = live.vars.amount | 0;
-      if (((state.player && state.player.credits) | 0) < amount) {
+      if ((Number(state.player && state.player.credits) || 0) < amount) {
         d.say(live, 'bark', ack.broke || 'toll_broke_ack');
         return ambush.choose(d, live, state, 'refuse');
       }
@@ -883,7 +883,7 @@ const distress = {
           ? Math.round(Math.hypot(player.pos.x - pos.x, player.pos.z - pos.z))
           : null;
         d.say(live, 'info', range != null
-          ? `The mayday is ${range} WU out. Close in before a scan will hold.`
+          ? `The mayday is ${range} m out. Close in before a scan will hold.`
           : 'The mayday will not read from here.', null, { literal: true });
       }
       // A successful read is information, not a commitment to abandon the rescue. Re-open
@@ -3771,7 +3771,7 @@ const whisper = {
     if (dist2(player.pos.x, player.pos.z, src.pos.x, src.pos.z) > tellR * tellR) return;
     live.data.toldHint = true;
     d.say(live, 'info', 'whisper_scan_hint', {
-      range: `${Math.round(Math.sqrt(dist2(player.pos.x, player.pos.z, src.pos.x, src.pos.z)))} WU`,
+      range: `${Math.round(Math.sqrt(dist2(player.pos.x, player.pos.z, src.pos.x, src.pos.z)))} m`,
     });
   },
 };

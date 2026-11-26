@@ -1,4 +1,5 @@
 import { createPauseFrame } from '../views/menuFrames.js';
+import { worksNextStep } from '../../data/worksContractWords.js';
 // Pause menu (ARCHITECTURE §5.4, design/specs/09). Opened by ESC in flight.
 // The sheet's line (design/frontend/direction/DIRECTION_SHEET.md, pause, amended by Task B §1.4):
 // the world held, not hidden — the frozen game at 0 % scrim; "Paused" at screen-title size top-left;
@@ -25,15 +26,17 @@ import { canQuit, requestQuit } from '../quitGame.js';
 import { laneSetMode } from '../../core/simLaneCommands.js';
 import { IS_DEV } from '../../core/devMode.js';
 import { CREDITS } from '../../data/credits.js';
-import { leftoverVersionLabel, leftoverVersionDisplay, paintLeftoverVersion } from './mainMenu.js';
+import { leftoverVersionLabel, leftoverVersionDisplay, paintLeftoverVersion, titleLabOpen } from './mainMenu.js';
 import { el, words, settle, cue } from '../kit/index.js';
 import { createArcRail } from '../orrery/arcRail.js';
+import { postTaskAtBackgroundPriorityBounded } from '../../core/backgroundPost.js';
+import { frameCostFixOn } from '../../render/frameCostSwitches.js';
 import { isPhoneLayout } from '../../systems/mobile/model.js';
 import { injectOrreryScreens } from '../orrery/screenLayouts.js';
 import { injectPauseLayouts, PAUSE_COLUMN_QUERY } from '../orrery/pauseLayouts.js';
 import { openReplay, forceCloseReplay, REPLAY_LABEL } from './replay.js';
 import { openClips, forceCloseClips, CLIPS_LABEL } from './clips.js';
-import { contract47aReadout } from '../sim/missionRecap.js';
+import { contract47aReadout, playerFacingContractTitle } from '../sim/missionRecap.js';
 import { swarmCircuitClosingLine } from '../../systems/survivalAnnounce.js';
 import { requestCodexTab } from '../codexRequests.js';
 import { writtenEndingArchive } from '../../story/endings/index.js';
@@ -55,6 +58,9 @@ const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
 /** The photo-mode hint fades after this long (Task B §1.7: two seconds). */
 const PHOTO_HINT_MS = 2000;
 export const PHOTO_LABEL = 'Photo';
+// Photo, Replay and Clips stay off the pause sheet. Their overlays do not yet take pad focus
+// through an empty recording a player can trust, so the sheet does not offer them.
+export const PAUSE_MEDIA_ON_SHEET = false;
 export const ACHIEVEMENTS_LABEL = 'Achievements';
 export const ENDING_ARCHIVE_LABEL = 'Ending Archive';
 export const PHOTO_CAPTURE_LABEL = 'Capture';
@@ -129,6 +135,36 @@ function getManager(ctx) {
   return null;
 }
 
+// The sheet is warmed at boot outside any run, but inside a Swarm run it is a different menu
+// (End run, no Save/Load/Quit), so the first Esc of every run used to rebuild it inside the key
+// press: a fresh DOM plus the dial reading its host size laid the whole page out on the spot
+// (66 ms in a round-6 fight, 89 ms with the focus). A round start re-seats the hidden sheet for
+// the run in a background task instead, while the page is already laid out and the sheet is
+// display:none, so the press only shows it. ?rfx=-pauseWarm restores the rebuild-on-press.
+let pauseRunWarmBus = null;
+let pauseRunWarmQueued = false;
+function schedulePauseRunReseat(ctx) {
+  if (pauseRunWarmQueued || !frameCostFixOn('pauseWarm')) return;
+  pauseRunWarmQueued = true;
+  postTaskAtBackgroundPriorityBounded(() => {
+    pauseRunWarmQueued = false;
+    const root = pauseRootEl;
+    if (!root || root.isConnected === false || !ctx || !ctx.state) return;
+    const mgr = getManager(ctx);
+    // Open (or covered by its own sub-screen): onShow owns any re-seat.
+    if (mgr && typeof mgr.top === 'function' && mgr.top() === 'pause') return;
+    if (mgr && typeof mgr.isOpen === 'function' && mgr.isOpen()) return;
+    if (pauseScreen._retireAtMount === pauseSurvivalRunActive(ctx.state)) return;
+    pauseScreen.mount(root, ctx);
+  }, 250);
+}
+function bindPauseRunWarm(ctx) {
+  const bus = ctx && ctx.bus;
+  if (!bus || typeof bus.on !== 'function' || pauseRunWarmBus === bus) return;
+  pauseRunWarmBus = bus;
+  bus.on('run:waveStarted', () => schedulePauseRunReseat(ctx));
+}
+
 function nav(ctx, method, arg) {
   const mgr = getManager(ctx);
   if (mgr && typeof mgr[method] === 'function') { mgr[method](arg); return; }
@@ -148,7 +184,7 @@ function missionId(m) {
 }
 
 function missionTitle(m) {
-  return (m && (m.title || m.name)) || prettyId(m && m.type) || 'Contract';
+  return playerFacingContractTitle(m);
 }
 
 function fmtTime(seconds) {
@@ -186,8 +222,8 @@ function missionCommodity(m) {
 function missionNextStep(m) {
   const dest = missionDestination(m);
   if (contract47aReadout(m)) return m.params.sampleRecovered === true
-    ? 'Next: deliver the recovered assay sample to Helios Station.'
-    : 'Next: recover the assay sample at the 47-A Recovery Site in Helios Prime.';
+    ? 'Next: take the 47-A sample to Helios Station.'
+    : 'Next: fetch the 47-A sample from the marked rock in Helios Prime.';
   switch (m && m.type) {
     case 'cargo_delivery':
     case 'passenger_transport':
@@ -199,6 +235,8 @@ function missionNextStep(m) {
       return 'Next: buy or carry ' + missionCommodity(m) + ', then sell at the destination market.';
     case 'mining_quota':
       return 'Next: mine ' + missionCommodity(m) + ' and keep cargo room free.';
+    case 'works_contract':
+      return worksNextStep(m);
     case 'bounty_hunt':
     case 'patrol_clear':
       return 'Next: follow tracked nav. Expect a fight before the timer runs out.';
@@ -238,18 +276,18 @@ function routeCommitment(state, wp) {
 export function localMapPauseCopy(key, { place = '', inThisSystem = false } = {}) {
   if (isPhoneLayout()) {
     return {
-      label: localizeText('Local Map'),
+      label: localizeText('Chart'),
       hint: inThisSystem
-        ? localizeText('Open Local Map for the live marker in this system.')
-        : localizeText('Open Local Map for the live marker{place}; no jump route is required.', { place }),
-      title: 'Open Local Map',
+        ? localizeText('Open Chart for the live marker in this system.')
+        : localizeText('Open Chart for the live marker{place}; no jump route is required.', { place }),
+      title: 'Open Chart',
     };
   }
-  const label = localizeText('Local Map ({key})', { key });
+  const label = localizeText('Chart ({key})', { key });
   const hint = inThisSystem
-    ? localizeText('Open Local Map ({key}) for the live marker in this system.', { key })
-    : localizeText('Open Local Map ({key}) for the live marker{place}; no jump route is required.', { key, place });
-  return { label, hint, title: 'Open Local Map' };
+    ? localizeText('Open Chart ({key}) for the live marker in this system.', { key })
+    : localizeText('Open Chart ({key}) for the live marker{place}; no jump route is required.', { key, place });
+  return { label, hint, title: 'Open Chart' };
 }
 
 export function pauseMapAction(state) {
@@ -283,13 +321,13 @@ export function pauseMapAction(state) {
     };
   }
   const target = commitment.targetSectorName ? ' to ' + commitment.targetSectorName : '';
-  const mapLabel = 'Star Map' + pauseKeyHint(BINDINGS.starmap);
+  const mapLabel = 'Chart' + pauseKeyHint(BINDINGS.starmap);
   const hint = 'Open ' + mapLabel + ' to review the inter-system route' + target + ' before committing a jump.';
   // Inter-system review still uses the same galaxyMap surface with GALAXY focus.
   const handoff = mapHandoffAction({
     focus: MAP_FOCUS.GALAXY,
     label: mapLabel,
-    title: 'Open Star Map',
+    title: 'Open Chart',
     body: hint,
     sectorId: wp.sectorId || null,
     stationId: wp.stationId || null,
@@ -396,9 +434,9 @@ export function saveLine(state) {
 // scar list are the receipts that already record what hit the player. A gun's impulse row is
 // written after its damage row and must stay a gun — only a later receipt may replace it.
 const PAUSE_HIT_LINES = Object.freeze({
-  gun: 'A gun hit you.',
-  shove: 'A shove hit you.',
-  slam: 'A slam hit you.',
+  gun: 'A shot hit you.',
+  shove: 'You got shoved.',
+  slam: 'You got slammed.',
   rock: 'A rock hit you.',
 });
 
@@ -497,11 +535,11 @@ export function pauseStatusLines(state) {
     const candidate = active[0];
     return {
       hit: pauseLastImpactLine(state),
-      objective: 'UNTRACKED CONTRACT · ' + missionTitle(candidate) + ' · ' + missionProgress(candidate) + deadlineText(state, candidate),
+      objective: 'NOT PINNED · ' + missionTitle(candidate) + ' · ' + missionProgress(candidate) + deadlineText(state, candidate),
       objectiveMention: missionId(candidate)
-        ? { ref: 'contract:' + missionId(candidate), label: missionTitle(candidate), pre: 'UNTRACKED CONTRACT · ', post: ' · ' + missionProgress(candidate) + deadlineText(state, candidate) }
+        ? { ref: 'contract:' + missionId(candidate), label: missionTitle(candidate), pre: 'NOT PINNED · ', post: ' · ' + missionProgress(candidate) + deadlineText(state, candidate) }
         : null,
-      next: 'Next: open Mission Log' + pauseKeyHint(BINDINGS.missionLog) + ' and Track Nav on a contract.',
+      next: 'Next: open Mission Log' + pauseKeyHint(BINDINGS.missionLog) + ' and track a job.',
       save: saveLine(state),
     };
   }
@@ -579,7 +617,7 @@ export function pauseRunSeedOf(state) {
 
 export function pauseRunSeedLine(state) {
   const seed = pauseRunSeedOf(state);
-  return seed ? 'Seed ' + seed : '';
+  return seed ? 'Run ' + seed : '';
 }
 
 /** Write the seed line onto its footer span. Sync: the seed is known at mount. */
@@ -1120,6 +1158,7 @@ export const pauseScreen = {
     rootEl.dataset.screen = 'pause';
     delete rootEl.dataset.stamp;
     pauseRootEl = rootEl;
+    bindPauseRunWarm(ctx);
 
     const { title, briefKicker, briefObjective, briefNext, briefSave, column } = createPauseFrame(rootEl, {
       titleText: coreText('paused'),
@@ -1171,11 +1210,9 @@ export const pauseScreen = {
     // THE SHIP (F2 in flight; SCREENS_B §1.2 route wiring). From pause the same instrument opens
     // with its pause-menu entry; the key case lives in the flight-only key router.
     if (!inRun) mk('My Ship', () => nav(ctx, 'pushScreen', 'ship'), { group: 'Ship', bank: true, icon: 'shipworks' });
-    // Operations = the Automation ops board (drones / traders / outposts / fleet). Reachable from
-    // pause anywhere in flight — fleet orders are a flight-time action ("recall to cash out"), so
-    // the pause route fits better than a docked-only station tab (GDD 2.0 §12 keeps automation at
-    // UI-polish scope this cycle; a first-class station tab would be promotion).
-    if (!inRun) mk('Operations (Automation)', () => nav(ctx, 'pushScreen', 'automation'), { group: 'Ship', bank: true, icon: 'industry' });
+    // The Pilot Tree (T): in Adventure where points are spent; in a Swarm run, this run so far (read-only).
+    mk('Pilot Tree', () => nav(ctx, 'pushScreen', 'pilotTree'), { group: inRun ? 'Run' : 'Ship', bank: true, icon: 'ready', hint: 'T' });
+    // Automation (Operations) is retired. The pause sheet does not link to it.
     const mapAction = pauseMapAction(ctx && ctx.state);
     if (mapAction && !inRun) mk(mapAction.label, () => openPauseMapReview(ctx, mapAction), { group: 'Ship', bank: true, icon: 'route', keycap: true });
     // On a phone the keyboard reference means nothing: Help opens the touch guide the deck carries instead.
@@ -1184,15 +1221,13 @@ export const pauseScreen = {
     // Achievements (PQ-033.03): the local ledger — the same screen the title's fine line opens.
     if (!inRun) mk(ACHIEVEMENTS_LABEL, () => nav(ctx, 'pushScreen', 'achievements'), { group: 'Reference', bank: true, icon: 'ready' });
     mk('Records Wall', () => nav(ctx, 'pushScreen', 'statistics'), { group: inRun ? 'Run' : 'Reference', bank: true, icon: 'info' });
-    // Photo mode (Task B §1.7 / PQ-159.03): HUD gone, free camera, exposure, capture for store
-    // assets; filters off by default. Esc returns here. Do not restyle this sheet.
-    mk(PHOTO_LABEL, () => enterPhoto(rootEl, ctx), { group: inRun ? 'Run' : 'Media', bank: true, icon: 'scan' });
-    // Replay (PQ-160.00): the deterministic last thirty seconds, played back with the photo-mode
-    // presentation. Opens over this sheet; Esc or Exit returns to pause.
-    if (!inRun) mk(REPLAY_LABEL, () => { forceCloseClips(); openReplay(rootEl, ctx); }, { group: 'Media', bank: true, icon: 'clock' });
-    // Clips (PQ-160.01): the auto-clip clip list from the moment detector. Opens over this sheet;
-    // Esc or Exit returns. This screen owns presentation only, not export encoding.
-    if (!inRun) mk(CLIPS_LABEL, () => { forceCloseReplay(); openClips(rootEl, ctx); }, { group: 'Media', bank: true, icon: 'record' });
+    // Photo, Replay and Clips stay callable for their own screens, and off this sheet until a
+    // player can run them from the pad with an honest empty state.
+    if (PAUSE_MEDIA_ON_SHEET) {
+      mk(PHOTO_LABEL, () => enterPhoto(rootEl, ctx), { group: inRun ? 'Run' : 'Media', bank: true, icon: 'scan' });
+      if (!inRun) mk(REPLAY_LABEL, () => { forceCloseClips(); openReplay(rootEl, ctx); }, { group: 'Media', bank: true, icon: 'clock' });
+      if (!inRun) mk(CLIPS_LABEL, () => { forceCloseReplay(); openClips(rootEl, ctx); }, { group: 'Media', bank: true, icon: 'record' });
+    }
     // Ending Archive (B7): once the story owner has filed the written ending
     // (state.story.writtenFinale — the same record its ui:endingArchiveOpen handler serves), the
     // manuscript re-opens on demand. The codex deep-links to its Archive tab and the story owner
@@ -1205,16 +1240,19 @@ export const pauseScreen = {
       requestCodexTab('Archive');
       nav(ctx, 'pushScreen', 'codex');
       if (ctx.bus && typeof ctx.bus.emit === 'function') ctx.bus.emit('ui:endingArchiveOpen');
-    }, { group: 'Media', bank: true, icon: 'ledger' });
+    }, { group: 'Reference', bank: true, icon: 'ledger' });
     // DEV ONLY — Sandbox testing harness (grant weapon now, spawn enemy now, etc.). IS_DEV-gated so
     // it never appears in packaged builds. Same screen as the main-menu Sandbox button.
-    if (!inRun) mk('Physics challenges', () => nav(ctx, 'pushScreen', 'physicsVenues'), { group: 'Play', bank: true, icon: 'utility' });
+    // TITLE-02: practice and test modes (Physics challenges, Circuits, Sandbox) are not on a player's
+    // pause menu; the dev switch (?titleLab=1) that shows them on the title shows them here.
+    const labOpen = titleLabOpen();
+    if (labOpen && !inRun) mk('Physics challenges', () => nav(ctx, 'pushScreen', 'physicsVenues'), { group: 'Play', bank: true, icon: 'utility' });
     // MOB-02: the phone flight HUD dropped its "View & circuits" chip; the board (routes, best times, chase/overhead)
     // is reached from here instead, so the phone loses no verb.
-    if (isPhoneLayout() && !inRun) mk('Circuits', () => nav(ctx, 'pushScreen', 'raceBoard'), { group: 'Play', bank: true, icon: 'utility' });
+    if (labOpen && isPhoneLayout() && !inRun) mk('Circuits', () => nav(ctx, 'pushScreen', 'raceBoard'), { group: 'Play', bank: true, icon: 'utility' });
     if (!inRun && ctx.state?.mercyServicePublic?.bodies?.length) mk('Rescue tools', () => { nav(ctx, 'popScreen'); ctx.registry?.get('ui')?.physicalJobsPrompt?.mercy(); }, { group: 'Field work', bank: true, icon: 'utility' });
     if (!inRun && ctx.state?.wreckCourtPublic?.bodies?.length) mk('Wreck Court notebook', () => { nav(ctx, 'popScreen'); ctx.registry?.get('ui')?.physicalJobsPrompt?.court(); }, { group: 'Field work', bank: true, icon: 'utility' });
-    if (IS_DEV && !inRun) mk('Sandbox', () => nav(ctx, 'pushScreen', 'sandbox'), { dev: true, group: 'Dev', bank: true, icon: 'utility' });
+    if (labOpen && !inRun) mk('Sandbox', () => nav(ctx, 'pushScreen', 'sandbox'), { dev: true, group: 'Dev', bank: true, icon: 'utility' });
     // Main Menu discards the current session entirely — confirm with the live run context first.
     this._retireAtMount = pauseSurvivalRunActive(ctx && ctx.state);
     mk(this._retireAtMount ? 'End run' : coreText('mainMenu'), async () => {
@@ -1353,7 +1391,7 @@ export const pauseScreen = {
       keysLine.appendChild(el('span', 'dp-etch sf-pause-key-verb', verb));
     };
     keyHint('Esc', 'Resume');
-    keyHint('P', 'Photo');
+    if (PAUSE_MEDIA_ON_SHEET) keyHint('P', 'Photo');
     if (!inRun) {
       keyHint('F5', 'Quick Save');
       keyHint('F9', 'Quick Load');
@@ -1438,7 +1476,9 @@ export const pauseScreen = {
     if (els) {
       if (els.title) settle(els.title, { from: 'left', state: 'pause-title' });
       if (els.stage) settle(els.stage, { from: 'left', delay: 60, state: 'pause-words' });
-      if (els.bResume) try { els.bResume.focus(); } catch (e) {}
+      // preventScroll: the sheet is fixed full-screen, so scrolling Resume into view only cost a
+      // synchronous layout inside the key press.
+      if (els.bResume) try { els.bResume.focus({ preventScroll: true }); } catch (e) {}
     }
     // The world behind the pause is the live flight picture, not a mount of its own: the frame is
     // ready as soon as the words are (KIT_SPEC §11.7 capture contract).
@@ -1446,9 +1486,9 @@ export const pauseScreen = {
     // FB-085: P (BINDINGS.photo) opens photo mode over this screen — capture phase, ahead of the
     // uiInput route that would read the same press as "open pause" again. The photo overlay's own
     // Esc route returns here. Photo mode owns the keys while it is up, so a live session ignores it.
-    if (!pausePhotoKeyHandler && typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+    if (PAUSE_MEDIA_ON_SHEET && !pausePhotoKeyHandler && typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
       pausePhotoKeyHandler = (ev) => {
-        if (photo || !isPhotoBindingKey(ev)) return;
+        if (photo || ev.repeat || !isPhotoBindingKey(ev)) return;
         const target = ev.target;
         const tag = target && typeof target.tagName === 'string' ? target.tagName.toLowerCase() : '';
         if (tag === 'input' || tag === 'textarea' || (target && target.isContentEditable)) return;

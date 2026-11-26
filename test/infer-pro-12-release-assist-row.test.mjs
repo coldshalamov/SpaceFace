@@ -15,11 +15,11 @@ describe('PRO-12 — Massline release-assist row in Gameplay Settings', () => {
     const source = readFileSync(path.join(ROOT, 'src/ui/screens/settings.js'), 'utf8');
 
     assert.ok(source.includes("const masslineFamilyOn = massline2Flag('enabled');"), 'reads massline2Flag enabled');
-    assert.ok(source.includes("rowSelect('Massline release assist'"), 'always renders Massline release assist row');
+    assert.ok(source.includes("rowSelect('Line release assist'"), 'always renders Line release assist row');
     assert.ok(source.includes("['arm', 'Auto-release on solution (default)']"), 'includes arm option');
     assert.ok(source.includes("['snap', 'Snap window on manual release']"), 'includes snap option');
     assert.ok(source.includes("['off', 'Off — raw physics']"), 'includes off option');
-    assert.ok(source.includes('Massline release assist is unavailable because the Massline family is off.'), 'renders disabled explanation note');
+    assert.ok(source.includes('Line release assist is unavailable because the Line family is off.'), 'renders disabled explanation note');
     assert.ok(source.includes("releaseSelect.setAttribute('aria-disabled', 'true');"), 'sets aria-disabled when family is off');
     assert.ok(source.includes("if (masslineFamilyOn) this._set(ctx, 'gameplay', 'masslineReleaseAssist', v);"), 'blocks mutation when family is off');
   });

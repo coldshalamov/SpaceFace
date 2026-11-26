@@ -152,7 +152,7 @@ export function handTradeLine(state, stationId, commodityId) {
   const verb = hit.side === 'sell' ? 'pressed' : 'lifted';
   const leg = hit.side === 'sell' ? 'sold' : 'bought';
   const seq = Number(hit.tradeSequence) > 0 ? ` (receipt #${Number(hit.tradeSequence)})` : '';
-  return `Your last trade here ${verb} this board: ${qty}u of lot ${leg}${seq}. The spread recovers as the stock settles.`;
+  return `Your last trade here ${verb} this board: ${qty} units of lot ${leg}${seq}. The spread recovers as the stock settles.`;
 }
 
 /**
@@ -182,7 +182,7 @@ export function cargoKillLine(state, stationId, commodityId) {
   if (!chain) return null;
   const fact = chain.pressureReceipts[commodityId];
   const saleName = STATION_NAME_BY_ID.get(fact.saleStationId) || fact.saleStationId;
-  return `Its freight ran short when the hauler you downed never landed: ${fact.qty}u of its manifest was sold at ${saleName}.`;
+  return `Its freight ran short when the hauler you downed never landed: ${fact.qty} units of its manifest was sold at ${saleName}.`;
 }
 
 /**

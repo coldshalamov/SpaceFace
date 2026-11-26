@@ -17,6 +17,7 @@ import {
   CRUCIBLE_ARENA_ID,
   CRUCIBLE_DEFAULT_RULESET,
   buildCrucibleRetryRequest,
+  buildSwarmAgainRequest,
   crucibleHullChoices,
   crucibleHullSetupFor,
   crucibleSetupFor,
@@ -27,10 +28,17 @@ import {
   normalizeSeed,
   practiceLaunchFor,
   canChooseSwarmOpeningLesson,
-  consumeSwarmPlayEntry,
   defaultSwarmStakeId,
   rememberSwarmStake,
+  consumeSwarmPlayEntry,
+  lastSwarmDoorPick,
+  rememberSwarmDoorPick,
+  swarmDoorGunFor,
+  swarmOpeningGuns,
+  swarmPlaySetup,
+  SWARM_DEFAULT_HULL_ID,
 } from '../crucibleLaunch.js';
+import { hullPosterUrl } from '../hullPosters.js';
 import {
   SWARM_STAKES,
   normalizeSwarmStake,
@@ -70,14 +78,15 @@ import {
 } from '../../data/swarmPerks.js';
 import { SURVIVAL_UNLOCK_CATALOG } from '../../data/survivalUnlocks.js';
 import { createStationRow } from '../orrery/stopDial.js';
-import { createCruciblePreparation } from '../orrery/cruciblePreparation.js';
+import { createCruciblePreparation, createSwarmPlayFront } from '../orrery/cruciblePreparation.js';
 import { reducedMotion as orreryMotionReduced } from '../orrery/motion.js';
 import { cabinetDailySnapshot, createCabinetAttract, createCabinetEntryBand, renderCabinetBoard } from '../swarmCabinet.js';
 import { SWARM_CABINET_ATTRACT_TAPE } from '../swarmCabinetAttractTape.js';
 import { injectOrreryScreens } from '../orrery/screenLayouts.js';
 import { injectCrucibleDoorLayouts } from '../orrery/crucible-doorLayouts.js';
 import { createDeathDial, initials as deathDialInitials } from '../orrery/deathDial.js';
-import { injectCrucibleResultsLayouts } from '../orrery/crucibleResultsLayouts.js';
+import { injectCrucibleResultsLayouts, injectRunOverLayouts } from '../orrery/crucibleResultsLayouts.js';
+import { PILOT_BRANCHES, PILOT_EVOLUTIONS } from '../../data/pilotTree.js';
 import {
   buildCodeFor,
   buildNameFor,
@@ -97,6 +106,7 @@ import {
   SWARM_REFIT_EVERY,
   SWARM_RULESET,
   SWARM_WAVE_MAX,
+  isSwarmBossWave,
 } from '../../data/swarmMode.js';
 import { survivalArenaById } from '../../data/survivalArenas.js';
 import { SURVIVAL_RUN_WAVE_COUNT, BLOCK_RULESET } from '../../systems/survivalRun.js';
@@ -107,6 +117,7 @@ import {
   ghostRaceOffer,
   lastGhostRowByHash,
   loadCrucibleMeta,
+  swarmResumeFor,
   weeklyMutatorForNow,
   bestLineRows,
   normalizeBestLine,
@@ -115,6 +126,8 @@ import {
   buyCrucibleHangarTrack,
   buyCrucibleHangarHull,
   crucibleSwarmDepthView,
+  SWARM_CHALLENGE_DAILY_WAVES,
+  SWARM_CHALLENGE_DAILY_BOUNTY,
   setCruciblePerkLoadout,
   kitBalanceBoard,
   overconfidenceStreak,
@@ -145,7 +158,7 @@ import {
 } from '../sandbox/sandboxSetup.js';
 import { ensurePhysicsLabRoute, notePracticeLaunch } from './crucibleLabControls.js';
 import { SURVIVAL_MUTATOR_BY_ID, SURVIVAL_TRIAL_BY_RULESET, POWERED_CONVEYOR_RULESET } from '../../data/survivalMutators.js';
-import { clearQueuedChallenge, queueGhostPlayback, queuePracticeRun, queueSurvivalChallenge } from '../../systems/survivalMutators.js';
+import { clearQueuedChallenge, queueGhostPlayback, queueSurvivalChallenge } from '../../systems/survivalMutators.js';
 import {
   availableOptions,
   isModeAvailable,
@@ -447,7 +460,7 @@ export const ARENA_DESCRIPTIONS = Object.freeze({
   helios_core: Object.freeze(['Ricochet Foundry', 'Hard banks, tight gaps and moving machinery. Turn pursuit into a pile-up.', signatureLine('helios_core')]),
   ceres_belt: Object.freeze(['Ceres Belt', 'Working claims, ore seams and freight clutter. Split the swarm on the rocks.', signatureLine('ceres_belt')]),
   tethys_hub: Object.freeze(['Tethys Exchange', 'Toll lanes and sealed freight on the junction braid. Cross the traffic — let the freight take the hit.', signatureLine('tethys_hub')]),
-  lagrange_crucible: Object.freeze(['Lagrange Crucible', 'Gravity wells and sling routes. Bend the whole fight around an anchor.', signatureLine('lagrange_crucible')]),
+  lagrange_crucible: Object.freeze(['Lagrange Arena', 'Gravity wells and sling routes. Bend the whole fight around an anchor.', signatureLine('lagrange_crucible')]),
   cinder_sluice: Object.freeze(['Cinder Sluice', 'Ride hot currents and force enemies across the flow.', signatureLine('cinder_sluice')]),
   cryo_drift: Object.freeze(['Cryo Drift', 'Slippery escape lanes and brittle targets. Set up a shattering collision.', signatureLine('cryo_drift')]),
   storm_lattice: Object.freeze(['Storm Lattice', 'Conductive relays reward a tightly packed, electrified swarm.', signatureLine('storm_lattice')]),
@@ -646,7 +659,7 @@ export function historyRunRows(profile) {
     const tally = [
       Number.isInteger(run && run.kills) && run.kills > 0 ? `${run.kills} kills` : '',
       Number.isInteger(run && run.wavesCleared) && run.wavesCleared > 0 ? `${run.wavesCleared} cleared` : '',
-      Number.isInteger(run && run.credits) && run.credits > 0 ? `${run.credits} cr` : '',
+      Number.isInteger(run && run.credits) && run.credits > 0 ? `${run.credits} Scrap` : '',
     ].filter(Boolean).join(' · ');
     return {
       outcome: OUTCOME_WORD[run && run.outcome] || String((run && run.outcome) || '—').toUpperCase(),
@@ -771,24 +784,24 @@ function renderRecordRows(profile, hooks = {}) {
 
 /**
  * The two rulesets behind one door. Swarm is first and is the default: it is the fast game — the
- * room never empties, the wave rolls on a kill count, and only every fifth wave stops for an
- * upgrade. Gauntlet is the authored thirty-wave arc, kept because it asks a different question.
+ * room never empties, the wave rolls on a kill count, and only the Bench every tenth round stops
+ * for an upgrade. Gauntlet is the authored thirty-wave arc, kept because it asks a different question.
  */
 const CRUCIBLE_MODE_CARDS = Object.freeze([
   {
     ruleset: SWARM_RULESET,
     label: 'Swarm',
     verb: 'Launch Swarm',
-    blurb: 'Bring the swarm. Turn the room against it.',
-    sub: 'Clear a round. Spend the spoils or save for a bigger toy. Push your build as far as it goes.',
+    blurb: 'Build a ship and survive waves of enemies.',
+    sub: 'Thirty rounds. Kills pay Scrap for guns on the floor; every level up is a card.',
   },
   {
     ruleset: 'scored',
     label: 'Gauntlet',
     verb: 'Enter the Gauntlet',
     blurb: 'Thirty authored waves in three acts. One question per wave.',
-    sub: 'Thirty waves in three acts. Every wave you rearm; every ten you refit. '
-      + 'Nothing you earn here follows you home.',
+    sub: 'Thirty waves in three acts. Rearm between waves and refit at waves 10, 20, and 30. '
+      + 'Banked salvage goes to the Swarm hangar. Your Adventure save stays separate.',
   },
 ]);
 
@@ -796,7 +809,7 @@ const DAILY_CARD = Object.freeze({
   label: 'Daily',
   verb: 'Play today',
   blurb: 'The same seed for everyone, today.',
-  sub: 'One seed for the whole day. Same run on every machine. Nothing you earn here follows you home.',
+  sub: `Your score goes on the daily board. Clear ${SWARM_CHALLENGE_DAILY_WAVES} rounds for a one-time ${SWARM_CHALLENGE_DAILY_BOUNTY} cr bonus.`,
 });
 
 const GHOST_CARD = Object.freeze({
@@ -804,6 +817,18 @@ const GHOST_CARD = Object.freeze({
   blurbOn: 'Race the last recorded hull for this seed.',
   blurbOff: 'No ghost for this seed yet.',
 });
+
+/** What a run is, in the front's own words (04_SWARM.md §1-2). */
+export const SWARM_FRONT_PITCH = 'Thirty rounds, a boss every fifth. Kills pay Scrap for the guns on the floor, '
+  + 'and every level up is a card that changes how you fight.';
+
+/** The ship's weight in one line: what the Line does in a light hull and in a heavy one. */
+export function swarmHullLine(ship) {
+  const mass = ship && Number.isFinite(ship.mass) ? ship.mass : 0;
+  if (mass < 40) return 'Light and quick. On the Line, you swing around what you catch.';
+  if (mass < 120) return 'Middleweight. Swings light ships, tows heavy ones.';
+  return 'Heavy and slow. On the Line, you drag whatever you catch.';
+}
 
 function weeklyDoorCard() {
   const id = weeklyMutatorForNow();
@@ -830,8 +855,6 @@ export const crucibleScreen = {
   mount(rootEl, ctx) {
     this._embarkSpecActive = false;
     const door = this;
-    // TITLE-01: the title's SWARM door lands here in its one-button PLAY state; Customise opens the rest.
-    let playMode = consumeSwarmPlayEntry();
     let enterButton = null;
     let preparation = null;
     let syncTrainingChoice = () => {};
@@ -843,7 +866,7 @@ export const crucibleScreen = {
     rootEl.innerHTML = '';
     rootEl.classList.add('k-screen', 'k-screen--stage', 'sf-crucible-door', 'of-crucible-door');
     rootEl.dataset.kReady = '0';
-    rootEl.dataset.stamp = 'CRUCIBLE / SURVIVAL';
+    rootEl.dataset.stamp = 'SWARM / SURVIVAL';
     rootEl.setAttribute('data-fh-register', 'poster');
     rootEl.setAttribute('role', 'dialog');
     rootEl.setAttribute('aria-labelledby', 'sf-crucible-title');
@@ -872,6 +895,14 @@ export const crucibleScreen = {
     // PQ-146: a Best Line's "Practice this line" stages the same seed, the recorded ruleset and
     // your own ghost — flagged so the launch files under the 'practice' record mode.
     let practiceQueued = false;
+    const hullChoices = crucibleHullChoices();
+    const priorSwarmHull = previous && lastCrucibleRuleset() === SWARM_RULESET ? previous.hullId : null;
+    let swarmShipId = (hullChoices.find(choice => choice.earned && choice.hullId === priorSwarmHull)
+      || hullChoices.find(choice => choice.hullId === 'ship_hornet')).id;
+    const hullFirstSwarm = () => ruleset === SWARM_RULESET && !daily && !weekly && !practiceQueued
+      && (!pendingShare || pendingShare.zeroScrapOpening);
+    const zeroScrapOpening = () => hullFirstSwarm() && startWave === 1 && !raceGhost;
+    const currentStarterId = () => hullFirstSwarm() ? swarmShipId : starterId;
     // S5: the swarm's difficulty contract, remembered with the rest of the launch. Contender is
     // the tuning baseline — an absent or unknown stake normalizes to it, never silently higher.
     // First-timers start on Exhibition (the roomy purse); after that, the stake last used.
@@ -1107,6 +1138,8 @@ export const crucibleScreen = {
       raceGhost = !raceGhost;
       cue('confirm');
       syncGhost();
+      syncStake();
+      syncThreat();
     });
     addWord(modes, ghostButton);
     modeBody.appendChild(modes);
@@ -1143,7 +1176,7 @@ export const crucibleScreen = {
         loadoutRules: JSON.stringify({
           ruleset,
           mutators: terms.challengeMutators,
-          starter: starterId ?? null,
+          starter: currentStarterId(),
           stake: daily || ruleset !== SWARM_RULESET ? null : normalizeSwarmStake(stake),
         }),
         simulationAssistProfile: stuntAssistProfile(ctx.state),
@@ -1163,7 +1196,11 @@ export const crucibleScreen = {
 
     function syncGhost() {
       const offer = currentGhostOffer();
-      if (!offer.available) raceGhost = false;
+      if (!offer.available && raceGhost) {
+        raceGhost = false;
+        syncStake();
+        syncThreat();
+      }
       // The offer's own blurb names the compatibility — same rules, unknown stamp, or the
       // exact fields that differ — beside the ghost record. INF-037.
       ghostBlurb.textContent = offer.blurb || (offer.available ? GHOST_CARD.blurbOn : GHOST_CARD.blurbOff);
@@ -1200,6 +1237,7 @@ export const crucibleScreen = {
 
     function syncMode() {
       syncTrainingChoice();
+      syncHull();
       // The presentation is refreshed after the mode's own labels have settled below.
       const week = weeklyDoorCard();
       // SWARM-05 §7.2: the hangar reads the mode before every early return — a Daily or a
@@ -1225,6 +1263,7 @@ export const crucibleScreen = {
         syncStake();
         syncThreat();
         syncPerk();
+        syncLadder();
         syncGhost();
         return;
       }
@@ -1271,10 +1310,10 @@ export const crucibleScreen = {
     // THE STAKE ROW (swarm only): the run's difficulty contract as four tiles, each naming its
     // purse, its pressure and its earn — the same numbers the results surface reads back. Daily
     // hides the row and rides Contender: a shared challenge cannot let the purse be a door choice.
-    const stakeBody = settingRow('Stake', 'sf-crd-row--stake');
+    const stakeBody = settingRow('Difficulty', 'sf-crd-row--stake');
     const stakeLi = stakeBody.parentNode;
     const stakes = el('ul', 'k-words k-words--row sf-crd-stakes fh-cluster');
-    stakes.setAttribute('aria-label', 'Stake');
+    stakes.setAttribute('aria-label', 'Difficulty');
     pin(stakes, { gap: '10px', 'align-items': 'stretch', 'flex-wrap': 'wrap' });
     const stakeButtons = [];
     const stakeSentence = el('p', 'k-sentence sf-crd-stake-sub', '');
@@ -1287,8 +1326,13 @@ export const crucibleScreen = {
       if (stakeLi && stakeLi.style) { stakeLi.hidden = !on; stakeLi.style.display = on ? '' : 'none'; }
       const def = swarmStakeFor(stake);
       // The blurb only: purse, pressure, pay and score all read on the tiles themselves.
-      stakeSentence.textContent = def.blurb;
-      for (const other of stakeButtons) syncChoice(other, other.dataset.stakeId === stake);
+      const startsAtZero = zeroScrapOpening();
+      stakeSentence.textContent = (startsAtZero && def.openingBlurb) || def.blurb;
+      for (const other of stakeButtons) {
+        syncChoice(other, other.dataset.stakeId === stake);
+        const numbers = other.querySelector('.sf-crd-stake-nums');
+        if (numbers) numbers.textContent = swarmStakePitch(other.dataset.stakeId, startsAtZero);
+      }
     }
     for (const entry of SWARM_STAKES) {
       const card = choiceTile(entry.label, 'sf-crd-stake', '', STAKE_ICON[entry.id] || 'hull');
@@ -1320,16 +1364,24 @@ export const crucibleScreen = {
     pin(threats, { gap: '10px', 'align-items': 'stretch', 'flex-wrap': 'wrap' });
     const threatButtons = [];
     const threatSentence = el('p', 'k-sentence sf-crd-threat-sub', '');
+    const activeThreatPicks = () => [...threatPicks].filter(id => id !== 'thin_purse' || !zeroScrapOpening());
     function syncThreat() {
       const on = !daily && ruleset === SWARM_RULESET;
       if (threatLi && threatLi.style) { threatLi.hidden = !on; threatLi.style.display = on ? '' : 'none'; }
-      for (const other of threatButtons) syncChoice(other, threatPicks.has(other.dataset.threatId));
-      if (!threatPicks.size) {
+      const picks = activeThreatPicks();
+      for (const other of threatButtons) {
+        const hidden = other.dataset.threatId === 'thin_purse' && zeroScrapOpening();
+        other.hidden = hidden;
+        other.disabled = hidden;
+        if (other.parentElement?.tagName === 'LI') other.parentElement.style.display = hidden ? 'none' : '';
+        syncChoice(other, picks.includes(other.dataset.threatId));
+      }
+      if (!picks.length) {
         threatSentence.textContent = 'No wager — the room plays at its honest difficulty.';
         return;
       }
-      const names = [...threatPicks].map((id) => SWARM_THREAT_BY_ID[id].name).join(' + ');
-      const mult = swarmThreatBountyMult([...threatPicks]);
+      const names = picks.map(id => SWARM_THREAT_BY_ID[id].name).join(' + ');
+      const mult = swarmThreatBountyMult(picks);
       threatSentence.textContent = `${names} — the bounty lands at ×${mult.toFixed(2)}.`;
     }
     for (const threat of SWARM_THREATS) {
@@ -1449,7 +1501,23 @@ export const crucibleScreen = {
     const hullSentence = el('p', 'k-sentence sf-crd-hull-sub', '');
     // Hull words pressed the same as kit tiles but stay word-shaped — not `syncChoice` tiles.
     const hullButtons = [];
+    const swarmShipButtons = [];
     function syncHull() {
+      const starterId = currentStarterId();
+      const shipsOnly = hullFirstSwarm();
+      const heading = shipsOnly ? 'Ship' : 'Starter build';
+      hullBody.parentNode.firstChild.textContent = heading;
+      hulls.setAttribute('aria-label', heading);
+      anyHull.hidden = shipsOnly;
+      for (const card of buttons) {
+        card.parentNode.hidden = shipsOnly;
+        card.parentNode.style.setProperty('display', shipsOnly ? 'none' : '', shipsOnly ? 'important' : '');
+      }
+      for (const card of swarmShipButtons) {
+        card.parentNode.hidden = !shipsOnly;
+        card.parentNode.style.setProperty('display', shipsOnly ? '' : 'none', shipsOnly ? '' : 'important');
+        syncChoice(card, shipsOnly && card.dataset.starterId === starterId);
+      }
       const hullPick = typeof starterId === 'string' && starterId.startsWith('hull:')
         ? starterId.slice(5)
         : null;
@@ -1459,7 +1527,7 @@ export const crucibleScreen = {
         const name = entityLabel('hull:' + hullShip.id) || hullShip.name;
         hullSentence.innerHTML = `${entitySpanHtml('hull:' + hullShip.id, escapeHtml(name))}${escapeHtml(
           ruleset === SWARM_RULESET
-            ? ' — bare hull. The opening armory is the kit; the purse buys it.'
+            ? ' — choose equipment on the next screen.'
             : ' — bare hull. No fittings; the drafts decide.',
         )}`;
       } else {
@@ -1491,6 +1559,7 @@ export const crucibleScreen = {
       // behind the title or compete with another screen's New Game preparation.
       if (!door._embarkSpecActive || !ctx || !ctx.bus) return;
       const arena = COMBAT_LAB_ARENAS.find((entry) => entry.id === arenaId) || COMBAT_LAB_ARENAS[0];
+      const starterId = currentStarterId();
       const hullPick = typeof starterId === 'string' && starterId.startsWith('hull:')
         ? starterId.slice(5)
         : ((COMBAT_LAB_STARTER_PACKAGES.find((s) => s.id === starterId) || {}).hullId || null);
@@ -1502,6 +1571,7 @@ export const crucibleScreen = {
         sectorId: arena && arena.sectorId,
         shipId: hullPick,
         seed,
+        survivalRuleset: ruleset,
       });
     }
     this._armEmbarkSpec = armEmbarkSpec;
@@ -1541,9 +1611,12 @@ export const crucibleScreen = {
             ? `${face} is locked — ${earn} to open it.`
             : `${face} is locked.`;
           // The refusal reads in the body too: one horizontal shake, then it is over.
+          // Re-adding on the next animation frame restarts it without a synchronous layout
+          // read (`void offsetWidth`) inside the click handler.
           card.classList.remove('is-denied');
-          void card.offsetWidth;
-          card.classList.add('is-denied');
+          const redenyCard = () => { if (card.isConnected !== false) card.classList.add('is-denied'); };
+          if (typeof requestAnimationFrame === 'function') requestAnimationFrame(redenyCard);
+          else setTimeout(redenyCard, 16);
           cue('deny');
           return;
         }
@@ -1555,6 +1628,20 @@ export const crucibleScreen = {
       buttons.push(card);
       addWord(hulls, card);
     }
+    for (const choice of hullChoices) {
+      if (!choice.earned) continue;
+      const card = choiceTile(choice.name, 'sf-crd-hull', '', 'hull');
+      card.dataset.starterId = choice.id;
+      card.dataset.tileFit = 'fill';
+      card.addEventListener('click', () => {
+        swarmShipId = choice.id;
+        cue('confirm');
+        syncHull();
+        syncGhost();
+      });
+      swarmShipButtons.push(card);
+      addWord(hulls, card);
+    }
     hullBody.appendChild(hulls);
     // ANY HULL — every ship in the catalog, grouped by tier, launches bare. Under swarm the
     // purse buys the kit at the opening armory; elsewhere a bare hull is a wager. Hull picks
@@ -1564,7 +1651,7 @@ export const crucibleScreen = {
       'Any hull, bare — the armory fits the kit.');
     anyHull.appendChild(anyHullCap);
     const hullTiers = new Map();
-    for (const choice of crucibleHullChoices()) {
+    for (const choice of hullChoices) {
       if (!hullTiers.has(choice.tier)) hullTiers.set(choice.tier, []);
       hullTiers.get(choice.tier).push(choice);
     }
@@ -1596,9 +1683,11 @@ export const crucibleScreen = {
           if (hullLocked) {
             hullSentence.dataset.kind = 'earn';
             hullSentence.textContent = `${choice.name} is earned, not picked — ${choice.earnText || 'a Swarm run proves it first.'}`;
+            // The shake restarts on the next animation frame — no synchronous layout read.
             button.classList.remove('is-denied');
-            void button.offsetWidth;
-            button.classList.add('is-denied');
+            const redenyButton = () => { if (button.isConnected !== false) button.classList.add('is-denied'); };
+            if (typeof requestAnimationFrame === 'function') requestAnimationFrame(redenyButton);
+            else setTimeout(redenyButton, 16);
             cue('deny');
             return;
           }
@@ -1882,6 +1971,9 @@ export const crucibleScreen = {
       els.zoneLi.hidden = !onLadder;
       if (!onLadder) {
         startWave = 1;
+        syncTrainingChoice();
+        syncStake();
+        syncThreat();
         return;
       }
       const rec = ladderArenaRec();
@@ -1912,7 +2004,7 @@ export const crucibleScreen = {
         const askText = open.length ? ` · still to earn: ${open.join(' and ')}` : '';
         button.title = z === 0
           ? `From the top — the whole ladder ahead.${open.length ? ` ${mark} banked${askText}.` : ''}`
-          : `Checkpoint start — the armory holds a working purse. ${mark} banked${askText}`;
+          : `Checkpoint start — later rounds, 0 Scrap to start. ${mark} banked${askText}`;
         button.setAttribute('aria-label',
           `Zone ${zone.number}, ${zone.name}, from round ${wave}. ${stars} of 3 stars banked.`
           + `${open.length ? ` Still to earn: ${open.join(' and ')}.` : ''}`);
@@ -1939,8 +2031,8 @@ export const crucibleScreen = {
         ? ` ${pluralWord(pickedOpen.length, 'The next star wants', 'The next stars want')} ${pickedOpen.join(' and ')}.`
         : '';
       els.zoneSentence.textContent = (startWave > 1
-        ? `${picked.name} — checkpoint start at Round ${startWave}. The opening armory holds `
-          + `${swarmCheckpointPurseFor(swarmZoneIndexFor(startWave))} cr for a mid-build.`
+        ? `${picked.name} — checkpoint start at Round ${startWave}, with `
+          + `${swarmCheckpointPurseFor(swarmZoneIndexFor(startWave))} Scrap like every run.`
         : `${picked.name} — from Round 1. Clear each zone's boss for stars and the next checkpoint.`)
         + pickedAsk;
       // The verb says where Play goes (§7.2): only on the ladder's own door — weekly, daily
@@ -1950,6 +2042,9 @@ export const crucibleScreen = {
           ? `Play ${picked.name} — Round ${startWave}`
           : 'Launch Swarm';
       }
+      syncTrainingChoice();
+      syncStake();
+      syncThreat();
     }
 
     // SWARM-05 §7.2 — the hangar strip. Swarm's persistent workshop: the bounty, each
@@ -2069,18 +2164,42 @@ export const crucibleScreen = {
       const res = applyRunShareCode(codeInput.value);
       if (!res.ok) {
         pendingShare = null;
+        syncHull();
+        syncStake();
+        syncThreat();
         shareNote.textContent = res.error;
         cue('deny');
         return;
+      }
+      if (res.zeroScrapOpening) {
+        const hull = hullChoices.find(choice => choice.id === res.starterId);
+        const arenaLocked = crucibleArenaLadderLocked(loadCrucibleMeta()?.ladder, res.arenaId);
+        if (!hull?.earned || arenaLocked) {
+          const locked = arenaLocked ? arenaDescriptions[res.arenaId]?.[0] || 'this arena' : hull?.name || 'this hull';
+          shareNote.textContent = `Unlock ${locked} to use this run code.`;
+          cue('deny');
+          return;
+        }
       }
       pendingShare = {
         mutators: res.mutators,
         dailyDateKey: res.dailyDateKey,
         weeklyMutatorId: res.weeklyMutatorId,
         ghostHash: res.ghostHash,
+        ...(res.zeroScrapOpening ? { zeroScrapOpening: true } : {}),
         ...(res.wreck ? { wreck: res.wreck } : {}),
       };
       starterId = res.starterId;
+      if (res.zeroScrapOpening) {
+        swarmShipId = res.starterId;
+        startWave = 1;
+        raceGhost = false;
+        trainingOpening = res.openingLesson;
+        threatPicks.clear();
+        for (const id of res.swarmThreats) threatPicks.add(id);
+        selectedModifiers.clear();
+        for (const button of rootEl.querySelectorAll('.sf-crd-modifier')) syncChoice(button, false);
+      }
       if (typeof res.stake === 'string' && res.stake) stake = normalizeSwarmStake(res.stake);
       if (COMBAT_LAB_ARENAS.some((a) => a.id === res.arenaId)) arenaId = res.arenaId;
       ruleset = res.ruleset;
@@ -2103,6 +2222,7 @@ export const crucibleScreen = {
       if (res.ghostHash != null && lastGhostRowByHash(doorProfile, res.ghostHash)) raceGhost = true;
       shareNote.textContent = `Code loaded — seed ${res.seed}`
         + (res.mutators.length ? `, ${counted(res.mutators.length, 'mutator', 'mutators')}` : '')
+        + (res.zeroScrapOpening ? ' · 0 Scrap. Choose your starting equipment next' : '')
         + '.';
       cue('confirm');
       syncHull();
@@ -2122,8 +2242,9 @@ export const crucibleScreen = {
     copyCode.addEventListener('click', () => {
       const terms = doorChallengeTerms();
       const dateKey = daily ? dailySnapshot.dateKey : terms.shareDailyKey;
+      const startsAtZero = zeroScrapOpening();
       const res = doorRunShareCode({
-        starterId,
+        starterId: currentStarterId(),
         seed: normalizeSeed(seedInput.value),
         arenaId,
         ruleset,
@@ -2131,6 +2252,9 @@ export const crucibleScreen = {
         dailyDateKey: dateKey,
         weeklyMutatorId: terms.weeklyMutatorId,
         stake: daily || ruleset !== SWARM_RULESET ? null : stake,
+        zeroScrapOpening: startsAtZero,
+        swarmThreats: activeThreatPicks(),
+        openingLesson: trainingOpening && trainingApplies(),
       });
       if (!res.ok) {
         shareNote.textContent = res.error || 'Code could not be written for this setup.';
@@ -2147,9 +2271,9 @@ export const crucibleScreen = {
           clipboard.writeText(res.code).catch(() => { /* the selected field is the fallback */ });
         }
       } catch { /* the selected field is the fallback */ }
-      shareNote.textContent = copied
-        ? 'Code copied — pasting it elsewhere reproduces this seed, build, and rules.'
-        : 'Code ready in the field — copy it from there.';
+      const copiedMessage = startsAtZero ? 'Code copied — paste it to open this ship and starting rules.'
+        : 'Code copied — pasting it elsewhere reproduces this seed, build, and rules.';
+      shareNote.textContent = copied ? copiedMessage : 'Code ready in the field — copy it from there.';
       cue('confirm');
     });
     codeRow.appendChild(copyCode);
@@ -2373,13 +2497,13 @@ export const crucibleScreen = {
     const footWords = el('ul', 'k-words k-words--row');
     footWords.setAttribute('aria-label', 'Swarm');
     let trainingOpening = false;
-    // The one launch path, shared by Enter and Quick play. INF-038.
-    function launchCurrent(trialRuleset = null, { inFlight = false } = {}) {
+    function launchCurrent(trialRuleset = null) {
       const conveyor = trialRuleset === POWERED_CONVEYOR_RULESET || ruleset === POWERED_CONVEYOR_RULESET;
+      const chosenStarterId = conveyor ? starterId : currentStarterId();
       const launchRuleset = conveyor ? POWERED_CONVEYOR_RULESET : ruleset;
       const launchArenaId = conveyor ? CRUCIBLE_ARENA_ID : arenaId;
-      const bareHull = typeof starterId === 'string' && starterId.startsWith('hull:');
-      if (!bareHull && !isStarterAvailable(doorProfile, starterId)) {
+      const bareHull = typeof chosenStarterId === 'string' && chosenStarterId.startsWith('hull:');
+      if (!bareHull && !isStarterAvailable(doorProfile, chosenStarterId)) {
         cue('deny');
         return;
       }
@@ -2387,7 +2511,7 @@ export const crucibleScreen = {
       // way it refused the click — a restored or hand-staged starter can land here without
       // ever passing the locked word's deny.
       if (bareHull) {
-        const pickDef = SHIPS.find((row) => row && row.id === starterId.slice(5));
+        const pickDef = SHIPS.find((row) => row && row.id === chosenStarterId.slice(5));
         if (pickDef && pickDef.swarmEarned && !swarmCrossoverEarned(pickDef.swarmEarned)) {
           hullSentence.dataset.kind = 'earn';
           hullSentence.textContent = `${pickDef.name} is earned, not picked — a Swarm run proves it first.`;
@@ -2399,10 +2523,10 @@ export const crucibleScreen = {
       // Daily rides Contender — a shared challenge does not get a purse choice; the same
       // shared-challenge law keeps a daily's Threat list empty.
       const launchStake = daily ? null : stake;
-      const launchThreats = daily ? null : [...threatPicks];
+      const launchThreats = daily ? null : activeThreatPicks();
       const setup = bareHull
         ? crucibleHullSetupFor({
-          hullId: starterId.slice(5),
+          hullId: chosenStarterId.slice(5),
           seed: normalizeSeed(seedInput.value),
           arenaId: launchArenaId,
           ruleset: launchRuleset,
@@ -2411,14 +2535,13 @@ export const crucibleScreen = {
           startWave: conveyor ? 1 : startWave,
         })
         : crucibleSetupFor({
-          starterId,
+          starterId: chosenStarterId,
           seed: normalizeSeed(seedInput.value),
           arenaId: launchArenaId,
           ruleset: launchRuleset,
           swarmStake: launchStake,
           swarmThreats: launchThreats,
           startWave: conveyor ? 1 : startWave,
-          ...(inFlight ? { openArmoryBeforeRound1: false } : {}),
         });
       if (!setup.ok || !setup.value) {
         cue('deny');
@@ -2428,6 +2551,7 @@ export const crucibleScreen = {
       cue('confirm');
       if (launchRuleset === SWARM_RULESET && launchStake) rememberSwarmStake(launchStake);
       const payload = { ...setup.value };
+      if (!conveyor && zeroScrapOpening()) payload.zeroScrapOpening = true;
       const offer = currentGhostOffer();
       let ghostHash = !conveyor && raceGhost && offer.available ? offer.hash : null;
       // PQ-160.02: a code-named ghost races when its block was imported to this machine.
@@ -2436,7 +2560,7 @@ export const crucibleScreen = {
         ghostHash = pendingShare.ghostHash;
       }
       if (ghostHash != null) payload.ghostHash = ghostHash;
-      payload.openingLesson = !conveyor && launchRuleset === SWARM_RULESET && trainingOpening;
+      payload.openingLesson = !conveyor && trainingOpening && trainingApplies();
       if (!conveyor && pendingShare?.wreck) payload.wreck = pendingShare.wreck;
       const {
         shareMutators, weeklyMutatorId, challengeMutators, shareDailyKey,
@@ -2456,112 +2580,226 @@ export const crucibleScreen = {
       } else {
         clearQueuedChallenge();
         if (ghostHash != null) queueGhostPlayback(ghostHash);
-        if (!conveyor && practiceQueued) queuePracticeRun();
+        if (!conveyor && practiceQueued) payload.practice = true;
       }
       requestSharedCrucibleRun(ctx.bus, payload, launchRuleset);
     }
-    const training = word('Training: Off', 'k-word');
+    const training = word('Start with one enemy · Off', 'k-word');
     paintKey(training, 'small');
-    training.setAttribute('aria-pressed', 'false');
-    const trainingApplies = () => canChooseSwarmOpeningLesson({
-      ruleset, daily, weekly, raceGhost, pendingShare, practiceQueued,
-    });
+    training.setAttribute('aria-label', 'Start with one enemy');
+    const trainingApplies = () => startWave === 1 && doorChallengeTerms().challengeMutators.length === 0
+      && canChooseSwarmOpeningLesson({
+        ruleset, daily, weekly, raceGhost, practiceQueued,
+        pendingShare: pendingShare?.zeroScrapOpening ? null : pendingShare,
+      });
     syncTrainingChoice = () => {
       const enabled = trainingApplies();
-      training.textContent = trainingOpening ? 'Training: On' : 'Training: Off';
+      const on = enabled && trainingOpening;
+      training.textContent = on ? 'Start with one enemy, then the wave · On'
+        : startWave > 1 ? 'Start with one enemy · Round 1 only' : 'Start with one enemy · Off';
       training.disabled = !enabled;
+      training.setAttribute('aria-pressed', String(on));
       training.setAttribute('aria-disabled', enabled ? 'false' : 'true');
-      training.setAttribute('aria-label', enabled
-        ? `Training opening: ${trainingOpening ? 'on' : 'off'}. Select to ${trainingOpening ? 'turn off' : 'turn on'} the optional single-enemy lesson.`
-        : 'Training opening unavailable for the selected mode or challenge.');
       training.title = enabled
-        ? 'Optional first-wave lesson. Off by default; the normal Swarm opening starts immediately.'
-        : 'Available for an ordinary Swarm run without a daily, weekly, or ghost challenge.';
+        ? 'The rest of Round 1 arrives when the first enemy is out of the fight or after 45 seconds.'
+        : 'Available when starting at Round 1 in ordinary Swarm.';
+      training.setAttribute('aria-description', training.title);
     };
     syncTrainingChoice();
     training.addEventListener('click', () => {
       if (!trainingApplies()) return;
       trainingOpening = !trainingOpening;
-      training.setAttribute('aria-pressed', trainingOpening ? 'true' : 'false');
       syncTrainingChoice();
       cue('confirm');
     });
     addWord(footWords, training);
-    const quick = word('Quick play', 'k-word--emph sf-swarm-quick-key');
-    quick.setAttribute('aria-label', 'Quick play: Swarm now on your ladder');
-    quick.title = 'Swarm now on the arena\u2019s ladder, with this build and checkpoint.';
-    // A key like Back beside it, not loose words in front of the launch key.
-    paintKey(quick, 'small');
-    // Quick play IS the ladder (§6.1/§7.2): Swarm on the arena's authored seed, at the picked
-    // checkpoint, no challenge keys, no ghost. Hull and arena stay — loadout is the player's to keep.
-    // seedCustom clears so the authored seed fills the field. PLAY (the title door's one button) is
-    // the same launch with round 1 starting in flight.
-    function quickLaunch({ inFlight = false } = {}) {
-      ruleset = SWARM_RULESET;
-      daily = false;
-      weekly = false;
-      practiceQueued = false;
-      pendingShare = null;
-      raceGhost = false;
-      seedCustom = false;
-      syncMode();
-      syncHull();
-      syncGhost();
-      launchCurrent(null, { inFlight });
-    }
-    quick.addEventListener('click', () => quickLaunch());
-    addWord(footWords, quick);
-    const enter = word('Hold the line', 'k-word--emph k-word--primary sf-swarm-enter-key');
+    const enter = word('Launch Swarm', 'k-word--emph k-word--primary sf-swarm-enter-key');
     enterButton = enter;
     paintKey(enter, 'hazard');
     enter.addEventListener('click', () => {
       launchCurrent();
     });
     addWord(footWords, enter);
+    // SAVE-AND-SOAK-1 Part B — the interrupted run's word on the foot row. It appears only
+    // while a Swarm record survives and only on Swarm's own door: the record replays the
+    // round it names — seed, room, hull and kit, purse and pilot — through the ordinary
+    // launch route, beside starting a fresh run.
+    const resumeRec = (() => {
+      try { return swarmResumeFor(loadCrucibleMeta()); } catch { return null; }
+    })();
+    const launchResume = () => {
+      const setup = crucibleHullSetupFor({
+        hullId: resumeRec.ship.defId,
+        loadout: resumeRec.ship.loadout,
+        seed: resumeRec.seed,
+        arenaId: resumeRec.arenaId || CRUCIBLE_ARENA_ID,
+        ruleset: SWARM_RULESET,
+        startWave: resumeRec.wave,
+      });
+      if (!setup.ok || !setup.value) {
+        cue('deny');
+        ctx.bus.emit('toast', { text: 'The interrupted run cannot be rebuilt — start fresh.', kind: 'error', ttl: 5 });
+        return;
+      }
+      cue('confirm');
+      const payload = { ...setup.value, resume: resumeRec };
+      requestSharedCrucibleRun(ctx.bus, payload, SWARM_RULESET);
+    };
+    if (resumeRec && ruleset === SWARM_RULESET) {
+      const resumeWord = word(`Resume run — Round ${resumeRec.wave}`, 'k-word--emph k-word--primary');
+      paintKey(resumeWord, 'legend');
+      resumeWord.title = `Pick the interrupted run back up at the start of Round ${resumeRec.wave}`
+        + ' — your seed, room, hull, kit and Scrap as the round began.';
+      resumeWord.setAttribute('aria-label',
+        `Resume run — round ${resumeRec.wave}. Restarts the interrupted Swarm run at the beginning of round ${resumeRec.wave}.`);
+      resumeWord.addEventListener('click', launchResume);
+      addWord(footWords, resumeWord);
+    }
     // The one way back, drawn by the deckplate sheet like every screen's (keycap + ESC chip).
     const back = word('Back', 'k-word--emph sf-back');
-    back.addEventListener('click', () => { cue('close'); ctx.bus.emit('ui:popScreen', {}); });
-    addWord(footWords, back);
-    // TITLE-01: PLAY (one press to round 1 on the shipped defaults) and Customise (the full entrance).
-    // Both are in the DOM always; the play state shows only these, Training and Back.
-    const play = word('Play', 'k-word--emph k-word--primary sf-swarm-play-key');
-    paintKey(play, 'hazard');
-    play.addEventListener('click', () => quickLaunch({ inFlight: true }));
-    addWord(footWords, play);
-    const customise = word('Customise', 'k-word--emph sf-swarm-customise-key');
-    paintKey(customise, 'small');
-    customise.addEventListener('click', () => {
-      playMode = false;
-      rootEl.classList.remove('orr-swarm-play');
-      cue('confirm');
-      try { enterButton && enterButton.focus({ preventScroll: true }); } catch { /* focus is a courtesy */ }
+    back.setAttribute('aria-label', back.textContent);
+    // Behind More, Back returns to the front; on the front it leaves the screen.
+    back.addEventListener('click', () => {
+      cue('close');
+      if (door._front && door._doorView === 'more') { door._showFront?.(); return; }
+      ctx.bus.emit('ui:popScreen', {});
     });
-    addWord(footWords, customise);
-    rootEl.classList.toggle('orr-swarm-play', playMode);
-    // The door is mounted ahead of the title's press (the manager prewarms it), so the PLAY state is also
-    // taken up at show time; hiding the door always drops it, so any other way in is the full entrance.
-    door._setPlayMode = (on) => {
-      playMode = !!on;
-      rootEl.classList.toggle('orr-swarm-play', playMode);
-    };
-    door._playKey = play;
+    addWord(footWords, back);
     foot.appendChild(footWords);
     // r2: the door documents its input — one quiet line under the keys.
     foot.appendChild(el('p', 'k-t-fine orr-door-hint', '\u2190 \u2192 choose \u00b7 Enter launch'));
     rootEl.appendChild(foot);
 
     syncMode();
-    syncHull();
     preparation = createCruciblePreparation({ root: rootEl, stage, title, foot, enter,
-      onPreviewVisibility: visible => this._cabinetAttract?.setVisible(visible),
-      read: () => ({ starterId, arenaId, arenaLabel: (arenaDescriptions[arenaId] || [])[0] || arenaId, ruleset, daily, dailySnapshot, weekly, stake, weeklyMutatorId: doorChallengeTerms().weeklyMutatorId, seed: seedInput.value }) });
+      onPreviewVisibility: visible => this._cabinetAttract?.setVisible(visible && door._doorView !== 'play'),
+      read: () => ({ starterId: currentStarterId(), hullFirst: hullFirstSwarm(), zeroScrapOpening: zeroScrapOpening(), arenaId, arenaLabel: (arenaDescriptions[arenaId] || [])[0] || arenaId, ruleset, daily, dailySnapshot, weekly, stake, weeklyMutatorId: doorChallengeTerms().weeklyMutatorId, seed: seedInput.value }) });
     this._preparation = preparation;
+
+    // THE FRONT (04_SWARM.md §7): the Foundry's key art, one PLAY, and three remembered picks —
+    // room, difficulty, ship (with its free starting gun). PLAY reaches round 1 in one press:
+    // zero Scrap, the gun fitted during the load, the room's Course seed. Everything else the
+    // door holds stays whole behind More.
+    consumeSwarmPlayEntry();
+    this._front = null;
+    this._doorView = 'more';
+    if (preparation) {
+      const doorPick = lastSwarmDoorPick();
+      const playArenaOpen = (id) => !!arenaDescriptions[id]
+        && !crucibleArenaLadderLocked(doorProfile && doorProfile.ladder, id);
+      const playArenas = () => COMBAT_LAB_ARENAS.filter((a) => playArenaOpen(a.id));
+      const playHulls = hullChoices.filter((choice) => choice.earned);
+      // No Swarm launch yet this session: the picks the player last flew lead.
+      if (!(previous && lastCrucibleRuleset() === SWARM_RULESET)) {
+        if (doorPick.arenaId && playArenaOpen(doorPick.arenaId)) arenaId = doorPick.arenaId;
+        if (doorPick.hullId && playHulls.some((c) => c.hullId === doorPick.hullId)) swarmShipId = `hull:${doorPick.hullId}`;
+      }
+      if (!playArenaOpen(arenaId)) arenaId = CRUCIBLE_ARENA_ID;
+      const playHullId = () => (String(swarmShipId).startsWith('hull:') ? String(swarmShipId).slice(5) : SWARM_DEFAULT_HULL_ID);
+      let playGun = swarmDoorGunFor(playHullId(), doorPick)?.defId || null;
+      let launching = false;
+      const playSwarm = () => {
+        if (launching) return;
+        const hullId = playHullId();
+        const setup = swarmPlaySetup({ arenaId, hullId, gunDefId: playGun, stake });
+        if (!setup) {
+          cue('deny');
+          ctx.bus.emit('toast', { text: 'That run could not be built. Pick another ship.', kind: 'error', ttl: 4 });
+          return;
+        }
+        launching = true;
+        cue('confirm');
+        rememberSwarmStake(stake);
+        rememberSwarmDoorPick({ arenaId: setup.arenaId, hullId, gunDefId: setup.retryOpeningEquipment?.gun?.defId || null });
+        clearQueuedChallenge();
+        if (!requestSharedCrucibleRun(ctx.bus, setup, SWARM_RULESET)) launching = false;
+      };
+      this._resetLaunching = () => { launching = false; };
+      const front = createSwarmPlayFront({
+        root: rootEl,
+        pitch: SWARM_FRONT_PITCH,
+        art: () => kitUrl((ARENA_TILE[arenaId] || MODE_TILE.swarm).replace(/\.png$/, '@2x.png')),
+        roomName: () => (arenaDescriptions[arenaId] || [])[0] || '',
+        picks: [
+          {
+            id: 'arena', label: 'Arena',
+            options: () => playArenas().map((a) => ({ value: a.id, name: arenaDescriptions[a.id][0], line: arenaDescriptions[a.id][1] })),
+            value: () => arenaId,
+            choose: (id) => { arenaId = id; cue('confirm'); syncArena(); },
+          },
+          {
+            id: 'difficulty', label: 'Difficulty',
+            options: () => SWARM_STAKES.map((s) => ({ value: s.id, name: s.label, line: s.blurb })),
+            value: () => stake,
+            choose: (id) => { stake = id; cue('confirm'); syncStake(); syncGhost(); },
+          },
+          {
+            id: 'ship', label: 'Ship',
+            options: () => playHulls.map((c) => {
+              const ship = SHIPS.find((s) => s.id === c.hullId);
+              return { value: c.hullId, name: c.name, line: swarmHullLine(ship), art: hullPosterUrl(c.hullId, 'top') };
+            }),
+            value: () => playHullId(),
+            choose: (id) => {
+              swarmShipId = `hull:${id}`;
+              playGun = swarmDoorGunFor(id)?.defId || null;
+              cue('confirm'); syncHull(); syncGhost();
+            },
+          },
+          {
+            id: 'gun', label: 'Starting gun', sub: true,
+            options: () => swarmOpeningGuns(playHullId()).map((g) => ({ value: g.defId, name: g.name, line: g.line })),
+            value: () => playGun,
+            choose: (id) => { playGun = id; cue('confirm'); },
+          },
+        ],
+        onPlay: playSwarm,
+        onMore: () => { cue('open'); door._showMore?.(); },
+        onBack: () => { cue('close'); ctx.bus.emit('ui:popScreen', {}); },
+        resume: resumeRec ? {
+          label: `Resume round ${resumeRec.wave}`,
+          title: `Pick the interrupted run back up at the start of round ${resumeRec.wave}.`,
+          onClick: launchResume,
+        } : null,
+      });
+      if (front) {
+        this._front = front;
+        this._playSwarm = playSwarm;
+        const setView = (view) => {
+          door._doorView = view;
+          rootEl.dataset.doorView = view;
+          rootEl.setAttribute('aria-labelledby', view === 'play' ? 'sf-play-title' : 'sf-crucible-title');
+          this._cabinetAttract?.setVisible(view !== 'play' && !!preparation.previewVisible);
+        };
+        this._showFront = () => {
+          // The front always plays Swarm: coming back from More drops any other mode's pick.
+          setView('play');
+          front.update();
+          front.focus();
+        };
+        this._showMore = () => {
+          setView('more');
+          preparation.show(0);
+          preparation.focus();
+        };
+        // Behind More, Esc comes back to the front before anything else can close the screen.
+        rootEl.addEventListener('keydown', (event) => {
+          if (event.key !== 'Escape' || door._doorView !== 'more' || event.repeat) return;
+          event.preventDefault(); event.stopPropagation();
+          cue('close');
+          this._showFront();
+        });
+        setView('play');
+        syncArena(); syncHull(); syncStake();
+        front.update();
+      }
+    }
     // The door unit's composition sheet lands after the prep sheet so its fixes win the cascade
     // (crucible-doorLayouts.js documents what it carries).
     injectCrucibleDoorLayouts(rootEl.ownerDocument || document);
     this._cabinetAttract = createCabinetAttract({ host: preparation?.attractHost,
       tape: SWARM_CABINET_ATTRACT_TAPE, reducedMotion: () => !canAnimate() || orreryMotionReduced() });
-    this._cabinetAttract.setVisible(!!preparation?.previewVisible);
+    this._cabinetAttract.setVisible(!!preparation?.previewVisible && door._doorView !== 'play');
     this._refreshDaily = () => { dailySnapshot = cabinetDailySnapshot(); syncMode(); preparation?.update(); };
     const cabinetDoc = rootEl.ownerDocument || document;
     this._dailyVisibility = () => { if (!cabinetDoc.hidden) this._refreshDaily?.(); };
@@ -2574,31 +2812,51 @@ export const crucibleScreen = {
     // ready to photograph when its words are built, it is ready when the arena behind them is lit.
     // Writing '1' here raced the stage and produced a capture of a door with nothing behind it.
 
-    if (preparation) preparation.focus();
+    if (this._front) this._front.focus();
+    else if (preparation) preparation.focus();
     else if (typeof enter.focus === 'function') {
       try { enter.focus(); } catch { /* focus is best-effort */ }
     }
   },
 
+  /** Enter is PLAY anywhere on the front, unless a quiet key (More, Back) holds focus. */
+  onKey(ev) {
+    if (!this._front || this._doorView !== 'play' || ev.key !== 'Enter' || ev.repeat) return false;
+    const active = typeof document !== 'undefined' ? document.activeElement : null;
+    if (this._front.ownsEnter(active)) return false;
+    this._playSwarm?.();
+    return true;
+  },
+
+  /** Behind More, Esc returns to the front; on the front it leaves as every screen does. */
+  onEscape() {
+    if (this._front && this._doorView === 'more') { cue('close'); this._showFront?.(); return true; }
+    return false;
+  },
+
   onShow() {
     this._embarkSpecActive = true;
-    if (consumeSwarmPlayEntry()) this._setPlayMode?.(true);
     this._refreshDaily?.();
     this._armEmbarkSpec?.();
     this._refreshCabinetBoard?.();
     this._cabinetDoc?.addEventListener?.('visibilitychange', this._dailyVisibility);
     this._cabinetAttract?.start();
+    this._resetLaunching?.();
+    if (this._front) this._showFront?.();
     const r = this._regions;
     if (!r || !canAnimate()) return;
     cue('open');
     try {
-      settle(r.title, { from: 'top', state: 'crucible:open' });
-      settle(r.stage, { from: 'left', delay: 60, state: 'crucible:open' });
-      settle(r.foot, { from: 'bottom', delay: 120, state: 'crucible:open' });
+      if (this._front && this._doorView === 'play') {
+        settle(this._front.el.querySelector('.sf-play__panel'), { from: 'left', state: 'crucible:open' });
+      } else {
+        settle(r.title, { from: 'top', state: 'crucible:open' });
+        settle(r.stage, { from: 'left', delay: 60, state: 'crucible:open' });
+        settle(r.foot, { from: 'bottom', delay: 120, state: 'crucible:open' });
+      }
     } catch { /* motion is cosmetic */ }
-    if (this._playKey && this._playKey.isConnected && this._playKey.offsetParent) {
-      try { this._playKey.focus({ preventScroll: true }); } catch { /* focus is best-effort */ }
-    } else if (this._preparation) this._preparation.focus();
+    if (this._front && this._doorView === 'play') this._front.focus();
+    else if (this._preparation) this._preparation.focus();
     else if (r.enter && typeof r.enter.focus === 'function') {
       try { r.enter.focus({ preventScroll: true }); } catch { /* focus is best-effort */ }
     }
@@ -2606,7 +2864,6 @@ export const crucibleScreen = {
 
   onHide() {
     this._embarkSpecActive = false;
-    this._setPlayMode?.(false);
     this._cabinetAttract?.stop();
     this._cabinetDoc?.removeEventListener?.('visibilitychange', this._dailyVisibility);
     if (canAnimate()) cue('close');
@@ -2622,6 +2879,9 @@ export const crucibleScreen = {
     this._refreshDaily = this._dailyVisibility = this._refreshCabinetBoard = null;
     this._preparation?.dispose();
     this._preparation = null;
+    this._front?.dispose();
+    this._front = null;
+    this._playSwarm = this._showFront = this._showMore = this._resetLaunching = null;
     for (const station of this._stations || []) station?.dispose?.();
     this._stations = [];
     this._regions = null;
@@ -2671,7 +2931,7 @@ export function resultRows(result) {
       ? [['Stake', `${swarmStakeFor(result.swarmStake).label} — ${swarmStakePitch(result.swarmStake)}`]]
       : []),
     ['Score', String(result.score || 0)],
-    ['Run purse', `${result.credits || 0} cr`],
+    ['Scrap left', `${result.credits || 0} Scrap`],
     ['Level', `${result.level || 1} · ${result.xp || 0} xp`],
     ['Seed', String(result.seed || 0)],
     // The stamp stays on the record (pq-ids and all). The row is the same grammar as Seed:
@@ -2750,14 +3010,25 @@ export function breachPhrase(layer) {
  * and an id is frequently null — a hit whose weapon nothing recorded still has to name itself.
  */
 export function weaponDisplayName(weaponId) {
-  if (!weaponId) return 'Unidentified fire';
+  if (!weaponId) return 'Direct fire';
   const known = WEAPON_NAME_BY_ID.get(weaponId);
   if (known) return known;
   const words = String(weaponId).replace(/^(wpn|unique)_/, '').split('_').filter(Boolean);
-  if (!words.length) return 'Unidentified fire';
+  if (!words.length) return 'Direct fire';
   return words
     .map((word) => (word.length === 1 ? word.toUpperCase() : word[0].toUpperCase() + word.slice(1)))
     .join(' ');
+}
+
+// A hit with neither a weapon nor a recorded cause still names itself by what it did — the plate
+// never prints "?" or "unknown" (04_SWARM.md §8). Older records predate the recorder's own naming.
+const HIT_TYPE_WORDS = Object.freeze({
+  kinetic: 'Impact', thermal: 'Heat', ion: 'Ion fire', plasma: 'Plasma', phase: 'Phase fire', collision: 'Collision',
+});
+function hitSourceName(entry) {
+  if (typeof entry.causeLabel === 'string' && entry.causeLabel) return entry.causeLabel;
+  if (typeof entry.weaponId === 'string' && entry.weaponId) return weaponDisplayName(entry.weaponId);
+  return HIT_TYPE_WORDS[String(entry.type || '').toLowerCase()] || 'Impact';
 }
 
 /**
@@ -2801,10 +3072,7 @@ export function damageBreakdown(trail) {
   let hits = 0;
   for (const entry of entries) {
     if (!entry || typeof entry !== 'object') continue;
-    // Strings only: a null-prototype object would throw String(), and Number(Symbol)
-    // throws — both degrade to the unattributed bucket instead of breaking the plate.
-    const rawId = typeof entry.weaponId === 'string' ? entry.weaponId : null;
-    const name = weaponDisplayName(rawId);
+    const name = hitSourceName(entry);
     const rawAmount = typeof entry.amount === 'number' || typeof entry.amount === 'string'
       ? Number(entry.amount)
       : NaN;
@@ -2877,13 +3145,19 @@ export function buildLead(picks) {
  */
 export function killChainRows(defeat, death = null) {
   if (!defeat) return [];
-  const killer = defeat.attacker
-    ? (defeat.faction ? `${defeat.attacker} — ${defeat.faction}` : defeat.attacker)
-    : 'Unidentified attacker';
+  const environmental = defeat.source?.kind === 'environment';
+  const physicalName = typeof defeat.physicalLabel === 'string' && defeat.physicalLabel
+    ? capFirst(defeat.physicalLabel) : null;
+  const attacker = environmental ? defeat.source.label || 'Environmental hazard'
+    : defeat.attacker || defeat.source?.label || physicalName || 'Enemy fire';
+  const killer = !environmental && defeat.faction ? `${attacker} — ${defeat.faction}` : attacker;
+  // Polish list: the death screen always names what killed you — never "Unidentified weapon" or
+  // "?". With no recorded weapon the row says the hull itself did it (a ram or a blast is a body).
   const rows = [
     ['Killed by', killer],
-    // A rock or a hazard has no gun; "Unidentified weapon" under an environmental kill reads as a bug.
-    ['Its weapon', defeat.source && defeat.source.kind === 'environment' ? 'Impact' : defeat.weapon || 'Unidentified weapon'],
+    environmental || defeat.physicalLabel
+      ? ['Damage cause', defeat.physicalLabel || 'Environmental damage']
+      : ['Its weapon', defeat.weapon || 'Its own hull — a ram or a blast'],
     ['It came from', bearingWord(defeat.direction)],
     ['It got in', breachPhrase(defeat.dominantLayer)],
   ];
@@ -2942,8 +3216,8 @@ export function resultTitle(result) {
 }
 
 export function resultStamp(result) {
-  if (result && result.outcome === 'victory') return 'CRUCIBLE / ARENA CLEARED';
-  return 'CRUCIBLE / FLIGHT RECORD';
+  if (result && result.outcome === 'victory') return 'SWARM / ARENA CLEARED';
+  return 'SWARM / FLIGHT RECORD';
 }
 
 /**
@@ -2988,26 +3262,21 @@ function resultVersion(owner) {
   return resultSignature(result);
 }
 
-/**
- * S14 — the run's first fallen champion leaves a pending stamp on run telemetry; the results
- * plate reads it as a live-run victory beat. Only a pending stamp qualifies — a settled
- * result at run end must never be shadowed by a milestone the fight already played.
- */
-function swarmFirstBossMilestone(state) {
-  const run = state && state.run;
-  if (!run || run.ruleset !== SWARM_RULESET) return null;
-  const stamp = run.telemetry && run.telemetry.firstBossDown;
-  if (!stamp || stamp.pending !== true) return null;
-  return stamp;
+function isRunBuildPick(pick) {
+  return pick?.startingEquipment !== true && Boolean(pick?.verb || pick?.defId);
+}
+
+function openingEquipmentOnly(result) {
+  return result?.openingEquipment != null && !(Array.isArray(result.picks) && result.picks.some(isRunBuildPick));
 }
 
 /** The band name for a section. The damage band means something different after a clear. */
-export function sectionTitle(id, outcome) {
+export function sectionTitle(id, outcome, result) {
   if (id === 'story') return 'The run';
   if (id === 'kill_chain') return 'How it ended';
   if (id === 'last_seconds') return outcome === 'defeat' ? 'The last seconds' : 'What you weathered';
   if (id === 'ledger') return 'Run ledger';
-  if (id === 'build') return 'What you built';
+  if (id === 'build') return openingEquipmentOnly(result) ? 'Starting equipment' : 'What you built';
   return '';
 }
 
@@ -3022,8 +3291,7 @@ export function resultSectionOrder(result) {
   if (!result) return [];
   const hasStory = !!(result.death
     || (Array.isArray(result.moments) && result.moments.length)
-    || result.buildName
-    || result.buildCode);
+    || (!openingEquipmentOnly(result) && (result.buildName || result.buildCode)));
   if (result.outcome === 'victory') {
     return hasStory ? ['story', 'build', 'last_seconds', 'ledger'] : ['build', 'last_seconds', 'ledger'];
   }
@@ -3109,7 +3377,7 @@ export function storySentences(result) {
   }
   // The build name lives in its own band below (renderBuild's build-name line); the story no
   // longer repeats it as a sentence.
-  if (typeof result.buildCode === 'string' && result.buildCode) {
+  if (!openingEquipmentOnly(result) && typeof result.buildCode === 'string' && result.buildCode) {
     lines.push(`Build code ${result.buildCode}`);
   }
   return lines;
@@ -3380,10 +3648,9 @@ function renderBestLineReview(line, hooks = {}) {
 }
 
 function renderKillChain(band, defeat, death = null) {
-  // Threat colour on the two rows that name the enemy. The label beside each is the channel that
-  // survives forced-colors and colour blindness; the tint is never the only one.
+  // Emphasize the source and cause of the damage. Their labels also carry this in forced colors.
   const chain = pairRows(killChainRows(defeat, death), 'sf-crres__chain',
-    (label) => (label === 'Killed by' || label === 'Its weapon' ? 'k-bad' : ''));
+    (label) => (['Killed by', 'Its weapon', 'Damage cause'].includes(label) ? 'k-bad' : ''));
   band.appendChild(chain);
 
   const vitals = vitalsFigures(defeat);
@@ -3497,7 +3764,13 @@ export function buildCodeLine(picks) {
 }
 
 function renderBuild(band, result) {
-  const picks = result && result.picks;
+  const picks = Array.isArray(result?.picks) ? result.picks.filter(isRunBuildPick) : [];
+  if (result?.openingEquipment) {
+    const { gun } = result.openingEquipment;
+    const start = gun ? `You started with a free ${weaponDisplayName(gun.defId)}.` : 'You started without a gun.';
+    band.appendChild(el('p', 'k-sentence sf-crres__lead', start));
+    if (!picks.length) return;
+  }
   band.appendChild(el('p', 'k-sentence sf-crres__lead', buildLead(picks)));
   if (result && typeof result.buildName === 'string' && result.buildName) {
     band.appendChild(el('p', 'k-sentence sf-crres__build-name', result.buildName));
@@ -3659,6 +3932,12 @@ function shareCopyRow(band, { summary, ghostText, ghostField }) {
 }
 
 export function buildShareBand(result) {
+  // Without a settled record there is nothing honest to share: the old plate printed a run code
+  // beside 'No flight record was kept for that run.' (DEMO-SWARM-UX-2 contradiction).
+  if (!result) return null;
+  // A Swarm result that has not settled its outcome is an interim plate; the code waits for the
+  // Run Over plate or the finished record. A left run (outcome 'aborted') still shares.
+  if (result.ruleset === SWARM_RULESET && !result.outcome) return null;
   // SWARM-08 B5 — a Circuit run's route is not carried by the current run code, so the plate
   // makes no reproduction claim it cannot honour.
   if (result && (result.circuit || result.recordRules?.circuit)) return null;
@@ -3692,10 +3971,14 @@ export function buildShareBand(result) {
 
   if (code || (ghost && ghost.text)) {
     // One explainer for the whole register — two per-item notes were what pushed the ghost row
-    // under the ledger's clip edge.
-    band.appendChild(el('p', 'k-t-fine k-38 sf-crres__share-note',
-      'Same seed, same build, same rules — another machine reproduces this run; the recorded hull races you there. '
-      + 'A code selects itself when you touch it.'));
+    // under the ledger's clip edge. The sentence only claims a recorded hull when there is one
+    // (DEMO-SWARM-UX-2: never contradict the fields that actually exist).
+    const note = code && ghost && ghost.text
+      ? 'Same seed, same build, same rules — another machine reproduces this run; the recorded hull races you there. A code selects itself when you touch it.'
+      : code
+        ? 'Same seed, same build, same rules — another machine reproduces this run. A code selects itself when you touch it.'
+        : 'The recorded hull races you there. A code selects itself when you touch it.';
+    band.appendChild(el('p', 'k-t-fine k-38 sf-crres__share-note', note));
   }
 
   if (code) {
@@ -3728,6 +4011,166 @@ export function buildShareBand(result) {
   return band;
 }
 
+function leaveCrucibleResults(ctx, openHangar = false) {
+  ctx.bus.emit('game:over:dismissed', {});
+  ctx.bus.emit('game:exitToMenu', { source: 'crucible_results' });
+  ctx.bus.emit('ui:closeAll', {});
+  ctx.bus.emit('ui:pushScreen', { id: 'mainMenu' });
+  if (openHangar) ctx.bus.emit('ui:pushScreen', { id: 'crucible' });
+}
+
+/**
+ * DEMO-RUNOVER-1 — one Again press, guaranteed. The plate's confirm key is owned at the document
+ * in capture so no focus state (an autofocus race, focus dropped to the body) and no root-path
+ * dependency can silently drop the first Enter or Space. A focused quiet word (Hangar, Menu,
+ * Same seed, Take the win) keeps its own native activation; anything else the key lands on is
+ * Again. A screen pushed above the plate re-owns the keys (the stack check). An empty or missing
+ * stack still counts as top — that is the first-frame race that swallowed the demo's first
+ * Enter. dispose/mount tear the listener down.
+ */
+function runOverPlateIsTop(ctx, screenDef) {
+  if (screenDef && screenDef._plateOpen === false) return false;
+  const stack = ctx && ctx.state && ctx.state.ui && ctx.state.ui.screenStack;
+  if (Array.isArray(stack)) {
+    // An active empty stack means gameplay or loading (no modal top) — never swallow Space/Enter.
+    if (stack.length === 0) return false;
+    return stack[stack.length - 1] === 'crucibleResults';
+  }
+  return true;
+}
+
+function mountRunOverKeys(screenDef, doc, isTop, confirm) {
+  removeRunOverKeys(screenDef, doc);
+  screenDef._runOverKeySpec = { isTop, confirm };
+  screenDef._runOverKey = (event) => {
+    if (event.key !== 'Enter' && event.key !== ' ' && event.code !== 'Space') return;
+    if (event.repeat) return;
+    if (!isTop()) return; // a screen above the plate owns the keys
+    const target = event.target;
+    if (target && target.tagName) {
+      const tag = String(target.tagName).toUpperCase();
+      // A focused word on the plate answers its own key natively; a text field never happens
+      // on this plate, but the rule costs nothing and keeps the handler honest elsewhere.
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target.isContentEditable) return;
+      if (tag === 'BUTTON' && !confirm.owns(target)) return;
+    }
+    if (typeof event.preventDefault === 'function') event.preventDefault();
+    if (typeof event.stopPropagation === 'function') event.stopPropagation();
+    confirm.press();
+  };
+  // Store the handler even when this document cannot listen (the focused test stub): callers
+  // still invoke it. Capture on a live document beats any child that would stop the bubble.
+  if (doc && typeof doc.addEventListener === 'function') {
+    doc.addEventListener('keydown', screenDef._runOverKey, true);
+  }
+}
+
+function removeRunOverKeys(screenDef, doc) {
+  if (!screenDef._runOverKey) return;
+  if (doc && typeof doc.removeEventListener === 'function') {
+    doc.removeEventListener('keydown', screenDef._runOverKey, true);
+    doc.removeEventListener('keydown', screenDef._runOverKey);
+  }
+  const root = screenDef._root;
+  if (root && typeof root.removeEventListener === 'function') {
+    root.removeEventListener('keydown', screenDef._runOverKey);
+  }
+  screenDef._runOverKey = null;
+}
+
+/** Enter / Space / pad A all click the plate's declared primary. */
+function bindRunOverConfirm(screenDef, rootEl, ctx, button) {
+  if (button && button.dataset) button.dataset.padPrimary = 'true';
+  const doc = (rootEl && rootEl.ownerDocument) || (typeof document !== 'undefined' ? document : null);
+  mountRunOverKeys(screenDef, doc, () => runOverPlateIsTop(ctx, screenDef), {
+    owns: (target) => target === button,
+    press: () => { if (button && typeof button.click === 'function') button.click(); },
+  });
+}
+
+/** The visible word is "Again". The Enter chip is a hint, not part of the name. */
+function appendAgainFace(button) {
+  button.appendChild(el('span', 'sf-runover__again-word', 'Again'));
+  const key = el('span', 'sf-runover__key', 'Enter');
+  if (typeof key.setAttribute === 'function') key.setAttribute('aria-hidden', 'true');
+  button.appendChild(key);
+  if (typeof button.setAttribute === 'function') button.setAttribute('aria-label', 'Again');
+}
+
+/**
+ * DEMO-RUNOVER-2 — the loading veil covers #screens but does not remove it from layout, so a
+ * plate left at display:flex still answers the probe (and a second Enter) for the whole load.
+ * Hide the element itself, drop the class the probe looks for, and close the screen stack.
+ * A later periodic refresh must not build the plate back over the veil (_runOverDismissed).
+ */
+function dismissRunOverPlate(screenDef, rootEl, ctx, doc) {
+  screenDef._runOverDismissed = true;
+  screenDef._plateOpen = false;
+  screenDef._againQueued = false;
+  removeRunOverKeys(screenDef, doc);
+  if (rootEl) {
+    if (typeof rootEl.classList?.remove === 'function') rootEl.classList.remove('sf-runover');
+    else if (typeof rootEl.className === 'string') {
+      rootEl.className = rootEl.className.split(/\s+/).filter((name) => name && name !== 'sf-runover').join(' ');
+    }
+    rootEl.hidden = true;
+    if (typeof rootEl.setAttribute === 'function') rootEl.setAttribute('aria-hidden', 'true');
+    try { rootEl.inert = true; } catch { /* the hidden flag is the contract */ }
+    const style = rootEl.style;
+    if (style && typeof style.setProperty === 'function') style.setProperty('display', 'none', 'important');
+    else if (style) style.display = 'none';
+  }
+  const manager = ctx && (ctx.screenManager || ctx.screens);
+  if (manager && typeof manager.closeAll === 'function') {
+    try { manager.closeAll(); } catch { /* the bus path is the same owner */ }
+  }
+  if (ctx && ctx.bus && typeof ctx.bus.emit === 'function') ctx.bus.emit('ui:closeAll', {});
+}
+
+/** One Again press: end the film, start the next run, and take the plate off the screen. */
+function startRunOverAgain(screenDef, rootEl, ctx, doc, retry, button) {
+  if (!retry) {
+    dismissRunOverPlate(screenDef, rootEl, ctx, doc);
+    leaveCrucibleResults(ctx, true);
+    return;
+  }
+  if (button && button.disabled) return;
+  endRunOverFilm(rootEl, ctx);
+  try { clearKillcamTape(); } catch { /* the replay is optional */ }
+  if (button) button.disabled = true;
+  const setup = retry.setup;
+  if (setup.dailyDateKey || setup.weeklyMutatorId) {
+    queueSurvivalChallenge({
+      seed: setup.seed, ruleset: retry.ruleset,
+      mutators: setup.weeklyMutatorId ? [setup.weeklyMutatorId] : [],
+      dailyDateKey: setup.dailyDateKey, weeklyMutatorId: setup.weeklyMutatorId, ghostHash: setup.ghostHash,
+    });
+  } else if (setup.ghostHash != null) {
+    queueGhostPlayback(setup.ghostHash);
+  } else {
+    clearQueuedChallenge();
+  }
+  cue('confirm');
+  if (!requestSharedCrucibleRun(ctx.bus, setup, retry.ruleset)) {
+    if (button) button.disabled = false;
+    screenDef._runOverDismissed = false;
+    return;
+  }
+  dismissRunOverPlate(screenDef, rootEl, ctx, doc);
+}
+
+/** The Kill button's own film-end, shared by every launch word: the staged replay stops and the
+ *  authored still is the picture, exactly as the visible Skip leaves it. */
+function endRunOverFilm(rootEl, ctx) {
+  try { skipKillcamPlayback(); } catch { /* the replay is optional */ }
+  const ui = ctx && ctx.state && ctx.state.ui;
+  if (ui && ui.stageRequest && ui.stageRequest.scene === 'crucible-killcam') ui.stageRequest = null;
+  if (rootEl && rootEl.dataset) rootEl.dataset.kStage = 'plate';
+  const skipWord = rootEl && typeof rootEl.querySelector === 'function'
+    ? rootEl.querySelector('.sf-runover__skip') : null;
+  if (skipWord) skipWord.hidden = true;
+}
+
 export const crucibleResultsScreen = {
   id: 'crucibleResults',
   data: { locked: true },
@@ -3744,6 +4187,8 @@ export const crucibleResultsScreen = {
 
   mount(rootEl, ctx) {
     rootEl.innerHTML = '';
+    if (typeof rootEl.classList?.remove === 'function') rootEl.classList.remove('sf-runover');
+    removeRunOverKeys(this, rootEl.ownerDocument || (typeof document !== 'undefined' ? document : null));
     rootEl.classList.add('k-screen', 'k-screen--stage', 'sf-crucible-door', 'sf-crucible-results');
     if (ORRERY) { injectOrreryScreens(); injectCrucibleResultsLayouts(); rootEl.classList.add('orr-crucible'); }
     // PQ-146 Phase 3: retry launches start here, so the callout layer re-ensures with the plate.
@@ -3759,23 +4204,36 @@ export const crucibleResultsScreen = {
     // The screen manager mounts a screen once and re-shows the cached root on every later push.
     // The plate's signature is what refresh() compares — a new run always ends at a new mark.
     this._root = rootEl;
+    this._plateOpen = true;
+    this._runOverDismissed = false;
+    this._againQueued = false;
+    this._runOverKeySpec = null;
     this._resultSig = resultVersion(owner);
+    rootEl.hidden = false;
+    try { rootEl.inert = false; } catch { /* optional */ }
+    if (typeof rootEl.removeAttribute === 'function') rootEl.removeAttribute('aria-hidden');
+    if (rootEl.style && typeof rootEl.style.removeProperty === 'function') rootEl.style.removeProperty('display');
     rootEl.dataset.stamp = resultStamp(result);
-
-    // S14 — the first fallen champion is a victory beat, not a defeat: IRON MAW DOWN plays
-    // the Run Over plate's own geometry with the score's authored lesson, and three ways
-    // back out. The run underneath is still live — Keep going hands it back.
-    const milestone = swarmFirstBossMilestone(ctx && ctx.state);
-    if (milestone) {
-      this._mountBossMilestone(rootEl, ctx, milestone);
-      return;
-    }
 
     rootEl.dataset.outcome = (result && result.outcome) || 'empty';
 
     // Seal the kill-cam tape once, engraved with the run's seed; the stage's own seal is
     // idempotent and gets exactly this tape. A seal failure must never take down the plate.
     try { if (result?.stopReason !== 'player_retired') takeKillcamTape({ seed: result && result.seed }); } catch { /* the replay is optional */ }
+
+    // RUN OVER (04_SWARM.md §8): a Swarm death reads in six lines, then Again under Enter. An
+    // ended run, a cash-out at the Bench and the round-30 win read on the same plate.
+    const plateKind = swarmPlateKind(result);
+    if (plateKind) {
+      this._mountRunOver(rootEl, ctx, result, plateKind);
+      return;
+    }
+    // The record is still settling. Again is live on this first frame — a press now starts the
+    // next run, and a press that arrives before the launch setup is remembered until it is.
+    if (!result && ctx?.state?.run?.kind === 'survival') {
+      this._mountRunOverReading(rootEl, ctx);
+      return;
+    }
 
     // .k-title — the identity word, and the owner's sentence, verbatim. The structured chain below
     // re-states it in fielded form; it never rewrites it, because survivalResults owns the wording.
@@ -3785,8 +4243,12 @@ export const crucibleResultsScreen = {
     title.appendChild(h);
     title.appendChild(el('p', 'k-sentence k-sentence--emph sf-crd-headline',
       result && result.headline ? result.headline : 'The run ended.'));
-    if (result?.stopReason === 'player_retired' && result.bankLine) {
+    if (result?.recordRules?.mode === 'practice') {
+      title.appendChild(el('p', 'k-sentence', 'Practice run. No ranked score or rewards.'));
+    } else if (result?.stopReason === 'player_retired' && result.bankLine) {
       title.appendChild(el('p', 'k-sentence', result.bankLine));
+    } else if (result?.ruleset === 'scored' && Number.isSafeInteger(result.bankedBounty) && result.bankedBounty > 0) {
+      title.appendChild(el('p', 'k-sentence', `${result.bankedBounty.toLocaleString()} cr added to the Swarm hangar.`));
     }
     rootEl.appendChild(title);
 
@@ -3811,7 +4273,8 @@ export const crucibleResultsScreen = {
 
     if (!result) {
       // No record kept. Say so — a dead player must never be handed a blank plate — and still
-      // offer every way out below.
+      // offer every way out below. A live survival run never reaches this plate: it mounts the
+      // Run Over reading plate above, with Again already live.
       story.appendChild(el('p', 'k-empty sf-crres__empty', 'No flight record was kept for that run.'));
     }
 
@@ -3819,7 +4282,7 @@ export const crucibleResultsScreen = {
       const band = el('div', 'sf-crres__band');
       band.dataset.band = id;
       // A heading role rather than an <h2>, so the sections read as one column of sentences.
-      const bandTitle = el('p', 'k-caps sf-crres__band-title', sectionTitle(id, result.outcome));
+      const bandTitle = el('p', 'k-caps sf-crres__band-title', sectionTitle(id, result.outcome, result));
       bandTitle.setAttribute('role', 'heading');
       bandTitle.setAttribute('aria-level', '2');
       band.appendChild(bandTitle);
@@ -3859,7 +4322,7 @@ export const crucibleResultsScreen = {
       try {
         const readings = crucibleSheetReadings();
         ledger.appendChild(renderResultsSheet(resultsSheetModel({
-          result,
+          result: { ...result, arenaLabel: result.arenaLabel || ARENA_DESCRIPTIONS[result.arenaId]?.[0] },
           kitBoard: readings.board,
           overconfidenceStreak: readings.streak,
         })));
@@ -3994,16 +4457,18 @@ export const crucibleResultsScreen = {
     againButton.appendChild(againVerb);
     const again = addWord(againButton);
     again.addEventListener('click', () => {
+      if (again.disabled) return;
       // INF-010: one explicit retry action — same seed and kit as the run began, deep-copied
       // so the challenge cannot silently change; replays through the ordinary New Game route.
       // The round boundary: the kill-cam stops and the last fight's tape goes now (the
       // run:started listener clears it too — this is the same boundary, named early).
       try { clearKillcamTape(); } catch { /* the replay is optional */ }
-      const retry = buildCrucibleRetryRequest();
+      const retry = buildCrucibleRetryRequest(lastCrucibleSetup(), lastCrucibleRuleset(), result);
       if (!retry) {
-        ctx.bus.emit('ui:replaceScreen', { id: 'crucible' });
+        leaveCrucibleResults(ctx, true);
         return;
       }
+      again.disabled = true;
       const setup = retry.setup;
       // Restart is a real New Game: runSession.newGame resets the envelope to inactive, so the
       // begin below is accepted exactly as it was the first time.
@@ -4020,25 +4485,26 @@ export const crucibleResultsScreen = {
       } else if (setup.ghostHash != null) {
         queueGhostPlayback(setup.ghostHash);
       }
-      requestSharedCrucibleRun(ctx.bus, setup, retry.ruleset);
+      if (!requestSharedCrucibleRun(ctx.bus, setup, retry.ruleset)) { again.disabled = false; return; }
+      ctx.bus.emit('ui:closeAll', {});
     });
+
+    // The run's Pilot Tree, its path lit (progression lead 2026-11-20): read-only, Back returns here.
+    if (ctx.state && ctx.state.run && ctx.state.run.pilot && (ctx.state.run.pilot.nodes || []).length) {
+      const tree = addWord(word('Pilot Tree for this run', 'k-word--emph'));
+      tree.dataset.action = 'pilot-tree';
+      tree.addEventListener('click', () => ctx.bus.emit('ui:pushScreen', { id: 'pilotTree', source: 'crucible-results' }));
+    }
 
     // §7.4 — the ways out name where they go: Again (same seed above), the Hangar (the
     // swarm door IS the hangar — bounty, tracks, zones all live there), or the Main menu.
     const newSeed = addWord(word(
       result && result.ruleset === SWARM_RULESET ? 'Back to the hangar' : 'New run',
       'k-word--emph'));
-    newSeed.addEventListener('click', () => ctx.bus.emit('ui:replaceScreen', { id: 'crucible' }));
+    newSeed.addEventListener('click', () => leaveCrucibleResults(ctx, true));
 
     const menu = addWord(word('Main menu', 'k-word--emph k-word--danger'));
-    menu.addEventListener('click', () => {
-      // Same teardown pause uses: main.js consumes game:exitToMenu and returns state.mode to
-      // 'menu', runSession aborts and clears the run envelope.
-      ctx.bus.emit('game:over:dismissed', {});
-      ctx.bus.emit('game:exitToMenu', { source: 'crucible_results' });
-      ctx.bus.emit('ui:closeAll', {});
-      ctx.bus.emit('ui:pushScreen', { id: 'mainMenu' });
-    });
+    menu.addEventListener('click', () => leaveCrucibleResults(ctx));
 
     foot.appendChild(footWords);
     rootEl.appendChild(foot);
@@ -4059,87 +4525,287 @@ export const crucibleResultsScreen = {
     }
   },
 
-  // S14 — the victory variant of this plate: the champion's name in the title, its authored
-  // lesson in the band, the same three ways out. Keep going is the focused word because the
-  // run underneath is still live; Again and Main menu share the ordinary record's wiring.
-  _mountBossMilestone(rootEl, ctx, milestone) {
-    const bossName = String(milestone.name || 'BOSS').toUpperCase();
-    rootEl.dataset.outcome = 'milestone';
-
-    const head = el('header', 'k-head');
-    const h = el('h1', 'sf-crd-title', `${bossName} DOWN`);
-    h.id = 'sf-crucible-results-title';
-    head.appendChild(h);
-    rootEl.appendChild(head);
-    rootEl.appendChild(el('p', 'k-stamp sf-crd-stamp', 'CRUCIBLE / FIRST CHAMPION DOWN'));
-
-    const story = el('section', 'k-band k-band--story');
-    story.appendChild(el('p', 'k-sentence', milestone.line || `${bossName} is salvage.`));
-    if (milestone.lesson) story.appendChild(el('p', 'k-sentence k-t-fine', milestone.lesson));
-    rootEl.appendChild(story);
-
-    const foot = el('footer', 'k-foot sf-crd-foot');
-    const footWords = el('ul', 'k-words k-words--row');
-    footWords.setAttribute('aria-label', 'After the run');
-    const addWord = (button) => {
-      const li = el('li');
-      li.appendChild(button);
-      footWords.appendChild(li);
-      return button;
-    };
-
-    const keepGoing = addWord(word('Keep going', 'k-word--emph k-word--primary'));
-    keepGoing.addEventListener('click', () => ctx.bus.emit('ui:popScreen', {}));
-
-    const again = addWord(word('Run it again — same seed', 'k-word--emph'));
+  /**
+   * The record is still settling. The plate already says Run over, and Again is the same button
+   * the settled plate uses: one Enter, Space, pad A or click starts the next run. A press that
+   * arrives before the launch setup is remembered and acted on at the next refresh.
+   */
+  _mountRunOverReading(rootEl, ctx) {
+    rootEl.classList.add('sf-runover');
+    rootEl.dataset.plate = 'reading';
+    const doc = rootEl.ownerDocument || document;
+    const plate = el('section', 'sf-runover__plate');
+    const title = el('h1', 'sf-runover__title', 'Run over');
+    plate.appendChild(title);
+    const note = el('p', 'sf-runover__note', 'Reading the run back…');
+    plate.appendChild(note);
+    const foot = el('div', 'sf-runover__foot');
+    const again = el('button', 'sf-runover__again');
+    again.type = 'button';
+    again.dataset.action = 'again';
+    appendAgainFace(again);
     again.addEventListener('click', () => {
-      try { clearKillcamTape(); } catch { /* the replay is optional */ }
-      const retry = buildCrucibleRetryRequest();
-      if (!retry) {
-        ctx.bus.emit('ui:replaceScreen', { id: 'crucible' });
+      const live = buildSwarmAgainRequest(null, lastCrucibleSetup(), lastCrucibleRuleset());
+      if (!live) {
+        this._againQueued = true;
         return;
       }
-      const setup = retry.setup;
-      if (setup.dailyDateKey || setup.weeklyMutatorId) {
-        queueSurvivalChallenge({
-          seed: setup.seed,
-          ruleset: retry.ruleset,
-          mutators: setup.weeklyMutatorId ? [setup.weeklyMutatorId] : [],
-          dailyDateKey: setup.dailyDateKey,
-          weeklyMutatorId: setup.weeklyMutatorId,
-          ghostHash: setup.ghostHash,
-        });
-      } else if (setup.ghostHash != null) {
-        queueGhostPlayback(setup.ghostHash);
-      }
-      requestSharedCrucibleRun(ctx.bus, setup, retry.ruleset);
+      this._againQueued = false;
+      startRunOverAgain(this, rootEl, ctx, doc, live, again);
     });
-
-    const hangar = addWord(word('Back to the hangar', 'k-word--emph'));
-    hangar.addEventListener('click', () => ctx.bus.emit('ui:replaceScreen', { id: 'crucible' }));
-
-    const menu = addWord(word('Main menu', 'k-word--emph k-word--danger'));
-    menu.addEventListener('click', () => {
-      ctx.bus.emit('game:over:dismissed', {});
-      ctx.bus.emit('game:exitToMenu', { source: 'crucible_results' });
-      ctx.bus.emit('ui:closeAll', {});
-      ctx.bus.emit('ui:pushScreen', { id: 'mainMenu' });
-    });
-
-    foot.appendChild(footWords);
-    rootEl.appendChild(foot);
-
-    // Mounting the plate IS the acknowledgement — clear the pending stamp so the run's real
-    // end renders the ordinary record instead of a milestone already played.
-    ctx.bus.emit('swarm:bossMilestoneAck', { wave: milestone.wave });
-    this._regions = { title: h, story, ledger: story, foot, again: keepGoing };
+    foot.appendChild(again);
+    const hangar = el('button', 'sf-runover__quiet sf-runover__hangar', 'Hangar');
+    hangar.type = 'button';
+    hangar.dataset.action = 'hangar';
+    hangar.addEventListener('click', () => { cue('close'); leaveCrucibleResults(ctx, true); });
+    const menu = el('button', 'sf-runover__quiet sf-runover__menu', 'Menu');
+    menu.type = 'button';
+    menu.dataset.action = 'menu';
+    menu.addEventListener('click', () => { cue('close'); leaveCrucibleResults(ctx); });
+    foot.appendChild(hangar);
+    foot.appendChild(menu);
+    plate.appendChild(foot);
+    rootEl.appendChild(plate);
+    bindRunOverConfirm(this, rootEl, ctx, again);
+    injectRunOverLayouts(doc);
+    this._dial = null;
+    this._regions = { title, story: plate, ledger: plate, foot, again };
     rootEl.dataset.kReady = '1';
-    if (typeof keepGoing.focus === 'function') {
-      try { keepGoing.focus({ preventScroll: true }); } catch { /* focus is best-effort */ }
+    if (typeof again.focus === 'function') {
+      try { again.focus({ preventScroll: true }); } catch { /* focus is best-effort */ }
     }
   },
 
+  /**
+   * RUN OVER for a Swarm death (04_SWARM.md §8): Kiln's line, what killed you (always named),
+   * your best moment, round/kills/chain/time big, your build in one line — then Again under
+   * Enter, the exact seed as a second key when Again deals a fresh layout, Hangar, Menu. The
+   * death dial stands at the right as the still of the blow. The full ledger stays on the record.
+   *
+   * `kind` (swarmPlateKind): 'defeat' is the death above. 'retired' (End run from pause) and
+   * 'extracted' (cashed out at the Bench) drop the Killed-by row and keep the same ways out.
+   * 'win' (round 30) drops it too and offers exactly Keep going (Enter) and Take the win.
+   */
+  _mountRunOver(rootEl, ctx, result, kind = 'defeat') {
+    rootEl.classList.add('sf-runover');
+    rootEl.dataset.plate = kind;
+    const doc = rootEl.ownerDocument || document;
+    const plate = el('section', 'sf-runover__plate');
+    const title = el('h1', 'sf-runover__title', RUN_OVER_TITLES[kind] || RUN_OVER_TITLES.defeat);
+    title.id = 'sf-crucible-results-title';
+    const kiln = el('p', 'sf-runover__kiln');
+    kiln.appendChild(el('span', 'sf-runover__quote', `“${kilnPlateLine(result, kind)}”`));
+    kiln.appendChild(el('span', 'sf-runover__by', 'Madame Kiln'));
+    plate.appendChild(title);
+    plate.appendChild(kiln);
+    if (result.recordRules?.mode === 'practice') plate.appendChild(el('p', 'sf-runover__note', 'Practice run. No ranked score or rewards.'));
+    else if (kind === 'retired') plate.appendChild(el('p', 'sf-runover__note', 'Ended early, so this run is unranked.'));
+
+    const rows = el('div', 'sf-runover__rows');
+    const row = (label, main, detail = '') => {
+      const r = el('div', 'sf-runover__row');
+      r.appendChild(el('p', 'sf-runover__label', label));
+      const body = el('div', 'sf-runover__body');
+      body.appendChild(el('p', 'sf-runover__main', main));
+      if (detail) body.appendChild(el('p', 'sf-runover__detail', detail));
+      r.appendChild(body);
+      rows.appendChild(r);
+      return r;
+    };
+    if (kind === 'defeat') {
+      const killer = runOverKiller(result);
+      row('Killed by', killer.name, killer.detail);
+    }
+    // A cash-out's headline is the payout: name the banked Scrap before the run's story.
+    if (kind === 'extracted') {
+      const banked = Math.max(0, Math.trunc(Number(result && result.bankedBounty) || 0));
+      if (banked > 0) row('Banked', `${banked.toLocaleString('en-US')} Scrap`);
+    }
+    row('Best moment', runOverBestMoment(result));
+    plate.appendChild(rows);
+
+    const figs = el('div', 'sf-runover__figures');
+    for (const [word, value] of runOverFigures(result)) {
+      const fig = el('p', 'sf-runover__figure');
+      fig.appendChild(el('span', 'sf-runover__n', value));
+      fig.appendChild(el('span', 'sf-runover__w', word));
+      figs.appendChild(fig);
+    }
+    plate.appendChild(figs);
+
+    const pilot = ctx?.state?.run?.pilot || null;
+    const player = ctx?.state?.player;
+    const ship = Array.isArray(player?.ownedShips) ? player.ownedShips[player.activeShipIndex || 0] : null;
+    const hullId = result.openingEquipment?.hullId || ship?.defId || lastCrucibleSetup()?.hullId || null;
+    const hullName = (SHIPS.find((s) => s.id === hullId) || {}).name || null;
+    const buildRow = el('div', 'sf-runover__row sf-runover__row--build');
+    buildRow.appendChild(el('p', 'sf-runover__label', 'Your build'));
+    const buildBody = el('div', 'sf-runover__body');
+    const gunId = result.openingEquipment?.gun?.defId || null;
+    const buildText = runOverBuildLine(pilot, hullName, gunId ? weaponDisplayName(gunId) : null);
+    if (pilot && Array.isArray(pilot.nodes) && pilot.nodes.length) {
+      const tree = el('button', 'sf-runover__build', buildText);
+      tree.type = 'button';
+      tree.dataset.action = 'pilot-tree';
+      tree.setAttribute('aria-label', `${buildText}. Open this run's Pilot Tree.`);
+      tree.addEventListener('click', () => ctx.bus.emit('ui:pushScreen', { id: 'pilotTree', source: 'crucible-results' }));
+      buildBody.appendChild(tree);
+    } else {
+      buildBody.appendChild(el('p', 'sf-runover__main', buildText));
+    }
+    buildRow.appendChild(buildBody);
+    plate.appendChild(buildRow);
+    const take = runOverTakeLine(result);
+    if (take) plate.appendChild(el('p', 'sf-runover__take', take));
+
+    // C01-03 — the round-30 win: exactly two ways off the plate. Keep going (Enter) hands the
+    // still-banked run back to the deep course; Take the win leaves through the hangar exit.
+    if (kind === 'win') {
+      const foot = el('div', 'sf-runover__foot');
+      const keep = el('button', 'sf-runover__again');
+      keep.type = 'button';
+      keep.dataset.action = 'keep-going';
+      keep.appendChild(el('span', 'sf-runover__again-word', 'Keep going'));
+      keep.appendChild(el('span', 'sf-runover__key', 'Enter'));
+      keep.setAttribute('aria-label', 'Keep going: round 31 and on, the win already counted');
+      keep.addEventListener('click', () => {
+        cue('confirm');
+        // The film behind the plate ends with the press — one press both ends the replay and
+        // hands the run back, whatever surface the press came from.
+        endRunOverFilm(rootEl, ctx);
+        // Pop the plate first so whatever the resume lands on is never covered.
+        ctx.bus.emit('ui:popScreen', {});
+        ctx.bus.emit('run:swarmDeepRequested', {});
+      });
+      foot.appendChild(keep);
+      const takeWin = el('button', 'sf-runover__quiet sf-runover__take-win', 'Take the win');
+      takeWin.type = 'button';
+      takeWin.dataset.action = 'take-win';
+      takeWin.addEventListener('click', () => {
+        cue('close');
+        try { clearKillcamTape(); } catch { /* the replay is optional */ }
+        ctx.bus.emit('ui:replaceScreen', { id: 'crucible' });
+      });
+      foot.appendChild(takeWin);
+      // The same quiet Skip the run-over plates carry: the win's staged film plays behind the
+      // plate too, and the player may not want to sit through it to reach Keep going.
+      if (ctx && ctx.state && killcamStageRequestFor(ctx.state)) {
+        const skip = el('button', 'sf-runover__quiet sf-runover__skip', 'Skip replay');
+        skip.type = 'button';
+        skip.dataset.action = 'skip';
+        skip.addEventListener('click', () => {
+          skipKillcamPlayback();
+          const ui = ctx.state && ctx.state.ui;
+          if (ui && ui.stageRequest && ui.stageRequest.scene === 'crucible-killcam') ui.stageRequest = null;
+          rootEl.dataset.kStage = 'plate';
+          skip.hidden = true;
+        });
+        foot.appendChild(skip);
+      }
+      plate.appendChild(foot);
+      rootEl.appendChild(plate);
+      bindRunOverConfirm(this, rootEl, ctx, keep);
+      this._dial = null;
+      injectRunOverLayouts(doc);
+      this._regions = { title, story: plate, ledger: plate, foot, again: keep };
+      rootEl.dataset.kReady = '1';
+      try { keep.focus({ preventScroll: true }); } catch { /* focus is best-effort */ }
+      return;
+    }
+
+    // The ways out. Again is the one primary: Enter presses it from anywhere on the plate.
+    const foot = el('div', 'sf-runover__foot');
+    const again = el('button', 'sf-runover__again');
+    again.type = 'button';
+    again.dataset.action = 'again';
+    appendAgainFace(again);
+    const request = buildSwarmAgainRequest(result, lastCrucibleSetup(), lastCrucibleRuleset());
+    again.addEventListener('click', () => startRunOverAgain(this, rootEl, ctx, doc, request, again));
+    foot.appendChild(again);
+    const quiet = (label, cls) => {
+      const b = el('button', `sf-runover__quiet ${cls}`, label);
+      b.type = 'button';
+      b.dataset.action = cls.replace('sf-runover__', '');
+      foot.appendChild(b);
+      return b;
+    };
+    if (request?.sameSeed) {
+      const same = quiet('Same seed', 'sf-runover__same');
+      same.setAttribute('aria-label', `Same seed: replay seed ${result.seed} exactly`);
+      same.addEventListener('click', () => startRunOverAgain(this, rootEl, ctx, doc, request.sameSeed, same));
+    }
+    if (result?.stopReason !== 'player_retired' && ctx && ctx.state && killcamStageRequestFor(ctx.state)) {
+      const skip = quiet('Skip replay', 'sf-runover__skip');
+      skip.addEventListener('click', () => {
+        skipKillcamPlayback();
+        const ui = ctx.state && ctx.state.ui;
+        if (ui && ui.stageRequest && ui.stageRequest.scene === 'crucible-killcam') ui.stageRequest = null;
+        rootEl.dataset.kStage = 'plate';
+        skip.hidden = true;
+      });
+    }
+    quiet('Hangar', 'sf-runover__hangar').addEventListener('click', () => { cue('close'); leaveCrucibleResults(ctx, true); });
+    quiet('Menu', 'sf-runover__menu').addEventListener('click', () => { cue('close'); leaveCrucibleResults(ctx); });
+    // DEMO-SWARM-UX-2: the share/debug register (run code, ghost file, copy links) is behind one
+    // Share word on the plate, never on the ordinary route. Opening it hides the run's short rows so
+    // the panel reads alone and the plate never grows past the frame.
+    let shareBand = null;
+    try { shareBand = buildShareBand(result); } catch { shareBand = null; }
+    if (shareBand) {
+      const share = quiet('Share', 'sf-runover__share-toggle');
+      shareBand.hidden = true;
+      if (typeof shareBand.classList?.add === 'function') shareBand.classList.add('sf-runover__share');
+      share.addEventListener('click', () => {
+        const open = !!shareBand.hidden;
+        shareBand.hidden = !open;
+        if (typeof plate.classList?.toggle === 'function') plate.classList.toggle('is-sharing', open);
+        share.textContent = open ? 'Close share' : 'Share';
+      });
+    }
+    plate.appendChild(foot);
+    if (shareBand) {
+      if (typeof plate.insertBefore === 'function') plate.insertBefore(shareBand, foot);
+      else plate.appendChild(shareBand);
+    }
+    rootEl.appendChild(plate);
+    bindRunOverConfirm(this, rootEl, ctx, again);
+
+    // The still of the blow: ring-free ship diagram with ONE directional threat arc, flat vitals,
+    // and the plain last-hits strip (no concentric circles or dashed radial gauges around the ship).
+    this._dial = null;
+    if (ORRERY && result.defeat) {
+      const spec = deathDialSpec(result, ctx);
+      const legend = abbreviatedHitLegend(result);
+      const impact = buildRunOverImpactCard(doc, spec, legend);
+      if (impact) rootEl.appendChild(impact);
+    }
+    injectRunOverLayouts(doc);
+    this._regions = { title, story: plate, ledger: plate, foot, again };
+    rootEl.dataset.kReady = '1';
+    try { again.focus({ preventScroll: true }); } catch { /* focus is best-effort */ }
+  },
+
   onShow() {
+    this._plateOpen = true;
+    // A plate closed by Again stays hidden through the load. The next time this screen is
+    // actually shown, it is a new visit and may rebuild.
+    if (this._runOverDismissed) {
+      this._runOverDismissed = false;
+      // The cached plate is the run we just left (Again already disabled). The refresh that
+      // follows this onShow must rebuild, even when the record is still the unsettled null.
+      this._resultSig = null;
+      const root = this._root;
+      if (root) {
+        root.hidden = false;
+        try { root.inert = false; } catch { /* optional */ }
+        if (typeof root.removeAttribute === 'function') root.removeAttribute('aria-hidden');
+        if (root.style && typeof root.style.removeProperty === 'function') root.style.removeProperty('display');
+      }
+    }
+    if (this._runOverKeySpec) {
+      const doc = this._root?.ownerDocument || (typeof document !== 'undefined' ? document : null);
+      mountRunOverKeys(this, doc, this._runOverKeySpec.isTop, this._runOverKeySpec.confirm);
+    }
     const r = this._regions;
     if (!r || !canAnimate()) return;
     cue('open');
@@ -4157,6 +4823,8 @@ export const crucibleResultsScreen = {
   },
 
   onHide() {
+    this._plateOpen = false;
+    removeRunOverKeys(this, this._root?.ownerDocument || (typeof document !== 'undefined' ? document : null));
     if (canAnimate()) cue('close');
   },
 
@@ -4168,12 +4836,29 @@ export const crucibleResultsScreen = {
   refresh(ctx) {
     const root = this._root;
     if (!root) return;
-    if (resultVersion(resultsOwner(ctx)) === this._resultSig) return;
+    // Again already started the next run. Rebuilding here would put the plate back under the
+    // loading veil, where it still has a box and still eats the next Enter.
+    if (this._runOverDismissed) return;
+    const version = resultVersion(resultsOwner(ctx));
+    if (version === this._resultSig) {
+      if (!this._againQueued) return;
+      const again = this._regions && this._regions.again;
+      if (again && typeof again.click === 'function') again.click();
+      return;
+    }
+    const queued = this._againQueued === true;
+    this._againQueued = false;
     this.dispose();
     this.mount(root, ctx);
+    if (queued && this._regions && this._regions.again && typeof this._regions.again.click === 'function') {
+      this._regions.again.click();
+    }
   },
 
   dispose() {
+    this._plateOpen = false;
+    this._runOverKeySpec = null;
+    removeRunOverKeys(this, this._root?.ownerDocument || (typeof document !== 'undefined' ? document : null));
     if (this._dialSeat) this._dialSeat.disconnect();
     this._dialSeat = null;
     if (this._dial) this._dial.dispose();
@@ -4240,7 +4925,7 @@ export function swarmStarAsks({ stars = 0, bestChain = 0, zoneIndex = 0, chainHi
  * run settled nothing worth a band; the plate then reads exactly as before.
  */
 export function resultCelebration(result) {
-  if (!result || result.ruleset !== SWARM_RULESET) return null;
+  if (!result || result.ruleset !== SWARM_RULESET || result.recordRules?.mode === 'practice') return null;
   const lines = [];
   const delta = result.ladderDelta && typeof result.ladderDelta === 'object' ? result.ladderDelta : null;
   const zones = delta && delta.zones && typeof delta.zones === 'object' ? delta.zones : {};
@@ -4261,7 +4946,7 @@ export function resultCelebration(result) {
   if (delta && delta.newCheckpoint) {
     const cp = delta.newCheckpoint;
     lines.push(`Checkpoint banked — the next run can open at Round ${cp.startWave}`
-      + (Number.isFinite(Number(cp.purse)) ? ` with a ${cp.purse} cr purse.` : '.'));
+      + (Number(cp.purse) > 0 ? ` with ${cp.purse} Scrap.` : '.'));
   }
   const banked = Number.isFinite(result.bankedBounty) ? result.bankedBounty : null;
   const chest = Number.isFinite(result.hangarBounty) ? result.hangarBounty : null;
@@ -4270,7 +4955,9 @@ export function resultCelebration(result) {
       ? `Hangar +${banked} cr · ${chest} cr in all.`
       : `Hangar: ${chest} cr.`);
     if (result.outcome === 'defeat' && result.stopReason !== 'player_retired') {
-      lines.push('Defeat banks 50% of the remaining run purse, including its starting funds.');
+      lines.push(result.ruleset === SWARM_RULESET
+        ? 'Defeat banks 50% of your remaining earned credits.'
+        : 'Defeat banks 50% of the remaining run purse.');
     }
   }
   const unlocks = Array.isArray(result.unlocksEarned) ? result.unlocksEarned : [];
@@ -4344,6 +5031,196 @@ export function resultCelebration(result) {
   return band;
 }
 
+/* ------------------------------------------------------------------------------------------------
+ * RUN OVER — the Swarm death plate's words (04_SWARM.md §8). Pure and DOM-free so a node test can
+ * read every line. Nothing here may print "?", "unknown", a faction or a ledger word.
+ * --------------------------------------------------------------------------------------------- */
+
+/** A Swarm death that gets the six-line plate with its Killed-by row. */
+export function isSwarmRunOver(result) {
+  return !!result && result.ruleset === SWARM_RULESET && result.outcome === 'defeat'
+    && result.stopReason !== 'player_retired';
+}
+
+/**
+ * Which six-line plate a Swarm result reads on: 'defeat' (a death), 'retired' (End run from
+ * pause), 'extracted' (cashed out at the Bench) or 'win' (round 30 cleared). Null keeps the full
+ * flight record: a Circuit clear, a failed room build, any Gauntlet run.
+ */
+export function swarmPlateKind(result) {
+  if (!result || result.ruleset !== SWARM_RULESET) return null;
+  if (result.stopReason === 'player_retired') return 'retired';
+  if (isSwarmRunOver(result)) return 'defeat';
+  if (result.outcome === 'extracted' && !result.circuit) return 'extracted';
+  if (resultWinOffers(result)) return 'win';
+  return null;
+}
+
+/** The plate's one title word per ending (the stylesheet sets the case). */
+export const RUN_OVER_TITLES = Object.freeze({
+  defeat: 'Run over', retired: 'Run ended', extracted: 'Cashed out', win: 'The Pit is yours',
+});
+
+/** Kiln's line for any six-line plate: the death's own line, or one for the other endings. */
+export function kilnPlateLine(result, kind = 'defeat') {
+  const round = runOverRound(result);
+  if (kind === 'win') {
+    return (Number(result && result.bestChain) || 0) >= 25
+      ? 'Thirty rounds, and you made it dance.' : 'Thirty rounds. I need a bigger room.';
+  }
+  if (kind === 'retired') return round <= 1 ? 'Leaving already? The doors stay open.' : `Round ${round}, then you walked. Noted.`;
+  if (kind === 'extracted') return 'You took the money. Sensible. Boring.';
+  return kilnRunOverLine(result);
+}
+
+function runOverRound(result) {
+  return Math.max(Number(result && result.deepestWave) || 0, Number(result && result.wave) || 0);
+}
+
+/** Madame Kiln's one line about what the pilot did — eight words or fewer, never a stat dump. */
+export function kilnRunOverLine(result) {
+  const round = runOverRound(result);
+  const kills = Number(result && result.kills) || 0;
+  const chain = Number(result && result.bestChain) || 0;
+  const moment = result && result.bestMoment;
+  if (round <= 1 && kills < 5) return 'Round one. The doors barely opened.';
+  if (isSwarmBossWave(round)) return 'The boss sends its regards.';
+  if (moment && moment.kind === 'stunt' && kills >= 6) return 'You made my room do the killing.';
+  if (chain >= 15) return `A chain of ${chain}. The crowd noticed.`;
+  if (round >= 20) return 'Twenty rounds. You are getting expensive.';
+  if (round >= 10) return 'Past round ten. Now I am watching.';
+  if (kills === 0) return 'Not one kill. Bold choice.';
+  return `Round ${round}. Bring a better plan.`;
+}
+
+const RUN_OVER_BEARING = Object.freeze({
+  FRONT: 'head-on', AFT: 'from behind', PORT: 'from the left', STARBOARD: 'from the right', CONTACT: 'point blank',
+});
+const RUN_OVER_LAYER = Object.freeze({ hull: 'through the hull', armor: 'through the armor', shield: 'through the shields' });
+const NAMELESS = /^(unknown contact|unidentified( attacker| fire)?|environmental hazard|own ship)$/i;
+/** A death with no shooter names the thing that did it, as a player would say it. */
+const RUN_OVER_CAUSE_NAMES = Object.freeze({
+  'arena impact': 'The wall', 'hull ram': 'A ram', 'thrown mass': 'Something thrown', blast: 'A blast',
+  crush: 'A crush', 'dart blast': 'A dart blast', collision: 'A collision', impact: 'An impact',
+});
+const capFirst = (text) => (text ? text[0].toUpperCase() + text.slice(1) : text);
+
+/** What killed you: a name always (the attacker, else the weapon, else the room) and how. */
+export function runOverKiller(result) {
+  const defeat = result && result.defeat;
+  const trail = Array.isArray(result && result.damageTrail) ? result.damageTrail : [];
+  let last = null;
+  for (let i = trail.length - 1; i >= 0 && !last; i -= 1) if (trail[i] && Number(trail[i].amount) > 0) last = trail[i];
+  const lastSource = last ? hitSourceName(last) : null;
+  if (!defeat) {
+    const cause = result?.death?.causeText;
+    return { name: lastSource ? capFirst(lastSource) : 'The room', detail: typeof cause === 'string' && !/unknown|\?/i.test(cause) ? cause : '' };
+  }
+  const environmental = defeat.source?.kind === 'environment';
+  let name = environmental ? (defeat.source.label || null) : (defeat.attacker || defeat.source?.label || null);
+  if (!name || NAMELESS.test(String(name))) name = null;
+  const how = defeat.physicalLabel || defeat.weapon || lastSource || null;
+  const detail = [];
+  if (!name) name = how ? (RUN_OVER_CAUSE_NAMES[String(how).toLowerCase()] || capFirst(how)) : 'The room';
+  else if (how) detail.push(capFirst(how));
+  const bearing = RUN_OVER_BEARING[String(defeat.direction || '').toUpperCase()];
+  if (bearing) detail.push(bearing);
+  const layer = RUN_OVER_LAYER[String(defeat.dominantLayer || '').toLowerCase()];
+  if (layer) detail.push(layer);
+  return { name, detail: detail.join(' · ') };
+}
+
+const anArticle = (name) => (/^[aeiou]/i.test(name) ? `an ${name}` : `a ${name}`);
+const RUN_OVER_MOMENT = Object.freeze({
+  rock_discovery: (v) => `You put ${anArticle(v)} into a rock`,
+  wrecking_ball: (v) => `You swung ${anArticle(v)} into its friends`,
+  bolas: (v) => `You threw ${anArticle(v)} to its death`,
+  well_golf: (v) => `You sank ${anArticle(v)} in a Pull well`,
+});
+
+/** The run's best moment in one sentence ("You put a Wasp into a rock in round 4."). */
+export function runOverBestMoment(result) {
+  const moment = result && result.bestMoment;
+  const inRound = (wave) => (Number.isInteger(wave) && wave > 0 ? ` in round ${wave}` : '');
+  if (moment && moment.kind === 'stunt') {
+    const victim = moment.victim && !NAMELESS.test(moment.victim) ? moment.victim : 'ship';
+    const phrase = RUN_OVER_MOMENT[moment.trickId];
+    // The trick's own name leads: the word the in-flight callout taught the pilot.
+    if (phrase && moment.name) return `${moment.name}: ${phrase(victim).replace(/^Y/, 'y')}${inRound(moment.wave)}.`;
+    if (phrase) return `${phrase(victim)}${inRound(moment.wave)}.`;
+    return `${moment.name || 'A room kill'} on ${anArticle(victim)}${inRound(moment.wave)}.`;
+  }
+  if (moment && moment.kind === 'chain') return `${moment.count} kills in one chain${inRound(moment.wave)}.`;
+  if (moment && moment.kind === 'round' && moment.kills > 0) {
+    return `${counted(moment.kills, 'kill', 'kills')}${inRound(moment.wave)}, your busiest.`;
+  }
+  const chain = Number(result && result.bestChain) || 0;
+  if (chain >= 5) return `${chain} kills in one chain.`;
+  const kills = Number(result && result.kills) || 0;
+  if (kills > 0) return `${counted(kills, 'kill', 'kills')} before the end.`;
+  return 'No kills yet. The room is a weapon: use it.';
+}
+
+/** Round, kills, best chain and time — the four big figures. */
+export function runOverFigures(result) {
+  const seconds = Number(result && result.durationS);
+  const time = Number.isFinite(seconds) && seconds >= 0
+    ? `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, '0')}` : '0:00';
+  const figures = [
+    ['Round', String(runOverRound(result))],
+    ['Kills', String(Number(result && result.kills) || 0)],
+    ['Best chain', String(Number(result && result.bestChain) || 0)],
+  ];
+  // A record with no run clock (older saves) shows three figures, never a fake 0:00.
+  if (Number.isFinite(seconds) && seconds > 0) figures.push(['Time', time]);
+  return figures;
+}
+
+/** The build in one line: an evolution if one was taken, the hull, then the branches by depth. */
+export function runOverBuildLine(pilot, hullName = null, gunName = null) {
+  if (hullName && gunName) hullName = `${hullName} + ${gunName}`;
+  const points = pilot && pilot.points && typeof pilot.points === 'object' ? pilot.points : {};
+  const branches = PILOT_BRANCHES
+    .filter((branch) => Number.isInteger(points[branch.id]) && points[branch.id] > 0)
+    .sort((a, b) => points[b.id] - points[a.id])
+    .map((branch) => `${branch.name} ${points[branch.id]}`);
+  const nodes = Array.isArray(pilot && pilot.nodes) ? pilot.nodes : [];
+  const evolution = nodes.map((id) => PILOT_EVOLUTIONS.find((row) => row.id === id)).find(Boolean);
+  const head = [evolution && evolution.name, hullName].filter(Boolean).join(' · ') || 'Your ship';
+  return branches.length ? `${head} — ${branches.join(' · ')}` : `${head} — no cards taken`;
+}
+
+/** What the run paid toward the next one: new stars, an unlock, the next room's gate. */
+export function runOverTakeLine(result) {
+  if (!result || result.recordRules?.mode === 'practice') return null;
+  const parts = [];
+  const zones = result.ladderDelta && typeof result.ladderDelta.zones === 'object' ? result.ladderDelta.zones : {};
+  const gained = Object.values(zones).reduce((sum, row) => sum + Math.max(0, Number(row && row.gained) || 0), 0);
+  if (gained > 0) parts.push(`★ ${counted(gained, 'new star', 'new stars')}`);
+  const cp = result.ladderDelta && result.ladderDelta.newCheckpoint;
+  if (cp && Number.isInteger(cp.startWave)) parts.push(`next run can start at round ${cp.startWave}`);
+  for (const row of Array.isArray(result.unlocksEarned) ? result.unlocksEarned : []) {
+    const id = typeof row === 'string' ? row : row && (row.id || row.defId);
+    const entry = SURVIVAL_UNLOCK_CATALOG.find((item) => item && item.id === id);
+    const label = (entry && entry.label) || (row && typeof row === 'object' && (row.label || row.name)) || null;
+    if (label) { parts.push(`unlocked ${label}`); break; }
+  }
+  try {
+    const profile = loadCrucibleMeta();
+    const stars = swarmLadderStarTotal(profile && profile.ladder);
+    for (const arenaId of SWARM_LADDER_ARENA_ORDER) {
+      const gate = SWARM_ARENA_STAR_GATES[arenaId];
+      if (!Number.isInteger(gate) || stars >= gate) continue;
+      const name = (ARENA_DESCRIPTIONS[arenaId] || [])[0];
+      if (name) parts.push(`${name} opens at ${counted(gate, 'star', 'stars')}, ${gate - stars} to go`);
+      break;
+    }
+  } catch { /* the profile read is optional */ }
+  if (!parts.length) return null;
+  const text = parts.join(' · ');
+  return text[0] === '★' ? text : capFirst(text);
+}
+
 /** The run in four figures, for the head of the plate beside the death dial. */
 function resultFigures(result) {
   const swarm = result.ruleset === SWARM_RULESET;
@@ -4386,20 +5263,185 @@ export function deathDialSpec(result, ctx) {
   return {
     hullId: result.hullId || (ships[index] && ships[index].defId) || null,
     direction: defeat.direction || null,
-    vitals: [['Shield', vitals.shield], ['Armour', vitals.armor], ['Hull', vitals.hull]]
+    vitals: [['Shield', vitals.shield], ['Armor', vitals.armor], ['Hull', vitals.hull]]
       .filter(([, v]) => typeof v === 'number' && Number.isFinite(v))
       .map(([word, value]) => ({ word, value })),
     hitAmounts: trail.map((e) => Number(e && e.amount)).filter((n) => Number.isFinite(n) && n > 0),
     hitWeapons: trail.filter((e) => Number.isFinite(Number(e && e.amount)) && Number(e.amount) > 0)
-      .map((e) => weaponDisplayName(typeof e.weaponId === 'string' ? e.weaponId : null)),
+      .map(hitSourceName),
     hitGroups: breakdown.rows.map((r) => ({ weapon: r.weapon, hits: r.hits, amount: r.amount })),
     hitSummary: breakdown.hits ? `Last ${counted(breakdown.hits, 'hit', 'hits')} · ${breakdown.total} damage` : '',
-    engraving: Number(result.deepestWave || result.wave) > 0 ? `Wave ${Math.max(Number(result.deepestWave) || 0, Number(result.wave) || 0)}` : '',
+    engraving: Number(result.deepestWave || result.wave) > 0 ? `${result.ruleset === SWARM_RULESET ? 'Round' : 'Wave'} ${Math.max(Number(result.deepestWave) || 0, Number(result.wave) || 0)}` : '',
     caption: {
       label: 'Killed by',
-      name: rows.get('Killed by') || 'Unidentified attacker',
-      detail: [rows.get('Its weapon'), rows.get('It came from'), rows.get('It got in')].filter(Boolean).join(' · '),
+      name: rows.get('Killed by') || 'Enemy fire',
+      detail: [rows.get('Damage cause') || rows.get('Its weapon'), rows.get('It came from'), rows.get('It got in')]
+        .filter(Boolean).join(' · '),
       warn: leadIn ? `${leadIn[0]}: ${leadIn[1]}` : '',
     },
   };
+}
+
+const RUNOVER_BEARING_INFO = Object.freeze({
+  FRONT: { label: 'Hit head-on', deg: 0 },
+  STARBOARD: { label: 'Hit from starboard', deg: 90 },
+  AFT: { label: 'Hit from behind', deg: 180 },
+  PORT: { label: 'Hit from port', deg: 270 },
+  CONTACT: { label: 'Point-blank impact', deg: null, contact: true },
+});
+
+/**
+ * Ring-free fatal blow readout for Swarm Run Over: the ship picture with ONE directional threat
+ * arc on the side the blow came from (never concentric circles), three flat horizontal vital bars,
+ * and a plain hit strip showing the final hits and weapon legend.
+ */
+function buildRunOverImpactCard(doc, spec, legend) {
+  if (!doc || typeof doc.createElement !== 'function' || !spec) return null;
+  const hits = Array.isArray(spec.hitAmounts) ? spec.hitAmounts.filter((n) => Number.isFinite(n) && n > 0) : [];
+  const hitWeapons = Array.isArray(spec.hitWeapons) ? spec.hitWeapons : [];
+  const vitals = Array.isArray(spec.vitals) ? spec.vitals : [];
+  const dirKey = String(spec.direction || '').toUpperCase();
+  const bearingInfo = RUNOVER_BEARING_INFO[dirKey] || null;
+  const hullUrl = spec.hullId ? (hullPosterUrl(spec.hullId, 'top') || hullPosterUrl(spec.hullId, 'jig')) : null;
+  if (!hullUrl && !hits.length && !vitals.length) return null;
+
+  const card = el('aside', 'sf-runover__impact');
+  card.setAttribute('aria-hidden', 'true');
+
+  // Header: Fatal blow + plain bearing callout
+  const head = el('div', 'sf-runover__impact-head');
+  head.appendChild(el('span', 'sf-runover__impact-kicker', 'Fatal blow'));
+  const dirLabel = bearingInfo ? bearingInfo.label : (spec.engraving || '');
+  if (dirLabel) head.appendChild(el('span', 'sf-runover__impact-dir', dirLabel));
+  card.appendChild(head);
+
+  // Ship stage with ONE directional threat arc (no concentric rings around the ship)
+  if (hullUrl) {
+    const stage = el('div', 'sf-runover__impact-stage');
+    const img = el('img', 'sf-runover__impact-hull');
+    img.alt = '';
+    img.decoding = 'async';
+    img.draggable = false;
+    img.src = hullUrl;
+    img.addEventListener('error', () => {
+      const alt = spec.hullId ? hullPosterUrl(spec.hullId, 'jig') : null;
+      if (alt && img.src !== alt && img.dataset.fallback !== '1') {
+        img.dataset.fallback = '1';
+        img.src = alt;
+      } else {
+        img.hidden = true;
+      }
+    });
+    stage.appendChild(img);
+
+    if (typeof doc.createElementNS === 'function' && bearingInfo) {
+      const NS = 'http://www.w3.org/2000/svg';
+      const sNode = (tag, attrs) => {
+        const n = doc.createElementNS(NS, tag);
+        for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, String(v));
+        return n;
+      };
+      const svgEl = sNode('svg', { class: 'sf-runover__arc-svg', viewBox: '0 0 240 190' });
+      const cx = 120; const cy = 95; const R = 74;
+      const pt = (r, deg) => {
+        const rad = ((deg - 90) * Math.PI) / 180;
+        return [cx + r * Math.cos(rad), cy + r * Math.sin(rad)];
+      };
+      if (bearingInfo.deg != null) {
+        const d0 = bearingInfo.deg - 34;
+        const d1 = bearingInfo.deg + 34;
+        const [ax, ay] = pt(R, d0);
+        const [bx, by] = pt(R, d1);
+        const [ix, iy] = pt(40, d1);
+        const [jx, jy] = pt(40, d0);
+        // Subtle directional wash between arc and hull edge
+        svgEl.appendChild(sNode('path', {
+          d: `M ${ax.toFixed(1)} ${ay.toFixed(1)} A ${R} ${R} 0 0 1 ${bx.toFixed(1)} ${by.toFixed(1)} L ${ix.toFixed(1)} ${iy.toFixed(1)} A 40 40 0 0 0 ${jx.toFixed(1)} ${jy.toFixed(1)} Z`,
+          fill: 'rgb(255 80 56 / .12)',
+        }));
+        // Single crisp threat arc on the side the fatal blow came from
+        svgEl.appendChild(sNode('path', {
+          d: `M ${ax.toFixed(1)} ${ay.toFixed(1)} A ${R} ${R} 0 0 1 ${bx.toFixed(1)} ${by.toFixed(1)}`,
+          fill: 'none', stroke: '#ff5038', 'stroke-width': 3.5, 'stroke-linecap': 'round',
+        }));
+        // Incoming vector shaft + arrowhead pointing at the hull
+        const [s0x, s0y] = pt(R + 12, bearingInfo.deg);
+        const [tipX, tipY] = pt(50, bearingInfo.deg);
+        const [w0x, w0y] = pt(60, bearingInfo.deg - 9);
+        const [w1x, w1y] = pt(60, bearingInfo.deg + 9);
+        svgEl.appendChild(sNode('path', {
+          d: `M ${s0x.toFixed(1)} ${s0y.toFixed(1)} L ${tipX.toFixed(1)} ${tipY.toFixed(1)}`,
+          fill: 'none', stroke: '#ff5038', 'stroke-width': 2.5, 'stroke-linecap': 'round',
+        }));
+        svgEl.appendChild(sNode('path', {
+          d: `M ${w0x.toFixed(1)} ${w0y.toFixed(1)} L ${tipX.toFixed(1)} ${tipY.toFixed(1)} L ${w1x.toFixed(1)} ${w1y.toFixed(1)}`,
+          fill: 'none', stroke: '#ff7a5c', 'stroke-width': 2.5, 'stroke-linecap': 'round', 'stroke-linejoin': 'round',
+        }));
+      } else if (bearingInfo.contact) {
+        // Four short inward collision chevrons — zero circles or rings.
+        for (const deg of [45, 135, 225, 315]) {
+          const [p0x, p0y] = pt(46, deg);
+          const [p1x, p1y] = pt(30, deg);
+          svgEl.appendChild(sNode('path', {
+            d: `M ${p0x.toFixed(1)} ${p0y.toFixed(1)} L ${p1x.toFixed(1)} ${p1y.toFixed(1)}`,
+            fill: 'none', stroke: '#ff5038', 'stroke-width': 3, 'stroke-linecap': 'round',
+          }));
+        }
+      }
+      stage.appendChild(svgEl);
+    }
+    card.appendChild(stage);
+  }
+
+  // Flat horizontal vitals strip (Shield / Armor / Hull)
+  if (vitals.length) {
+    const vRow = el('div', 'sf-runover__vitals');
+    for (const v of vitals.slice(0, 3)) {
+      const pct = Math.round(Math.max(0, Math.min(100, Number(v.value) || 0)));
+      const cell = el('div', `sf-runover__vital${pct === 0 ? ' is-empty' : ''}`);
+      const top = el('div', 'sf-runover__vital-top');
+      top.appendChild(el('span', 'sf-runover__vital-word', v.word));
+      top.appendChild(el('span', 'sf-runover__vital-pct', `${pct}%`));
+      const track = el('div', 'sf-runover__vital-track');
+      const fill = el('div', 'sf-runover__vital-fill');
+      fill.style.width = `${pct}%`;
+      track.appendChild(fill);
+      cell.appendChild(top);
+      cell.appendChild(track);
+      vRow.appendChild(cell);
+    }
+    card.appendChild(vRow);
+  }
+
+  // Plain hit strip: damage bars oldest -> fatal blow + weapon legend
+  if (hits.length) {
+    const hitsBox = el('div', 'sf-runover__hits');
+    const hHead = el('div', 'sf-runover__hits-head');
+    const totalDmg = Math.round(hits.reduce((sum, n) => sum + n, 0));
+    hHead.appendChild(el('span', 'sf-runover__hits-title', hits.length === 1 ? 'Last hit' : `Last ${hits.length} hits`));
+    hHead.appendChild(el('span', 'sf-runover__hits-total', `${totalDmg} damage`));
+    hitsBox.appendChild(hHead);
+
+    const strip = el('div', 'sf-runover__hit-strip');
+    const max = Math.max(...hits, 1);
+    hits.forEach((amount, i) => {
+      const last = i === hits.length - 1;
+      const col = el('div', `sf-runover__hit-col${last ? ' is-fatal' : ''}`);
+      col.appendChild(el('span', 'sf-runover__hit-val', String(Math.round(amount))));
+      const well = el('div', 'sf-runover__hit-well');
+      const bar = el('div', 'sf-runover__hit-bar');
+      bar.style.height = `${Math.max(16, Math.round((amount / max) * 100))}%`;
+      well.appendChild(bar);
+      col.appendChild(well);
+      const code = hitWeapons[i] ? deathDialInitials(hitWeapons[i]) : '';
+      col.appendChild(el('span', 'sf-runover__hit-who', code));
+      strip.appendChild(col);
+    });
+    hitsBox.appendChild(strip);
+
+    if (legend) hitsBox.appendChild(el('p', 'sf-runover__legend', legend));
+    card.appendChild(hitsBox);
+  }
+
+  return card;
 }

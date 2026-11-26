@@ -380,8 +380,16 @@ test('the Site drawer reports the totals and courier log the owner actually hold
   assert.equal(model.courier.podTarget, h.sys.getSite(siteId).fleet.podTarget);
   assert.deepEqual(model.courier.inFlight, [], 'nothing launched yet');
 
-  // A courier in flight reads as one row with a mono ETA, not a sentence.
   const site = h.sys.getSite(siteId);
+  site.exportBuffer.cmdty_silicate = model.courier.podCapacity - 0.7;
+  assert.equal(modelFor(h, siteId).courier.stagedUnits, 11);
+  assert.equal(modelFor(h, siteId).courier.readyUnits, 0, 'the stage is still filling');
+  site.exportBuffer.cmdty_silicate = model.courier.podCapacity - 1e-10;
+  const staged = modelFor(h, siteId).courier;
+  assert.equal(staged.stagedUnits, model.courier.podCapacity);
+  assert.equal(staged.readyUnits, model.courier.podCapacity, 'roundoff does not strand the last unit');
+
+  // A courier in flight reads as one row with a mono ETA, not a sentence.
   site.fleet.inFlight.push({ launchT: 0, arriveT: h.state.simTime + 95, cargo: { cmdty_silicate: 12 }, lost: false });
   const flying = modelFor(h, siteId).courier.inFlight;
   assert.equal(flying.length, 1);

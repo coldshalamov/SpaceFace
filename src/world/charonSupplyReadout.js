@@ -82,9 +82,9 @@ const finitePosition = e => [e?.pos?.x, e?.pos?.z].every(Number.isFinite);
 function supplyRecoveryGuidance(s, h) {
   const p = s.entities?.get?.(s.playerId);
   const range = finitePosition(p) && finitePosition(h)
-    ? ` ${crewName(h, 'The original hauler')} is ${Math.round(Math.hypot(p.pos.x - h.pos.x, p.pos.z - h.pos.z))} WU from you.`
+    ? ` ${crewName(h, 'The original hauler')} is ${Math.round(Math.hypot(p.pos.x - h.pos.x, p.pos.z - h.pos.z))} m from you.`
     : '';
-  return `Bring the original loose supply pod into hull contact with the original hauler, match its drift within ${C.maxRelativeSpeed} WU/s, then release your tether.${range}`;
+  return `Bring the original loose supply pod into hull contact with the original hauler, match its drift within ${C.maxRelativeSpeed} m/s, then release your tether.${range}`;
 }
 function supplyHandoffGuidance(h, r) {
   let reading = '';
@@ -92,11 +92,11 @@ function supplyHandoffGuidance(h, r) {
     const separation = Math.round(Math.hypot(h.pos.x - r.pos.x, h.pos.z - r.pos.z));
     const velocities = [h.vel?.x, h.vel?.z, r.vel?.x, r.vel?.z];
     const drift = velocities.every(Number.isFinite)
-      ? ` · ${Math.hypot(h.vel.x - r.vel.x, h.vel.z - r.vel.z).toFixed(1)} WU/s relative drift`
+      ? ` · ${Math.hypot(h.vel.x - r.vel.x, h.vel.z - r.vel.z).toFixed(1)} m/s relative drift`
       : '';
-    reading = ` ${crewName(h, 'Original hauler')} → ${crewName(r, 'original cutter')}: ${separation} WU between hull centers${drift}.`;
+    reading = ` ${crewName(h, 'Original hauler')} → ${crewName(r, 'original cutter')}: ${separation} m between hull centers${drift}.`;
   }
-  return `All ${C.quantity} original kits are aboard the hauler. Handoff to the original cutter needs a hull gap of ${C.handoffGap} WU or less and relative drift within ${C.maxRelativeSpeed} WU/s. No loose reserve remains to recover.${reading}`;
+  return `All ${C.quantity} original kits are aboard the hauler. Handoff to the original cutter needs a hull gap of ${C.handoffGap} m or less and relative drift within ${C.maxRelativeSpeed} m/s. No loose reserve remains to recover.${reading}`;
 }
 export function charonSupplyFacts(s) {
   const b = book(s);

@@ -5,12 +5,13 @@ import { admitStuntThreat, threatReward } from '../combat/stuntScoring.js';
 import { WEAPONS } from '../data/weapons.js';
 import { MODULES } from '../data/modules.js';
 import { bodyLife } from '../combat/stuntEvidence.js';
-import { validateRunState } from '../core/runState.js';
+import { validateRunStateForTick } from '../core/runState.js';
 import { CREDIT_CHIP_KIND } from '../data/killRewards.js';
 import { runHasPerk } from '../data/swarmPerks.js';
 import { swarmStakeFor } from '../data/swarmStakes.js';
 import { bankActive, resetRound, settleCrash } from './stuntCombo.js';
 import { circuitRoundFor } from './survivalCircuit.js';
+import { swarmChain, swarmKillPayMultiplier } from './swarmChain.js';
 import { isSwarmRuleset } from './survivalSwarm.js';
 
 export const KILL_XP_BASE = 2;
@@ -20,6 +21,7 @@ export const RUN_WALLET = 'run';
 export const killXpFor = level => KILL_XP_BASE + (Number.isInteger(level) && level >= 1 ? level : 1);
 export const killScoreFor = (_level, threatClass = 'fodder') => threatReward(threatClass).baseScore;
 export const chipValueForPlan = () => 10; // cohort lives use the threat table, never an infinite per-spawn purse
+const SWARM_CLEAR_SCRAP_PER_ROUND = 50;
 export function estimateBoardScore({ gunKills = 0, physicsKills = 0, stuntPoints = 0, playerPhysics = true, threatClass = 'fodder' } = {}) {
   return (Math.max(0, Math.trunc(gunKills)) + (playerPhysics ? Math.max(0, Math.trunc(physicsKills)) : 0)) * threatReward(threatClass).baseScore + Math.max(0, Math.floor(stuntPoints));
 }
@@ -43,6 +45,14 @@ const WEAPON_NAME_BY_ID = new Map([
   ...MODULES.filter((def) => def && def.id && def.name).map((def) => [def.id, def.name]),
   ['mod_mass_flail_rig', 'Tow Flail'],
 ]);
+
+// THE ROOM PAYS (04_SWARM.md §5, release list 2026-11-19): a Swarm kill by the room — a throw,
+// a ram, a wall, the furnace, a chain blast — pays 2.5x the Scrap and experience of a gun kill,
+// and a champion (the boss of a fifth round) pays like a boss.
+export const SWARM_ROOM_KILL_PAY = 2.5;
+export const SWARM_BOSS_SCRAP_MULT = 5;
+export const SWARM_BOSS_KILL_XP = 100;
+const ROOM_KILL_PHRASES = new Set(Object.values(PHYSICAL_CAUSE_WORDS));
 
 function provenanceTag(receipt) {
   if (!receipt) return '';
@@ -84,7 +94,7 @@ function rewardCausePhrase(payload, victim, tick) {
 
 function liveRun(state) {
   const run = state?.run;
-  return run?.kind === 'survival' && run.phase !== 'inactive' && validateRunState(run).ok ? run : null;
+  return run?.kind === 'survival' && run.phase !== 'inactive' && validateRunStateForTick(run, state?.tick).ok ? run : null;
 }
 function freshRewards() {
   return { version: 2, wave: 0, deaths: {}, entitlements: {}, chips: {}, lastBankId: 0,
@@ -173,7 +183,9 @@ export const survivalRewards = {
     const victim = this._entity(id);
     if (!runOwnsReward(victim) || victim.alive !== false) return;
     const threat = victim.data?.stuntThreat || this._admit(victim);
-    if (!threat || !threat.credits) return;
+    if (!threat) return;
+    // A body worth no Scrap (a brood spawn) still pays its experience in Swarm.
+    if (!threat.credits && (!isSwarmRuleset(run.ruleset) || victim.type !== 'ship')) return;
     const r = this._ensure();
     const lifeId = threat.lifeId;
     if (r.deaths[lifeId]) return;
@@ -182,8 +194,19 @@ export const survivalRewards = {
     const killerId = payload.killerId ?? payload.provenance?.actorId;
     const playerOwned = playerId != null && killerId === playerId;
     const causePhrase = rewardCausePhrase(payload, victim, this.state && this.state.tick);
+    const swarm = isSwarmRuleset(run.ruleset);
+    const roomKill = swarm && ROOM_KILL_PHRASES.has(causePhrase);
+    const bossKill = swarm && (victim.data?.swarmChampion === true || threat.threatClass === 'boss');
+    // The chain meter multiplies this kill's base Scrap and XP (04_SWARM §4). The tier is the
+    // one already showing — swarmChain steps this kill afterwards. Room pay (2.5×) stacks with
+    // that tier only up to ×6. A boss's 5× scrap and flat XP sit outside that cap. Adventure
+    // and a chain owned by some other state pay ×1.
+    const chainMult = swarm && swarmChain.state === this.state ? swarmChain.livePayMultiplier() : 1;
+    const payMult = swarmKillPayMultiplier(chainMult, roomKill ? SWARM_ROOM_KILL_PAY : 1);
+    const xp = Math.round(killXpFor(victim.data?.level) * payMult)
+      + (bossKill ? SWARM_BOSS_KILL_XP : 0);
     this._emit('run:awardRequested', {
-      xp: killXpFor(victim.data?.level),
+      xp,
       score: playerOwned ? threat.baseScore : 0,
       reason: 'kill',
       wave: run.wave,
@@ -192,7 +215,9 @@ export const survivalRewards = {
     // SWARM-06: Bounty Hunter pays triple on champions — the perk's whole contract. The scale
     // rides the same entitlement, so the chip the body drops IS the triple, not a side award.
     const bountyMult = runHasPerk(run, 'bounty_hunter') && victim.data?.swarmChampion === true ? 3 : 1;
-    const credits = Math.max(0, Math.round(threat.credits * this._creditScale(run) * bountyMult));
+    const bossPart = bossKill ? SWARM_BOSS_SCRAP_MULT : 1;
+    const credits = Math.max(0, Math.round((threat.credits || 0) * this._creditScale(run) * bountyMult * payMult * bossPart));
+    if (credits <= 0) { this._payStipend(); return; }
     if (bountyMult > 1) this._emit('swarm:perkTrigger', { perkId: 'bounty_hunter', wave: run.wave });
     r.baseCash += credits;
     r.entitlements[lifeId] = { credits, settled: false, wave: run.wave };
@@ -234,6 +259,7 @@ export const survivalRewards = {
       && r.entitlements[id].credits === entity.data.credits && !Object.values(r.chips).includes(id));
     if (entitlementId == null) return;
     entity.data.entitlementId = entitlementId;
+    if (isSwarmRuleset(this.state?.run?.ruleset)) entity.data.playerCollectOnly = true;
     if (r.entitlements[entitlementId]?.settled) { entity.data.creditGranted = true; return; }
     r.chips[String(entity.id)] = entitlementId;
   },
@@ -255,7 +281,11 @@ export const survivalRewards = {
     if (entity?.data) entity.data.creditGranted = true;
     return this._settleEntitlement(entitlementId, reason);
   },
-  _onPickupCollected(payload) { if (payload?.pickupId != null) this._settleChip(payload.pickupId, 'chip_scooped'); },
+  _onPickupCollected(payload) {
+    if (payload?.pickupId == null) return;
+    if (isSwarmRuleset(this.state?.run?.ruleset) && payload.collectorId !== this.state.playerId) return;
+    this._settleChip(payload.pickupId, 'chip_scooped');
+  },
   /**
    * SWARM-06 — a perk mints a chip outside a kill. Same pipeline a cohort chip uses: mint the
    * entitlement first (the spawned pickup binds it in _onEntitySpawned), then drop the body.
@@ -347,14 +377,21 @@ export const survivalRewards = {
   _onWaveCleared(payload) {
     const run = liveRun(this.state); if (!run) return;
     const r = this._ensure(); const wave = payload?.wave ?? run.wave;
+    const planned = wave === this._planWave;
+    const zeroStartSwarm = isSwarmRuleset(run.ruleset) && run.telemetry?.zeroScrapOpening === true
+      && !run.practice && run.telemetry?.circuit == null;
+    if (zeroStartSwarm && (!planned || run.phase !== 'active' || wave !== run.wave || payload?.runWave !== wave)) return;
     if (r.clearedWaves[wave]) return;
     r.clearedWaves[wave] = true;
     if (this.state.stunts?.combo) resetRound(this.state.stunts.combo, this.state.tick);
     this._syncBanks(); this.sweepChips('round_clear');
     // The XP purse belongs to exactly the planned wave — a cleared receipt for a wave we
     // hold no live plan for still scores but invents no XP (CRU-014).
-    const xp = wave === this._planWave ? (this._plan?.rewards?.xp || 0) : 0;
-    this._emit('run:awardRequested', { xp, reason: 'wave_cleared', wave });
+    const xp = planned ? (this._plan?.rewards?.xp || 0) : 0;
+    // The zero-Scrap opening earns its floor-gun budget by clearing rounds (design/game/17 §3).
+    const credits = zeroStartSwarm && payload.completionKind === 'cohort' && payload.starved === false && payload.admitted > 0
+      ? Math.round(SWARM_CLEAR_SCRAP_PER_ROUND * wave * this._creditScale(run)) : 0;
+    this._emit('run:awardRequested', { xp, reason: 'wave_cleared', wave, ...(credits > 0 ? { credits } : {}) });
   },
   _onDeath() {
     if (this.state.stunts?.combo) settleCrash(this.state.stunts.combo, { tick: this.state.tick, playerDeath: true });

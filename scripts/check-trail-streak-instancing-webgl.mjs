@@ -33,6 +33,7 @@ try {
     const { findLinkedProgramActiveAttributes } = await import('/scripts/lib/webglProgramEvidence.mjs');
     const {
       createRibbonTrail,
+      createRibbonTrailBatch,
       initTrailStreakPool,
       updateTrailStreakInstance,
       commitTrailStreakInstances,
@@ -109,6 +110,15 @@ try {
     ribbon.rebuild(0.5, 0.17, 0.8);
     renderer.render(scene, camera);
     const programsAfterFirstLiveRibbon = renderer.info.programs.length;
+    // The batched fleet ribbon is a DISTINCT program (per-vertex tint/shade attributes). The
+    // staged salvo exemplar must cover it or the first live NPC cohort links in-flight.
+    const ribbonBatch = createRibbonTrailBatch(scene, { capacity: 2, nSeg: 24 });
+    const ribbonBatchLane = ribbonBatch.acquire('#7fe0ff', 2);
+    ribbonBatchLane.push(-2, 0, 0);
+    ribbonBatchLane.push(2, 0, 0);
+    ribbonBatchLane.rebuild(0.5, 0.17, 0.8);
+    renderer.render(scene, camera);
+    const programsAfterFirstLiveRibbonBatch = renderer.info.programs.length;
     const texture = (rgba) => {
       const value = new THREE.DataTexture(new Uint8Array(rgba), 1, 1, THREE.RGBAFormat);
       value.needsUpdate = true;
@@ -146,11 +156,49 @@ try {
       renderer.info.programs,
       requiredTrailAttributes,
     );
+    const batchAttributes = findLinkedProgramActiveAttributes(
+      gl,
+      renderer.info.programs,
+      ['aTrailShade', 'aTrailColor', 'aTrailNormal'],
+    );
     const pixels = new Uint8Array(96 * 96 * 4);
     renderer.readRenderTargetPixels(target, 0, 0, 96, 96, pixels);
     let litPixels = 0;
     for (let i = 0; i < pixels.length; i += 4) {
       if (pixels[i] || pixels[i + 1] || pixels[i + 2]) litPixels++;
+    }
+    // Pixel-parity: the same samples drawn through the solo program and through the shared
+    // fleet program must rasterize the same wake — the fragment body is byte-identical and
+    // presentation travels per-vertex instead of per-material. Runs after every program-count
+    // checkpoint: empty parity scenes link their own light-count-keyed program entries, which
+    // is expected and not a precompile miss.
+    const parityScene = new THREE.Scene();
+    const soloParity = createRibbonTrail(parityScene, '#7fe0ff', 24, 2);
+    soloParity.push(-4, 0, -1);
+    soloParity.push(0, 0, 0.4);
+    soloParity.push(4, 0, 0);
+    soloParity.rebuild(0.62, 0.17, 0.8, 1.85);
+    renderer.render(parityScene, camera);
+    const soloPixels = new Uint8Array(96 * 96 * 4);
+    renderer.readRenderTargetPixels(target, 0, 0, 96, 96, soloPixels);
+    const parityBatchScene = new THREE.Scene();
+    const parityBatch = createRibbonTrailBatch(parityBatchScene, { capacity: 1, nSeg: 24 });
+    const parityLane = parityBatch.acquire('#7fe0ff', 2);
+    parityLane.push(-4, 0, -1);
+    parityLane.push(0, 0, 0.4);
+    parityLane.push(4, 0, 0);
+    parityLane.rebuild(0.62, 0.17, 0.8, 1.85);
+    renderer.render(parityBatchScene, camera);
+    const batchPixels = new Uint8Array(96 * 96 * 4);
+    renderer.readRenderTargetPixels(target, 0, 0, 96, 96, batchPixels);
+    let divergentPixels = 0;
+    let batchLit = 0;
+    for (let i = 0; i < batchPixels.length; i += 4) {
+      if (batchPixels[i] || batchPixels[i + 1] || batchPixels[i + 2]) batchLit++;
+      if (Math.abs(batchPixels[i] - soloPixels[i]) > 4
+        || Math.abs(batchPixels[i + 1] - soloPixels[i + 1]) > 4
+        || Math.abs(batchPixels[i + 2] - soloPixels[i + 2]) > 4
+        || Math.abs(batchPixels[i + 3] - soloPixels[i + 3]) > 4) divergentPixels++;
     }
     const glError = gl.getError();
     const dynamicDiagnostics = dynamicBuffers.getDiagnostics().owners[0];
@@ -169,8 +217,12 @@ try {
       programsAfterFirstLiveTrail,
       programsAfterFirstLiveSeam,
       programsAfterFirstLiveRibbon,
+      programsAfterFirstLiveRibbonBatch,
       programsAfterFirstLiveSprites,
       activeAttributes,
+      batchAttributes,
+      ribbonBatchDivergentPixels: divergentPixels,
+      ribbonBatchLitPixels: batchLit,
       litPixels,
       glError,
       dynamicForceFullUploads: dynamicDiagnostics.forceFullUploads,
@@ -196,6 +248,18 @@ try {
     'the first nearby asteroid seam must reuse the precompiled program');
   assert.equal(report.programsAfterFirstLiveRibbon, report.programsAfterPrecompile,
     'the first lazily-created ribbon must reuse the retained precompiled program');
+  assert.equal(report.programsAfterFirstLiveRibbonBatch, report.programsAfterPrecompile,
+    'the first batched NPC ribbon cohort must reuse the retained precompiled program');
+  assert.ok(Array.isArray(report.batchAttributes)
+    && report.batchAttributes.includes('aTrailShade')
+    && report.batchAttributes.includes('aTrailColor')
+    && report.batchAttributes.includes('aTrailNormal'),
+    'the batched ribbon program must link its per-vertex tint/shade/normal attributes');
+  assert.ok(report.ribbonBatchLitPixels > 50,
+    `the batched lane must rasterize a lit wake, got ${report.ribbonBatchLitPixels} lit pixels`);
+  assert.ok(report.ribbonBatchDivergentPixels <= 20,
+    `the batched wake must rasterize the solo ribbon's image, ` +
+    `${report.ribbonBatchDivergentPixels} divergent pixels`);
   assert.equal(report.programsAfterFirstLiveSprites, report.programsAfterPrecompile,
     'the first pooled glow/smoke sprites must reuse retained precompiled programs');
   for (const name of ['instanceMatrix', 'aTrailColor', 'aTrailOpacity']) {

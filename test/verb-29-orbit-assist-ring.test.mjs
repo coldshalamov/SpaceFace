@@ -102,14 +102,19 @@ test('the signature rolls for every ring input — engage, radius, anchor drift'
     'a drifting anchor re-centers the ring');
 });
 
-test('_updateOrbitRing projects the world ring and hides it when idle', () => {
+test('_updateOrbitRing marks the held radius with four corner ticks, never a circle, and hides when idle (no rings around things, owner 2026-11-23)', () => {
   const { state, player } = fixture();
   const dom = fakeDom();
   masslineHud._updateOrbitRing(dom, player, state, w2s);
   assert.equal(dom.orbitSvg.style.display, 'block');
   // Anchor at (500,-200) -> (1220,250); edge at 640 -> x 1360; r = |1360-1220| = 140.
   assert.equal(dom.orbitSvg.style.transform, 'translate3d(1220px, 250px, 0)');
-  assert.equal(dom.orbitCircle.attrs.r, '140');
+  assert.equal(dom.orbitCircle.attrs.r, undefined, 'no circle radius is painted');
+  // Four corner ticks bend at the corners of the +-r square (tick arm k = 18 px), so the held
+  // radius still reads exactly.
+  assert.equal(dom.orbitCircle.attrs.d,
+    'M-140.0 -122.0V-140.0H-122.0M122.0 -140.0H140.0V-122.0'
+    + 'M140.0 122.0V140.0H122.0M-122.0 140.0H-140.0V122.0');
 
   player._flightFrame.orbitAssist = { active: false, reason: 'assist-off' };
   masslineHud._updateOrbitRing(dom, player, state, w2s);

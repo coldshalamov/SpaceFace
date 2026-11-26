@@ -6,6 +6,7 @@ import { ceresWorkfleetRoleForEntity } from '../data/ceresWorkfleetIdentity.js';
 import { ceresWorkfleetHardwareRoleForRecord } from '../data/ceresWorkfleetHardware.js';
 import { isCeresWinchAnchor } from '../data/ceresAnchorWinching.js';
 import { pendingStuntBodyIds } from './stuntEvidence.js';
+import { CINDER_TAG, cinderPlayerTow, isCinderObjectiveContact } from '../missions/cinderRoute.js';
 
 import { isHostileForAI } from '../ai/engagementAuthority.js';
 
@@ -16,6 +17,51 @@ const incomingConstraintLives = new WeakMap();
 import { occupantGenerationOf } from '../core/entity.js';
 
 export const COMBAT_SAVE_SCHEMA_VERSION = 1;
+const CINDER_TOW_REF = 'cinderAftermath';
+
+function cinderHeldTargetRef(state, attachment) {
+  const tether = state.player?.tether;
+  if (attachment.defId !== 'tether_standard' || attachment.ownerId !== state.playerId
+    || attachment.controllerId != null || tether?.attachmentId !== attachment.id
+    || !Number.isSafeInteger(attachment.targetId)) return null;
+  const sectorId = state.world?.currentSectorId;
+  const mission = state.missions?.active?.find(m => m.status === 'active' && m.storyTag === CINDER_TAG
+    && m.destSectorId === sectorId);
+  const wreck = mission && cinderPlayerTow(mission, state);
+  if (!wreck || wreck.id !== attachment.targetId) return null;
+  return { kind: CINDER_TOW_REF, markerId: wreck.data.markerId, missionId: mission.id,
+    sectorId, saveId: wreck.id };
+}
+
+/** Combat loads before Aftermath materializes its bodies. Reconnect only the saved
+ *  player Line, after that owner has bound the current body to the original marker. */
+export function restoreCinderTowAttachment(state, payload, aftermath, entityIdRemap) {
+  const tether = state.player?.tether, id = tether?.attachmentId;
+  if (tether?.active !== true || typeof id !== 'string') return null;
+  const saved = payload?.attachments?.byId?.[id], ref = saved?.targetRef;
+  if (ref?.kind !== CINDER_TOW_REF || !savedConstraintShape(saved, id) || saved.defId !== 'tether_standard'
+    || saved.ownerRef?.kind !== 'player' || saved.controllerRef != null || saved.controlMode != null
+    || !Number.isSafeInteger(ref.saveId) || ref.saveId <= 0 || tether.targetId !== ref.saveId
+    || typeof ref.markerId !== 'string' || !ref.markerId || ref.sectorId !== state.world?.currentSectorId
+    || state.combat?.attachments?.byId?.[id]) return null;
+  const player = state.entities?.get(state.playerId);
+  const target = aftermath?._resolveBoundWreck?.(ref.markerId);
+  const mission = state.missions?.active?.find(m => m.id === ref.missionId && m.destSectorId === ref.sectorId);
+  const mapped = entityIdRemap?.get(String(ref.saveId));
+  if (!player?.alive || !Number.isSafeInteger(player.occupantGeneration) || player.occupantGeneration <= 0
+    || !target || !Number.isSafeInteger(target.occupantGeneration) || target.occupantGeneration <= 0
+    || state.entities.get(target.id) !== target || aftermath._boundWreckMarkers?.get(target) !== ref.markerId
+    || (mapped != null && mapped !== target.id) || !isCinderObjectiveContact(mission, target)) return null;
+  const summary = { restoredAttachments: 0, dropped: 0 };
+  restoreAttachments(state, state.combat, { byId: { [id]: saved } }, endpoint => {
+    if (endpoint === saved.ownerRef) return player.id;
+    if (endpoint === ref) return target.id;
+    return null;
+  }, entityId => state.entities.get(entityId), summary);
+  if (!summary.restoredAttachments) return null;
+  entityIdRemap?.set(String(ref.saveId), target.id);
+  return target;
+}
 
 export function serializeCombatState(state) {
   const combat = state && state.combat;
@@ -72,7 +118,7 @@ export function* restoreCombatStateSteps(state, payload, resolveEntityRef, { def
   const entityFor = (id) => state.entities && typeof state.entities.get === 'function'
     ? state.entities.get(id) || null
     : null;
-  restoreCombatants(combat, payload.entities, resolveEntityRef, summary);
+  restoreCombatants(combat, payload.entities, resolveEntityRef, entityFor, summary);
   // World records own Orchard wounds across residency. The save reset removed
   // spawn-time runtime, so rehydrate only already-materialized originals here.
   // This does not enroll any actor into action/attachment reference persistence.
@@ -459,6 +505,9 @@ function serializeCombatants(combat, refs) {
     if (!runtime || typeof runtime !== 'object') continue;
     serializeRuntimeEntityRefs(runtime, refs);
     delete runtime.entityId;
+    // This-run occupant proof, not durable identity — re-stamped against the live
+    // body in restoreCombatants (same convention as attachment generations below).
+    delete runtime.occupantGeneration;
     runtime.entityRef = clonePlain(ref);
     out.push(runtime);
   }
@@ -473,7 +522,7 @@ function serializeAttachments(combat, refs, state) {
     const attachment = attachments[id];
     if (!attachment || attachment.state !== 'active' || attachment.defId === 'attachment_brood_grip') continue;
     const ownerRef = refs.get(entityKey(attachment.ownerId));
-    const targetRef = refs.get(entityKey(attachment.targetId));
+    const targetRef = refs.get(entityKey(attachment.targetId)) || cinderHeldTargetRef(state, attachment);
     const controllerRef = attachment.controllerId == null
       ? null
       : refs.get(entityKey(attachment.controllerId));
@@ -559,7 +608,7 @@ function serializeActions(combat, refs, savedAttachmentIds) {
   };
 }
 
-function restoreCombatants(combat, savedList, resolveEntityRef, summary) {
+function restoreCombatants(combat, savedList, resolveEntityRef, entityFor, summary) {
   if (!Array.isArray(savedList)) return;
   for (const saved of savedList) {
     const entityId = resolveEntityRef(saved && saved.entityRef);
@@ -567,6 +616,10 @@ function restoreCombatants(combat, savedList, resolveEntityRef, summary) {
     const runtime = clonePlain(saved);
     delete runtime.entityRef;
     runtime.entityId = entityId;
+    // Occupant generations are this-run proofs, never durable identity — re-stamp from
+    // the live body like the attachment/action generations below, or the next
+    // ensureCombatant sees a generation mismatch and rebuilds over the restored row.
+    runtime.occupantGeneration = occupantGenerationOf(entityFor(entityId));
     restoreRuntimeEntityRefs(runtime, resolveEntityRef);
     combat.entities[entityKey(entityId)] = runtime;
     summary.restoredEntities++;

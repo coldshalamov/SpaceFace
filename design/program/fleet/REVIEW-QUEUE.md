@@ -1,4 +1,10 @@
 <!-- LIFETIME: PROGRAM -->
+<!-- HISTORY-2026-11-20 -->
+> **History, not instructions (2026-11-20).** This file no longer assigns, orders or blocks any work.
+> States such as READY, TAKEN, HOLD, PARKED and NEEDS-PACKET mean nothing now. Read it for facts
+> about what was built or planned. The rule and the live board are in the root `AGENTS.md` and
+> `design/overhaul/12_PIPELINE.md`.
+
 # REVIEW-QUEUE — work landed while the strong reviewer (Fable) was offline
 
 The parent/master model (Fable 5.2) is temporarily offline; a lighter model kept the PR-intake

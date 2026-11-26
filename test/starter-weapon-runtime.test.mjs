@@ -161,8 +161,9 @@ test('starter Pulse Laser S has a readable burst and a clearly bounded vent/reco
   assert.ok(a.ventStart >= 5 && a.ventStart <= 7.5,
     `R5: guns trade damage for kick — the starter runs hot: starter vent should begin after a 5-7.5s burst, got ${a.ventStart}s`);
   assert.equal(a.shotsDuringVent, 0, 'vent lockout never leaks a projectile');
-  assert.ok(a.ventEnd - a.ventStart >= 1.5 && a.ventEnd - a.ventStart <= 2,
-    `vent duration must be readable and bounded, got ${a.ventEnd - a.ventStart}s`);
+  // R5 / 03 §3.2: "hold through red and it locks out for 1.2 s" — the overheated gun alone.
+  assert.ok(a.ventEnd - a.ventStart >= 1.15 && a.ventEnd - a.ventStart <= 1.3,
+    `R5: the overheated gun locks for 1.2 s, got ${a.ventEnd - a.ventStart}s`);
   assert.ok(a.resumedAfter >= 0 && a.resumedAfter <= 0.35,
     `held trigger must resume within one firing interval after vent, got ${a.resumedAfter}s`);
   assert.equal(a.maxHeat, 100, 'the final accepted shot visibly pegs heat before venting');
@@ -201,4 +202,17 @@ test('live NPC starter pulse obeys the same thermal lockout without claiming pla
     'NPC pulse enters the same live thermal lockout as the player');
   assert.equal(h.vents.filter((event) => event.ownerId === h.npc.id).length, 0,
     'NPC thermal timer does not emit player HUD/audio vent receipts');
+});
+
+test('R5 heat is rhythm: let go in the amber band and the gun cools at once', () => {
+  const h = starterHarness();
+  const mount = h.player.data.weapons[0];
+  // Fire until the bar is in amber (>= 60 % of heatMax) but short of red.
+  while ((mount._heat || 0) < 65 && h.state.simTime < 10) h.tick();
+  assert.ok(mount._heat >= 60 && mount._heat < 100, `reached the amber band (${mount._heat})`);
+  h.state.input.fire = false;
+  h.tick(30);
+  assert.ok((mount._heat || 0) <= 5,
+    `03 §3.2: "let go of the trigger while the heat bar is in its amber band and the gun cools at once" (heat ${mount._heat} after 0.5 s)`);
+  assert.deepEqual(h.vents, [], 'feathering never trips the lockout');
 });

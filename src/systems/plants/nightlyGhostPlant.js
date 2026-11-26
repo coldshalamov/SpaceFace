@@ -34,6 +34,7 @@ export function ghostRow(wave, durationS, t) {
 }
 
 export const nightlyGhostPlant = {
+  modes: ['swarm'],
   name: 'plants223',
 
   init(ctx) {

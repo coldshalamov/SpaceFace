@@ -68,8 +68,11 @@ const HARD_CONTACT = {
   preSolveClosingSpeed: 60, tick: 500, kind: 'contact',
 };
 
+// R11 / 03 §5: a contact with no cause on either body is a bump and sheds nothing, so the hard hit
+// here carries a cause (a gun kick that sent the rammer in), as every slam in play does.
+const CAUSE = Object.freeze({ actorId: 'gunner', weaponId: 'wpn_concussion_cannon_m', tag: 'weapon_hit', appliedTick: 500 });
 function hardHit(consequences, victim, rammer, { momentum = 40000, tick = 500 } = {}) {
-  return consequences._resolveContact(victim, rammer, HARD_CONTACT, momentum, tick, null, false);
+  return consequences._resolveContact(victim, rammer, HARD_CONTACT, momentum, tick, { ...CAUSE, appliedTick: tick }, false);
 }
 
 function tearOffs(state) {

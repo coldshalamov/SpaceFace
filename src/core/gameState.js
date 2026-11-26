@@ -5,7 +5,7 @@ import { mulberry32 } from './rng.js';
 import { SpatialHash } from './spatialHash.js';
 import { CURRENT_VERSION } from '../data/saveVersion.js';
 import { AI_CONTRACT_VERSION } from '../ai/contracts.js';
-import { AUDIO_DEFAULT_MUTE_VERSION, GAME_MOTION_DEFAULT_VERSION, SHADOWS_DEFAULT_VERSION } from './graphicsProfileBootstrap.js';
+import { AUDIO_DEFAULT_MUTE_VERSION, AUTO_FRAME_CAP_VERSION, GAME_MOTION_DEFAULT_VERSION, SHADOWS_DEFAULT_VERSION } from './graphicsProfileBootstrap.js';
 import { createRunState } from './runState.js';
 
 function defaultSettings() {
@@ -45,7 +45,7 @@ function defaultSettings() {
     // affords, sun shadow-maps read as crawling miscolored clumps, not depth. The pooled contact
     // shadow carries grounding; the toggle/Quality preset still live-applies the opt-in pass.
     // shadowsDefaultVersion stamps the migration policy (graphicsProfileBootstrap owns it).
-    video: { renderScale: 1.0, bloom: true, bloomStrength: 0.40, bloomThreshold: 1.0, vsync: true, fov: 50, particleQuality: 'medium', engineTrails: true, pixelRatioCap: 2, motionReduce: false, shadows: false, shadowsDefaultVersion: SHADOWS_DEFAULT_VERSION, nocturne: true, nocturneShadows: false, nocturneAtmosphere: true, nocturneQuality: 'auto', energyMaterials: true, renderGraph: false, dynamicResolution: false, qualityMode: 'auto', chaseClose: false, qualityPreset: 'medium', frameCap: 0, bloomLevels: 2, postFx: true, sharpen: false, screenShake: 100, hudScale: 1, hudOpacity: 1, arcadeEffects: 'full' },
+    video: { renderScale: 1.0, bloom: true, bloomStrength: 0.40, bloomThreshold: 1.0, vsync: true, fov: 50, particleQuality: 'medium', engineTrails: true, pixelRatioCap: 2, motionReduce: false, shadows: false, shadowsDefaultVersion: SHADOWS_DEFAULT_VERSION, autoFrameCapVersion: AUTO_FRAME_CAP_VERSION, nocturne: true, nocturneShadows: false, nocturneAtmosphere: true, nocturneQuality: 'auto', energyMaterials: true, renderGraph: false, dynamicResolution: false, qualityMode: 'auto', chaseClose: false, qualityPreset: 'medium', frameCap: 0, bloomLevels: 2, postFx: true, sharpen: false, screenShake: 100, hudScale: 1, hudOpacity: 1, arcadeEffects: 'full' },
     gameplay: {
       // 300s default: the worker-lane autosave captures in one synchronous task,
       // which stalls sim ticks for its full duration on mature saves. Until the
@@ -54,6 +54,9 @@ function defaultSettings() {
       // playability tradeoff. Still selectable Off/60/120/300 in Settings.
       autosaveIntervalS: 300,
       tutorialHints: true,
+      // OVH-06a / R10: no floating damage numbers by default - damage is read on the hull. The
+      // toggle (Settings -> Gameplay) stays for pilots who want them.
+      damageNumbers: false,
       difficulty: 'standard',
       pauseOnFocusLoss: true,
       physicsBackend: 'rapier-dynamic',
@@ -61,7 +64,9 @@ function defaultSettings() {
       flightBackend: 'v3',
       // Explicit runtime profile (Phase 2). Never inferred from host environment.
       runtimeProfile: 'production',
-      controlScheme: 'pilot',
+      // R17 (2026-11-20): new profiles fly the scheme a stranger expects — the ship faces the cursor,
+      // W/S thrust and brake, A/D strafe. Pilot (A/D turn) stays one Settings row away.
+      controlScheme: 'helm-assist',
       controlSchemeV2: true,
       orbitAssistStrength: 'standard',
       // FB-001: the pursuit-slot chase assist, re-surfaced as an opt-in assisted-flight option.
@@ -83,14 +88,16 @@ function defaultSettings() {
       bindings: null,       // null = use input.js DEFAULT_BINDINGS; populated on first rebind
       masslineBindingProfile: 'space-v1', // new profiles: Space primary + persistent F alias
       flightMode: 'assisted',
-      // scheme: 'drive' keeps the wheel-like pad map (left stick = yaw + throttle);
-      // 'twinstick' makes the left stick a world-frame drive vector while the right stick
-      // aims and steers the nose (PQ-164.04). schemeSuggested: the one-shot pad-connect toast.
+      // CONTROLLER-1: 'twinstick' is the shipping pad scheme — left stick is a world-frame
+      // drive vector, right stick aims and steers the nose. 'drive' remains as the legacy
+      // wheel-like opt-out (left stick = yaw + throttle); old saves normalize to it and the
+      // one-shot pad-connect toast points those profiles at the default. schemeSuggested is
+      // that toast's latch.
       // FB-004: curve/feel tuning. 'linear' + deadzoneRight = deadzone + sensitivity 1 reproduces
       // the shipped numbers exactly; 'expo' softens the center without losing the edges, and the
       // right stick's deadzone is its own axis so aim jitter never tunes out fly precision.
       gamepad: {
-        enabled: true, deadzone: 0.12, invertY: false, scheme: 'drive', schemeSuggested: false,
+        enabled: true, deadzone: 0.12, invertY: false, scheme: 'twinstick', schemeSuggested: false,
         curve: 'linear', deadzoneRight: 0.12, sensitivityAim: 1, sensitivityFly: 1,
         // FB-002/B117: which face-button vocabulary prompts print — 'xb' A/B/X/Y, 'ds'
         // DualShock shapes, 'fh' Field Hardware circled letters. Speech and prompt chips
@@ -136,7 +143,10 @@ export function defaultPlayer() {
     efficiencyMods: { miningYieldMult: 1, shieldRegenMult: 1, energyRegenMult: 1, cargoCapMult: 1, tradeFeeMult: 1 },
     researchPoints: 0,
     salvageRights: 0,
-    cargo: { items: {}, usedVolume: 0, usedMass: 0, capVolume: 40, capMass: 60 },
+    // CARGO-BUILD-1: the hold is a slot bag — slots[] is the record, items the derived mirror.
+    // capVolume matches the starter hull's derived cargoCap (NEW_GAME.cargoCapacity=250); it stays
+    // as the mass/volume readout floor until ships.js writes the real derived stats.
+    cargo: { slots: [], slotCount: 12, items: {}, usedVolume: 0, usedMass: 0, capVolume: 250, capMass: 60 },
     targetId: null,
     fireGroups: { 1: [], 2: [] },
     boostActive: false,
@@ -227,6 +237,12 @@ export function createGameState(seed) {
       discovery: {}, scanPings: {}, frontierRumors: { schemaVersion: 1, byId: {}, receipts: [] },
       entryPoint: { x: 0, z: 0, heading: 0 },
       coordinateSchema: 'global_v1', frameOrigin: { x: 0, z: 0 }, frameOriginSeq: 0,
+      // Residency arrivals slice across ticks (1 neighbor materialization per world tick —
+      // ARRIVAL_RESIDENCY_BUDGET) instead of landing inside one step. The presentation lane
+      // always set this on its own state; the worker lane's sim state never received it, so
+      // every worker-lane enter materialized the whole plan inline — the multi-hundred-ms
+      // single step behind the freeze family (owner bug 2026-11-21).
+      sliceArrival: true,
     },
     jump: { state: 'IDLE', targetSectorId: null, via: null, chargeT: 0, chargeNeeded: 0, cooldownT: 0 },
     fuel: { current: 100, max: 100 },

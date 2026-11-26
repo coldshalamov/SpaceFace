@@ -766,7 +766,7 @@ export function voidCrateRows(state) {
   const sale = discontinuedSaleRow(state);
   const rows = [
     Object.freeze({ label: 'SCANNER', value: 'MASS 0.0', sealed: false }),
-    Object.freeze({ label: 'MASSLINE', value: 'PULLS HEAVY', sealed: false }),
+    Object.freeze({ label: 'LINE', value: 'PULLS HEAVY', sealed: false }),
     Object.freeze({
       label: 'INTERIOR',
       value: 'VOID STASIS CRATE — MASS-CANCELED, OLDER THAN THE CHARTER',
@@ -835,7 +835,7 @@ export const SLING_BAND = Object.freeze({
 export const SLING_CHIME_TABLE = Object.freeze([
   Object.freeze({
     label: 'THE BAND',
-    value: 'THE ANVIL SLING — TANGENTIAL, ABOVE 140 WU/S, BETWEEN r 1040 AND r 1450',
+    value: 'THE ANVIL SLING — TANGENTIAL, ABOVE 140 M/S, BETWEEN r 1040 AND r 1450',
     sealed: false,
   }),
   Object.freeze({
@@ -1836,7 +1836,7 @@ export const HUM_ANCHOR_ID = 'station_sker';
 export function humAtSkerRows(state) {
   if (special500Moment(state, 'SP3-138') == null) return [];
   return [
-    Object.freeze({ label: 'THE BEARING', value: `INSIDE THE ${HUM_ZONE_WU} WU ZONE OFF THE SKER MARKET`, sealed: false }),
+    Object.freeze({ label: 'THE BEARING', value: `INSIDE THE ${HUM_ZONE_WU} M ZONE OFF THE SKER MARKET`, sealed: false }),
     Object.freeze({
       label: 'THE RESOLUTION',
       value: 'THE HUM EVERY HULL HALF-NOTICES RESOLVES, HERE, INTO A SLOW MELODY',
@@ -1895,7 +1895,7 @@ export function stillEyeRows(state) {
   return [
     Object.freeze({
       label: 'THE EYE',
-      value: `AN ${STILL_EYE_WU} WU CIRCLE INSIDE THE ANVIL BAND — LIGHTNING STOPS, DRAG VANISHES, DEBRIS HANGS GLITTERING`,
+      value: `AN ${STILL_EYE_WU} M CIRCLE INSIDE THE ANVIL BAND — LIGHTNING STOPS, DRAG VANISHES, DEBRIS HANGS GLITTERING`,
       sealed: false,
     }),
     Object.freeze({ label: 'THE HEAT', value: 'COOLS AT THE OUT-OF-BAND RATE INSIDE', sealed: false }),

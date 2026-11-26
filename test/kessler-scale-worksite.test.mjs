@@ -51,7 +51,7 @@ test('single canonical global frame: ring, four worksite rows, and real pod read
   assert.equal(near.mass, 40); assert.equal(near.alive, true);
   assert.equal(near.data.commodityId, 'cmdty_ore_iron');
   assert.deepEqual(near.data.kesslerReceipt, { plateRead: 37.6, trueRead: 40 });
-  assert.match(near.data.scanLabel, /Iron freight · WEIGHED 40\.0 t · 17 u/);
+  assert.match(near.data.scanLabel, /Iron freight · WEIGHED 37\.6 t · STAMP 40\.0 t · 17 u/);
 });
 
 test('measured skins and entire drawn envelopes flank the open ring and station approach', () => {
@@ -174,8 +174,7 @@ test('ordinary alloy-completion signal hands the existing story navigation to ac
   assert.equal(f.state.nav.waypoint.kind, 'story');
   assert.equal(f.state.nav.waypoint.stationId, null);
   assert.deepEqual(f.state.nav.waypoint.pos, { x: 13008, z: 7212 });
-  assert.match(f.state.nav.waypoint.reason, /delivered alloy crate on Scale 4.*brake below 2 WU\/s inside the ring.*jettison a lot/);
-  assert.match(f.state.nav.waypoint.reason, /Freight stays yours/);
+  assert.match(f.state.nav.waypoint.reason, /Fly inside the Scale 4 ring to watch the delivered alloy crate being weighed/i);
   f.owner._recordCampaignBookSignal('kesslerPod:weighed', { variance: true, entityId: 42 });
   assert.equal(kesslerScalePending(f.state), false);
   assert.notEqual(f.state.nav.waypoint?.label, 'Scale 4 · weigh the delivered crate');

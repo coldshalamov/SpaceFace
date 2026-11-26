@@ -11,6 +11,7 @@ import { furnaceSettlementFromMission } from '../story/campaign47a/campaignRecei
 // spread back onto the missions object, so `this` still binds to the system at call time.
 import { CIVILIAN_MANIFEST_PAYLOAD_TYPE } from './lootShards.js';
 import { WRECK_COLLIDER_PROPORTIONS } from '../data/wreckClasses.js';
+import { proxyOuterRadiusWu, resolveCollisionProxyManifest } from '../data/collisionProxyManifests.js';
 import { makeEnemySpawnSpec } from './combat.js';
 import { deferSectorEnterMaterialization, deferredEnterNow, deferredEnterTick } from '../core/sectorEnterDefer.js';
 import { spawnPayloadEntity } from '../combat/industrialBeam.js';
@@ -2069,23 +2070,24 @@ export const missionStoryOps = {
     const story = this.state.story;
     story.flags = story.flags || {};
     story.flags.contract_47a_skimmed = true;
-    const salvageWreckCount = this._spawnContract47aSkimWrecks(m);
-    // The kill feed, exactly as authored. The escorts die; the unknown hull departs with
-    // the alloy. The strain gauge reads 12.4 t — the Line reads true, so the player now
-    // knows the mass the manifest will lie about.
+    const salvageWreckCount = this._spawnContract47aSkimWrecks(m, where);
+    // The Skim happens in front of the pilot: on the lane the escorts blow up ahead of the ship
+    // and leave their wrecks there (see _spawnContract47aSkimWrecks). The words only name what
+    // was just seen, in plain speech — the strain gauge reads 12.4 t, so the Line reads true and
+    // the player now knows the mass the manifest will lie about.
     this.bus.emit('comms:popup', {
       id: 'b0_skim_killfeed', sender: 'LANE TRAFFIC', category: 'story', ttl: 10, persist: true,
-      text: 'ESCORT-02 ELIMINATED. ESCORT-01 ELIMINATED. CARGO DRONE 03 LOST. UNKNOWN VESSEL DEPARTED.',
+      text: where === 'lane' ? 'Escorts down ahead. Something took the sample.' : 'The escorts are gone. So is the sample.',
     });
     this.bus.emit('comms:popup', {
       id: 'b0_skim_strain', sender: 'LINE STRAIN', category: 'story', ttl: 9, persist: true,
-      text: 'STRAIN GAUGE: 12.4t — UNKNOWN VESSEL ON A BLACK LINE. THE TOW IS EMPTY.',
+      text: 'A black line took 12.4 t. Tow empty.',
     });
     const salvageCue = salvageWreckCount > 0
-      ? ` Optional salvage: ${counted(salvageWreckCount, 'wreck', 'wrecks')}, 1 alloy${salvageWreckCount === 1 ? '' : ' each'}.`
+      ? ` ${counted(salvageWreckCount, 'wreck', 'wrecks')} ${where === 'lane' ? 'ahead' : 'nearby'} to salvage, 1 alloy${salvageWreckCount === 1 ? '' : ' each'}.`
       : '';
     this.bus.emit('toast', {
-      text: `Unknown Black Line ship took 12.4 t. Escorts and drone lost.${salvageCue}`,
+      text: `A ship on a black line took the 47-A sample.${salvageCue}`,
       kind: 'warn', ttl: 7,
     });
     this.bus.emit('story:skimResolved', {
@@ -2095,12 +2097,34 @@ export const missionStoryOps = {
     return true;
   },
 
+  /** The station a docked hull is alongside: the one the UI names, else the nearest station body.
+   *  Used to keep the dock-variant Skim casualties outside the station's own hull. */
+  _nearestStationTo(pos) {
+    const state = this.state;
+    if (!pos || !state) return null;
+    const dockedId = state.ui && state.ui.dockedStationId;
+    const byStationId = state.entityIndex && state.entityIndex.byStationId;
+    if (dockedId && byStationId && typeof byStationId.get === 'function') {
+      const named = byStationId.get(dockedId);
+      if (named && named.alive !== false && named.type === 'station' && named.pos) return named;
+    }
+    let best = null;
+    let bestD = Infinity;
+    for (const entity of state.entities.values()) {
+      if (!entity || entity.alive === false || entity.type !== 'station' || !entity.pos) continue;
+      if (dockedId && !(entity.data && entity.data.stationId === dockedId)) continue;
+      const d = Math.hypot(entity.pos.x - pos.x, entity.pos.z - pos.z);
+      if (d < bestD) { bestD = d; best = entity; }
+    }
+    return best;
+  },
+
   /** The ambush site's receipt: the escort wrecks and the cargo drone stay behind as
    *  salvageable hulls (§34.7 — "the ambush site keeps its escort wrecks"). Deterministic
    *  offsets from the meta seed + mission id — no wall clock, no Math.random. */
   /** Returns the count of unique, live, map-and-list-backed one-alloy wrecks. A failed
    *  prop spawn is isolated so it cannot strand the already-latched story receipt. */
-  _spawnContract47aSkimWrecks(m) {
+  _spawnContract47aSkimWrecks(m, where = 'lane') {
     const state = this.state;
     const entities = state && state.entities;
     if (!this.helpers || typeof this.helpers.spawnEntity !== 'function'
@@ -2109,11 +2133,45 @@ export const missionStoryOps = {
     if (!player || !player.pos) return 0;
     const seed = (state.meta && state.meta.seed) >>> 0;
     const sectorId = state.world && state.world.currentSectorId || null;
+    // In front of the pilot, not around them: the fan opens along the ship's travel (its nose when
+    // it is still). The flight camera shows about 64 m ahead at rest and more at speed, so the
+    // three sit 44-93 m ahead and 27-61 m either side of the flight line (seen, and never in the
+    // ship's path). It used to be a ring 140-210 m out at seeded bearings, so the Skim usually
+    // landed off screen and read as a line of all-caps text.
+    //
+    // That close fan is only honest in the LANE variant, where the ship is in open space. In the
+    // DOCK variant the hull is berthed at the station, so the same fan put three 40,000-mass
+    // wrecks inside a size-L hub's own hull (its proxy reaches ~0.9 of a 90 m dock radius). The
+    // dock variant keeps the old outward ring instead: the wrecks are casualties left around the
+    // berth, at a range that clears the station whatever hull it is.
+    const docked = where === 'dock';
+    const vx = Number(player.vel && player.vel.x) || 0;
+    const vz = Number(player.vel && player.vel.z) || 0;
+    const heading = Math.hypot(vx, vz) > 5 ? Math.atan2(vz, vx) : (Number.isFinite(player.rot) ? player.rot : 0);
     const rows = [
-      { name: 'ESCORT-01', label: 'Escort wreck — lane casualty', r: 140 },
-      { name: 'ESCORT-02', label: 'Escort wreck — lane casualty', r: 175 },
-      { name: 'CARGO DRONE 03', label: 'Cargo drone wreck — cargo gone', r: 210 },
+      { name: 'ESCORT-01', label: 'Escort wreck — lane casualty', r: 60, ringR: 140, spread: -0.65 },
+      { name: 'ESCORT-02', label: 'Escort wreck — lane casualty', r: 75, ringR: 175, spread: 0.6 },
+      { name: 'CARGO DRONE 03', label: 'Cargo drone wreck — cargo gone', r: 80, ringR: 210, spread: 0.45 },
     ];
+    const blast = !docked && this.bus && typeof this.bus.emit === 'function';
+    // The berth a dock-variant Skim leaves its casualties around: the station the ship is berthed
+    // at, else the nearest one. Its hull extent (proxy reach, or its authored dock radius when the
+    // resolved proxy is a smaller measured skin) plus a margin is the ring's floor.
+    const dockStation = docked ? this._nearestStationTo(player.pos) : null;
+    let dockClearR = 0;
+    if (dockStation) {
+      // A body with no resolved proxy (a station from an older save, or an encounter body) must
+      // not throw here: the Skim is already latched as resolved before the spawn, so a throw would
+      // consume it with no wrecks and no receipt. Fall back to the authored radii.
+      const manifest = resolveCollisionProxyManifest(dockStation);
+      const hullR = Math.max(
+        manifest ? proxyOuterRadiusWu(manifest, dockStation) : 0,
+        Number(dockStation.data && dockStation.data.dockRadius) || 0,
+        Number(dockStation.radius) || 0,
+      );
+      dockClearR = hullR + 60;
+    }
+    const ringCentre = dockStation ? dockStation.pos : player.pos;
     const hasLiveWreck = (row) => {
       const label = `${row.name} — WRECK`;
       for (const entity of entities.values()) {
@@ -2129,12 +2187,27 @@ export const missionStoryOps = {
     rows.forEach((row, idx) => {
       // An uncertain prior spawn must not mint another copy of the same one-alloy wreck.
       if (hasLiveWreck(row)) return;
-      const angle = ((hash32(seed, 4747, idx) % 360) * Math.PI) / 180;
-      const dist = row.r + (hash32(seed, 4751, idx) % 30);
+      let angle;
+      let dist;
+      let from;
+      if (docked) {
+        // A seeded bearing around the berth station, outside its own hull: a casualty ring off the
+        // dock, never the three blasts the lane variant plays in front of a moving ship.
+        angle = ((hash32(seed, 4747, idx) % 360) * Math.PI) / 180;
+        dist = Math.max(row.ringR + (hash32(seed, 4751, idx) % 30), dockClearR);
+        from = ringCentre;
+      } else {
+        angle = heading + row.spread + (((hash32(seed, 4747, idx) % 21) - 10) / 100);
+        dist = row.r + (hash32(seed, 4751, idx) % 20);
+        from = player.pos;
+      }
+      const at = { x: from.x + Math.cos(angle) * dist, z: from.z + Math.sin(angle) * dist };
+      // The kill itself, where the wreck will lie (a presentation receipt: no damage, no owner).
+      if (blast) this.bus.emit('environment:detonated', { pos: { x: at.x, z: at.z }, radius: 22, source: 'campaign47aSkim' });
       try {
         this.helpers.spawnEntity({
           type: 'wreck',
-          pos: { x: player.pos.x + Math.cos(angle) * dist, z: player.pos.z + Math.sin(angle) * dist },
+          pos: at,
           vel: { x: 0, z: 0 },
           radius: 9, mass: 40000, hull: 1, hullMax: 1,
           homeSectorId: sectorId,
@@ -2626,11 +2699,20 @@ export const missionStoryOps = {
     this.state.ui.trackedMissionId = mission.id;
     // OPENING-1: bind the recovery source on the first frame — the mark (and the tutorial seam
     // lesson) point at the bound rock from spawn instead of waiting for tutorial:finished.
-    this._resolveContract47aSampleSource(mission);
+    const source = this._resolveContract47aSampleSource(mission);
+    const waypoint = this.state.nav?.waypoint;
+    const binding = mission.params.sampleSource;
+    const replaceOwnFix = source?.type === 'asteroid' && binding && waypoint?.kind === 'mission'
+      && waypoint.missionId === mission.id && !waypoint.onboarding && waypoint.recoverySource
+      && (waypoint.targetEntityId !== source.id || ['sectorId', 'fieldId', 'slotId', 'resourceSlotId']
+        .some(key => waypoint.recoverySource[key] !== binding[key]));
     // Track the cold-start contract, but leave nav free while the staged tutorial owns the opening
     // waypoint (onboarding builds markerId/onboarding:true). After tutorial:finished, release
-    // restores mission/story navigation ownership.
-    if (!this._tutorialOwnsOpening()) this._refreshTrackedMissionNav(mission);
+    // restores mission/story navigation ownership. The scene can admit a better source between
+    // preparation and flight, so replace a stale 47-A marker already published by this owner.
+    if (replaceOwnFix || !this._tutorialOwnsOpening()) {
+      this._refreshTrackedMissionNav(mission, { allowOnboardingOverride: replaceOwnFix === true });
+    }
     this.bus.emit('mission:updated', { missionId: mission.id, tracked: true, source: CONTRACT_47A_B0_TAG });
   },
 
@@ -2749,7 +2831,7 @@ export const missionStoryOps = {
     }
     if (scene === 'variance_delivery' && isSlateCore(inst)) {
       const custody = this.state.story?.flags?.elroy_outcome === 'custody';
-      popup('SLATE', `${custody ? 'Elroy is in custody. ' : ''}One 36-tonne core waits southeast of Ceres Refinery. Tow it 110 WU west to my receiving beacon, below 18 WU/s. On a light hull a load that heavy drags you as much as you drag it; pull slowly and release early. Brake before release; payment does not stop its drift.`, 10);
+      popup('SLATE', `${custody ? 'Elroy is in custody. ' : ''}One 36-tonne core waits southeast of Ceres Refinery. Tow it 110 m west to my receiving beacon, below 18 m/s. On a light hull a load that heavy drags you as much as you drag it; pull slowly and release early. Brake before release; payment does not stop its drift.`, 10);
       return true;
     }
     if (scene === 'variance_delivery') {
@@ -2757,7 +2839,7 @@ export const missionStoryOps = {
       return true;
     }
     if (scene === 'feed_the_maw' && hasMawReceiving(inst)) {
-      popup('CERES TRAFFIC', `Three marked 40t hot-slag pods, three solid hits. ${mawHandlingRead(this.state)} Then latch the 120t Maw and move it east to the exterior receiver: within 80 WU, below 18 WU/s. Lost pods void this detail.`, 10);
+      popup('CERES TRAFFIC', `Three marked 40t hot-slag pods, three solid hits. ${mawHandlingRead(this.state)} Then latch the 120t Maw and move it east to the exterior receiver: within 80 m, below 18 m/s. Lost pods void this detail.`, 10);
       return;
     }
     if (scene === 'feed_the_maw') {
@@ -2796,10 +2878,16 @@ export const missionStoryOps = {
     const story = this.state && this.state.story;
     if (!story || story.beatIndex !== beatIndex) return false;
     const prefix = `campaign47a:b${beatIndex}:`;
-    const active = (this.state.missions.active || []).find((m) => m && m.status === 'active'
+    const missions = this.state.missions.active || [];
+    const active = missions.find((m) => m && m.status === 'active'
       && typeof m.storyTag === 'string' && m.storyTag.startsWith(prefix));
+    // Book 1 can dispatch sealed cargo while leaving Helios. Keep the course for work
+    // the pilot just chose from Jobs, even when the story contract sails alongside it.
+    const trackedId = this.state.ui?.trackedMissionId;
+    const preserveTrackedMission = beatIndex === 1 && trackedId !== active?.id
+      && missions.some((m) => m?.status === 'active' && m.id === trackedId);
     if (active) {
-      this.trackMission(active.id, { silent: true });
+      if (!preserveTrackedMission) this.trackMission(active.id, { silent: true });
       return true;
     }
     const offer = buildMissionBoardContract(beatIndex, {
@@ -2838,7 +2926,7 @@ export const missionStoryOps = {
       board.slots = board.slots.map(candidate => candidate === row ? fresh : candidate);
       row = fresh;
     }
-    return this.acceptMission(row.id);
+    return this.acceptMission(row.id, { preserveTrackedMission });
   },
 
   _activateContract47aB1OnDeparture() {
@@ -2862,7 +2950,7 @@ export const missionStoryOps = {
     return this._activateBookContractOnDeparture(4);
   },
 
-  newGame() {
+  newGame({ campaign = !this.state.world?.swarmArenaOnly } = {}) {
     this._racingOpponents?.stop('new_game');
     this._racingSetPieces?.stop('new_game');
     resetRacingGhostSession(this.state);
@@ -2889,7 +2977,7 @@ export const missionStoryOps = {
     state.missions.config = MISSION_TUNING;
     // Clear story spine + any prior campaign47a sidecar (nested under state.story).
     state.story = { beatIndex: 0, branch: null, flags: {}, chainProgress: 0, persistentCargo: [], journeyActs: { seen: [], current: null } };
-    if (!racingSession) {
+    if (campaign && !racingSession) {
       initCampaignSidecar(state, state.simTime || 0);
       // Act I owns a durable receipt even while the tutorial owns opening direction.
       this._announceJourneyAct(journeyActForBeat(state.story.beatIndex));
@@ -2904,7 +2992,7 @@ export const missionStoryOps = {
     this._lastWaypointRouteAt = 0;
     // Session latch — the dock:undocked clear never runs across a quit-while-docked New Game.
     this._lastDockedStation = null;
-    if (racingSession) return;
+    if (!campaign || racingSession) return;
     const tutorialOwnsOpening = this._tutorialOwnsOpening();
     if (!tutorialOwnsOpening) {
       this._refreshNavigation({ forceStory: true, silent: true });

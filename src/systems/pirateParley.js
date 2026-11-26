@@ -99,7 +99,9 @@ export const pirateParley = {
     }
     // In-kind bribes: a voluntary dump during DEMAND pays the toll without braking.
     this._listen('cargo:jettisoned', (p) => this._onJettisoned(p || {}));
-    this._listen('entity:spawned', (p) => this._onEntitySpawned(p));
+    // Toll-doctrine arrivals only trip the quiet-latch wake — aggregate
+    // bookkeeping served by one batch scan instead of a per-entity dispatch.
+    this._listen('entity:spawnedBatch', (p) => this._onEntitySpawnedBatch(p));
     // Boundary wakes: newGame() is not dispatched on the live route (this system is
     // not in FRESH_RUN_SYSTEMS), so save/run/sector transitions arrive only here.
     this._listen('save:loaded', () => this.noteParleyWake());
@@ -114,10 +116,14 @@ export const pirateParley = {
     this._parleyQuiet = null;
   },
 
-  _onEntitySpawned(payload) {
-    const entity = payload && payload.entity;
-    if (!eligiblePlan(entity)) return;
-    this.noteParleyWake();
+  _onEntitySpawnedBatch(payload) {
+    const receipts = payload && payload.receipts;
+    if (!Array.isArray(receipts)) return;
+    const entities = this.state && this.state.entities;
+    for (const receipt of receipts) {
+      const entity = receipt && (receipt.entity || (entities && entities.get && entities.get(receipt.id)));
+      if (eligiblePlan(entity)) { this.noteParleyWake(); return; }
+    }
   },
 
   _listen(evt, fn) {

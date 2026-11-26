@@ -28,11 +28,10 @@ import { COMMODITIES } from '../data/commodities.js';
 import { TALLY_THREE, tallyThreeSource } from '../data/tallyThree.js';
 import { ILEX_ARK, validIlexOutcome } from '../data/ilexArk.js';
 import { ECONOMY_BALANCE as BALANCE } from '../data/economyDerived.js';
-import { getSimStepProfiler, nowNs } from '../core/simStepProfiler.js';
-import { simCoreFlag } from '../core/simCoreFlags.js';
+
 import { stationInfo, toleratesContraband } from '../economy/stationMarketProfile.js';
 export { salvageBaySaleAllowsIllicit } from '../economy/stationMarketProfile.js';
-import { averageBoundedPrice, averageLivePrice, normalizedTradeQuantity, settleCredits, recoverStock, commodityStandingMultipliers } from '../economy/economyMath.js';
+import { averageBoundedPrice, normalizedTradeQuantity, settleCredits, commodityStandingMultipliers } from '../economy/economyMath.js';
 import { resourceIntent, restoreResourceWork, serializeResourceWork } from '../economy/economyResources.js';
 import { createEconomyPulse, recordEconomyPulse, recordEconomyCash, restoreEconomyPulse, economyPulseReport } from '../economy/economyPulse.js';
 import { presenceServiceForStation } from '../data/factionPresence.js';
@@ -45,7 +44,6 @@ import { planSurveyFix, commitSurveyFix, openSurveyFix, soldBearingOpen, bearing
 import { FACTION_META } from '../data/factions.js';
 import { BOLUS_SECTOR_ID, BOLUS_STATION_ID } from '../data/theBolus.js';
 import { SHIPS } from '../data/ships.js';
-import { conflictPressureForSector } from '../data/conflictZones.js';
 import {
   STATION_CONDITION_LAW, STATION_CREW_ROLES, liveStationConditions, stationServiceMult, stationTradeMults, stationTradeMultParts,
   stationRefuelRationU, grudgeLive, splitStationConditionsForSave, stationGrudgeOwedCr,
@@ -67,22 +65,28 @@ import {
 } from '../data/techVerbLadder.js';
 import { RECIPES } from '../data/mining.js';
 import { drawSeeded, hash32, mulberry32 } from '../core/rng.js';
-import { consumePeriodicClock, normalizePeriodicAccumulator } from '../core/periodicClock.js';
 import { missionOwnsReward, runOwnsReward } from '../combat/rewardEligibility.js';
-import { addCargo, removeCargo, removeSalvageBayCargo, reservedCargoQuantity, sellableCargoQuantity } from './cargo.js';
-import { ensureCommittedIntents } from './cargoCustody.js';
+import { addCargo, removeCargo, removeSalvageBayCargo, reservedCargoQuantity, sellableCargoQuantity, slotFitFor } from './cargo.js';
+import { boundCommittedIntents, ensureCommittedIntents } from './cargoCustody.js';
 import { outpostCommodity } from './outpostOperations.js';
 import {
-  getCycle as getCycleCore, cycleFactorAt, maybeAdvanceRegime, createCycle,
-  serializeCycles, deserializeCycles, applyCycleToMid, stockDriftTarget,
-} from './economyCycles.js';
+  ECONOMY_EVENT_TYPES, EVENT_CELL_S, EVENT_PROFILES, DENT_DEV_LO, DENT_DEV_HI,
+  marketMidAt, marketAvgMidAt, eventSpreadAt, eventsAffecting,
+  activeStationEvents, scheduledEventForEpoch, imposedRunForEvent, MARKET_GOOD_POOL,
+  shelfUnitsAt, shelfRestockSeconds, appendDent, dentHalfLifeS,
+  marketContextFor, marketRowsFor, marketHistoryFor, marketForecastFor,
+  marketRegimeStateFor, economyLiveEvents, stationLiveEvents,
+  listingDefFor, regimeLabel, sectorEventContext,
+} from '../economy/marketModel.js';
 import {
-  hiddenHoldCapacity,
-  remainingIllicit,
+  onboardIllicitCargo,
+  readSmugglingCapabilities,
   scanChance,
   clamp01,
   hotUntilActive,
   HOT_DURATION_S,
+  FINE_MULT,
+  BRIBE_FRAC,
 } from '../economy/customsRisk.js';
 import {
   CONVOY_SHARE_LAW,
@@ -102,8 +106,8 @@ import {
   inboundFreightLanes,
 } from '../economy/freightCausality.js';
 import { exposedDeadDropStacks, takeExposedDeadDrop } from './boreDeadDrop.js';
-import { allRegionalPressureRecipes, pressureRecipesForRegion } from '../economy/regionalSupply.js';
-import { applyPersistentDemand, createSectorDemandProjector, effectiveDemandFor } from '../economy/demandModel.js';
+import { pressureRecipesForRegion } from '../economy/regionalSupply.js';
+import { createSectorDemandProjector, effectiveDemandFor } from '../economy/demandModel.js';
 import { priceModForState, rankFromRep, rankServiceDiscount } from './factions.js';
 import { swarmCrossoverServiceDiscount } from '../data/swarmCrossover.js';
 import { endingStationTradeMults } from '../story/endings/worldAfter.js';
@@ -129,35 +133,33 @@ const PRICE_MULT_LO = BALANCE.market.priceLo, PRICE_MULT_HI = BALANCE.market.pri
 const SPREAD_BASE = BALANCE.market.spread;
 const SPREAD_LO = 0.04, SPREAD_HI = 0.40;
 const FRONTIER_SPREAD_BONUS = 0.06;
-const ECON_TICK_S = 5;             // economy ticks every 5s of sim time
-// E2 spikes → slices. A due economy pass advances by a FIXED quantum each tick, never a wall-clock
-// budget: the completion tick must be identical on every machine or the pass stops being
-// deterministic. 2 recipes + 1 station per tick turns the measured 130–150 ms step into ~1–3 ms
-// across ~35 ticks, comfortably inside the 300-tick (5 s) period.
-const ECON_SLICE_RECIPES = 2;
-const ECON_SLICE_STATIONS = 1;
-// Advances each phase gets. Three phases × 3 advances = 9 advances maximum. Even on the owner's
-// own 2 Hz calendar clock (10 advances per 5 s period) that is 4.5 s, inside the period; the
-// production host also advances a pass once per fixed 60 Hz tick through the partition drain
-// (`drainTick`), so a pass completes in ~0.15 s and can never be replaced mid-flight. This is
-// validated by test/economy-slice-cadence.test.mjs against the live recipe/station counts.
-const ECON_SLICE_ADVANCES = 3;
-// A small economy (a lab tape, a single-station scenario) fits its whole pass in one step without
-// being a spike, so it keeps the unsliced path byte-for-byte. That is not special-casing a mode: it
-// is the slice declining to engage when there is nothing to spread, which is also what keeps the
-// 47-A determinism reference identical instead of needing a new version.
-const ECON_SLICE_INLINE_MAX = 40;
-const EVENT_INTERVAL_S = 90;       // average seconds between spontaneous economic events (game-wide)
-const EQ_MULT_CLAMP = [0.25, 4.0]; // clamp net event/propagation eq multiplier per (station,cmdty)
+// ECON-BUILD-1: the market itself no longer ticks. Prices are a closed form of
+// (seed, station, good, t) — see src/economy/marketModel.js — evaluated on read.
+// What remains on a clock is the cheap bookkeeping sweep (station conditions,
+// market-play timers, event edges, docked intel) on the old 5 s cadence so the
+// driven listeners (achievements, contracts, broadcast, wrecks) keep the receipt
+// they were built around.
+const MARKET_SWEEP_S = 5;
 const MAX_EVENTS_PER_STATION = 3;
-// Event types are persisted in saves and later rendered by the market chart. Keep this list in
-// the economy owner so a crafted save cannot introduce a new display/control value by merely
-// surviving deserialization. `piracy_spike` is retained for older authored receipts even though
-// spontaneous generation currently chooses the four primary types below.
-export const ECONOMY_EVENT_TYPES = Object.freeze([
-  'shortage', 'boom', 'blockade', 'piracy', 'piracy_spike',
-]);
+// Event types are persisted in saves and later rendered by the market chart. The canonical
+// set lives in the market model (scheduled types plus the legacy injected ones).
+export { ECONOMY_EVENT_TYPES };
 const ECONOMY_EVENT_TYPE_SET = new Set(ECONOMY_EVENT_TYPES);
+// Restore bound for the persisted active-event list. Live generation already caps at
+// MAX_EVENTS_PER_STATION per berth; the save slice only needs the newest few dozen so a
+// crafted history cannot rehydrate an unbounded event stack.
+const ECON_EVENTS_CAP = 64;
+// Dynamic rows drop ~2 h after their end — the imposed aftermath regime has run its
+// course by then and the row is dead weight in the save.
+const EVENT_PRUNE_S = 7200;
+// An event's physical signature: the shelf dent it stamps at tStart (fraction of
+// equilibrium). Negative strips stock (shortage, lost convoy, cordon), positive
+// floods it (surplus, new mine, strike).
+const EVENT_DENT_FRAC = Object.freeze({
+  shortage: -0.85, convoy_lost: -0.80, blockade: -0.60,
+  piracy: -0.50, piracy_spike: -0.50, war_front: -0.50,
+  boom: 0.80, new_mine: 0.90, strike: 0.70,
+});
 // The chart samples every 15 seconds and keeps roughly sixteen minutes. A new campaign is
 // pre-seeded from the live formula, so the first dock reads like a market with a past rather than
 // a blank instrument waiting for the player to stand around.
@@ -168,8 +170,6 @@ const HISTORY_REGIME_AGE_MIN_S = HISTORY_SPAN_S + HISTORY_SAMPLE_S * 4;
 const HISTORY_REGIME_AGE_MAX_S = HISTORY_SPAN_S + HISTORY_SAMPLE_S * 18;
 const BASE_SCAN = 0.25;            // p_scan = clamp(BASE_SCAN*(1+security) - cloak, 0.02, 0.95)
 const SCAN_LO = 0.02, SCAN_HI = 0.95;
-const FINE_MULT = { legal: 0, restricted: 0.8, illegal: 1.2, contraband: 1.5 };
-const BRIBE_FRAC = 0.30;
 const DEBT_STALE_DAYS = 2;          // unpaid debt older than this starts converting to bounty
 const DEBT_TO_BOUNTY_DAILY_FRAC = 0.25; // posted bounty grows by this fraction of debt per stale day
 // FB-049 — a note is bounded by what you already hold plus the standing the berth's faction
@@ -215,9 +215,7 @@ const NPC_SALVAGE_INTAKE_STATION_TYPES = new Set(['refinery', 'fab']);
 // The save:loaded refresh is sliced across this many adjacent listeners so the restore's
 // emit-slice drain can yield between ~4ms units instead of paying one ~30ms task.
 const ECONOMY_SAVE_LOADED_SLICES = 8;
-const REGIONAL_PRESSURE_RECIPES = Object.freeze(
-  Object.values(allRegionalPressureRecipes()).flat(),
-);
+
 
 /** Return the canonical persisted event type, or null for an unrecognized save value. */
 export function normalizeEconomyEventType(value) {
@@ -230,7 +228,43 @@ export function normalizeRestoredEconomyEvent(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
   const type = normalizeEconomyEventType(value.type);
   if (!type) return null;
-  return { ...value, type };
+  // New row shape: bounded window + typed multipliers, queried on demand.
+  if (Number.isFinite(value.tStart) || Array.isArray(value.goods)) {
+    const tStart = Number.isFinite(value.tStart) ? value.tStart : 0;
+    const tEnd = Number.isFinite(value.tEnd) ? value.tEnd : tStart;
+    if (!(tEnd > tStart)) return null;
+    return {
+      ...value, type, tStart, tEnd,
+      goods: Array.isArray(value.goods)
+        ? value.goods.filter((g) => typeof g === 'string')
+        : null,
+      levelMult: Number.isFinite(value.levelMult) ? value.levelMult : 1,
+      spreadMult: Number.isFinite(value.spreadMult) ? value.spreadMult : 1,
+      regime: typeof value.regime === 'string' ? value.regime : null,
+    };
+  }
+  // Legacy shape (startT + duration + per-field eventMods) migrates into the row
+  // model: the window is real and the type's canonical profile carries the
+  // strength the authored mods approximated per field.
+  const startT = Number.isFinite(value.startT) ? value.startT : 0;
+  const dur = Number.isFinite(value.duration) && value.duration > 0 ? value.duration : 0;
+  if (!(dur > 0)) return null;
+  const profile = EVENT_PROFILES[type] || EVENT_PROFILES.shortage;
+  let spreadMult = 1;
+  for (const m of (Array.isArray(value.mods) ? value.mods : [])) {
+    if (m && m.field === 'spread' && Number.isFinite(m.mult)) spreadMult *= m.mult;
+  }
+  return {
+    id: String(value.id || 'evt'), type, cause: value.cause || type,
+    stationId: value.stationId, sectorId: value.sectorId || null,
+    goods: value.commodityId && value.commodityId !== '*' ? [value.commodityId] : null,
+    tStart: startT, tEnd: startT + dur,
+    levelMult: (profile.level[0] + profile.level[1]) / 2,
+    spreadMult: clamp(spreadMult, 1, 3) !== 1 ? clamp(spreadMult, 1, 3)
+      : (profile.spread[0] + profile.spread[1]) / 2,
+    regime: profile.regime || null,
+    scheduled: false,
+  };
 }
 
 export const ECONOMY_PRICE_TUNING = Object.freeze({
@@ -404,7 +438,7 @@ const STATION_STRIKE_REACH_WU = 3500;
 
 const CONDITION_LINES = Object.freeze({
   strike: 'Crews are off the floor over what you did to their shift.',
-  boom: 'The yard is flush — repair and fuel are running cheap today.',
+  boom: "Yard's flush today — repairs and fuel are cheap.",
 });
 
 /**
@@ -716,7 +750,7 @@ const STATION_INDUSTRY_BOOK = (() => {
  * tick throttles on, so a posted shortage is the real hopper, not a rolled event.
  * Returns { jobId, inputId, fill, deficitUnits } with deficitUnits ≈ what restores full feed.
  */
-export function starvedIndustryNeedFor(stationType, stationTier, market) {
+export function starvedIndustryNeedFor(stationType, stationTier, market, simTime = null) {
   const jobs = STATION_INDUSTRY_BOOK.get(stationType);
   if (!jobs || !market) return null;
   const tier = Math.max(0, Number(stationTier) || 0);
@@ -726,7 +760,8 @@ export function starvedIndustryNeedFor(stationType, stationTier, market) {
     for (const [cid] of job.inputs) {
       const entry = market[cid];
       if (!entry || !(entry.baseEq > 0)) continue;
-      const fill = entry.stock / entry.baseEq;
+      const stock = simTime == null ? entry.stock : shelfUnitsAt(entry, cid, simTime);
+      const fill = stock / entry.baseEq;
       if (!worst || fill < worst.fill) worst = { jobId: job.id, inputId: cid, fill, entry };
     }
   }
@@ -749,14 +784,6 @@ export function priceMult(stock, baseEq, elasticity) {
  *  avg = basePrice*baseEq^el/((1-el)*ΔN) * (sHi^(1-el) - sLo^(1-el)); el==1 -> ln form. */
 export function avgMid(basePrice, baseEq, el, sLo, sHi) {
   return averageBoundedPrice(basePrice, baseEq, el, sLo, sHi, PRICE_MULT_LO, PRICE_MULT_HI);
-}
-
-/** Product of active eventMod multipliers on a market entry for a given field. */
-function eventModMult(entry, field) {
-  let m = 1;
-  const mods = entry.eventMods;
-  if (mods) for (let i = 0; i < mods.length; i++) if (mods[i].field === field) m *= mods[i].mult;
-  return m;
 }
 
 export function economyBaseEqForSize(size) {
@@ -792,237 +819,87 @@ export function economySpotPriceForRole(def, role, side = 'mid', opts = {}) {
   return mid;
 }
 
-/** Effective stock drift target = equilibrium * event mods * mild cycle pull.
- *  Cycle motion is applied directly to mid in recomputePrices (charts need it);
- *  stock only soft-tracks so produce/consume roles stay authoritative. */
-function effectiveEq(entry, state, stationId, cmdtyId, knownCycle = undefined, asOfSimTime = undefined) {
-  const m = clamp(eventModMult(entry, 'equilibrium'), EQ_MULT_CLAMP[0], EQ_MULT_CLAMP[1]);
-  const asOf = Number.isFinite(asOfSimTime) ? asOfSimTime : (state && state.simTime) || 0;
-  // E2: the drift pass already resolved this listing's live cycle a few statements earlier.
-  // Passing it in removes a second `getCycleCore` + map walk per listing per tick with byte-
-  // identical output (the lookup is a pure read of the value the caller just computed). The
-  // pass time is threaded in too: a sliced pass must evaluate every row at its due tick, not at
-  // whatever tick that row happens to land on.
-  const cycle = knownCycle !== undefined
-    ? knownCycle
-    : (state && state.economy && state.economy.cycles
-      ? getCycleCore(state, stationId, cmdtyId, cycleRngFor(state, stationId, cmdtyId), asOf)
-      : null);
-  const cf = cycle ? cycleFactorAt(cycle, asOf) : 1;
-  // Same structural mix the forecast band uses.
-  return stockDriftTarget(entry.equilibrium, cf, m);
-}
-
-/** Read-only depletion/ETA model using the existing recovery curve and five-second tick.
+/** Restock ETA for the market screen — the shelf heals by dent decay only.
  * The market reserves one unit, so stock must reach two before a whole unit is buyable. */
 export function marketStockStatus(state, stationId, commodityId) {
-  const entry = state?.economy?.markets?.[stationId]?.[commodityId];
-  if (!entry || !Number.isFinite(entry.stock)) return { soldOut: false, restockSeconds: null };
-  if (entry.stock >= 2) return { soldOut: false, restockSeconds: null };
-  const cycle = state.economy.cycles?.[stationId]?.[commodityId];
-  const target = stockDriftTarget(entry.equilibrium, cycle ? cycleFactorAt(cycle, state.simTime || 0) : 1,
-    clamp(eventModMult(entry, 'equilibrium'), EQ_MULT_CLAMP[0], EQ_MULT_CLAMP[1]));
-  const rate = eventModMult(entry, 'drift');
-  const halfLife = BALANCE.commodities[commodityId]?.recoveryHalfLifeS || BALANCE.market.halfLifeS;
-  if (!(target > 2 && rate > 0 && halfLife > 0)) return { soldOut: true, restockSeconds: null };
-  const elapsed = halfLife * Math.log((target - entry.stock) / (target - 2)) / (Math.LN2 * rate);
-  const accumulator = Math.max(0, Number(state.economy.econClock?.accumulator) || 0);
-  const nextTick = ECON_TICK_S - accumulator % ECON_TICK_S;
-  const ticksAfterNext = Math.max(0, Math.ceil(elapsed / ECON_TICK_S) - 1);
-  return { soldOut: true, restockSeconds: Math.ceil(nextTick + ticksAfterNext * ECON_TICK_S) };
-}
-
-function cycleRngFor(state, stationId, cmdtyId) {
-  if (economy._instance && typeof economy._instance._rng === 'function') {
-    return () => economy._instance._rng();
+  let entry = state?.economy?.markets?.[stationId]?.[commodityId];
+  if (!entry) {
+    // Stateless book: the unminted shelf rests at its listing equilibrium —
+    // sold-out means somebody's dents drained it, not that no row exists.
+    const ldef = listingDefFor(commodityDef(state, commodityId), stationInfo(state, stationId),
+      stationId, { producedHere: false });
+    if (!ldef) return { soldOut: false, restockSeconds: null };
+    entry = { eq: ldef.eq, dents: [] };
   }
-  const seedOwner = { seed: hash32(state && state.meta && state.meta.seed, 'economy-cycle', stationId, cmdtyId) };
-  return () => drawSeeded(seedOwner, 'seed', seedOwner.seed);
+  const t = (state && state.simTime) || 0;
+  return shelfRestockSeconds(entry, commodityId, t, 2);
 }
 
-// A single synchronous pass may share the sector snapshot across commodities. A sliced pass
-// crosses simulation ticks, so the first projection of each commodity still reads live context.
-function createDemandProjectionCache(state, reuseSectorContext = false) {
-  const sectors = new Map();
-  return (def, sectorId) => {
-    let sector = sectors.get(sectorId);
-    if (!sector) {
-      sector = {
-        listings: new Map(),
-        project: reuseSectorContext ? createSectorDemandProjector(state, sectorId) : null,
-      };
-      sectors.set(sectorId, sector);
-    }
-    let result = sector.listings.get(def.id);
-    if (!result) {
-      result = sector.project ? sector.project(def) : effectiveDemandFor({ state, sectorId, commodity: def });
-      sector.listings.set(def.id, result);
-    }
-    return result;
-  };
-}
-
-/** Effective spread for a market entry (base * event spread mods * frontier penalty), clamped. */
-function spreadOf(entry, frontierPenalty) {
-  const ev = eventModMult(entry, 'spread');
+/** Effective spread (base * live event spread multiplier * frontier penalty), clamped. */
+function spreadOf(eventSpreadMult, frontierPenalty) {
+  const ev = Number.isFinite(eventSpreadMult) ? eventSpreadMult : 1;
   return clamp(SPREAD_BASE * ev * (1 + (frontierPenalty || 0)), SPREAD_LO, SPREAD_HI);
-}
-
-// History points stamp their session-only `origin` non-enumerably so saves stay [t, mid]
-// pairs. One shared prototype per origin carries that flag through the prototype chain —
-// `point.origin` reads identically, nothing enumerates or clones it, and the per-point
-// Object.defineProperty call (the measured hotspot in this loop) disappears.
-const PRICE_POINT_PROTOS = Object.freeze({
-  modelled: Object.defineProperty(Object.create(null), 'origin',
-    { value: 'modelled', enumerable: false, writable: true }),
-  observed: Object.defineProperty(Object.create(null), 'origin',
-    { value: 'observed', enumerable: false, writable: true }),
-});
-
-function makePricePoint(t, mid, origin) {
-  const proto = PRICE_POINT_PROTOS[origin];
-  const point = proto ? Object.create(proto) : {};
-  point.t = Number(t) || 0;
-  point.mid = mid;
-  return point;
-}
-
-function pricePointAt(entry, def, cycle, t, origin) {
-  const stockMid = economyMidPrice(def, entry.stock, entry.baseEq);
-  const persistentMid = applyPersistentDemand(stockMid, entry && entry.demandMult);
-  const mid = Math.max(1, round(cycle
-    ? applyCycleToMid(def.basePrice, persistentMid, cycle, t)
-    : persistentMid));
-  // The chart only needs its mid-price trace; current bid/ask remains on the listing. Keeping
-  // snapshots this small preserves a long lived history without bloating save files.
-  // Origin is session display only and non-enumerable, so saves stay [t, mid] pairs and a
-  // loaded trace does not pretend to remember which points were backfilled.
-  return makePricePoint(t, mid, origin);
-}
-
-// History backfill: stockMid/persistentMid are loop-invariant across the seeded timestamps —
-// only the cycle factor moves with t — so evaluate them once rather than per point.
-function pricePointsBackfill(entry, def, cycle, t0, sampleS, count, origin) {
-  const stockMid = economyMidPrice(def, entry.stock, entry.baseEq);
-  const persistentMid = applyPersistentDemand(stockMid, entry && entry.demandMult);
-  const points = new Array(count);
-  for (let i = 0; i < count; i++) {
-    const t = t0 + i * sampleS;
-    const mid = Math.max(1, round(cycle
-      ? applyCycleToMid(def.basePrice, persistentMid, cycle, t)
-      : persistentMid));
-    points[i] = makePricePoint(t, mid, origin);
-  }
-  return points;
-}
-
-function sanitizeHistory(raw) {
-  if (!Array.isArray(raw)) return [];
-  const out = [];
-  // Current saves pack [time, mid, time, mid, ...]. This avoids tens of thousands of tiny
-  // objects in the autosave capture/structured-clone path. Older object-per-point saves remain
-  // accepted indefinitely so this storage optimization does not require a destructive migration.
-  if (raw.length > 0 && typeof raw[0] === 'number') {
-    const pairCount = Math.min(HISTORY_POINT_LIMIT, Math.floor(raw.length / 2));
-    const start = raw.length - pairCount * 2;
-    for (let i = Math.max(0, start - (start % 2)); i + 1 < raw.length; i += 2) {
-      const t = Number(raw[i]);
-      const mid = Math.max(1, round(Number(raw[i + 1]) || 0));
-      if (Number.isFinite(t) && mid > 0) out.push({ t, mid });
-    }
-    return out;
-  }
-  const start = Math.max(0, raw.length - HISTORY_POINT_LIMIT);
-  for (let i = start; i < raw.length; i++) {
-    const p = raw[i];
-    const mid = Math.max(1, round(Number(p && (p.mid != null ? p.mid : p)) || 0));
-    const t = Number(p && p.t);
-    if (Number.isFinite(t) && mid > 0) out.push({ t, mid });
-  }
-  return out;
-}
-
-function serializeHistory(raw) {
-  if (!Array.isArray(raw)) return [];
-  const count = Math.min(HISTORY_POINT_LIMIT, raw.length);
-  const out = new Array(count * 2);
-  let cursor = 0;
-  for (let i = raw.length - count; i < raw.length; i++) {
-    const point = raw[i];
-    // The chart grid samples every HISTORY_SAMPLE_S (15 s), but the timestamps are stamped
-    // from tick-accumulated simTime, so an otherwise grid-aligned point carries float dust
-    // (e.g. 15.016666666666993) that serializes ~4x the bytes of the clean value. As the
-    // 64-point ring turns over that re-inflated every save, perpetually (PQ-033.02). Snap
-    // packed timestamps to 0.1 s — orders of magnitude finer than the sampling cadence — so
-    // the packed trace keeps its authored 64 points at a fixed byte size.
-    const rawT = Number(point && point.t);
-    const t = Math.round(rawT * 10) / 10;
-    const mid = Math.max(1, round(Number(point && (point.mid != null ? point.mid : point)) || 0));
-    if (!Number.isFinite(t) || !(mid > 0)) continue;
-    out[cursor++] = t;
-    out[cursor++] = mid;
-  }
-  out.length = cursor;
-  return out;
 }
 
 const MARKET_ROLE_CODE = Object.freeze({ none: 0, produce: 1, consume: 2 });
 const MARKET_ROLE_FROM_CODE = Object.freeze(['none', 'produce', 'consume']);
 
-function serializeEventMods(raw) {
-  if (!Array.isArray(raw) || raw.length === 0) return [];
-  const out = new Array(raw.length * 3);
-  let cursor = 0;
-  for (const mod of raw) {
-    if (!mod || !mod.field) continue;
-    out[cursor++] = mod.field;
-    out[cursor++] = Number(mod.mult) || 1;
-    out[cursor++] = mod.eventId == null ? null : mod.eventId;
-  }
-  out.length = cursor;
-  return out;
-}
-
-function deserializeEventMods(raw) {
-  if (!Array.isArray(raw) || raw.length === 0) return [];
-  if (raw[0] && typeof raw[0] === 'object') return raw.slice();
-  const out = [];
-  for (let i = 0; i + 2 < raw.length; i += 3) {
-    if (!raw[i]) continue;
-    out.push({ field: raw[i], mult: Number(raw[i + 1]) || 1, eventId: raw[i + 2] });
-  }
-  return out;
-}
-
-function hasValidMarketQuotes(entry) {
-  return Number.isSafeInteger(entry.lastMid) && entry.lastMid > 0
-    && Number.isSafeInteger(entry.lastBuy) && entry.lastBuy >= entry.lastMid
-    && Number.isSafeInteger(entry.lastSell) && entry.lastSell > 0 && entry.lastSell <= entry.lastMid;
-}
-
-function serializeMarketRow(cid, entry, preserveHistory) {
-  const row = [
+/**
+ * Market row v2: [cid, equilibrium, baseEq, roleCode, dentsFlat, demandMult,
+ *                 lastMid, lastBuy, lastSell, stock].
+ * dentsFlat is null when empty else a flat [t0, q0, t1, q1, ...] pair list.
+ * Rows saved before the quote-stamp fields existed (length 6) re-stamp on load.
+ */
+function serializeMarketRow(cid, entry) {
+  const dents = Array.isArray(entry.dents) && entry.dents.length
+    ? entry.dents.flatMap((d) => [Number(d && d.t) || 0, Number(d && d.q) || 0])
+    : null;
+  return [
     cid,
-    entry.stock,
     entry.equilibrium,
     entry.baseEq,
     MARKET_ROLE_CODE[entry.role] ?? 0,
-    serializeEventMods(entry.eventMods),
+    dents,
+    Number.isFinite(entry.demandMult) ? entry.demandMult : 1,
+    // Persisted quote stamps + stock mirror keep a save/load boundary bit-identical
+    // to the uninterrupted run: live entries hold their last stamped values until
+    // something touches them, so derived-at-load fields must come back as saved.
+    entry.lastMid || 0, entry.lastBuy || 0, entry.lastSell || 0,
+    Number.isFinite(entry.stock) ? entry.stock : entry.equilibrium,
   ];
-  const preserveQuotes = hasValidMarketQuotes(entry);
-  if (preserveHistory || preserveQuotes) row.push(preserveHistory ? serializeHistory(entry.history) : null);
-  if (preserveQuotes) row.push(entry.lastMid, entry.lastBuy, entry.lastSell);
-  return row;
 }
 
-function deserializeMarketRow(cid, raw) {
+function sanitizeDents(raw) {
+  if (!Array.isArray(raw)) return [];
+  const out = [];
+  for (const d of raw) {
+    if (Array.isArray(d)) { // flat-packed [t,q,t,q]
+      break;
+    }
+    const t = Number(d && d.t), q = Number(d && d.q);
+    if (Number.isFinite(t) && Number.isFinite(q) && q !== 0) out.push({ t, q });
+    if (out.length >= 8) break;
+  }
+  if (raw.length && typeof raw[0] === 'number') {
+    for (let i = 0; i + 1 < raw.length && out.length < 8; i += 2) {
+      const t = Number(raw[i]), q = Number(raw[i + 1]);
+      if (Number.isFinite(t) && Number.isFinite(q) && q !== 0) out.push({ t, q });
+    }
+  }
+  return out;
+}
+
+function deserializeMarketRow(cid, raw, isV2) {
   if (!Array.isArray(raw)) {
+    // Oldest object form — always legacy.
     return {
       cid,
       stock: raw && raw.stock,
-      equilibrium: raw && raw.equilibrium,
+      equilibrium: raw && (raw.eq ?? raw.equilibrium),
       baseEq: raw && raw.baseEq,
       role: raw && raw.role,
+      dents: sanitizeDents(raw && raw.dents),
+      demandMult: raw && raw.demandMult,
       eventMods: raw && raw.eventMods,
       history: raw && raw.history,
       lastMid: raw && raw.lastMid,
@@ -1030,13 +907,28 @@ function deserializeMarketRow(cid, raw) {
       lastSell: raw && raw.lastSell,
     };
   }
+  if (isV2) {
+    return {
+      cid: raw[0] || cid,
+      equilibrium: raw[1],
+      baseEq: raw[2],
+      role: MARKET_ROLE_FROM_CODE[raw[3]] || 'none',
+      dents: sanitizeDents(raw[4]),
+      demandMult: raw[5],
+      lastMid: raw[6],
+      lastBuy: raw[7],
+      lastSell: raw[8],
+      stockMirror: raw[9],
+    };
+  }
+  // Legacy rows: [cid, stock, equilibrium, baseEq, roleCode, eventMods, history?, lastMid?, lastBuy?, lastSell?]
   return {
     cid: raw[0] || cid,
     stock: raw[1],
     equilibrium: raw[2],
     baseEq: raw[3],
     role: MARKET_ROLE_FROM_CODE[raw[4]] || 'none',
-    eventMods: deserializeEventMods(raw[5]),
+    eventMods: raw[5],
     history: raw[6],
     lastMid: raw[7],
     lastBuy: raw[8],
@@ -1359,6 +1251,14 @@ function sealedSellFree(state, commodityId, qty) {
   return free;
 }
 
+function biohazardSaleRefusal(state, info, def) {
+  if (def.biohazard !== true || !info?.factionId) return null;
+  const policy = contaminationSaleMult(state, info.sectorId, info.factionId);
+  if (!policy?.refuses) return null;
+  // Containment Seal paperwork lets a quarantine counter accept a sealed specimen.
+  return fittedModuleDefs(state).some(d => d?.mods?.containmentSeal === true) ? null : policy;
+}
+
 function finiteTradePrice(value) {
   const price = Number(value);
   return Number.isFinite(price) && price > 0 ? price : null;
@@ -1389,14 +1289,18 @@ function knownStationToll(stationId) {
   return stationTollCache.get(stationId) || 0;
 }
 
-function legBuyCapacity({ credits, freeVolume, buy, stock, volume, qty }) {
+function legBuyCapacity({ credits, fitUnits, freeVolume, buy, stock, volume, qty }) {
   if (buy == null || stock == null) {
     return { units: 0, headroom: 0, limit: 'unknown', cost: null, volumeTied: 0 };
   }
   const vol = volume > 0 ? volume : 1;
+  // Slot law: the caller's slotFitFor answer wins; a freeVolume readout is the legacy fallback.
+  const holdUnits = Number.isFinite(fitUnits)
+    ? Math.max(0, Math.floor(fitUnits))
+    : Math.max(0, Math.floor(freeVolume / vol));
   const caps = [
     { name: 'credits', units: Math.max(0, Math.floor(credits / buy)) },
-    { name: 'volume', units: Math.max(0, Math.floor(freeVolume / vol)) },
+    { name: 'volume', units: holdUnits },
     { name: 'stock', units: Math.max(0, stock) },
   ];
   let binding = caps[0];
@@ -1447,6 +1351,7 @@ export function compareTwoStopFreight(plan) {
   const freeVolume = Math.max(0, capVolume - usedVolume);
   const first = legBuyCapacity({
     credits: creditsAfterFee,
+    fitUnits: Number.isFinite(source.fitUnits1) ? source.fitUnits1 : undefined,
     freeVolume,
     buy: buy1,
     stock: stock1,
@@ -1464,6 +1369,7 @@ export function compareTwoStopFreight(plan) {
   const freeAfterSale = Math.max(0, capVolume - usedVolume);
   const second = legBuyCapacity({
     credits: creditsAfterSale == null ? 0 : creditsAfterSale,
+    fitUnits: Number.isFinite(source.fitUnits2) ? source.fitUnits2 : undefined,
     freeVolume: freeAfterSale,
     buy: buy2,
     stock: stock2,
@@ -1682,6 +1588,9 @@ export function compareDockedFreight(state, hereStationId, trade) {
         credits: state.player && state.player.credits,
         capVolume: cargo.capVolume,
         usedVolume: cargo.usedVolume,
+        // Both legs quote against the same hold: leg 2 buys only after leg 1's load sold.
+        fitUnits1: slotFitFor(state, trade.cmdtyId),
+        fitUnits2: slotFitFor(state, commodityId),
         midStationId: trade.destStation,
         destStationId: farId,
         direct: {
@@ -1738,6 +1647,9 @@ export const economy = {
   saveSnapshotOwned: true,
 
   init(ctx) {
+    // drop stale handlers from a previous init on a live bus
+    for (const unsub of this._unsubs || []) { try { unsub(); } catch (_) {} }
+    this._unsubs = [];
     this.state = ctx.state;
     this.bus = ctx.bus;
     this.helpers = ctx.helpers;
@@ -1746,14 +1658,12 @@ export const economy = {
     if (this._demandShiftMarks) this._demandShiftMarks.clear();
     this._lastDockedStation = null;
     this._stationServiceBerth = null;
-    this._syntheticHistoryKeys = new Set();
-    this._restoredQuoteKeys = new Set();
     economy._instance = this; // so exported quote()/execute() reach the live system
 
     const state = this.state, bus = this.bus;
-    if (!state.economy) state.economy = { markets: {}, cycles: {}, econEvents: [], econClock: { accumulator: 0, lastTickT: 0, ticksElapsed: 0 }, marketIntel: {} };
+    if (!state.economy) state.economy = { markets: {}, econEvents: [], econClock: { accumulator: 0, lastTickT: 0, ticksElapsed: 0 }, marketIntel: {} };
     if (!state.economy.markets) state.economy.markets = {};
-    if (!state.economy.cycles) state.economy.cycles = {};
+    delete state.economy.cycles; // closed-form model: no per-listing formula state
     if (!state.economy.econEvents) state.economy.econEvents = [];
     if (!state.economy.econClock) state.economy.econClock = { accumulator: 0, lastTickT: 0, ticksElapsed: 0 };
     if (!state.economy.marketIntel) state.economy.marketIntel = {};
@@ -1765,16 +1675,6 @@ export const economy = {
     ensureSessionSinkLedger(state.player);
     if (!Number.isFinite(state.economy.rngSeed) || (state.economy.rngSeed >>> 0) === 0) state.economy.rngSeed = hash32(state.meta && state.meta.seed, 'economy');
     this._nextEventId = 1;
-    this._eventAccumulator = 0;
-
-    // Eager market mint (S1 Phase-B stage 5): the whole-sim worker host sets this true so
-    // UI-path quote() calls record a pending mint instead of writing markets/cycles at call
-    // time; the pending spec consumes the identical _rng draws immediately (value-identical to
-    // the lazy path) and the writes materialize at the next economy.update() boundary — never
-    // mid-tick. OFF preserves today's lazy path byte-for-byte. Runtime-only fields: they live
-    // on the system instance, never inside state.economy, so they are not hashed or saved.
-    if (this.eagerMarketMint !== true) this.eagerMarketMint = false;
-    this._pendingMints = null;
 
     // dedicated seeded RNG stream (§0.5) so scan checks + event rolls don't disturb other streams.
     this.resetRng();
@@ -1782,7 +1682,7 @@ export const economy = {
     // Work budgets are economy-owned; world/mining owners still own physical entities.
     // A grant is a reservation of extraction work, NEVER a cargo or credit grant.
     for (const action of ['reserve', 'settle', 'cancel']) {
-      bus.on(`economy:resourceWork:${action}`, (payload) => {
+      this._unsubs.push(bus.on(`economy:resourceWork:${action}`, (payload) => {
         if (!payload || typeof payload !== 'object') return;
         const sector = SECTORS.find((row) => row.id === payload.sectorId);
         payload.result = sector
@@ -1794,41 +1694,52 @@ export const economy = {
           publishedUnits: action === 'settle' && r.ok ? r.producedQty : 0,
           depletedRequests: r.reason === 'work_depleted' ? 1 : 0,
         });
-      });
+      }));
     }
 
-    bus.on('mission:offered', () => recordEconomyPulse(state.economy, state.simTime, { offers: 1 }));
-    bus.on('mission:accepted', () => recordEconomyPulse(state.economy, state.simTime, { accepts: 1 }));
+    this._unsubs.push(bus.on('mission:offered', () => recordEconomyPulse(state.economy, state.simTime, { offers: 1 })));
+    this._unsubs.push(bus.on('mission:accepted', () => recordEconomyPulse(state.economy, state.simTime, { accepts: 1 })));
 
     // ---- SOLE credits writer (§0.6) -------------------------------------------------------
-    bus.on('economy:grantCredits', (p) => this.grantCredits((p && p.amount) || 0, p && p.reason));
+    this._unsubs.push(bus.on('economy:grantCredits', (p) => this.grantCredits((p && p.amount) || 0, p && p.reason)));
     // The site emits this only after committing the completed physical brace. Economy
     // authenticates that receipt and owns the one-time wage, including save/replay.
-    bus.on('worldSite:operationReceipt', (p) => this.settleCeresBraceWage(p));
-    bus.on('economy:chargeCredits', (p) => this._onChargeCreditsRequest(p));
-    bus.on('economy:releaseDebt', (p) => this._releaseDebt(p && p.amount));
-    bus.on('freight:cargoSpilled', (p) => this.levyRestitutionSink(p));
-    bus.on('economy:payBounty', (p) => {
+    this._unsubs.push(bus.on('worldSite:operationReceipt', (p) => this.settleCeresBraceWage(p)));
+    this._unsubs.push(bus.on('economy:chargeCredits', (p) => this._onChargeCreditsRequest(p)));
+    this._unsubs.push(bus.on('economy:releaseDebt', (p) => this._releaseDebt(p && p.amount)));
+    this._unsubs.push(bus.on('freight:cargoSpilled', (p) => this.levyRestitutionSink(p)));
+    this._unsubs.push(bus.on('economy:payBounty', (p) => {
       const payload = (p && typeof p === 'object') ? p : {};
       payload.result = this.payBounty(payload);
-    });
+    }));
 
     // Stale debt ages into a posted bounty (the debt/bounty ledger connection). core emits
     // { days:absoluteDay, elapsed }; unpaid debt sitting past the grace window adds a deterministic
     // daily levy to player.bounty until settled — the ledger the law hunts on grows, visibly.
-    bus.on('day:tick', (p) => this._onDebtStaleDay(p));
+    this._unsubs.push(bus.on('day:tick', (p) => this._onDebtStaleDay(p)));
 
     // ---- trade intents from UI ------------------------------------------------------------
-    bus.on('ui:buy', (p) => { if (p) this.handleTrade(p.commodityId, 'buy', p.qty, { expectedTotal: p.expectedTotal, sourceStationId: p.sourceStationId, requireFullQuantity: p.requireFullQuantity, intentId: p.intentId }); });
-    bus.on('ui:sell', (p) => { if (p) this.handleTrade(p.commodityId, 'sell', p.qty, { expectedTotal: p.expectedTotal, sourceStationId: p.sourceStationId, requireFullQuantity: p.requireFullQuantity, intentId: p.intentId }); });
-    bus.on('economy:marketOpened', (p) => {
+    this._unsubs.push(bus.on('ui:buy', (p) => { if (p) this.handleTrade(p.commodityId, 'buy', p.qty, { expectedTotal: p.expectedTotal, sourceStationId: p.sourceStationId, requireFullQuantity: p.requireFullQuantity, intentId: p.intentId }); }));
+    this._unsubs.push(bus.on('ui:sell', (p) => { if (p) this.handleTrade(p.commodityId, 'sell', p.qty, { expectedTotal: p.expectedTotal, sourceStationId: p.sourceStationId, requireFullQuantity: p.requireFullQuantity, intentId: p.intentId }); }));
+    this._unsubs.push(bus.on('economy:marketOpened', (p) => {
       if (!p || !p.stationId) return;
       this.refreshStationDemand(p.stationId);
+      const info = this._stationServiceStationId() === p.stationId ? stationInfo(this.state, p.stationId) : null;
+      if (info) {
+        const market = this.state.economy.markets[p.stationId];
+        // The Sell list reads the station's real book. Open an empty liquidation row for
+        // accepted player-brought goods so pilots can request their first sale there.
+        for (const id of Object.keys(this.state.player.cargo?.items || {}).sort()) {
+          const def = commodityDef(this.state, id);
+          if (market?.[id] || def?.noMarketSeed !== true || sellableCargoQuantity(this.state, id) <= 0) continue;
+          this.quote(p.stationId, id, 'sell', 1);
+        }
+      }
       this.snapshotIntel(p.stationId);
-    });
-    bus.on('map:sectorCharted', (p) => {
+    }));
+    this._unsubs.push(bus.on('map:sectorCharted', (p) => {
       if (p && p.source === 'survey' && p.sectorId) this.seedMemoryFromSurvey(p.sectorId);
-    });
+    }));
 
     // ---- NPC / passive-income trades route through the same execute path (self-balancing) --
     // NPC / drone trades move market stock (their activity shifts prices — the whole point of a
@@ -1837,19 +1748,19 @@ export const economy = {
     // bug where an NPC "sale" literally paid the player. Now they use the stock-only pressure path
     // (applyStockPressure), the same path automation uses, so NPCs are real economic actors without
     // a wallet-coupling accident. (Audit cut-list #2.)
-    bus.on('aiTrader:requestTrade', (p) => {
+    this._unsubs.push(bus.on('aiTrader:requestTrade', (p) => {
       if (!p) return;
       this.applyStockPressure(p.stationId, p.commodityId, p.side, p.qty);
-    });
-    bus.on('economy:applyTradePressure', (p) => { // automation pressure: nudge stock without crediting
+    }));
+    this._unsubs.push(bus.on('economy:applyTradePressure', (p) => { // automation pressure: nudge stock without crediting
       if (!p) return; const side = (p.vol || 0) >= 0 ? 'sell' : 'buy';
       this.applyStockPressure(p.stationId, p.good || p.commodityId, side, Math.abs(p.vol || 0));
-    });
+    }));
     // Contract cargo lands in the receiving market — a delivered lot is real goods through the
     // same stock authority as a sale, so relieving a starved yard physically re-feeds its line.
     // NXB-027: identified deliveries settle once — the committed receipt makes a retry republish
     // the canonical freight fact for dependent owners instead of moving stock a second time.
-    bus.on('cargo:delivered', (p) => { this.applyFreightDelivery(p); });
+    this._unsubs.push(bus.on('cargo:delivered', (p) => { this.applyFreightDelivery(p); }));
 
     // ---- market play (R480) --------------------------------------------------------------
     // Shares and slips are fantasy contracts on real freight. The buyer names a live inbound
@@ -1857,30 +1768,30 @@ export const economy = {
     // the settled row leaves the open book. The Dump Chute is the player's own pod intake: it
     // commits under the shared journal, pays the documented discount, and adds the goods to the
     // receiving market through the ordinary stock authority.
-    bus.on('ui:convoyShareBuy', (p) => { if (p && typeof p === 'object') p.result = this.buyConvoyShare(p); });
-    bus.on('ui:forwardSlipBuy', (p) => { if (p && typeof p === 'object') p.result = this.buyForwardSlip(p); });
-    bus.on('cargo:podIntake', (p) => { if (p && typeof p === 'object') p.result = this.applyPodIntake(p); });
-    bus.on('tether:releaseRated', (p) => { if (p && typeof p === 'object') this._routeDeliberateReleaseToChute(p); });
-    bus.on('freight:arrival', (p) => { if (p && typeof p === 'object') this._settleFreightArrival(p); });
-    bus.on('freight:loss', (p) => { if (p && typeof p === 'object') this._settleFreightLoss(p); });
+    this._unsubs.push(bus.on('ui:convoyShareBuy', (p) => { if (p && typeof p === 'object') p.result = this.buyConvoyShare(p); }));
+    this._unsubs.push(bus.on('ui:forwardSlipBuy', (p) => { if (p && typeof p === 'object') p.result = this.buyForwardSlip(p); }));
+    this._unsubs.push(bus.on('cargo:podIntake', (p) => { if (p && typeof p === 'object') p.result = this.applyPodIntake(p); }));
+    this._unsubs.push(bus.on('tether:releaseRated', (p) => { if (p && typeof p === 'object') this._routeDeliberateReleaseToChute(p); }));
+    this._unsubs.push(bus.on('freight:arrival', (p) => { if (p && typeof p === 'object') this._settleFreightArrival(p); }));
+    this._unsubs.push(bus.on('freight:loss', (p) => { if (p && typeof p === 'object') this._settleFreightLoss(p); }));
     // Player cargo-ship kill → salvage → sale. Economy remembers the hull and, once those goods
     // are sold, moves the destination price. Missions owns the board opportunity that follows.
-    bus.on('entity:killed', (p) => this._openCargoKillChain(p));
+    this._unsubs.push(bus.on('entity:killed', (p) => this._openCargoKillChain(p)));
     // THE WORLD REMEMBERS — a berth's own crew killed by the player is a strike; a surplus-band
     // ore flood is a boom. (`station:strike` / `station:boom` receipts.)
-    bus.on('entity:killed', (p) => this._onStationCrewKilled(p));
-    bus.on('economy:oreFlood', (p) => this._onOreFloodCondition(p));
-    bus.on('pickup:collected', (p) => this._noteCargoKillSalvage(p));
+    this._unsubs.push(bus.on('entity:killed', (p) => this._onStationCrewKilled(p)));
+    this._unsubs.push(bus.on('economy:oreFlood', (p) => this._onOreFloodCondition(p)));
+    this._unsubs.push(bus.on('pickup:collected', (p) => this._noteCargoKillSalvage(p)));
     // Traffic only delivers a stable manifest receipt. Economy validates the source station and
     // writes the one eligible salvage listing, returning a synchronous acknowledgement so traffic
     // can retain a rejected hold instead of silently deleting it.
-    bus.on('salvage:npcUnload', (p) => {
+    this._unsubs.push(bus.on('salvage:npcUnload', (p) => {
       if (!p || typeof p !== 'object') return;
       p.intakeResult = this.applyNpcSalvageIntake(p);
-    });
+    }));
 
     // ---- station markets populated on dock + sector entry ---------------------------------
-    bus.on('dock:docked', (p) => {
+    this._unsubs.push(bus.on('dock:docked', (p) => {
       if (p && p.stationId) {
         this._lastDockedStation = p.stationId;
         this._stationServiceBerth = p.stationId;
@@ -1893,44 +1804,44 @@ export const economy = {
         // The berth's memory of you, in its own voice (strike, boom, grudge, blockade, outage).
         this._announceStationConditions(p.stationId);
       }
-    });
-    bus.on('dock:undocked', () => {
+    }));
+    this._unsubs.push(bus.on('dock:undocked', () => {
       this._lastDockedStation = null;
       this._stationServiceBerth = null;
-    });
-    bus.on('sector:enter', (p) => this.populateSector(p));
+    }));
+    this._unsubs.push(bus.on('sector:enter', (p) => this.populateSector(p)));
 
     // ---- services (refuel / repair / ammo) ------------------------------------------------
-    bus.on('ui:service', (p) => { if (p) this.handleService(p); });
+    this._unsubs.push(bus.on('ui:service', (p) => { if (p) this.handleService(p); }));
     // Cancelled hardship work releases its unused daily allowance as well as its debt.
     // Delivered welds remain counted, so repeated undocks cannot multiply the aid floor.
-    bus.on('service:aborted', (p) => {
+    this._unsubs.push(bus.on('service:aborted', (p) => {
       const budget = state.player.emergencyRepairBudget;
       if (p?.source !== 'stationServices' || !budget || p.emergencyRepairDay !== budget.day) return;
       const released = Number(p.undeliveredEmergencyHull);
       if (Number.isFinite(released) && released > 0) budget.usedHull = Math.max(0, budget.usedHull - released);
-    });
+    }));
     // FB-101 — a dry tank with no pump in the sector still has a door: one smallest-jump
     // reserve per day, filed as debt, announced with the figure it costs.
-    bus.on('fuel:empty', (p) => this._onFuelEmpty(p));
+    this._unsubs.push(bus.on('fuel:empty', (p) => this._onFuelEmpty(p)));
     // FB-111 — the tow charge is a credit move plus a debt filing; both stay on this writer.
-    bus.on('economy:towCharge', (p) => { if (p) this._settleTowCharge(p); });
+    this._unsubs.push(bus.on('economy:towCharge', (p) => { if (p) this._settleTowCharge(p); }));
 
     // ---- contraband scanning (jump-gate use / patrol proximity) ---------------------------
-    bus.on('jump:start', (p) => this.runScan({ security: this.currentSecurity(), via: p && p.via, source: 'jump' }));
-    bus.on('patrol:proximity', (p) => this.runScan(p || {}));
+    this._unsubs.push(bus.on('jump:start', (p) => this.runScan({ security: this.currentSecurity(), via: p && p.via, source: 'jump' })));
+    this._unsubs.push(bus.on('patrol:proximity', (p) => this.runScan(p || {})));
     // A hull that broke a customs weir unread is a runner — the gate faction's scanners remember
     // it through the same hot-until record an evaded scan writes.
-    bus.on('customs:weirBolt', (p) => { if (p && p.factionId) this._markFactionGatesHot(p.factionId); });
-    bus.on('contraband:bribe', (p) => {
+    this._unsubs.push(bus.on('customs:weirBolt', (p) => { if (p && p.factionId) this._markFactionGatesHot(p.factionId); }));
+    this._unsubs.push(bus.on('contraband:bribe', (p) => {
       if (p && typeof p === 'object') p.result = this.payBribe(p);
-    });
+    }));
 
     // ---- event injection from other systems (missions, combat) ----------------------------
-    bus.on('mission:forceEvent', (p) => { if (p) this.injectEvent(p); });
-    bus.on('combat:baseDestroyed', (p) => this.onBaseDestroyed(p || {}));
+    this._unsubs.push(bus.on('mission:forceEvent', (p) => { if (p) this.injectEvent(p); }));
+    this._unsubs.push(bus.on('combat:baseDestroyed', (p) => this.onBaseDestroyed(p || {})));
     // §15.6 C6 — a body the player threw through a docking ring is a bill, an outage and a memory.
-    bus.on('combat:collisionConsequence', (p) => this._onCollisionConsequence(p));
+    this._unsubs.push(bus.on('combat:collisionConsequence', (p) => this._onCollisionConsequence(p)));
     // Save owners restore after economy. Rebuild this derived read model only after factions and
     // sectorSim have restored their authoritative conflict/field state.
     // A mature save's market refresh + synthetic reseed is ~30ms — too big for one emit-slice
@@ -1939,11 +1850,11 @@ export const economy = {
     // the drain gets yield seams between them.
     for (let s = 0; s < ECONOMY_SAVE_LOADED_SLICES; s++) {
       const sliceIndex = s;
-      bus.on('save:loaded', () => this.refreshAllPersistentDemand({
+      this._unsubs.push(bus.on('save:loaded', () => this.refreshAllPersistentDemand({
         reseedSynthetic: true,
         sliceIndex,
         sliceCount: ECONOMY_SAVE_LOADED_SLICES,
-      }));
+      })));
     }
     // Registry listener order places economy before sectorSim. If offline catch-up crosses a
     // blockade/surplus threshold, this receipt arrives after the field mutation and reconciles the
@@ -1953,501 +1864,213 @@ export const economy = {
     // would land sim mutations on nondeterministic boundaries. Instead the receipt queues
     // the same sliced refresh and economy.update drains one slice per tick — deterministic
     // boundaries, ~30ms spread over 8 ticks instead of one brick inside the restore drain.
-    bus.on('sectorsim:offlineSummary', () => {
+    this._unsubs.push(bus.on('sectorsim:offlineSummary', () => {
       this._offlineSummaryRefresh = { sliceIndex: 0 };
-    });
+    }));
+  },
+
+  destroy() {
+    for (const off of this._unsubs || []) if (typeof off === 'function') off();
+    this._unsubs = [];
   },
 
   // -------------------------------------------------------------------------------------------
-  // ECONOMY TICK (5s) — drift, age events, propagate, recompute cached prices, emit economy:tick.
+  // LAZY MARKET SWEEP (~5 s) — conditions, market-play timers, event edges, intel.
+  // The market itself has no per-step work: prices evaluate closed-form on read.
   // -------------------------------------------------------------------------------------------
   update(dt, state) {
-    // Eager mint drain: every deferred spec recorded since the last update materializes here,
-    // before this tick's econTick — the same state position the lazy mint would have occupied
-    // when a quote triggered it during the command drain.
-    if (this.eagerMarketMint) this._drainPendingMints();
     const pendingRefresh = this._offlineSummaryRefresh;
     if (pendingRefresh) {
       this.refreshAllPersistentDemand({
-        reseedSynthetic: true,
         sliceIndex: pendingRefresh.sliceIndex,
         sliceCount: ECONOMY_SAVE_LOADED_SLICES,
       });
       pendingRefresh.sliceIndex += 1;
       if (pendingRefresh.sliceIndex >= ECONOMY_SAVE_LOADED_SLICES) this._offlineSummaryRefresh = null;
     }
-    // A production host drains the slice once per fixed tick through `drainTick`. If that already
-    // ran this tick, the 2 Hz calendar call must not advance or accumulate a second time.
-    if (this._tickDrainSeen && Number.isInteger(state.tick) && this._lastStepTick === state.tick) return;
-    this._econStep(dt, state);
-  },
-
-  /**
-   * Advance the economy once for `dt` of host time. Used by the ordinary update path and by the
-   * per-fixed-tick drain; `_lastStepTick` makes the two idempotent within one host tick.
-   */
-  _econStep(dt, state) {
-    const clock = state.economy.econClock;
-    this._lastStepTick = Number.isInteger(state.tick) ? state.tick : null;
-    clock.accumulator += dt;
-    // spontaneous event scheduler (game-wide Poisson-ish: ~1 per EVENT_INTERVAL_S)
-    this._eventAccumulator += dt;
-    // E2 spikes → slices: a due economy pass advances by a fixed quantum per tick instead of
-    // doing every station and listing in one step. Fixed quantum (not a wall-clock budget) keeps
-    // the completion tick identical on every machine, so the pass stays deterministic.
-    if (this._econPass) {
-      this._advanceEconPass(state);
-      // The pass is still in flight. Carry this period's due work in the accumulator instead of
-      // replacing the pass: the next due tick pays it once the current pass finishes.
-      if (this._econPass) return;
-    }
-    // Summing the fixed 60 Hz step leaves 4.999999999999998 at the 300th tick; without a tiny
-    // epsilon the due pass (and its receipt) lands one tick late at every 5 s boundary. Apply the
-    // tolerance only to the sliced shape so the legacy 47-A cadence stays byte-identical.
-    const dueEpsilon = simCoreFlag('economySlicing') ? 1e-9 : 0;
-    const econDue = consumePeriodicClock(clock.accumulator, 0, ECON_TICK_S, { epsilon: dueEpsilon });
-    clock.accumulator = econDue.accumulator < 0 ? 0 : econDue.accumulator;
-    for (let i = 0; i < econDue.steps; i++) {
-      if (this._econPass) {
-        // A due tick that lands while a pass is in flight is queued, never dropped.
-        clock.accumulator += ECON_TICK_S;
-        continue;
-      }
-      this.econTick(ECON_TICK_S, state, { slice: this._tickDrainSeen });
+    // The accumulator rides state.economy.econClock so a save/load boundary
+    // keeps the sweep cadence — sweep ticks land on the same sim instants the
+    // uninterrupted run would have hit (reload determinism).
+    const clock = state.economy.econClock
+      || (state.economy.econClock = { accumulator: 0, lastTickT: 0, ticksElapsed: 0 });
+    clock.accumulator = (Number(clock.accumulator) || 0) + (Number(dt) || 0);
+    if (clock.accumulator >= MARKET_SWEEP_S) {
+      const elapsed = clock.accumulator;
+      clock.accumulator = 0;
+      this.marketSweep(elapsed, state);
     }
   },
 
   /**
-   * Per-fixed-tick drain hook (partitionUpdateSystems). The economy owner itself is a 2 Hz
-   * calendar system; relying on that cadence alone lets a many-advance pass outlive its 5 s due
-   * period. Advancing once per fixed tick makes the pass complete in ~0.15 s and keeps the
-   * economy:tick cadence exactly one receipt per due period. No-op when slicing is off, so the
-   * legacy 47-A cadence stays byte-identical.
+   * The old economy:tick's survivors, on the same ~5 s receipt cadence. Lab/test callers that
+   * used to step econTick keep working — they just no longer move prices; time does.
    */
-  drainTick(dt, state) {
-    if (!simCoreFlag('economySlicing')) {
-      this._tickDrainSeen = false;
-      return;
-    }
-    this._tickDrainSeen = true;
-    if (Number.isInteger(state.tick) && this._lastStepTick === state.tick) return;
-    this._econStep(dt, state);
+  econTick(tickDt, state) {
+    this.marketSweep(tickDt, state);
   },
 
-  /**
-   * Deterministic economy slice. The 5 s economy tick used to walk every regional recipe, every
-   * station's industry lines and every station×commodity listing in one step: measured 130–150 ms
-   * on this laptop, i.e. the single largest step in the game. Each phase now advances by a fixed
-   * quantum per tick, in the original iteration order, so stock/RNG/history see the identical
-   * sequence — only the tick each row lands on changes (by design, and invisible: nobody reads a
-   * station's price inside the 0.6 s a pass takes).
-   */
-  _advanceEconPass(state) {
-    const pass = this._econPass;
-    if (!pass) return;
-    pass.lastAdvancedTick = Number.isInteger(state.tick) ? state.tick : null;
-    const eph = getSimStepProfiler();
-    const ephOn = eph.active;
-    const startNs = ephOn ? nowNs() : 0;
-    this._advanceEconPassBody(state);
-    if (ephOn) eph.record('economy.slice', nowNs() - startNs);
-  },
-
-  _advanceEconPassBody(state) {
-    const pass = this._econPass;
-    if (!pass) return;
-    if (pass.phase === 'regional') {
-      const recipes = REGIONAL_PRESSURE_RECIPES;
-      const end = Math.min(recipes.length, pass.index + pass.recipeStep);
-      for (; pass.index < end; pass.index++) {
-        const recipe = recipes[pass.index];
-        if (!recipe.stationId || !(recipe.units > 0)) continue;
-        this.applyStockPressure(
-          recipe.stationId,
-          recipe.commodityId,
-          recipe.role === 'consume' ? 'buy' : 'sell',
-          recipe.units * pass.minuteShare,
-          { deferDerivedRefresh: true, touchedListings: pass.touched, asOfSimTime: pass.simTime },
-        );
-      }
-      if (pass.index < recipes.length) return;
-      pass.phase = 'industry';
-      pass.index = 0;
-    }
-    if (pass.phase === 'industry') {
-      const end = Math.min(pass.stationIds.length, pass.index + pass.stationStep);
-      this.applyStationIndustry(pass.tickDt, pass.touched, pass.stationIds.slice(pass.index, end), pass.simTime);
-      pass.index = end;
-      if (pass.index < pass.stationIds.length) return;
-      pass.phase = 'drift';
-      pass.index = 0;
-    }
-    if (pass.phase === 'drift') {
-      const end = Math.min(pass.stationIds.length, pass.index + pass.stationStep);
-      this._driftMarkets(state, pass, pass.index, end);
-      pass.index = end;
-      if (pass.index < pass.stationIds.length) return;
-      this._econPass = null;
-      this._finishEconTick(state);
-    }
-  },
-
-  /** The per-station×commodity drift slice of the economy tick (unmodified body, bounded range). */
-  _driftMarkets(state, pass, fromIndex, toIndex) {
+  marketSweep(_dt, state) {
     const econ = state.economy;
-    const markets = econ.markets;
-    const tickDt = pass.tickDt;
-    const regionalPressureListings = pass.touched;
-    const demandProjectionCache = pass.demandProjectionCache;
-    const asOf = pass.simTime;
-    const eph = getSimStepProfiler();
-    const ephOn = eph.active;
-    let t = ephOn ? nowNs() : 0;
-    let tDemand = 0; let tCycle = 0; let tPrice = 0; let tHistory = 0; let tEq = 0;
-    for (let s = fromIndex; s < toIndex; s++) {
-      const sid = pass.stationIds[s];
-      const market = markets[sid];
-      if (!market) continue;
-      const info = stationInfo(state, sid);
-      const frontier = info ? this.frontierPenalty(info) : 0;
-      for (const cid in market) {
-        const entry = market[cid];
-        const def = commodityDef(state, cid);
-        if (!def) continue;
-        if (ephOn) t = nowNs();
-        this.refreshListingDemand(entry, def, sid, info, demandProjectionCache);
-        if (ephOn) { tDemand += nowNs() - t; t = nowNs(); }
-        const cycle = getCycleCore(state, sid, cid, () => this._rng(), asOf);
-        if (ephOn) { tCycle += nowNs() - t; t = nowNs(); }
-        if (regionalPressureListings && regionalPressureListings.get(sid)?.has(cid)) {
-          this.recomputePrices(entry, def, frontier, cycle, asOf);
-          this.recordPriceHistory(entry, def, cycle, asOf, true);
-        }
-        const nextCycle = maybeAdvanceRegime(cycle, () => this._rng(), asOf);
-        if (nextCycle !== cycle) {
-          econ.cycles[sid][cid] = nextCycle;
-        }
-        const liveCycle = econ.cycles[sid][cid] || nextCycle || cycle;
-        if (ephOn) { tCycle += nowNs() - t; t = nowNs(); }
-        const eff = effectiveEq(entry, state, sid, cid, liveCycle, asOf);
-        if (ephOn) { tEq += nowNs() - t; t = nowNs(); }
-        const driftMod = eventModMult(entry, 'drift');
-        entry.stock = recoverStock(entry.stock, eff, tickDt, BALANCE.commodities[cid]?.recoveryHalfLifeS || BALANCE.market.halfLifeS, driftMod);
-        if (ephOn) { t = nowNs(); }
-        this.recomputePrices(entry, def, frontier, liveCycle, asOf);
-        if (ephOn) { tPrice += nowNs() - t; t = nowNs(); }
-        this.recordPriceHistory(entry, def, liveCycle, asOf);
-        if (ephOn) { tHistory += nowNs() - t; }
-      }
-    }
-    if (ephOn) {
-      eph.record('economy.drift', tDemand + tCycle + tEq + tPrice + tHistory);
-      eph.record('economy.drift.demand', tDemand);
-      eph.record('economy.drift.cycle', tCycle);
-      eph.record('economy.drift.eq', tEq);
-      eph.record('economy.drift.price', tPrice);
-      eph.record('economy.drift.history', tHistory);
-    }
-  },
-
-  /**
-   * One due economy tick. Direct callers (unit tests, labs) get the unsliced pass by default;
-   * the production update path passes `{ slice: true }` so the heavy three-phase pass becomes a
-   * resumable slice driven by the per-fixed-tick drain.
-   */
-  econTick(tickDt, state, options = null) {
-    const econ = state.economy;
-    const eph = getSimStepProfiler();
-    const ephOn = eph.active;
-    let ephT = ephOn ? nowNs() : 0;
     this._sweepStationConditions();
     this._sweepMarketPlay(state);
-    if (ephOn) { eph.record('economy.sweep', nowNs() - ephT); ephT = nowNs(); }
-
-    // 1) age / expire eventMods + active events
-    this.ageEvents(state);
-
-    // 2) maybe spawn a spontaneous event (rate-limited by elapsed real seconds)
-    const eventDue = consumePeriodicClock(this._eventAccumulator, 0, EVENT_INTERVAL_S);
-    this._eventAccumulator = eventDue.accumulator;
-    for (let i = 0; i < eventDue.steps; i++) this.rollSpontaneousEvent(state);
-    if (ephOn) { eph.record('economy.events', nowNs() - ephT); ephT = nowNs(); }
-
-    if (options && options.slice === true && simCoreFlag('economySlicing')) {
-      const stationIds = Object.keys(econ.markets);
-      const units = stationIds.length * 2 + REGIONAL_PRESSURE_RECIPES.length;
-      if (units > ECON_SLICE_INLINE_MAX) {
-        // The public receipt fires on the period boundary, before the resumable heavy pass. The
-        // pass finishes inside the same period (9 advances max; ~0.15 s through the per-tick
-        // drain), and `ticksElapsed` counts completed passes. Listeners therefore read the last
-        // completed market state, never a half-applied one, and the 5 s cadence is exact.
-        this._emitEconomyTick(state);
-        this._econPass = {
-          tickDt,
-          minuteShare: Math.max(0, Number(tickDt) || 0) / 60,
-          // The moment this pass belongs to. Every listing stamped or rolled inside the pass uses
-          // it, so a row landing two ticks late computes exactly what the unsliced pass computed.
-          simTime: state.simTime,
-          stationIds,
-          recipeStep: Math.max(ECON_SLICE_RECIPES, Math.ceil(REGIONAL_PRESSURE_RECIPES.length / ECON_SLICE_ADVANCES)),
-          stationStep: Math.max(ECON_SLICE_STATIONS, Math.ceil(stationIds.length / ECON_SLICE_ADVANCES)),
-          phase: 'regional',
-          index: 0,
-          touched: new Map(),
-          demandProjectionCache: createDemandProjectionCache(state),
-          lastAdvancedTick: null,
-        };
-        this._advanceEconPass(state);
-        return;
-      }
-    }
-    this._econTickLegacyTail(tickDt, state);
-  },
-
-  /** The unsliced economy tick (pre-E2 shape). Kept for the matched A/B and as the retreat. */
-  _econTickLegacyTail(tickDt, state) {
-    const econ = state.economy;
-    const eph = getSimStepProfiler();
-    const ephOn = eph.active;
-    let ephT = ephOn ? nowNs() : 0;
-    // Authored regional production/consumption enters through the existing stock authority.
-    // Recipe units are per simulated minute, so the identity pressure stays gentle and bounded.
-    const regionalPressureListings = this.applyRegionalSupply(tickDt, { deferDerivedRefresh: true });
-
-    // Standing per-station industry: the wired mining.js recipes burn feedstock and emit product
-    // at a bounded, stock-gated tempo — the per-yard pressure that makes two sibling stations
-    // price apart. Shares the touched-listings map so each industrial listing gets its pre-drift
-    // chart observation exactly like regional pressure does.
-    this.applyStationIndustry(tickDt, regionalPressureListings);
-    if (ephOn) { eph.record('economy.pressure', nowNs() - ephT); ephT = nowNs(); }
-
-    // 3) drift every station+commodity stock toward effectiveEq, recompute cached prices
-    const markets = econ.markets;
-    const demandProjectionCache = createDemandProjectionCache(state, true);
-    for (const sid in markets) {
-      const market = markets[sid];
-      const info = stationInfo(state, sid);
-      const frontier = info ? this.frontierPenalty(info) : 0;
-      for (const cid in market) {
-        const entry = market[cid];
-        const def = commodityDef(state, cid);
-        if (!def) continue;
-        this.refreshListingDemand(entry, def, sid, info, demandProjectionCache);
-        // advance hidden formula regime (rare re-roll of equation family + coeffs)
-        const cycle = getCycleCore(state, sid, cid, () => this._rng(), state.simTime);
-        // Regional stock pressure used to refresh this observation before the listing pass and then
-        // have its live quote immediately replaced below. Preserve that pre-drift chart observation
-        // exactly, but share the demand/cycle/price work already owned by this pass.
-        if (regionalPressureListings && regionalPressureListings.get(sid)?.has(cid)) {
-          this.recomputePrices(entry, def, frontier, cycle, state.simTime);
-          this.recordPriceHistory(entry, def, cycle, state.simTime, true);
-        }
-        const nextCycle = maybeAdvanceRegime(cycle, () => this._rng(), state.simTime);
-        if (nextCycle !== cycle) {
-          state.economy.cycles[sid][cid] = nextCycle;
-        }
-        const liveCycle = state.economy.cycles[sid][cid] || nextCycle || cycle;
-        const eff = effectiveEq(entry, state, sid, cid, liveCycle);
-        const driftMod = eventModMult(entry, 'drift'); // BLOCKADE freezes drift (mult 0.1)
-        // Exact recovery: stable for large dt; constant-target split ticks commute.
-        entry.stock = recoverStock(entry.stock, eff, tickDt, BALANCE.commodities[cid]?.recoveryHalfLifeS || BALANCE.market.halfLifeS, driftMod);
-        this.recomputePrices(entry, def, frontier, liveCycle, state.simTime);
-        this.recordPriceHistory(entry, def, liveCycle, state.simTime);
-      }
-    }
-    if (ephOn) { eph.record('economy.drift', nowNs() - ephT); }
-    this._finishEconTick(state, { emit: true });
-  },
-
-  /** The economy tick's tail: live intel, neighbour pressure, and the public tick receipt. */
-  _finishEconTick(state, { emit = false } = {}) {
-    const econ = state.economy;
-    // Count completed passes only. A due receipt emitted at the start of a sliced pass must not
-    // inflate this counter, and a carried/dropped due period must never count.
-    if (econ.econClock) {
-      econ.econClock.ticksElapsed = (Number(econ.econClock.ticksElapsed) || 0) + 1;
-      econ.econClock.lastTickT = state.simTime;
-    }
-    const eph = getSimStepProfiler();
-    const ephOn = eph.active;
-    let ephT = ephOn ? nowNs() : 0;
-    const markets = econ.markets;
-    // The docked exchange is a live feed. Remote intel remains intentionally stale until revisited —
-    // unless a fitted Market Data Uplink streams the whole sector on the same cadence.
-    if (this._lastDockedStation && markets[this._lastDockedStation]) {
+    this._processEventEdges(state);
+    this._pruneEconomyEvents(state);
+    // Conveyor work survives the closed form: authored lines burn feedstock and mint
+    // product as dents against minted books only — never a station-wide mint.
+    this.applyStationIndustry(_dt);
+    if (this._lastDockedStation && econ.markets[this._lastDockedStation]) {
       this.snapshotIntel(this._lastDockedStation);
     }
-    if (this._uplinkFitted(state)) {
-      this._syncUplinkIntel(state);
-    }
-
-    // 4) propagate event pressure to neighbour stations (along the sector graph)
-    this.propagateEvents(state);
-    if (ephOn) { eph.record('economy.propagate', nowNs() - ephT); }
-    if (emit) this._emitEconomyTick(state);
-  },
-
-  /** Publish the due/complete receipt. `ticksElapsed` is the completed-pass count. */
-  _emitEconomyTick(state) {
-    const econ = state.economy;
-    this.bus.emit('economy:tick', {
-      t: state.simTime,
-      ticksElapsed: econ.econClock ? econ.econClock.ticksElapsed : 0,
-    });
-  },
-
-  applyRegionalSupply(tickDt, options = null) {
-    const minuteShare = Math.max(0, Number(tickDt) || 0) / 60;
-    if (!(minuteShare > 0)) return null;
-    const deferDerivedRefresh = options && options.deferDerivedRefresh === true;
-    const touchedListings = deferDerivedRefresh ? new Map() : null;
-    for (const recipe of REGIONAL_PRESSURE_RECIPES) {
-      if (!recipe.stationId || !(recipe.units > 0)) continue;
-      this.applyStockPressure(
-        recipe.stationId,
-        recipe.commodityId,
-        recipe.role === 'consume' ? 'buy' : 'sell',
-        recipe.units * minuteShare,
-        deferDerivedRefresh ? { deferDerivedRefresh: true, touchedListings } : null,
-      );
-    }
-    return touchedListings;
+    if (this._uplinkFitted(state)) this._syncUplinkIntel(state);
+    const clock = econ.econClock || (econ.econClock = { accumulator: 0, lastTickT: 0, ticksElapsed: 0 });
+    clock.ticksElapsed = (Number(clock.ticksElapsed) || 0) + 1;
+    clock.lastTickT = state.simTime;
+    this.bus.emit('economy:tick', { t: state.simTime, ticksElapsed: clock.ticksElapsed });
   },
 
   /**
-   * Standing per-station industry — the wired mining.js RECIPES run as live yard lines.
-   * A station runs a job when its type is in the output's producedBy and its sector tier meets
-   * recipe.stationTier. Throughput is bounded three ways: the emptiest input leg throttles the
-   * line (a starved yard idles), a glutted output idles it, and a deterministic per-station
-   * tempo band keeps sibling yards from marching in lockstep. Everything lands through
-   * applyStockPressure, so NPC salvage intake, claims sales, and player trades see the same
-   * stock the industry moved. Returns the count of job-lines that ran this tick.
+   * Cross every event edge in (lastSweepT, now]: scheduled rows from the world seed plus the
+   * persisted dynamic rows. Starts emit the news receipt and stamp their physical dent (idempotent
+   * via econ.eventsApplied); ends emit the wind-down receipt. Deterministic in sim time.
    */
-  applyStationIndustry(tickDt, touchedListings = null, onlyStationIds = null, asOfSimTime = null) {
-    const minuteShare = Math.max(0, Number(tickDt) || 0) / 60;
-    if (!(minuteShare > 0)) return 0;
-    const state = this.state;
-    const markets = state && state.economy && state.economy.markets;
-    if (!markets) return 0;
-    const deferDerivedRefresh = touchedListings instanceof Map;
-    let ran = 0;
-    const stationIds = onlyStationIds || Object.keys(markets);
-    for (const stationId of stationIds) {
-      const info = stationInfo(state, stationId);
-      if (!info) continue;
-      const jobs = STATION_INDUSTRY_BOOK.get(info.type);
-      if (!jobs || !jobs.length) continue;
-      const tier = Math.max(0, Number(info.tier) || 0);
-      const sizeRate = INDUSTRY_RUNS_PER_MIN_BY_SIZE[info.size] || INDUSTRY_RUNS_PER_MIN_BY_SIZE.M;
-      const market = markets[stationId];
-      for (const job of jobs) {
-        if (tier < job.stationTier) continue;
-        // Feedstock gate: the hungriest leg sets the line's speed; an empty hopper idles it.
-        let available = Infinity;
-        let inputsListed = true;
-        for (const [cid] of job.inputs) {
-          const e = market[cid];
-          if (!e || !(e.baseEq > 0)) { inputsListed = false; break; }
-          available = Math.min(available, e.stock / e.baseEq);
+  _processEventEdges(state) {
+    const econ = state.economy;
+    const now = Number(state.simTime) || 0;
+    const clock = econ.econClock
+      || (econ.econClock = { accumulator: 0, lastTickT: 0, ticksElapsed: 0 });
+    // lastSweepT is persisted on econClock: after a reload the edge pass sees
+    // exactly the (lastSweep, now] window the uninterrupted run did.
+    const last = Number.isFinite(clock.lastSweepT) ? clock.lastSweepT : now;
+    if (now <= last) { clock.lastSweepT = now; return; }
+    const applied = econ.eventsApplied || (econ.eventsApplied = {});
+    const j0 = Math.floor(last / EVENT_CELL_S), j1 = Math.floor(now / EVENT_CELL_S);
+    const seed = state.meta && state.meta.seed;
+    for (const sector of SECTORS) {
+      const stationIds = Array.isArray(sector.stations)
+        ? sector.stations.map((s) => s && s.id).filter(Boolean) : [];
+      if (!stationIds.length) continue;
+      const secCtx = sectorEventContext(state, sector.id);
+      for (let j = j0; j <= j1; j++) {
+        const ev = scheduledEventForEpoch(seed, sector.id, j, stationIds, MARKET_GOOD_POOL, secCtx);
+        if (!ev) continue;
+        if (ev.tStart > last && ev.tStart <= now) {
+          this._applyEventStartDent(state, ev, applied);
+          this.bus.emit('economy:eventStarted', {
+            eventId: ev.id, type: ev.type, stationId: ev.stationId,
+            commodityId: ev.goods[0] || '*', duration: ev.tEnd - ev.tStart,
+          });
         }
-        if (!inputsListed || !(available > 0)) continue;
-        const outEntry = market[job.outputId];
-        if (!outEntry || !(outEntry.baseEq > 0)) continue;
-        // A glutted output idles the line — nobody keeps making what isn't being taken away.
-        const headroom = 1 - outEntry.stock / (INDUSTRY_OUTPUT_GLUT * outEntry.baseEq);
-        if (!(headroom > 0)) continue;
-        // Deterministic per-station tempo: two sibling yards never run the identical line.
-        const bias = INDUSTRY_BIAS_LO
-          + ((hash32(stationId, job.id) >>> 0) / 4294967296) * INDUSTRY_BIAS_SPAN;
-        const runs = sizeRate * job.runsPerMin
-          * Math.min(INDUSTRY_INPUT_FULL, available) * headroom * bias * minuteShare;
-        if (!(runs > 0)) continue;
-        const stockOptions = deferDerivedRefresh
-          ? { deferDerivedRefresh: true, touchedListings, asOfSimTime } : null;
-        for (const [cid, qty] of job.inputs) {
-          this.applyStockPressure(stationId, cid, 'buy', qty * runs, stockOptions);
+        if (ev.tEnd > last && ev.tEnd <= now) {
+          this.bus.emit('economy:eventEnded', { eventId: ev.id, stationId: ev.stationId });
         }
-        this.applyStockPressure(stationId, job.outputId, 'sell', job.outputQty * runs, stockOptions);
-        ran++;
       }
     }
-    return ran;
+    for (const ev of econ.econEvents || []) {
+      if (!ev || ev.tStart == null) continue;
+      // Dynamic rows announce their own start at injectEvent; the edge pass only owes them
+      // the physical dent (on reload) and the end receipt.
+      if (ev.tStart <= now) this._applyEventStartDent(state, ev, applied);
+      if (ev.tEnd > last && ev.tEnd <= now) {
+        this.bus.emit('economy:eventEnded', { eventId: ev.id, stationId: ev.stationId });
+      }
+    }
+    clock.lastSweepT = now;
   },
 
   /**
-   * Cache lastMid/lastBuy/lastSell from stock mid × cycle formula.
-   * cycle/simTime optional — without them mid is pure stock (init before cycles exist).
-   * Final mid is always a positive integer credit value.
+   * The event's physical signature: shortages strip the shelf, gluts flood it. One dent per
+   * event, replay-safe through econ.eventsApplied so a reload cannot double-apply.
    */
-  recomputePrices(entry, def, frontierPenalty, cycle = null, simTime = 0) {
-    const stockMid = economyMidPrice(def, entry.stock, entry.baseEq);
-    const persistentMid = applyPersistentDemand(stockMid, entry && entry.demandMult);
-    const midRaw = cycle
-      ? applyCycleToMid(def.basePrice, persistentMid, cycle, simTime)
-      : persistentMid;
-    const mid = Math.max(1, round(midRaw));
-    const spread = spreadOf(entry, frontierPenalty);
-    entry.lastMid = mid;
+  _applyEventStartDent(state, ev, applied) {
+    if (!ev || !ev.id || (applied && applied[ev.id])) return;
+    if (applied) applied[ev.id] = 1;
+    const frac = EVENT_DENT_FRAC[ev.type];
+    // skipStartDent: price-only windows (the shortage-repair correction) carry no
+    // physical signature — the relief itself is what puts the units back.
+    if (!frac || ev.skipStartDent === true) return;
+    const market = state.economy.markets[ev.stationId] || this.ensureMarket(ev.stationId);
+    if (!market) return;
+    const goods = Array.isArray(ev.goods) && ev.goods.length ? ev.goods : Object.keys(market);
+    for (const cid of goods) {
+      const entry = market[cid];
+      if (!entry) continue;
+      const eq = Math.max(1, Number(entry.equilibrium) || Number(entry.baseEq) || 1);
+      appendDent(entry, cid, ev.tStart, frac * eq);
+      const def = commodityDef(state, cid);
+      if (def) this._stampEntryQuote(entry, def, ev.stationId, cid);
+    }
+  },
+
+  /** Drop dynamic rows long past end — their aftermath regime has already run out. */
+  _pruneEconomyEvents(state) {
+    const econ = state.economy;
+    const rows = econ.econEvents;
+    if (!Array.isArray(rows) || !rows.length) return;
+    const cutoff = (Number(state.simTime) || 0) - EVENT_PRUNE_S;
+    const kept = rows.filter((ev) => ev && Number.isFinite(ev.tEnd) && ev.tEnd > cutoff);
+    if (kept.length !== rows.length) econ.econEvents = kept.slice(-ECON_EVENTS_CAP);
+    else if (rows.length > ECON_EVENTS_CAP) econ.econEvents = rows.slice(-ECON_EVENTS_CAP);
+  },
+
+  /**
+   * The eval context for one (station, good) — minted dents when an entry exists,
+   * the pure listing definition when it does not. Same answer on either lane.
+   */
+  _marketCtx(info, stationId, commodityId, def, entry) {
+    const state = this.state;
+    return marketContextFor(state, stationId, commodityId, entry || null);
+  },
+
+  /**
+   * Stamp lastMid/lastBuy/lastSell + the live shelf mirror from the closed form.
+   * Replaces the old stock-mid×cycle cache: same fields, same integer rules.
+   */
+  _stampEntryQuote(entry, def, stationId, commodityId, atT) {
+    const state = this.state;
+    const t = Number.isFinite(atT) ? atT : (state.simTime || 0);
+    const sid = stationId || null;
+    const info = sid ? stationInfo(state, sid) : null;
+    const ctx = marketContextFor(state, sid, commodityId || (def && def.id), entry);
+    if (!ctx) return entry;
+    const mid = marketMidAt(ctx, t);
+    const frontier = info ? this.frontierPenalty(info) : 0;
+    const spread = spreadOf(eventSpreadAt(ctx, t), frontier);
+    entry.lastMid = Math.max(1, round(mid));
     entry.lastBuy = Math.max(1, round(mid * (1 + spread / 2)));
-    // Sell floor 1; keep buy > sell when mid is tiny.
     entry.lastSell = Math.max(1, Math.min(entry.lastBuy - 1, round(mid * (1 - spread / 2))));
     if (entry.lastSell < 1) entry.lastSell = 1;
     if (entry.lastBuy <= entry.lastSell) entry.lastBuy = entry.lastSell + 1;
+    entry.stock = shelfUnitsAt(entry, commodityId || (def && def.id), t);
     return entry;
   },
 
-  /** Resolve the live cycle (if any) and recompute mid/buy/sell for a station listing. */
+  // Legacy names kept: the ~15 writer call sites that used to recompute the
+  // stock×cycle cache now stamp the closed form instead.
+  recomputePrices(entry, def, frontierPenalty, _cycle = null, simTime = 0) {
+    const info = this._entryStation(entry);
+    const sid = info ? info.id : this._lastDockedStation;
+    return this._stampEntryQuote(entry, def, sid, def && def.id, simTime);
+  },
+
   recomputeLivePrices(entry, def, stationId, commodityId) {
-    const state = this.state;
-    const frontier = this.frontierPenaltyFor(state, stationId);
-    if (!state || !state.economy) return this.recomputePrices(entry, def, frontier);
+    return this._stampEntryQuote(entry, def, stationId, commodityId);
+  },
+
+  /** Demand-model wrapper: refresh the derived demand fields, then restamp the quote. */
+  refreshEntryQuote(entry, def, stationId, commodityId) {
     this.refreshListingDemand(entry, def, stationId);
-    const cycle = getCycleCore(
-      state,
-      stationId,
-      commodityId,
-      () => (typeof this._rng === 'function' ? this._rng() : 0.5),
-      state.simTime || 0,
-    );
-    return this.recomputePrices(entry, def, frontier, cycle, state.simTime || 0);
+    return this._stampEntryQuote(entry, def, stationId, commodityId);
   },
 
-  /** Seed and retain the player-visible history from the actual formula state. */
-  seedPriceHistory(entry, def, cycle, simTime) {
-    const now = Number(simTime) || 0;
-    entry.history = pricePointsBackfill(
-      entry, def, cycle, now - HISTORY_SPAN_S, HISTORY_SAMPLE_S, HISTORY_POINT_LIMIT, 'modelled');
-    return entry.history;
-  },
-
-  /** Record one bounded chart point; forced calls replace the same-timestamp point after a trade. */
-  recordPriceHistory(entry, def, cycle, simTime, force = false) {
-    const now = Number(simTime) || 0;
-    if (!Array.isArray(entry.history) || entry.history.length < 2) {
-      this.seedPriceHistory(entry, def, cycle, now);
-      return entry.history;
-    }
-    const history = entry.history;
-    const last = history[history.length - 1];
-    if (!force && last && (now - Number(last.t)) < HISTORY_SAMPLE_S) return history;
-    const point = pricePointAt(entry, def, cycle, now, 'observed');
-    if (last && Math.abs(Number(last.t) - now) < 0.001) history[history.length - 1] = point;
-    else history.push(point);
-    if (history.length > HISTORY_POINT_LIMIT) history.splice(0, history.length - HISTORY_POINT_LIMIT);
-    return history;
-  },
-
-  /** Add an immediate point after a player or automation trade changes the quote. */
-  recordLivePriceHistory(entry, def, stationId, commodityId, force = true) {
+  _entryStation(entry) {
     const state = this.state;
-    const cycle = getCycleCore(
-      state,
-      stationId,
-      commodityId,
-      () => (typeof this._rng === 'function' ? this._rng() : 0.5),
-      state.simTime || 0,
-    );
-    return this.recordPriceHistory(entry, def, cycle, state.simTime || 0, force);
+    const markets = state && state.economy && state.economy.markets;
+    if (!markets || !entry) return null;
+    for (const sid in markets) {
+      const m = markets[sid];
+      for (const cid in m) if (m[cid] === entry) return stationInfo(state, sid);
+    }
+    return null;
   },
 
   /** Frontier (low-wealth) stations widen the spread. Derived from sector security. */
@@ -2527,76 +2150,37 @@ export const economy = {
     });
   },
 
-  /** Refresh a station atomically so its board, executable quotes, history, and route intel agree. */
-  refreshStationDemand(stationId, { recordHistory = true } = {}) {
+  /** Refresh a station atomically so its board, executable quotes, and route intel agree. */
+  refreshStationDemand(stationId) {
     const state = this.state;
     const market = state && state.economy && state.economy.markets && state.economy.markets[stationId];
     if (!market) return false;
-    const frontier = this.frontierPenaltyFor(state, stationId);
-    const restoredQuotes = this._restoredQuoteKeys instanceof Set ? this._restoredQuoteKeys : null;
+    // One sector-signal snapshot serves the whole pass — the mint path shares its projector the
+    // same way, so a board refresh cannot read a sector state that shifted mid-pass.
+    const info = stationInfo(state, stationId);
+    const projectDemand = createSectorDemandProjector(state, info && info.sectorId);
     let changed = false;
     for (const cid in market) {
       const entry = market[cid];
       const def = commodityDef(state, cid);
       if (!entry || !def) continue;
-      const listingChanged = this.refreshListingDemand(entry, def, stationId);
-      // A quote carried verbatim from the save still belongs to the pulse that stamped it; the
-      // load-time rebuild refreshes demand fields only and the next repricing event resumes
-      // the curve on its normal cadence.
-      if (restoredQuotes && restoredQuotes.delete(`${stationId}\u001f${cid}`)) {
-        changed = listingChanged || changed;
-        continue;
-      }
-      const cycle = getCycleCore(state, stationId, cid, () => this._rng(), state.simTime || 0);
-      this.recomputePrices(entry, def, frontier, cycle, state.simTime || 0);
-      if (listingChanged && recordHistory) {
-        this.recordPriceHistory(entry, def, cycle, state.simTime || 0, true);
-      }
+      const listingChanged = this.refreshListingDemand(entry, def, stationId, info, projectDemand);
+      if (listingChanged) this._stampEntryQuote(entry, def, stationId, cid);
       changed = listingChanged || changed;
     }
     return changed;
   },
 
-  /** Save/load rebuilds derived quotes without inventing observations or history transitions. */
-  refreshAllPersistentDemand({ reseedSynthetic = false, sliceIndex = 0, sliceCount = 1 } = {}) {
+  /** Save/load rebuilds derived quotes without inventing observations. */
+  refreshAllPersistentDemand({ sliceIndex = 0, sliceCount = 1 } = {}) {
     const state = this.state;
     const markets = state && state.economy && state.economy.markets || {};
     const ids = Object.keys(markets);
     const s0 = Math.floor(ids.length * sliceIndex / sliceCount);
     const s1 = Math.floor(ids.length * (sliceIndex + 1) / sliceCount);
     for (let i = s0; i < s1; i++) {
-      this.refreshStationDemand(ids[i], { recordHistory: false });
+      this.refreshStationDemand(ids[i]);
     }
-    if (reseedSynthetic) this.reseedSyntheticPriceHistories(sliceIndex, sliceCount);
-  },
-
-  /** Rebuild only chart caches omitted from saves; genuinely observed histories remain untouched. */
-  reseedSyntheticPriceHistories(sliceIndex = 0, sliceCount = 1) {
-    const keys = this._syntheticHistoryKeys;
-    if (!(keys instanceof Set) || !keys.size) return 0;
-    const list = sliceCount > 1 ? [...keys] : keys;
-    const total = Array.isArray(list) ? list.length : list.size;
-    const k0 = Math.floor(total * sliceIndex / sliceCount);
-    const k1 = Math.floor(total * (sliceIndex + 1) / sliceCount);
-    const state = this.state;
-    let count = 0;
-    let index = -1;
-    for (const key of list) {
-      index += 1;
-      if (index < k0 || index >= k1) continue;
-      const divider = key.indexOf('\u001f');
-      if (divider < 1) continue;
-      const stationId = key.slice(0, divider);
-      const commodityId = key.slice(divider + 1);
-      const entry = state.economy && state.economy.markets
-        && state.economy.markets[stationId] && state.economy.markets[stationId][commodityId];
-      const def = commodityDef(state, commodityId);
-      if (!entry || !def) continue;
-      const cycle = getCycleCore(state, stationId, commodityId, () => this._rng(), state.simTime || 0);
-      this.seedPriceHistory(entry, def, cycle, state.simTime || 0);
-      count++;
-    }
-    return count;
   },
 
   // -------------------------------------------------------------------------------------------
@@ -2607,10 +2191,6 @@ export const economy = {
   ensureMarket(stationId, stationTypeId, size) {
     const state = this.state;
     const markets = state.economy.markets;
-    if (markets[stationId]) return markets[stationId];
-    // Eager-mint lane: a pending deferred spec materializes on first internal touch so the
-    // sim-internal paths keep their own deterministic mint order independent of quote timing.
-    if (this.eagerMarketMint) this._materializePendingMarket(stationId);
     if (markets[stationId]) return markets[stationId];
     // The Swallowed Rib is not part of the galactic price census. Building it
     // from a Helios boot would take the shared economy stream and move every
@@ -2627,24 +2207,57 @@ export const economy = {
       type,
       size: sz,
       allowContraband: toleratesContraband(info),
-    }, market, this._marketCycleBucket(stationId));
+    }, market);
     markets[stationId] = market;
     return market;
   },
 
-  /** state.economy.cycles bucket for one station, created on demand (same shape as before). */
-  _marketCycleBucket(stationId) {
+  /**
+   * Materialize the one live row settlement needs when quote() priced a stateless
+   * book. Same listing gates as the read lane: listed goods open at rest (eq),
+   * player-brought goods (noMarketSeed / above-tier / locally produced) open as
+   * empty liquidation books. Returns null when the berth cannot trade the good.
+   */
+  _liveEntryForWrite(stationId, commodityId, def) {
     const state = this.state;
-    if (!state.economy.cycles) state.economy.cycles = {};
-    if (!state.economy.cycles[stationId]) state.economy.cycles[stationId] = {};
-    return state.economy.cycles[stationId];
+    const info = stationInfo(state, stationId);
+    const produced = producedAtStation(info, stationId, def);
+    const ldef = listingDefFor(def, info, stationId, { producedHere: produced });
+    if (!ldef) {
+      const stationTier = info ? Math.max(0, Number(info.tier) || 0) : 0;
+      const marketTier = Math.max(0, Number(def.marketTier) || 0);
+      if (def.noMarketSeed !== true && marketTier <= stationTier && !produced) return null;
+      if ((def.legality === 'contraband' || def.legality === 'illegal') && !toleratesContraband(info)) {
+        return null;
+      }
+    }
+    const econ = state.economy;
+    const market = econ.markets[stationId] || (econ.markets[stationId] = {});
+    let entry = market[commodityId];
+    if (!entry) {
+      entry = market[commodityId] = ldef ? {
+        equilibrium: ldef.eq, baseEq: ldef.baseEq, role: ldef.role,
+        dents: [], stock: ldef.eq,
+        lastMid: 0, lastBuy: 0, lastSell: 0,
+        demandMult: 1, demandDrivers: [],
+      } : {
+        equilibrium: 0,
+        baseEq: (BALANCE.commodities[commodityId]?.baseEq || BASE_EQ_DEFAULT)
+          * (SIZE_FACTOR[(info && info.size) || 'M'] || 1),
+        role: 'none', dents: [], stock: 0,
+        lastMid: 0, lastBuy: 0, lastSell: 0,
+        demandMult: 1, demandDrivers: [],
+      };
+      this.refreshListingDemand(entry, def, stationId, info);
+      this._stampEntryQuote(entry, def, stationId, commodityId);
+    }
+    return entry;
   },
 
-  /** The ensureMarket commodity loop, extracted so the deferred (pending) mint runs the exact
-   *  same draws/state reads and only redirects the write sinks. `cyclesBucket` is the flat
-   *  {commodityId: cycle} map — state.economy.cycles[stationId] on the live path, the pending
-   *  spec's own bucket on the deferred path. */
-  _mintMarketCommodities(stationId, info, mint, market, cyclesBucket) {
+  /** The ensureMarket commodity loop. Under the closed form a minted row is just
+   *  the persisted half of the same answer the pure listing definition gives —
+   *  mints now exist only so dents and demand refresh have somewhere to live. */
+  _mintMarketCommodities(stationId, info, mint, market) {
     const state = this.state;
     const now = state.simTime || 0;
     const stationTier = info ? Math.max(0, Number(info.tier) || 0) : 0;
@@ -2688,111 +2301,26 @@ export const economy = {
       // (price settles near basePrice; player can both buy and sell). Produce/consume keep their
       // role-driven surplus/shortage targets so A->B routes stay profitable.
       const equilibrium = economyEquilibriumForListing(info, def.id, role, baseEqRef);
-      const stock = equilibrium;                                 // start at rest
+      // Closed-form market: the book rests at equilibrium; the price is the formula,
+      // and the shelf is equilibrium plus whatever player dents still live.
       const entry = {
-        stock, equilibrium, baseEq: baseEqRef, role,
-        lastMid: 0, lastBuy: 0, lastSell: 0, eventMods: [],
+        equilibrium, baseEq: baseEqRef, role,
+        dents: [], stock: equilibrium,
+        lastMid: 0, lastBuy: 0, lastSell: 0,
         demandMult: 1, demandDrivers: [],
       };
-      // Every market begins with a formula already in progress. That lets the chart expose a
-      // learnable current trend on the very first dock instead of faking one in the UI.
-      const historyAge = HISTORY_REGIME_AGE_MIN_S
-        + this._rng() * (HISTORY_REGIME_AGE_MAX_S - HISTORY_REGIME_AGE_MIN_S);
-      const cycle = createCycle(() => this._rng(), def, now - historyAge);
-      cycle.cmdtyId = def.id;
-      cyclesBucket[def.id] = cycle;
       this.refreshListingDemand(entry, def, stationId, info, projectDemand);
-      this.recomputePrices(entry, def, frontier, cycle, now);
-      this.seedPriceHistory(entry, def, cycle, now);
+      this._stampEntryQuote(entry, def, stationId, def.id, now);
       market[def.id] = entry;
     }
     return market;
   },
 
-  // ---- Eager-mint deferred specs (flag-gated; OFF = all of this is dead code) ----
-
-  _pendingFor(stationId) {
-    if (!this._pendingMints) this._pendingMints = new Map();
-    let p = this._pendingMints.get(stationId);
-    if (!p) {
-      p = { market: null, listings: {}, cycles: {} };
-      this._pendingMints.set(stationId, p);
-    }
-    return p;
-  },
-
-  /** Build the full station market into the pending spec — the same _mintMarketCommodities run
-   *  ensureMarket performs, so the same _rng draws are consumed at quote time. Writes are
-   *  deferred; the entry/cycle objects are what the drain later installs verbatim. */
-  _deferMarketMint(stationId) {
-    const p = this._pendingFor(stationId);
-    if (p.market) return p.market;
-    const state = this.state;
-    const info = stationInfo(state, stationId);
-    p.market = {};
-    this._mintMarketCommodities(stationId, info, {
-      type: (info && info.type) || 'trade_hub',
-      size: (info && info.size) || 'M',
-      allowContraband: toleratesContraband(info),
-    }, p.market, p.cycles);
-    return p.market;
-  },
-
-  /** Defer a noMarketSeed single-listing mint (same draws as mintUnseededListing). */
-  _deferListingMint(stationId, def) {
-    const p = this._pendingFor(stationId);
-    if (p.listings[def.id]) return p.listings[def.id];
-    const info = stationInfo(this.state, stationId);
-    return this._mintUnseededListingEntry(stationId, info, def, p.listings, p.cycles);
-  },
-
-  /** Flush one station's pending spec into live state now — used by internal callers that need
-   *  the real row immediately. Draws were consumed at record time; this is write-only. */
-  _materializePendingMarket(stationId) {
-    const p = this._pendingMints && this._pendingMints.get(stationId);
-    if (!p) return;
-    this._commitPendingStation(stationId, p);
-    this._pendingMints.delete(stationId);
-  },
-
-  _commitPendingStation(stationId, p) {
-    const state = this.state;
-    const markets = state.economy.markets;
-    if (p.market) {
-      if (!markets[stationId]) {
-        markets[stationId] = p.market;
-      } else {
-        const live = markets[stationId];
-        for (const cid of Object.keys(p.market)) {
-          if (live[cid] === undefined) live[cid] = p.market[cid];
-        }
-      }
-    }
-    if (Object.keys(p.listings).length && !markets[stationId]) markets[stationId] = {};
-    const live = markets[stationId];
-    if (live) {
-      for (const cid of Object.keys(p.listings)) {
-        if (live[cid] === undefined) live[cid] = p.listings[cid];
-      }
-    }
-    const cycles = this._marketCycleBucket(stationId);
-    for (const cid of Object.keys(p.cycles)) {
-      if (cycles[cid] === undefined) cycles[cid] = p.cycles[cid];
-    }
-  },
-
-  /** Tick-boundary drain: materialize every deferred spec in canonical order (stationId asc,
-   *  then COMMODITIES-table order inside each spec — insertion order already follows it).
-   *  Runs at the top of economy.update() so the mint lands before this tick's econTick exactly
-   *  as the lazy mint's writes would have. */
-  _drainPendingMints() {
-    if (!this._pendingMints || this._pendingMints.size === 0) return;
-    const sids = [...this._pendingMints.keys()].sort();
-    for (const sid of sids) {
-      this._commitPendingStation(sid, this._pendingMints.get(sid));
-    }
-    this._pendingMints = null;
-  },
+  // ---- Stateless minting ----
+  // Quote never mints now: the pure listing book answers every read, and settlement
+  // materializes only the one row a dent has to live on (_liveEntryForWrite). The
+  // old eager-mint deferred-spec lane is gone — both "lanes" price identically by
+  // construction, so the parity harness degenerates to a tautology.
 
   /**
    * Mint a neutral 'none'-role listing for a noMarketSeed commodity on first quote — the
@@ -2800,17 +2328,14 @@ export const economy = {
    */
   mintUnseededListing(stationId, def) {
     const state = this.state;
-    // Eager-mint lane: flush any deferred spec for this station before touching the live row.
-    if (this.eagerMarketMint) this._materializePendingMarket(stationId);
-    const market = state.economy.markets[stationId];
+    const market = state.economy.markets[stationId] || this.ensureMarket(stationId);
     if (!market || !def) return null;
     const info = stationInfo(state, stationId);
-    return this._mintUnseededListingEntry(stationId, info, def, market, this._marketCycleBucket(stationId));
+    return this._mintUnseededListingEntry(stationId, info, def, market);
   },
 
-  /** The mintUnseededListing body — same draws/reads, write sinks passed in so the deferred
-   *  path builds into the pending spec instead of live state. */
-  _mintUnseededListingEntry(stationId, info, def, market, cyclesBucket) {
+  /** The mintUnseededListing body. */
+  _mintUnseededListingEntry(stationId, info, def, market) {
     const state = this.state;
     const sz = (info && info.size) || 'M';
     const baseEqRef = (BALANCE.commodities[def.id]?.baseEq || BASE_EQ_DEFAULT) * (SIZE_FACTOR[sz] || 1);
@@ -2818,18 +2343,14 @@ export const economy = {
     // stays a sell-side book: a refused biohazard lot mints nothing the recovery tick can grow
     // into sellable stock, and player-bought units bleed back out instead of restocking.
     const entry = {
-      stock: 0, equilibrium: 0, baseEq: baseEqRef, role: 'none',
-      lastMid: 0, lastBuy: 0, lastSell: 0, eventMods: [],
+      equilibrium: 0, baseEq: baseEqRef, role: 'none',
+      dents: [], stock: 0,
+      lastMid: 0, lastBuy: 0, lastSell: 0,
       demandMult: 1, demandDrivers: [],
     };
-    const frontier = info ? this.frontierPenalty(info) : 0;
     const now = state.simTime || 0;
-    const cycle = createCycle(() => this._rng(), def, now - HISTORY_REGIME_AGE_MIN_S);
-    cycle.cmdtyId = def.id;
-    cyclesBucket[def.id] = cycle;
     this.refreshListingDemand(entry, def, stationId);
-    this.recomputePrices(entry, def, frontier, cycle, now);
-    this.seedPriceHistory(entry, def, cycle, now);
+    this._stampEntryQuote(entry, def, stationId, def.id, now);
     market[def.id] = entry;
     return entry;
   },
@@ -2857,17 +2378,23 @@ export const economy = {
   /** Cache a price snapshot for the map / route-planner UI (marketIntel). */
   snapshotIntel(stationId, options = null) {
     const state = this.state;
-    const market = state.economy.markets[stationId];
-    if (!market) return;
+    // Closed-form intel works on a never-minted station: the pure listing book
+    // fills the rows the market has not materialized yet.
+    const rows = marketRowsFor(state, stationId);
+    if (!rows || !Object.keys(rows).length) return;
+    const info = stationInfo(state, stationId);
     // Same condition multipliers quote() folds into the live price (strike sell, blockade buy).
     // A remembered list that skips them quotes a calm market while the berth is not calm.
-    const trade = stationTradeMults(state, stationId, stationInfo(state, stationId));
+    const trade = stationTradeMults(state, stationId, info);
     const conditioned = (price, mult) => (
       mult === 1 || !Number.isFinite(price) ? price : price * mult
     );
     const snapshot = {};
-    for (const cid in market) {
-      const e = market[cid];
+    for (const cid in rows) {
+      const e = rows[cid];
+      const def = commodityDef(state, cid);
+      if (!def) continue;
+      this._stampEntryQuote(e, def, stationId, cid);
       snapshot[cid] = {
         mid: e.lastMid,
         buy: conditioned(e.lastBuy, trade.buy),
@@ -3027,66 +2554,67 @@ export const economy = {
     if (stationId === TETHYS_BLACK_MARKET_RUN.stationId && !hasTethysBlackMarketAccess(state)) {
       return { ok: false, reason: 'black_market_locked', unitAvg: 0, total: 0, priceImpactPct: 0, stockAfter: 0 };
     }
-    let market = state.economy.markets[stationId];
-    let pending = null;
-    if (this.eagerMarketMint) {
-      // Eager-mint lane: mints this quote would have triggered are recorded into the pending
-      // spec (identical _rng draws, now) and materialize at the next update() boundary. This
-      // call answers off the pending spec — a pure projection with no live-state writes.
-      pending = this._pendingFor(stationId);
-      if (!market && pending.market) market = pending.market;
-      if (!market) market = this._deferMarketMint(stationId);
-    } else {
-      market = market || this.ensureMarket(stationId);
-    }
-    let entry = market && market[commodityId];
-    if (!entry && pending) entry = pending.listings[commodityId] || null;
+    const market = state.economy.markets[stationId];
     const def = commodityDef(state, commodityId);
     if (!def) return { ok: false, reason: 'untraded', unitAvg: 0, total: 0, priceImpactPct: 0, stockAfter: 0 };
     const info = stationInfo(state, stationId);
     const stationTier = info ? Math.max(0, Number(info.tier) || 0) : 0;
     const marketTier = Math.max(0, Number(def.marketTier) || 0);
+    const free = side === 'sell' && opts?.operationCustody !== true ? sealedSellFree(state, commodityId, qty) : null;
+    // Alien Ecology AE-077 — a quarantine refusal bars custody, including the first quote.
+    const refusal = side === 'sell' ? biohazardSaleRefusal(state, info, def) : null;
+    let entry = market && market[commodityId];
     if (!entry) {
-      if (def.noMarketSeed !== true && marketTier <= stationTier && !producedAtStation(info, stationId, def)) {
-        return { ok: false, reason: 'untraded', unitAvg: 0, total: 0, priceImpactPct: 0, stockAfter: 0 };
-      }
-      // Liquidation minting honors the same legality gate as seeding: a lawful port does not
-      // conjure a narcotics book because a carrier happened to bring one.
-      if ((def.legality === 'contraband' || def.legality === 'illegal') && !toleratesContraband(info)) {
-        return { ok: false, reason: 'untraded', unitAvg: 0, total: 0, priceImpactPct: 0, stockAfter: 0 };
-      }
-      entry = this.eagerMarketMint
-        ? this._deferListingMint(stationId, def)
-        : this.mintUnseededListing(stationId, def);
-      if (!entry) return { ok: false, reason: 'untraded', unitAvg: 0, total: 0, priceImpactPct: 0, stockAfter: 0 };
-    }
-    if (side === 'sell' && opts?.operationCustody !== true) {
-      const free = sealedSellFree(state, commodityId, qty);
-      if (free != null) {
-        return {
-          ok: false, reason: 'mission_cargo_locked',
-          ...(free > 0 ? { free } : {}),
-          unitAvg: entry.lastSell || 0, total: 0,
-          priceImpactPct: 0, stockAfter: entry.stock,
+      // Stateless read: the pure listing book prices a never-minted market, and the
+      // liquidation book prices a player-brought good without a live row. Quote
+      // itself stays read-only — minting is a settlement concern (execute/pressure).
+      const produced = producedAtStation(info, stationId, def);
+      const ldef = listingDefFor(def, info, stationId, { producedHere: produced });
+      if (ldef) {
+        entry = {
+          equilibrium: ldef.eq, baseEq: ldef.baseEq, role: ldef.role, dents: [],
+          stock: ldef.eq, lastMid: 0, lastBuy: 0, lastSell: 0,
+          demandMult: 1, demandDrivers: [], transient: true,
+        };
+      } else {
+        if (def.noMarketSeed !== true && marketTier <= stationTier && !produced) {
+          return { ok: false, reason: 'untraded', unitAvg: 0, total: 0, priceImpactPct: 0, stockAfter: 0 };
+        }
+        // Liquidation pricing honors the same legality gate as seeding: a lawful port does not
+        // conjure a narcotics book because a carrier happened to bring one.
+        if ((def.legality === 'contraband' || def.legality === 'illegal') && !toleratesContraband(info)) {
+          return { ok: false, reason: 'untraded', unitAvg: 0, total: 0, priceImpactPct: 0, stockAfter: 0 };
+        }
+        const baseEqRef = (BALANCE.commodities[def.id]?.baseEq || BASE_EQ_DEFAULT)
+          * (SIZE_FACTOR[(info && info.size) || 'M'] || 1);
+        entry = {
+          equilibrium: 0, baseEq: baseEqRef, role: 'none', dents: [],
+          stock: 0, lastMid: 0, lastBuy: 0, lastSell: 0,
+          demandMult: 1, demandDrivers: [], transient: true,
         };
       }
+      this._stampEntryQuote(entry, def, stationId, commodityId);
     }
-    // Alien Ecology AE-077 — a faction with `refuses` will not intake biohazard lots at all:
-    // custody refusal, not a price. Recomputed listings still carry the policy driver as the
-    // explanation; execution and automation intake both flow through this quote gate.
-    if (side === 'sell' && def.biohazard === true && info && info.factionId) {
-      const policy = contaminationSaleMult(state, info.sectorId, info.factionId);
-      // AE-128 (K03): a fitted Containment Seal carries registry quarantine paperwork —
-      // refusing stations accept the lot under sealed custody instead of turning you away.
-      const sealed = policy && policy.refuses === true
-        && fittedModuleDefs(state).some((d) => d && d.mods && d.mods.containmentSeal === true);
-      if (policy && policy.refuses === true && !sealed) {
-        return {
-          ok: false, reason: 'contamination_refusal', policyNote: policy.note || null,
-          unitAvg: entry.lastSell || 0, total: 0, priceImpactPct: 0, stockAfter: entry.stock,
-          legalityWarning: def.legality !== 'legal' ? def.legality : null,
-        };
+    if (free != null) {
+      return {
+        ok: false, reason: 'mission_cargo_locked',
+        ...(free > 0 ? { free } : {}),
+        unitAvg: entry?.lastSell || 0, total: 0,
+        priceImpactPct: 0, stockAfter: entry?.stock ?? 0,
+      };
+    }
+    if (refusal) {
+      // The refusal itself mints the liquidation row: the berth saw the lot and named
+      // its quarantine, so the empty book persists — priced (lastSell) but permanently
+      // stocked at zero (equilibrium 0), never healing into sellable stock.
+      if (entry && entry.transient) {
+        entry = this._liveEntryForWrite(stationId, commodityId, def) || entry;
       }
+      return {
+        ok: false, reason: 'contamination_refusal', policyNote: refusal.note || null,
+        unitAvg: entry?.lastSell || 0, total: 0, priceImpactPct: 0, stockAfter: entry?.stock ?? 0,
+        legalityWarning: def.legality !== 'legal' ? def.legality : null,
+      };
     }
     const standingBase = priceModForState(state, info && info.factionId);
     // THE WORLD REMEMBERS — a strike worsens what this berth pays the player; a blockade makes
@@ -3095,7 +2623,17 @@ export const economy = {
     // half (market day, festival) moves either way and is applied after it, like the ending terms.
     const { causal: conditionMult, calendar: calendarMult } = stationTradeMultParts(state, stationId, info);
     const frontier = info ? this.frontierPenalty(info) : 0;
-    const spread = spreadOf(entry, frontier);
+    const tNow = state.simTime || 0;
+    const ctx = marketContextFor(state, stationId, commodityId, entry);
+    // A quote is an observation: a minted row re-stamps its displayed price on
+    // read, so the book the screen shows is always the price it was just quoted.
+    if (!entry.transient) this._stampEntryQuote(entry, def, stationId, commodityId, tNow);
+    const stockNow = shelfUnitsAt(entry, commodityId, tNow);
+    const evInfo = ctx
+      ? eventsAffecting(ctx.seed, ctx.sectorId, stationId, commodityId, tNow,
+        ctx.events, ctx.stations, ctx.goodPool)
+      : { levelMult: 1, spreadMult: 1, active: [] };
+    const spread = spreadOf(evInfo.spreadMult, frontier);
     // Reputation alone, before the strike/blockade multiply. The market names this component
     // separately from scarcity, fees and stale intel (board row 321).
     const standingOnly = commodityStandingMultipliers(spread, standingBase, {});
@@ -3111,19 +2649,19 @@ export const economy = {
     if (side === 'buy' && marketTier > stationTier && !producedAtStation(info, stationId, def)) {
       return {
         ok: false, reason: 'tier_unavailable', unitAvg: entry.lastBuy * standing.buy, total: 0,
-        priceImpactPct: 0, stockAfter: entry.stock, marketTier, stationTier,
+        priceImpactPct: 0, stockAfter: stockNow, marketTier, stationTier,
         legalityWarning: def.legality !== 'legal' ? def.legality : null,
       };
     }
     if (qty <= 0) {
       const u = side === 'buy' ? entry.lastBuy * standing.buy : entry.lastSell * standing.sell;
-      return { ok: false, reason: 'qty', unitAvg: u, total: 0, priceImpactPct: 0, stockAfter: entry.stock, legalityWarning: def.legality !== 'legal' ? def.legality : null };
+      return { ok: false, reason: 'qty', unitAvg: u, total: 0, priceImpactPct: 0, stockAfter: stockNow, legalityWarning: def.legality !== 'legal' ? def.legality : null };
     }
-    if (!Number.isFinite(entry.stock) || entry.stock < 0 || !(entry.baseEq > 0)) {
+    if (!Number.isFinite(stockNow) || stockNow < 0 || !(entry.baseEq > 0)) {
       return { ok: false, reason: 'invalid_market' };
     }
     const requestedQty = qty;
-    if (side === 'buy') qty = Math.min(qty, Math.max(0, Math.floor(entry.stock - 1)));
+    if (side === 'buy') qty = Math.min(qty, Math.max(0, Math.floor(stockNow - 1)));
     if (qty <= 0) return { ok: false, reason: 'no_stock' };
     const el = def.elasticity;
     // Benefits cannot invert the same-port spread over an unchanged stock interval.
@@ -3131,22 +2669,11 @@ export const economy = {
     const sellMultiplier = bidFactor > 0
       ? Math.min(standing.sell, standing.buy * (1 + spread / 2) / bidFactor)
       : standing.sell;
-    const pendingCycle = pending && pending.cycles && pending.cycles[commodityId];
-    const cycle = pendingCycle || getCycleCore(
-      state,
-      stationId,
-      commodityId,
-      () => (typeof this._rng === 'function' ? this._rng() : 0.5),
-      state.simTime || 0,
-    );
-    const tNow = state.simTime || 0;
-    const stockAfter = side === 'buy' ? entry.stock - qty : entry.stock + qty;
-    const avgMidPrice = averageLivePrice({
-      basePrice: def.basePrice, baseEq: entry.baseEq, elasticity: el,
-      stockLo: Math.min(entry.stock, stockAfter), stockHi: Math.max(entry.stock, stockAfter),
-      demand: applyPersistentDemand(1, entry.demandMult), cycle: cycleFactorAt(cycle, tNow),
-      priceLo: PRICE_MULT_LO, priceHi: PRICE_MULT_HI,
-    });
+    const stockAfter = side === 'buy' ? stockNow - qty : stockNow + qty;
+    // Closed-form lot pricing: the same bounded dent-curve integral that used to run
+    // through live stock, evaluated against the shelf position the lot would leave.
+    const avgMidPrice = ctx ? marketAvgMidAt(ctx, tNow,
+      Math.min(stockNow, stockAfter), Math.max(stockNow, stockAfter)) : def.basePrice;
     const standingPriceMultiplier = side === 'buy' ? standing.buy : sellMultiplier;
     const marketUnitAvg = side === 'buy' ? avgMidPrice * (1 + spread / 2) : avgMidPrice * (1 - spread / 2);
     const unitAvg = marketUnitAvg * standingPriceMultiplier;
@@ -3155,25 +2682,17 @@ export const economy = {
     // ECON-10: attribution of the scarcity already in this quote, never an extra payout.
     // Capture it before settlement feeds the hopper and refreshes the shortage board.
     const postedNeed = side === 'sell' && info
-      ? starvedIndustryNeedFor(info.type, info.tier || 0, market) : null;
-    const shortagePremium = side === 'sell' && entry.stock < entry.baseEq
-      && (postedNeed?.inputId === commodityId || (state.economy.econEvents || []).some((event) =>
-        event.type === 'shortage' && event.stationId === stationId
-        && (event.commodityId === commodityId || event.commodityId === '*')
-        && tNow - event.startT < event.duration));
-    const beforeMid = applyCycleToMid(
-      def.basePrice,
-      applyPersistentDemand(economyMidPrice(def, entry.stock, entry.baseEq), entry.demandMult),
-      cycle,
-      tNow,
-    );
-    const afterMid = applyCycleToMid(
-      def.basePrice,
-      applyPersistentDemand(economyMidPrice(def, stockAfter, entry.baseEq), entry.demandMult),
-      cycle,
-      tNow,
-    );
-    const priceImpactPct = beforeMid > 0 ? ((afterMid - beforeMid) / beforeMid) * 100 : 0;
+      ? starvedIndustryNeedFor(info.type, info.tier || 0, market, tNow) : null;
+    const shortagePremium = side === 'sell' && stockNow < entry.baseEq
+      && (postedNeed?.inputId === commodityId || evInfo.active.some((event) =>
+        event.type === 'shortage' && (!event.goods || event.goods.includes(commodityId)
+          || event.goods.includes('*'))));
+    // The price-impact read is the dent deviation the lot would leave: same ±15% cap
+    // the persistent market memory heals against.
+    const eqRef = Math.max(1, Number(entry.eq ?? entry.equilibrium) || Number(ctx && ctx.eq) || 1);
+    const devBefore = clamp(Math.pow(Math.max(1, stockNow) / eqRef, -el), DENT_DEV_LO, DENT_DEV_HI);
+    const devAfter = clamp(Math.pow(Math.max(1, stockAfter) / eqRef, -el), DENT_DEV_LO, DENT_DEV_HI);
+    const priceImpactPct = devBefore > 0 ? ((devAfter - devBefore) / devBefore) * 100 : 0;
     // NXI-102: the commit also binds whole-unit hold capacity on a buy. The quote names that
     // accepted quantity under the same capacity rule and prices it on the same curve, so a
     // nearly full hold cannot preview a fraction the settlement rejects or reprices. The
@@ -3182,19 +2701,13 @@ export const economy = {
     let acceptUnitAvg = unitAvg;
     let acceptTotal = total;
     if (side === 'buy' && state.player && state.player.cargo) {
-      const freeVolume = (Number(state.player.cargo.capVolume) || 0) - (Number(state.player.cargo.usedVolume) || 0);
-      const volPerUnit = def.volPerU > 0 ? def.volPerU : 1;
-      const canFit = Math.max(0, Math.floor(freeVolume / volPerUnit));
+      const canFit = slotFitFor(state, commodityId);
       if (canFit < qty) {
         acceptQty = canFit;
         if (acceptQty > 0) {
-          const acceptStockAfter = entry.stock - acceptQty;
-          const acceptMid = averageLivePrice({
-            basePrice: def.basePrice, baseEq: entry.baseEq, elasticity: el,
-            stockLo: Math.min(entry.stock, acceptStockAfter), stockHi: Math.max(entry.stock, acceptStockAfter),
-            demand: applyPersistentDemand(1, entry.demandMult), cycle: cycleFactorAt(cycle, tNow),
-            priceLo: PRICE_MULT_LO, priceHi: PRICE_MULT_HI,
-          });
+          const acceptStockAfter = stockNow - acceptQty;
+          const acceptMid = ctx ? marketAvgMidAt(ctx, tNow,
+            Math.min(stockNow, acceptStockAfter), Math.max(stockNow, acceptStockAfter)) : def.basePrice;
           acceptUnitAvg = acceptMid * (1 + spread / 2) * standingPriceMultiplier;
           acceptTotal = settleCredits(acceptUnitAvg * acceptQty, side);
         } else {
@@ -3222,7 +2735,7 @@ export const economy = {
   /**
    * Bound a programmed standing-order delivery to this depot's real receiving room.
    * Player manual quote/execute is unchanged. Does not move stock or credits.
-   * Intake target is ceil(2 * effectiveEq): operating stock plus one reserve, at least 1.
+   * Intake target is ceil(2 * equilibrium): operating stock plus one reserve, at least 1.
    */
   quoteAutomationIntake(stationId, commodityId, qty, opts = null) {
     const state = this.state;
@@ -3241,9 +2754,9 @@ export const economy = {
     const entry = market && market[commodityId];
     const def = commodityDef(state, commodityId);
     if (!entry || !def) return refuse('untraded');
-    const eff = Number(effectiveEq(entry, state, stationId, commodityId));
-    const intakeTarget = Math.max(1, Math.ceil(2 * (Number.isFinite(eff) ? eff : 0)));
-    const stock = entry.stock;
+    const eff = Number(entry.eq ?? entry.equilibrium) || 0;
+    const intakeTarget = Math.max(1, Math.ceil(2 * eff));
+    const stock = shelfUnitsAt(entry, commodityId, state.simTime || 0);
     const operation = opts?.operation;
     const outpost = opts?.outpost;
     const operationOwned = operation && state.automation?.drones?.includes(operation)
@@ -3344,15 +2857,15 @@ export const economy = {
       if (!quote.ok) return quote;
       const entry = this.state.economy.markets[stationId]?.[quote.good];
       const def = commodityDef(this.state, quote.good);
-      if (!entry || !def || entry.stock !== quote.stock) return { ok: false, reason: 'market_changed' };
+      const shelfNow = entry ? shelfUnitsAt(entry, quote.good, this.state.simTime || 0) : 0;
+      if (!entry || !def || shelfNow !== quote.stock) return { ok: false, reason: 'market_changed' };
       const receipt = { id: `outpost-sale:${outpost.id}:${sequence}`, sequence,
         stationId, good: quote.good, requestedQty: quantity, quantity: quote.quantity,
         gross: quote.gross, credited: quote.credited, unitPrice: quote.unitPrice,
         simTime: this.state.simTime || 0 };
       if (commitOutput(receipt) !== true) return { ok: false, reason: 'custody_changed' };
-      entry.stock += quote.quantity;
+      appendDent(entry, quote.good, this.state.simTime || 0, quote.quantity);
       this.recomputeLivePrices(entry, def, stationId, quote.good);
-      this.recordLivePriceHistory(entry, def, stationId, quote.good);
       this.grantCredits(quote.credited, 'automation:outpost');
       if (this.state.economy !== ownerState || this.state.player !== playerState
         || !this.state.automation?.outposts.includes(outpost)) return { ok: true, duplicate: false, receipt };
@@ -3431,20 +2944,24 @@ export const economy = {
         || (q.acceptQty != null && q.acceptQty !== requestedQty))) return { ok: false, reason: 'load_changed' };
     qty = q.qty;
     const market = state.economy.markets[stationId];
-    const entry = market && market[commodityId];
     const def = commodityDef(state, commodityId);
-    if (!entry || !def) return { ok: false, reason: 'untraded' };
+    if (!def) return { ok: false, reason: 'untraded' };
+    // The quote may have priced a stateless book; settlement needs the live row
+    // so the dent persists. Same listing rules as the read lane — materialize
+    // the sparse row rather than minting the whole market.
+    const entry = (market && market[commodityId]) || this._liveEntryForWrite(stationId, commodityId, def);
+    if (!entry) return { ok: false, reason: 'untraded' };
 
     const isPlayer = true; // current callers (ui:buy/sell) act on the player hold
     const cargoSys = this.registryGet && this.registryGet('cargo');
 
     if (side === 'buy') {
-      if (entry.stock - qty < 1) qty = Math.max(0, Math.floor(entry.stock - 1)); // can't drain below 1u
+      const shelf = shelfUnitsAt(entry, commodityId, state.simTime || 0);
+      if (shelf - qty < 1) qty = Math.max(0, Math.floor(shelf - 1)); // can't drain below 1u
       if (qty <= 0) return { ok: false, reason: 'no_stock' };
-      // cargo volume check (volume is the ONLY hard cap §0.13). Fail closed on a non-finite
-      // hold cache: an unknowable free means "no room", never a NaN canFit that skips the clamp.
-      const free = state.player.cargo.capVolume - state.player.cargo.usedVolume;
-      const canFit = Number.isFinite(free) ? Math.floor(free / (def.volPerU > 0 ? def.volPerU : 1)) : 0;
+      // Cargo slot check — slots are the ONLY hard admission cap (CARGO-BUILD-1). slotFitFor
+      // answers the whole-unit count the hold can still stack and already fails closed.
+      const canFit = slotFitFor(state, commodityId);
       if (canFit < qty) qty = canFit;
       if (qty <= 0) return { ok: false, reason: 'cargo_full' };
       if (opts && opts.requireFullQuantity && qty !== requestedQty) return { ok: false, reason: 'load_changed' };
@@ -3463,10 +2980,11 @@ export const economy = {
       if (!(added > 0)) return { ok: false, reason: 'cargo_full' };
       const realQty = added;
       const realCost = realQty === qty ? cost : round(this.quote(stationId, commodityId, 'buy', realQty).total);
-      entry.stock = Math.max(1, entry.stock - realQty);
+      // The trade's physical signature is a dent, not a stock write: the shelf heals
+      // back to rest on the good's own half-life, and the price follows the closed form.
+      appendDent(entry, commodityId, state.simTime || 0, -realQty);
       this.chargeCredits(realCost, 'trade:buy:' + commodityId);
       this.recomputeLivePrices(entry, def, stationId, commodityId);
-      this.recordLivePriceHistory(entry, def, stationId, commodityId);
       const unitAvg = realCost / realQty;
       this.afterTrade(state, stationId, commodityId, 'buy', realQty, unitAvg, realCost, fq.priceImpactPct, def, intentId);
       return this._sealTradeIntent(intentId, {
@@ -3491,10 +3009,9 @@ export const economy = {
       if (!(removed > 0)) return { ok: false, reason: 'no_cargo' };
       const realQty = removed;
       const realGross = realQty === qty ? gross : round(this.quote(stationId, commodityId, 'sell', realQty).total);
-      entry.stock = entry.stock + realQty;
+      appendDent(entry, commodityId, state.simTime || 0, realQty);
       this.grantCredits(realGross, 'trade:sell:' + commodityId);
       this.recomputeLivePrices(entry, def, stationId, commodityId);
-      this.recordLivePriceHistory(entry, def, stationId, commodityId);
       const unitAvg = realGross / realQty;
       const receipt = this.afterTrade(
         state,
@@ -3722,13 +3239,16 @@ export const economy = {
         const market = this.ensureMarket(priceStationId);
         const entry = market && market[commodityId];
         const def = commodityDef(state, commodityId);
-        if (entry && def && entry.stock > 1) {
+        const shelfNow = entry ? shelfUnitsAt(entry, commodityId, state.simTime || 0) : 0;
+        if (entry && def && shelfNow > 1) {
           midBefore = entry.lastMid;
           let guard = 0;
-          while (entry.lastMid <= midBefore && guard < 4 && entry.stock > 2) {
+          while (entry.lastMid <= midBefore && guard < 4
+            && shelfUnitsAt(entry, commodityId, state.simTime || 0) > 2) {
             const prevMid = entry.lastMid;
             const step = Math.max(1, Math.ceil((entry.baseEq || 1) * 0.08));
-            this.applyStockPressure(priceStationId, commodityId, 'buy', Math.min(step, entry.stock - 1));
+            this.applyStockPressure(priceStationId, commodityId, 'buy',
+              Math.min(step, shelfUnitsAt(entry, commodityId, state.simTime || 0) - 1));
             guard += 1;
             // Pinned at the price band — further pressure burns stock without moving the mid.
             if (entry.lastMid === prevMid) break;
@@ -3899,23 +3419,21 @@ export const economy = {
     return res;
   },
 
-  /** Move stock without crediting anyone (automation trade pressure). */
+  /** Move stock without crediting anyone (automation trade pressure). A pressure
+   *  write is a dent: the shelf deviation it stamps heals on the good's own
+   *  half-life exactly like a player's lot. */
   applyStockPressure(stationId, commodityId, side, qty, options = null) {
     if (!Number.isFinite(qty) || qty <= 0 || qty > 1_000_000 || (side !== 'buy' && side !== 'sell')) return;
     const state = this.state;
-    const market = state.economy.markets[stationId] || this.ensureMarket(stationId);
-    const entry = market && market[commodityId];
     const def = commodityDef(state, commodityId);
-    if (!entry || !def || !(qty > 0)) return;
-    if (side === 'buy') entry.stock = Math.max(1, entry.stock - qty);
-    else entry.stock = entry.stock + qty;
+    if (!def) return;
+    // A dent must persist somewhere, so pressure materializes exactly the one row it
+    // touches — the rest of that station's book stays stateless.
+    const entry = this._liveEntryForWrite(stationId, commodityId, def);
+    if (!entry) return;
+    const atT = options && Number.isFinite(options.asOfSimTime) ? options.asOfSimTime : (state.simTime || 0);
+    appendDent(entry, commodityId, atT, side === 'buy' ? -qty : qty);
     if (options && options.deferDerivedRefresh === true) {
-      // Keep cycle creation and its RNG position identical to the immediate stock-pressure path.
-      // A sliced economy pass carries the tick time it belongs to (`asOfSimTime`) so a listing that
-      // lands two ticks late still sees the moment the unsliced pass would have seen — that is what
-      // keeps the slice result-identical instead of merely deterministic.
-      const asOf = Number.isFinite(options.asOfSimTime) ? options.asOfSimTime : (state.simTime || 0);
-      getCycleCore(state, stationId, commodityId, () => this._rng(), asOf);
       if (options.touchedListings instanceof Map) {
         let stationListings = options.touchedListings.get(stationId);
         if (!stationListings) {
@@ -3927,7 +3445,64 @@ export const economy = {
       return;
     }
     this.recomputeLivePrices(entry, def, stationId, commodityId);
-    this.recordLivePriceHistory(entry, def, stationId, commodityId);
+  },
+
+  /**
+   * Run every minted station's authored industry lines for `tickDt` seconds. Feedstock burn and
+   * product mint land as dents, so line throughput heals on each good's own half-life like any
+   * other pressure — the conveyor never mints a row for a station whose book was never opened.
+   */
+  applyStationIndustry(tickDt, touchedListings = null, onlyStationIds = null, asOfSimTime = null) {
+    const minuteShare = Math.max(0, Number(tickDt) || 0) / 60;
+    if (!(minuteShare > 0)) return 0;
+    const state = this.state;
+    const markets = state && state.economy && state.economy.markets;
+    if (!markets) return 0;
+    const deferDerivedRefresh = touchedListings instanceof Map;
+    const atT = Number.isFinite(asOfSimTime) ? asOfSimTime : (state.simTime || 0);
+    let ran = 0;
+    const stationIds = onlyStationIds || Object.keys(markets);
+    for (const stationId of stationIds) {
+      const info = stationInfo(state, stationId);
+      if (!info) continue;
+      const jobs = STATION_INDUSTRY_BOOK.get(info.type);
+      if (!jobs || !jobs.length) continue;
+      const tier = Math.max(0, Number(info.tier) || 0);
+      const sizeRate = INDUSTRY_RUNS_PER_MIN_BY_SIZE[info.size] || INDUSTRY_RUNS_PER_MIN_BY_SIZE.M;
+      const market = markets[stationId];
+      if (!market) continue;
+      for (const job of jobs) {
+        if (tier < job.stationTier) continue;
+        // Feedstock gate: the hungriest leg sets the line's speed; an empty hopper idles it.
+        let available = Infinity;
+        let inputsListed = true;
+        for (const [cid] of job.inputs) {
+          const e = market[cid];
+          if (!e || !(e.baseEq > 0)) { inputsListed = false; break; }
+          available = Math.min(available, shelfUnitsAt(e, cid, atT) / e.baseEq);
+        }
+        if (!inputsListed || !(available > 0)) continue;
+        const outEntry = market[job.outputId];
+        if (!outEntry || !(outEntry.baseEq > 0)) continue;
+        // A glutted output idles the line — nobody keeps making what isn't being taken away.
+        const headroom = 1 - shelfUnitsAt(outEntry, job.outputId, atT) / (INDUSTRY_OUTPUT_GLUT * outEntry.baseEq);
+        if (!(headroom > 0)) continue;
+        // Deterministic per-station tempo: two sibling yards never run the identical line.
+        const bias = INDUSTRY_BIAS_LO
+          + ((hash32(stationId, job.id) >>> 0) / 4294967296) * INDUSTRY_BIAS_SPAN;
+        const runs = sizeRate * job.runsPerMin
+          * Math.min(INDUSTRY_INPUT_FULL, available) * headroom * bias * minuteShare;
+        if (!(runs > 0)) continue;
+        const stockOptions = deferDerivedRefresh
+          ? { deferDerivedRefresh: true, touchedListings, asOfSimTime } : null;
+        for (const [cid, qty] of job.inputs) {
+          this.applyStockPressure(stationId, cid, 'buy', qty * runs, stockOptions);
+        }
+        this.applyStockPressure(stationId, job.outputId, 'sell', job.outputQty * runs, stockOptions);
+        ran++;
+      }
+    }
+    return ran;
   },
 
   /**
@@ -3960,7 +3535,9 @@ export const economy = {
     const def = commodityDef(state, commodityId);
     if (!info || !def) return { ok: false, reason: 'untraded' };
     const market = state.economy.markets[stationId] || this.ensureMarket(stationId, info.type, info.size);
-    if (!(market && market[commodityId])) return { ok: false, reason: 'untraded' };
+    if (!(market && market[commodityId]) && !this._liveEntryForWrite(stationId, commodityId, def)) {
+      return { ok: false, reason: 'untraded' };
+    }
 
     const intents = ensureCommittedIntents(state);
     const intentKey = 'freight:' + receiptId;
@@ -3984,7 +3561,7 @@ export const economy = {
     // NXI-108: read the posted shortage BEFORE the write — the relief cue must cite this
     // delivery, and only a write that actually lifts the starving leg across the threshold
     // earns one (a rejected or duplicate republish moves no stock and yields none).
-    const preNeed = info && starvedIndustryNeedFor(info.type, info.tier || 0, market);
+    const preNeed = info && starvedIndustryNeedFor(info.type, info.tier || 0, market, state.simTime || 0);
     const relievingPostedLeg = !!(preNeed && preNeed.inputId === commodityId);
     const accepted = { receiptId, stationId, commodityId, qty,
       source: payload.source === 'anvil_work' ? 'anvil_work' : 'mission_delivery' };
@@ -4013,8 +3590,9 @@ export const economy = {
     }
     this.applyStockPressure(stationId, commodityId, 'sell', qty);
     if (relievingPostedLeg) {
-      const entry = market[commodityId];
-      const fillAfter = entry && entry.baseEq > 0 ? entry.stock / entry.baseEq : 0;
+      const entry = (state.economy.markets[stationId] || market || {})[commodityId];
+      const fillAfter = entry && entry.baseEq > 0
+        ? shelfUnitsAt(entry, commodityId, state.simTime || 0) / entry.baseEq : 0;
       if (fillAfter >= INDUSTRY_STARVED_FILL) {
         this.bus.emit('economy:shortageRelieved', {
           receiptId, stationId, commodityId, qty,
@@ -4526,7 +4104,7 @@ export const economy = {
       for (const commodityId of (Array.isArray(row.commodityIds) ? row.commodityIds : [])) {
         const entry = market[stationId][commodityId];
         if (!entry || !isColdChainCommodity(commodityDef(state, commodityId))) continue;
-        const spoiled = coldChainSpoilQty(entry.stock);
+        const spoiled = coldChainSpoilQty(shelfUnitsAt(entry, commodityId, now));
         if (!(spoiled > 0)) continue;
         this.applyStockPressure(stationId, commodityId, 'buy', spoiled);
         this.bus.emit('economy:coldChainSpoiled', {
@@ -5875,13 +5453,7 @@ export const economy = {
   /** Active fitted smuggling capabilities. Derived ship stats are the live authority; the
    * efficiency bag remains a migration fallback for older saves/tools. */
   smugglingCapabilities(state) {
-    const entity = state.entities && state.entities.get && state.entities.get(state.playerId);
-    const derived = (entity && entity.data && entity.data.derived) || (state.player && state.player.derived) || {};
-    const legacy = state.player && state.player.efficiencyMods || {};
-    return {
-      hiddenCargoPct: clamp(Number(derived.hiddenCargoPct != null ? derived.hiddenCargoPct : legacy.hiddenCargoPct) || 0, 0, 1),
-      scannerCloak: clamp(Number(derived.scannerCloak != null ? derived.scannerCloak : legacy.scannerCloak) || 0, 0, 1),
-    };
+    return readSmugglingCapabilities(state);
   },
 
   // Where this scan can physically see a rock cache. The sector is the scan's
@@ -5915,29 +5487,7 @@ export const economy = {
 
   /** List scan-exposed illicit stacks currently in the hold: [{ commodityId, qty, def }]. */
   illicitCargo(state, coverage) {
-    let all = [];
-    const items = state.player.cargo.items;
-    for (const id in items) {
-      const def = commodityDef(state, id);
-      if (def && def.legality && def.legality !== 'legal') all.push({ commodityId: id, qty: items[id], def });
-    }
-    const caps = this.smugglingCapabilities(state);
-    const hiddenCapacity = hiddenHoldCapacity({
-      capVolume: state.player.cargo.capVolume,
-      hiddenCargoPct: caps.hiddenCargoPct,
-    });
-    if (hiddenCapacity > 0) all = remainingIllicit({ stacks: all, hiddenCapacity }).exposedStacks.map((stack) => ({
-      commodityId: stack.commodityId, qty: stack.qty, def: commodityDef(state, stack.commodityId),
-    }));
-    const combined = new Map(all.map(stack => [stack.commodityId,
-      { ...stack, holdQty: stack.qty, bayQty: 0 }]));
-    // The external bay is not the fitted hidden hold; customs owns its verdict.
-    for (const [id, raw] of Object.entries(state.player.salvageBay?.items || {})) {
-      const def = commodityDef(state, id), qty = Math.max(0, Math.floor(Number(raw) || 0));
-      if (!def || !def.legality || def.legality === 'legal' || !qty) continue;
-      const row = combined.get(id) || { commodityId: id, qty: 0, holdQty: 0, bayQty: 0, def };
-      row.bayQty += qty; row.qty += qty; combined.set(id, row);
-    }
+    const combined = onboardIllicitCargo(state);
     // Rock goods are not the fitted hold and not the salvage bay. A hidden hold
     // must not cover them, and a sealed bore must not cover what is still aboard.
     const scan = coverage === undefined ? this._deadDropScanCoverage(null) : coverage;
@@ -6198,161 +5748,115 @@ export const economy = {
   // -------------------------------------------------------------------------------------------
   // ECONOMIC EVENTS
   // -------------------------------------------------------------------------------------------
-  /** Inject a typed economic event onto (stationId, commodityId|'*'). type: shortage|boom|blockade|piracy. */
+  /**
+   * Inject a typed, world-caused economic event onto (stationId, commodityId|'*').
+   * Scheduled events come from the world seed; this path is for causes the sim
+   * owns — missions forcing a market beat, a destroyed base, a blockade landing.
+   * The row is an authored window: the closed form reads its level/spread
+   * multipliers while it is live and its aftermath regime after it ends, and its
+   * start stamps the physical shelf dent (idempotent via econ.eventsApplied).
+   */
   injectEvent(p) {
     const state = this.state;
-    const type = (p.type || 'shortage').toLowerCase();
+    const type = normalizeEconomyEventType(p && p.type) || 'shortage';
     const stationId = p.stationId;
     if (!stationId) return null;
     this.ensureMarket(stationId);
     const market = state.economy.markets[stationId];
     if (!market) return null;
     const commodityId = p.commodityId || '*';
-    const duration = p.duration || 120;
+    const now = Number(state.simTime) || 0;
+    const duration = Math.max(1, Number(p.duration) || 120);
     const id = 'evt_' + (this._nextEventId++);
-    // event field mods per type
-    const mods = []; // {field, mult}
-    let pressure = 0;
-    if (type === 'shortage') { mods.push({ field: 'equilibrium', mult: 0.30 }, { field: 'spread', mult: 1.5 }); pressure = 0.7; }
-    else if (type === 'boom') { mods.push({ field: 'equilibrium', mult: 2.0 }); pressure = 0.5; }
-    else if (type === 'blockade') { mods.push({ field: 'drift', mult: 0.1 }, { field: 'spread', mult: 1.8 }); pressure = 0.6; }
-    else if (type === 'piracy' || type === 'piracy_spike') { mods.push({ field: 'spread', mult: 1.4 }); pressure = 0.4; }
-    else { mods.push({ field: 'equilibrium', mult: 0.5 }); pressure = 0.3; }
-
-    const ev = { id, type, stationId, commodityId, field: mods[0].field, mult: mods[0].mult, startT: state.simTime, duration, pressure, mods };
+    const profile = EVENT_PROFILES[type] || EVENT_PROFILES.shortage;
+    const ev = {
+      id, type, cause: typeof p.cause === 'string' ? p.cause : type,
+      stationId,
+      sectorId: (stationInfo(state, stationId) || {}).sectorId || null,
+      goods: commodityId === '*' ? null : [commodityId],
+      tStart: now, tEnd: now + duration,
+      levelMult: (profile.level[0] + profile.level[1]) / 2,
+      spreadMult: (profile.spread[0] + profile.spread[1]) / 2,
+      regime: profile.regime,
+      skipStartDent: p.skipStartDent === true,
+      // Legacy reader fields (news/missions read commodityId + startT + duration).
+      commodityId, startT: now, duration,
+    };
     state.economy.econEvents.push(ev);
-    // attach mods to the affected entries
-    this.applyEventMods(market, commodityId, mods, id);
+    const applied = state.economy.eventsApplied || (state.economy.eventsApplied = {});
+    this._applyEventStartDent(state, ev, applied);
+    if (p.relieves) this._relieveEventDent(state, p.relieves, stationId, commodityId);
     this.bus.emit('economy:eventStarted', { eventId: id, type, stationId, commodityId, duration });
     return ev;
   },
 
-  applyEventMods(market, commodityId, mods, eventId) {
-    const apply = (entry) => { for (const m of mods) entry.eventMods.push({ field: m.field, mult: m.mult, eventId }); };
-    if (commodityId === '*') { for (const cid in market) apply(market[cid]); }
-    else if (market[commodityId]) apply(market[commodityId]);
-  },
-
-  /** Age active events; expire those past duration and strip their mods; emit eventEnded. */
-  ageEvents(state) {
-    const events = state.economy.econEvents;
-    if (!events || !events.length) return;
-    const keep = [];
-    for (const ev of events) {
-      if (state.simTime - ev.startT >= ev.duration) {
-        // expire: remove its mods from every market entry
-        const market = state.economy.markets[ev.stationId];
-        if (market) {
-          for (const cid in market) {
-            const mods = market[cid].eventMods;
-            if (mods && mods.length) market[cid].eventMods = mods.filter((m) => m.eventId !== ev.id);
-          }
-        }
-        this.bus.emit('economy:eventEnded', { eventId: ev.id });
-      } else {
-        keep.push(ev);
+  /**
+   * A relief shipment physically replaces what an event stripped: cancel the named
+   * event's still-live shelf residual on this listing. Ordinary trade/industry
+   * dents stay — real hands bought and burned those units. Resolves dynamic rows
+   * from econEvents and scheduled rows by re-drawing sched:<sector>:<epoch> —
+   * deterministic, and idempotent per (event, listing) via eventsApplied.
+   */
+  _relieveEventDent(state, eventId, stationId, commodityId) {
+    if (!eventId || !stationId) return;
+    const applied = state.economy.eventsApplied || (state.economy.eventsApplied = {});
+    const key = `relief:${eventId}:${commodityId || '*'}`;
+    if (applied[key]) return;
+    let ev = (state.economy.econEvents || []).find((e) => e && e.id === eventId) || null;
+    if (!ev && String(eventId).startsWith('sched:')) {
+      const [, sectorId, epochRaw] = String(eventId).split(':');
+      const sector = SECTORS.find((s) => s && s.id === sectorId);
+      const stationIds = sector && Array.isArray(sector.stations)
+        ? sector.stations.map((st) => st && st.id).filter(Boolean) : [];
+      if (stationIds.length) {
+        ev = scheduledEventForEpoch(
+          state.meta && state.meta.seed, sectorId, Number(epochRaw),
+          stationIds, MARKET_GOOD_POOL, sectorEventContext(state, sectorId));
       }
     }
-    state.economy.econEvents = keep;
+    const frac = ev && EVENT_DENT_FRAC[ev.type];
+    // A dent-less (price-only) event never stripped the shelf — nothing to relieve.
+    if (!frac || ev.skipStartDent === true) return;
+    const market = state.economy.markets[stationId];
+    const goods = commodityId && commodityId !== '*'
+      ? [commodityId]
+      : (Array.isArray(ev.goods) && ev.goods.length ? ev.goods : Object.keys(market || {}));
+    const now = Number(state.simTime) || 0;
+    for (const cid of goods) {
+      const entry = market && market[cid];
+      if (!entry) continue;
+      const eq = Math.max(1, Number(entry.equilibrium) || Number(entry.baseEq) || 1);
+      const halfS = dentHalfLifeS(cid);
+      const residual = halfS > 0
+        ? frac * eq * Math.pow(2, -Math.max(0, now - ev.tStart) / halfS)
+        : frac * eq;
+      if (Math.abs(residual) < 0.01) continue;
+      appendDent(entry, cid, now, -residual);
+      const def = commodityDef(state, cid);
+      if (def) this._stampEntryQuote(entry, def, stationId, cid);
+    }
+    applied[key] = 1;
   },
 
   /**
-   * Roll a spontaneous event on a random known market (seeded).
-   * The roll reads the station's actual industry so an alert names a good the
-   * berth really trades: shortages and blockades fall on its consume-role
-   * inputs, surpluses on its produce-role outputs (any listing only as a
-   * fallback when the station hosts no matching line). Blockade weight leans on
-   * the sector's factions-owned conflict pressure and piracy on local security,
-   * so war fronts bubble with cordons while quiet, high-security berths mostly
-   * do not cry wolf. Nothing here mutates the world — the type just has to be
-   * believable before the market news invites the player to trade it.
+   * Age active events: ends announce on the same sweep edge that used to expire
+   * them; dead rows linger ~2 h so their aftermath regime stays readable, then
+   * the pruner drops them. Kept as the lab/test caller's name for that step.
    */
-  rollSpontaneousEvent(state) {
-    const stationIds = Object.keys(state.economy.markets);
-    if (!stationIds.length) return;
-    // cap simultaneous active events per station
-    const rng = () => this._rng();
-    const sid = stationIds[Math.floor(rng() * stationIds.length)];
-    const active = state.economy.econEvents.filter((e) => e.stationId === sid).length;
-    if (active >= MAX_EVENTS_PER_STATION) return;
-    const market = state.economy.markets[sid];
-    const cids = Object.keys(market);
-    if (!cids.length) return;
-    const info = stationInfo(state, sid);
-    const warPressure = info
-      ? conflictPressureForSector(state.conflicts, info.sectorId)
-      : 0;
-    const rawSecurity = Number(info && info.security);
-    const security = Number.isFinite(rawSecurity) ? Math.min(1, Math.max(0, rawSecurity)) : 0.5;
-    // Type weights name the world. shortage/boom stay the ordinary beat; an
-    // open-war sector (pressure 1) quadruples the blockade weight, and a
-    // lawless berth (security 0) triples the piracy weight.
-    const weights = {
-      shortage: 10,
-      boom: 10,
-      piracy: 2 + (1 - security) * 4,
-      blockade: 2 + warPressure * 6,
-    };
-    let total = 0;
-    for (const k in weights) total += weights[k];
-    let r = rng() * total;
-    let type = 'shortage';
-    for (const k in weights) {
-      r -= weights[k];
-      if (r <= 0) { type = k; break; }
-    }
-    const role = type === 'boom' ? 'produce' : 'consume';
-    const industry = cids.filter((cid) => market[cid] && market[cid].role === role);
-    const pool = industry.length ? industry : cids;
-    const cid = pool[Math.floor(rng() * pool.length)];
-    const duration = 90 + Math.floor(rng() * 120); // 90..210s
-    this.injectEvent({ type, stationId: sid, commodityId: cid, duration });
-  },
-
-  /** Bleed event price-pressure to neighbouring stations along the sector graph (one hop). */
-  propagateEvents(state) {
-    const events = state.economy.econEvents;
-    if (!events || !events.length) return;
-    for (const ev of events) {
-      if (ev.type !== 'shortage' && ev.type !== 'boom') continue;
-      const info = stationInfo(state, ev.stationId);
-      if (!info) continue;
-      const hopPressure = ev.pressure * 0.35; // one hop decay
-      if (hopPressure < 0.05) continue;
-      // find stations in neighbour sectors that trade the same commodity
-      for (const nSec of info.neighbors) {
-        const sec = SECTORS.find((s) => s.id === nSec);
-        if (!sec) continue;
-        for (const st of sec.stations || []) {
-          const market = state.economy.markets[st.id];
-          if (!market) continue;
-          const targets = ev.commodityId === '*' ? Object.keys(market) : [ev.commodityId];
-          for (const cid of targets) {
-            const entry = market[cid];
-            if (!entry) continue;
-            // shortage raises neighbour eq toward shortage (lowers stock target slightly),
-            // boom raises demand. Express as a transient equilibrium nudge mod, refreshed each tick
-            // (we don't persist propagation mods — recompute the blended target instead).
-            // Economic pressure propagates one hop: a shortage makes neighbours scarcer (traders
-            // rush supply toward the shortage, draining local stock); a boom floods neighbours too
-            // (oversupply spills over). The sign was previously -1 for BOTH branches (bug: boom
-            // propagated as a shortage). Now boom pushes neighbour stock UP, shortage pushes it DOWN.
-            const dir = ev.type === 'shortage' ? -1 : +1;
-            const nudge = entry.stock * 0.01 * hopPressure * dir;
-            entry.stock = Math.max(1, entry.stock + nudge);
-          }
-        }
-      }
-    }
+  ageEvents(state) {
+    this._processEventEdges(state);
+    this._pruneEconomyEvents(state);
   },
 
   onBaseDestroyed(p) {
     if (p.type !== 'pirate_base' && p.stationType !== 'blackmarket') return;
     const events = this.state.economy.econEvents;
-    // end piracy events tied to this station, then trigger a contraband shortage there
+    const now = Number(this.state.simTime) || 0;
+    // End piracy windows tied to this berth, then post the contraband shortage.
     for (const ev of events.slice()) {
-      if (ev.type === 'piracy' && ev.stationId === p.stationId) {
-        ev.duration = 0; // expire next tick
+      if (ev.type === 'piracy' && ev.stationId === p.stationId && ev.tEnd > now) {
+        ev.tEnd = now;
+        ev.duration = 0;
       }
     }
     if (p.stationId) this.injectEvent({ type: 'shortage', stationId: p.stationId, commodityId: 'cmdty_narcotics', duration: 240 });
@@ -6448,16 +5952,14 @@ export const economy = {
   },
 
   newGame() {
-    this._econPass = null;
-    this._lastStepTick = null;
-    this._tickDrainSeen = false;
     const state = this.state;
     state.economy.markets = {};
     state.economy.resourceWork = {};
     state.economy.pulse = createEconomyPulse(state.simTime);
     state.economy.balanceVersion = BALANCE.version;
-    state.economy.cycles = {};
+    delete state.economy.cycles;
     state.economy.econEvents = [];
+    delete state.economy.eventsApplied;
     state.economy.econClock = { accumulator: 0, lastTickT: 0, ticksElapsed: 0 };
     state.economy.marketIntel = {};
     delete state.economy.appliedSalvageIntakeReceipts;
@@ -6484,9 +5986,6 @@ export const economy = {
     delete state.economy.dockSlamLatch;
     this.resetRng();
     this._nextEventId = 1;
-    this._eventAccumulator = 0;
-    this._syntheticHistoryKeys = new Set();
-    this._restoredQuoteKeys = new Set();
     this._offlineSummaryRefresh = null;
     // Session berth latches are run-scoped: a quit-while-docked New Game must not let
     // dockedStationId()/_stationServicesDocked() resolve the previous run's berth — trade and
@@ -6499,100 +5998,38 @@ export const economy = {
     if (sec) for (const st of sec.stations || []) this.ensureMarket(st.id, st.type, st.size);
   },
 
-  /** Plain-JSON cursor for an in-flight sliced economy pass (no sim mutation). */
-  _serializeEconPass(pass) {
-    return {
-      tickDt: pass.tickDt,
-      minuteShare: pass.minuteShare,
-      simTime: pass.simTime,
-      stationIds: pass.stationIds.slice(),
-      recipeStep: pass.recipeStep,
-      stationStep: pass.stationStep,
-      phase: pass.phase,
-      index: pass.index,
-      touched: [...pass.touched].map(([stationId, listings]) => [stationId, [...listings]]),
-    };
-  },
 
-  /** Restore the cursor from a save. Malformed rows fail closed to no pass, never a crash. */
-  _restoreEconPass(raw) {
-    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
-    const phase = raw.phase === 'regional' || raw.phase === 'industry' || raw.phase === 'drift'
-      ? raw.phase : null;
-    const index = Number(raw.index);
-    const tickDt = Number(raw.tickDt);
-    const recipeStep = Number(raw.recipeStep);
-    const stationStep = Number(raw.stationStep);
-    if (!phase || !Number.isInteger(index) || index < 0
-      || !(tickDt > 0) || !Number.isInteger(recipeStep) || recipeStep < 1
-      || !Number.isInteger(stationStep) || stationStep < 1
-      || !Array.isArray(raw.stationIds) || !Array.isArray(raw.touched)) return null;
-    const stationIds = raw.stationIds.filter((id) => typeof id === 'string');
-    const touched = new Map();
-    for (const row of raw.touched) {
-      if (!Array.isArray(row) || typeof row[0] !== 'string' || !Array.isArray(row[1])) continue;
-      touched.set(row[0], new Set(row[1].filter((id) => typeof id === 'string')));
-    }
-    return {
-      tickDt,
-      minuteShare: Number.isFinite(Number(raw.minuteShare)) ? Number(raw.minuteShare) : tickDt / 60,
-      simTime: Number.isFinite(Number(raw.simTime)) ? Number(raw.simTime) : 0,
-      stationIds,
-      recipeStep,
-      stationStep,
-      phase,
-      index,
-      touched,
-      demandProjectionCache: createDemandProjectionCache(this.state),
-      lastAdvancedTick: null,
-    };
-  },
 
-  /** Serialize stock, formula state, and bounded player-visible market history. */
+  /** Serialize the persistent market anchors: rest levels, dents, demand, event windows. */
   serialize() {
-    // A save must not advance the sim or emit economy events. An in-flight slice is captured as a
-    // cursor (phase/index/touched rows) and restored on load; the live pass keeps running here.
+    // A save must not advance the sim or emit economy events. Prices are derived —
+    // only the anchors a dent or demand refresh physically wrote travel.
     const econ = this.state.economy;
     const salvageIntakeState = ensureSalvageIntakeState(econ);
     const markets = {};
-    // Price history is derived from the saved stock + cycle for stations the player has never
-    // inspected. Preserve the exact lived trace only where it can be player knowledge. This keeps
-    // an explored market continuous while avoiding ~90k invisible history points in a populated
-    // galaxy autosave; deserialize already reseeds any omitted trace from the authoritative curve.
-    const durableHistoryStations = new Set([
-      ...Object.keys(econ.marketIntel || {}),
-      ...Object.keys(this.state.player && this.state.player.marketMemory || {}),
-    ]);
-    if (this._lastDockedStation) durableHistoryStations.add(this._lastDockedStation);
     for (const sid in econ.markets) {
       const m = econ.markets[sid]; const out = [];
-      const preserveHistory = durableHistoryStations.has(sid);
       for (const cid in m) {
-        out.push(serializeMarketRow(cid, m[cid], preserveHistory));
+        out.push(serializeMarketRow(cid, m[cid]));
       }
       markets[sid] = out;
     }
     const data = {
       balanceVersion: BALANCE.version,
+      marketRows: 2,
       resourceWork: serializeResourceWork(econ.resourceWork),
       pulse: cloneSaveTree(econ.pulse || createEconomyPulse(this.state.simTime)),
       markets,
-      cycles: serializeCycles(this.state),
-      econEvents: (econ.econEvents || []).map((e) => ({
-        ...e,
-        mods: Array.isArray(e && e.mods) ? e.mods.map((mod) => ({ ...mod })) : [],
-      })),
+      econEvents: cloneSaveTree(econ.econEvents || []),
       econClock: { ...econ.econClock },
       marketIntel: cloneSaveTree(econ.marketIntel || {}),
       rngSeed: econ.rngSeed,
       nextEventId: this._nextEventId,
-      eventAccumulator: Number.isFinite(this._eventAccumulator) ? this._eventAccumulator : 0,
+      // Which event start-dents already landed — without this a reload would stamp
+      // the same physical signature a second time on top of the saved dent list.
+      eventsApplied: econ.eventsApplied && typeof econ.eventsApplied === 'object'
+        ? { ...econ.eventsApplied } : {},
     };
-    // Snapshot, never advance. A pass interrupted by a save resumes at exactly this cursor after
-    // load, so the remainder is neither replayed nor dropped. The per-pass demand memo is a pure
-    // cache over state reads and is rebuilt lazily; only the iteration cursor and the touched
-    // listing rows (which drive pre-drift chart observations) are durable.
-    if (this._econPass) data.econPass = this._serializeEconPass(this._econPass);
     const committedIntents = econ.committedIntents && typeof econ.committedIntents === 'object'
       && !Array.isArray(econ.committedIntents)
       ? econ.committedIntents
@@ -6648,7 +6085,6 @@ export const economy = {
   },
 
   deserialize(data) {
-    this._econPass = null;
     for (const _ of this.deserializeChunked(data)) { /* sync lane: every batch inline */ }
   },
 
@@ -6697,48 +6133,52 @@ export const economy = {
     econ.rngSeed = (Number.isFinite(data.rngSeed) && (data.rngSeed >>> 0) !== 0)
       ? data.rngSeed >>> 0
       : hash32(this.state.meta && this.state.meta.seed, 'economy');
-    this._syntheticHistoryKeys = new Set();
-    this._restoredQuoteKeys = new Set();
-    // Restore formula state before pricing so mid includes the saved wave, not a fresh invent.
-    deserializeCycles(this.state, data.cycles);
+    // Market rows: v2 anchors (equilibrium/baseEq/role/dents/demand). Legacy object and
+    // legacy array rows migrate — a saved `stock` deviation becomes one fresh dent so the
+    // shelf position survives, then heals on the good's own half-life. Cached quotes and
+    // sampled history were derived state: they are re-stamped, never restored verbatim.
+    const isV2 = data.marketRows === 2;
     econ.markets = {};
     for (const sid in (data.markets || {})) {
+      // A crafted sid must never reach `markets[sid] =` — the '__proto__' setter would
+      // replace the market map's prototype instead of adding a station section.
+      if (sid === '__proto__' || sid === 'constructor' || sid === 'prototype') continue;
       const m = data.markets[sid]; const out = {};
       const rows = Array.isArray(m)
-        ? m.map((row) => deserializeMarketRow(null, row))
-        : Object.entries(m).map(([cid, entry]) => deserializeMarketRow(cid, entry));
+        ? m.map((row) => deserializeMarketRow(null, row, isV2))
+        : Object.entries(m || {}).map(([cid, entry]) => deserializeMarketRow(cid, entry, isV2));
       for (const e of rows) {
         const cid = e.cid;
-        if (!cid) continue;
+        if (!cid || cid === '__proto__' || cid === 'constructor' || cid === 'prototype') continue;
         const def = commodityDef(this.state, cid);
+        const info = stationInfo(this.state, sid);
+        let baseEq = Number(e.baseEq);
+        if (!(baseEq > 0) || data.balanceVersion !== BALANCE.version) {
+          baseEq = (BALANCE.commodities[cid]?.baseEq || BASE_EQ_DEFAULT) * (SIZE_FACTOR[info?.size] || 1);
+        }
+        let eq = Number(e.equilibrium);
+        if (!(eq >= 0) || data.balanceVersion !== BALANCE.version) {
+          eq = economyEquilibriumForListing(info, cid, e.role || 'none', baseEq);
+        }
+        const hasStamps = isV2 && Number.isFinite(e.stockMirror)
+          && e.lastMid > 0 && e.lastBuy > 0 && e.lastSell > 0;
         const entry = {
-          stock: e.stock, equilibrium: e.equilibrium, baseEq: e.baseEq, role: e.role,
-          lastMid: 0, lastBuy: 0, lastSell: 0, eventMods: deserializeEventMods(e.eventMods),
+          equilibrium: eq, baseEq, role: e.role || 'none',
+          dents: Array.isArray(e.dents) ? e.dents : [],
+          stock: hasStamps ? e.stockMirror : eq,
+          lastMid: hasStamps ? (e.lastMid || 0) : 0,
+          lastBuy: hasStamps ? (e.lastBuy || 0) : 0,
+          lastSell: hasStamps ? (e.lastSell || 0) : 0,
+          demandMult: Number.isFinite(e.demandMult) && e.demandMult > 0 ? e.demandMult : 1,
+          demandDrivers: [],
         };
+        if (Number.isFinite(e.stock)) {
+          const q = Math.max(0, e.stock) - eq;
+          if (Math.abs(q) >= 0.25) entry.dents.push({ t: this.state.simTime || 0, q });
+        }
         if (def) {
-          const preserveQuotes = data.balanceVersion === BALANCE.version
-            && entry.baseEq > 0 && hasValidMarketQuotes(e);
-          entry.stock = Number.isFinite(entry.stock) ? Math.max(0, entry.stock) : 0;
-          if (data.balanceVersion !== BALANCE.version || !(entry.baseEq > 0)) {
-            const info = stationInfo(this.state, sid);
-            entry.baseEq = (BALANCE.commodities[cid]?.baseEq || BASE_EQ_DEFAULT) * (SIZE_FACTOR[info?.size] || 1);
-            entry.equilibrium = economyEquilibriumForListing(info, cid, entry.role, entry.baseEq);
-          }
-          // A saved quote belongs to the last economy pulse. Continue must not advance the
-          // time-varying price curve ahead of that pulse; old/invalid or rebalanced saves reprice.
-          if (preserveQuotes) {
-            entry.lastMid = e.lastMid;
-            entry.lastBuy = e.lastBuy;
-            entry.lastSell = e.lastSell;
-            this._restoredQuoteKeys.add(`${sid}\u001f${cid}`);
-          } else this.recomputeLivePrices(entry, def, sid, cid);
-          const cycle = getCycleCore(this.state, sid, cid, () => this._rng(), this.state.simTime || 0);
-          const restoredHistory = sanitizeHistory(e.history);
-          if (restoredHistory.length >= 2) entry.history = restoredHistory;
-          else {
-            this.seedPriceHistory(entry, def, cycle, this.state.simTime || 0);
-            this._syntheticHistoryKeys.add(`${sid}\u001f${cid}`);
-          }
+          this.refreshListingDemand(entry, def, sid, info);
+          if (!hasStamps) this._stampEntryQuote(entry, def, sid, cid);
         }
         out[cid] = entry;
       }
@@ -6746,20 +6186,20 @@ export const economy = {
       yield 'economy-market-section';
     }
     econ.econEvents = Array.isArray(data.econEvents)
-      ? data.econEvents.map(normalizeRestoredEconomyEvent).filter(Boolean)
+      ? data.econEvents.map(normalizeRestoredEconomyEvent).filter(Boolean).slice(-ECON_EVENTS_CAP)
       : [];
-    econ.econClock = { ...(data.econClock || { accumulator: 0, lastTickT: 0, ticksElapsed: 0 }) };
-    // Resume an interrupted slice at the saved cursor. Restoring is not a step: no phase advances
-    // here, and no economy event is emitted.
-    this._econPass = this._restoreEconPass(data.econPass);
-    this._lastStepTick = null;
-    this._tickDrainSeen = false;
-    const rawEconAccum = econ.econClock.accumulator;
-    econ.econClock.accumulator = normalizePeriodicAccumulator(rawEconAccum, ECON_TICK_S);
-    if (rawEconAccum != null && econ.econClock.accumulator !== rawEconAccum) {
-      console.warn('[economy] save field econClock.accumulator was not a usable pending clock; repaired',
-        rawEconAccum);
+    // Start-dent idempotence survives the save: only rows already applied are kept.
+    econ.eventsApplied = {};
+    if (data.eventsApplied && typeof data.eventsApplied === 'object' && !Array.isArray(data.eventsApplied)) {
+      const live = new Set((econ.econEvents || []).map((ev) => ev && ev.id));
+      for (const id of Object.keys(data.eventsApplied)) {
+        if (live.has(id) || String(id).startsWith('sched:')) econ.eventsApplied[id] = 1;
+      }
     }
+    econ.econClock = {
+      accumulator: 0, lastTickT: 0, ticksElapsed: 0,
+      ...(data.econClock && typeof data.econClock === 'object' ? data.econClock : {}),
+    };
     econ.marketIntel = data.marketIntel || {};
     restoreMarketPlayState(this.state, data.marketPlay);
     if (Array.isArray(data.appliedSalvageIntakeReceipts)) {
@@ -6776,12 +6216,6 @@ export const economy = {
       ? data.rngSeed >>> 0
       : hash32(this.state.meta && this.state.meta.seed, 'economy');
     this._nextEventId = data.nextEventId || 1;
-    const rawEventAccum = data.eventAccumulator;
-    this._eventAccumulator = normalizePeriodicAccumulator(rawEventAccum, EVENT_INTERVAL_S);
-    if (rawEventAccum != null && this._eventAccumulator !== rawEventAccum) {
-      console.warn('[economy] save field eventAccumulator was not a usable pending clock; repaired',
-        rawEventAccum);
-    }
     if (data.committedIntents && typeof data.committedIntents === 'object'
       && !Array.isArray(data.committedIntents) && Object.keys(data.committedIntents).length) {
       econ.committedIntents = cloneSaveTree(data.committedIntents);
@@ -6790,6 +6224,9 @@ export const economy = {
       for (const key of Object.keys(econ.committedIntents)) {
         if (key.startsWith('pod-intake:')) delete econ.committedIntents[key];
       }
+      // Apply the live journal's retention too: a save written before the bound (or a crafted
+      // one) can carry unlimited intents; keep only the newest rows for retry correlation.
+      boundCommittedIntents(econ.committedIntents);
       if (!Object.keys(econ.committedIntents).length) delete econ.committedIntents;
     } else {
       delete econ.committedIntents;
@@ -6802,7 +6239,12 @@ function cloneSaveTree(value) {
   if (value == null || typeof value !== 'object') return value;
   if (Array.isArray(value)) return value.map(cloneSaveTree);
   const out = {};
-  for (const key of Object.keys(value)) out[key] = cloneSaveTree(value[key]);
+  for (const key of Object.keys(value)) {
+    // A crafted '__proto__' own key would hit the prototype setter on `out` rather than
+    // becoming data (same guard family as the market-row restore above).
+    if (key === '__proto__' || key === 'constructor' || key === 'prototype') continue;
+    out[key] = cloneSaveTree(value[key]);
+  }
   return out;
 }
 
@@ -6844,10 +6286,18 @@ export function execute(stationId, commodityId, side, qty, opts) {
 export function getCycle(stationId, commodityId) {
   return economy._instance ? economy._instance.getCycle(stationId, commodityId) : null;
 }
+// Compat surface for probe/reader callers that grew up on per-listing wave state:
+// answers the same "what is this listing's formula doing" question from the closed form.
 economy.getCycle = function (stationId, commodityId) {
   const state = this.state;
   if (!state || !state.economy) return null;
-  return getCycleCore(state, stationId, commodityId, () => this._rng(), state.simTime || 0);
+  const regime = marketRegimeStateFor(state, stationId, commodityId, state.simTime || 0);
+  if (!regime) return null;
+  return {
+    regime: regime.kind, family: regime.kind,
+    startedAt: (state.simTime || 0) - regime.elapsed,
+    phase: null, imposed: regime.imposed, eventActive: regime.eventActive,
+  };
 };
 
 // ---- LEGACY PQ-155 accounting projection; assumed faucets, NOT production acceptance evidence.

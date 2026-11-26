@@ -99,10 +99,12 @@ test('main-thread pad samples fly and turn the real worker ship, with neutral an
   assert.equal(f.state.input.moveZ, 0, 'a connected quiet controller does not thrust');
   assert.equal(f.state.input.turnIntent, 0, 'a connected quiet controller does not turn');
   const initialRotation = f.player.rot;
-  f.pad.axes = [0.7, -0.9, 0, 0];
+  // CONTROLLER-1: twin-stick is the shipped scheme — the left stick drives a world-frame
+  // vector, the right stick aims and the helm chase turns the nose onto it.
+  f.pad.axes = [0.7, -0.9, -1, 0];
   for (let i = 0; i < 8; i++) await f.tick();
   assert.ok(f.state.input.moveZ > 0.5, 'main-thread stick supplies worker thrust');
-  assert.ok(f.state.input.turnIntent > 0.5, 'main-thread stick supplies worker turn');
+  assert.ok(Math.abs(f.state.input.turnIntent) > 0.5, 'main-thread aim stick supplies worker turn');
   assert.deepEqual(f.gamepad.axes, f.ctx.gamepad.axes, 'worker raw axes equal main-thread polling');
   assert.ok(Math.hypot(f.player.vel.x, f.player.vel.z) > 0, 'authoritative ship accelerates');
   assert.notEqual(f.player.rot, initialRotation, 'authoritative ship turns');
@@ -159,13 +161,13 @@ test('worker prompt vocabulary follows transported pad, touch, and keyboard devi
   setPromptDevice('gamepad');
   await f.tick();
   setPromptDevice('kbm');
-  assert.equal(verbBindingLabel(f.state, 'travelBurn'), 'L3', 'worker names the controller binding');
+  assert.equal(verbBindingLabel(f.state, 'brake'), 'L3', 'worker names the controller binding');
   setPromptDevice('touch');
   await f.tick();
   setPromptDevice('kbm');
-  assert.equal(verbBindingLabel(f.state, 'travelBurn'), '', 'touch hints do not name an unavailable key');
+  assert.equal(verbBindingLabel(f.state, 'brake'), '', 'touch hints do not name an unavailable key');
   await f.tick();
-  assert.equal(verbBindingLabel(f.state, 'travelBurn'), 'Num Lock/F8', 'keyboard vocabulary returns after keyboard activity');
+  assert.equal(verbBindingLabel(f.state, 'brake'), 'X', 'keyboard vocabulary returns after keyboard activity');
 });
 
 test('default autonomous worker clock receives pad frames across a separate realm', { timeout: 30000 }, async t => {
@@ -177,30 +179,39 @@ test('default autonomous worker clock receives pad frames across a separate real
   Object.defineProperty(globalThis, 'navigator', { configurable: true, value: { getGamepads: () => [pad] } });
   const worker = new Worker(new URL('./fixtures/whole-sim-browser-worker-thread.mjs', import.meta.url), { type: 'module' });
   const state = createGameState(4242);
-  let receive, workerError, lane;
-  const waiters = new Set();
-  function waitFor(predicate, label) {
-    return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        waiters.delete(check);
-        reject(new Error(`${label}: ${JSON.stringify({ tick: state.tick, mode: state.mode, scale: state.timeScale, input: state.input, player: state.entities.get(state.playerId) && { pos: state.entities.get(state.playerId).pos, rot: state.entities.get(state.playerId).rot } })}`));
-      }, 10000);
-      const check = () => {
-        if (!workerError && !predicate()) return;
-        clearTimeout(timeout); waiters.delete(check);
-        if (workerError) reject(new Error(workerError.message));
-        else resolve();
+  let receive, workerError, lane, heartbeat;
+  // Worker-local pose lives in the pose table, not the journal. The main facade
+  // only applies it when the presentation frame runs (prepareWithoutAdvance),
+  // and the ship itself is only authoritative on the worker — probeState.
+  async function waitFor(predicate, label) {
+    const deadline = Date.now() + 10000;
+    let last = null;
+    while (Date.now() < deadline) {
+      if (workerError) throw new Error(workerError.message);
+      try { lane.runner.prepareWithoutAdvance(); } catch { /* lane not ready */ }
+      let probe = null;
+      try { probe = await laneRpc('probeState'); } catch { probe = null; }
+      const player = probe?.result?.player || null;
+      last = {
+        tick: state.tick, mode: state.mode, scale: state.timeScale,
+        input: {
+          moveX: state.input.moveX, moveZ: state.input.moveZ,
+          turnIntent: state.input.turnIntent, aimIntentActive: state.input.aimIntentActive,
+          aimAngle: state.input.aimAngle, turnIntentFromAim: state.input.turnIntentFromAim,
+        },
+        workerPlayer: player && { pos: player.pos, rot: player.rot, vx: player.vx, vz: player.vz },
       };
-      waiters.add(check); check();
-    });
+      if (predicate({ state, player, probe: probe?.result })) return probe?.result;
+      await new Promise((resolve) => setTimeout(resolve, 32));
+    }
+    throw new Error(`${label}: ${JSON.stringify(last)}`);
   }
   try {
     worker.on('message', msg => {
       if (msg.kind === 'error') workerError = msg;
       receive?.(msg);
-      for (const check of [...waiters]) check();
     });
-    worker.on('error', error => { workerError = error; for (const check of [...waiters]) check(); });
+    worker.on('error', error => { workerError = error; });
     lane = createSimLaneRuntime({
       state, bus: createBus(), registry: {},
       flags: { lane: 'worker', warnings: [], sab: false }, clockMode: 'worker-local',
@@ -211,6 +222,12 @@ test('default autonomous worker clock receives pad frames across a separate real
     });
     await lane.readyPromise;
     lane.runner.setClockActive(true);
+    heartbeat = setInterval(() => {
+      try {
+        lane.runner.heartbeat();
+        lane.runner.prepareWithoutAdvance();
+      } catch { /* closed */ }
+    }, 16);
     const boot = await laneRpc('newGameBoot', { opts: { seed: 4242 }, newGamePlus: null });
     assert.equal(boot.ok, true);
     assert.equal(boot.result.ok, true);
@@ -218,20 +235,33 @@ test('default autonomous worker clock receives pad frames across a separate real
     await laneRpc('probeState');
     const neutralTick = state.tick;
     lane.runner.prepareWithoutAdvance();
-    await waitFor(() => state.mode === 'flight' && state.entities.has(state.playerId)
-      && state.input.promptDevice === 'kbm' && state.tick > neutralTick + 2, 'connected neutral sample');
-    const player = state.entities.get(state.playerId);
-    const start = { x: player.pos.x, z: player.pos.z, rot: player.rot };
-    pad.axes = [0.7, -0.9, 0, 0];
+    await waitFor(({ state: st }) => st.mode === 'flight' && st.entities.has(st.playerId)
+      && st.input.promptDevice === 'kbm' && st.tick > neutralTick + 2, 'connected neutral sample');
+    const startProbe = (await laneRpc('probeState')).result.player;
+    const start = { x: startProbe.pos.x, z: startProbe.pos.z, rot: startProbe.rot };
+    // CONTROLLER-1: twin-stick — left stick drives the world-frame vector, right stick
+    // (axes[2]) aims left (−x). Opening seat faces +z, so the helm chase must yaw.
+    pad.axes = [0.7, -0.9, -1, 0];
     lane.runner.prepareWithoutAdvance();
-    await waitFor(() => state.input.moveZ > 0.5 && state.input.turnIntent > 0.5
-      && Math.abs(player.rot - start.rot) > 0.01 && Math.hypot(player.pos.x - start.x, player.pos.z - start.z) > 0.1, 'pad movement');
-    t.diagnostic(`autonomous worker: ship displaced ${Math.hypot(player.pos.x - start.x, player.pos.z - start.z).toFixed(3)} WU and turned ${(player.rot - start.rot).toFixed(3)} radians`);
+    // Twin-stick drive is a world-frame stick, decomposed into hull moveX/moveZ — do
+    // not require moveZ>0. The aim stick raises aimIntentActive; helm chase writes
+    // turnIntent until the nose is on the stick, then it sits at 0 inside the deadband.
+    const moved = await waitFor(({ state: st, player: p }) => {
+      const drive = Math.hypot(st.input.moveX || 0, st.input.moveZ || 0);
+      if (!(drive > 0.5 && st.input.aimIntentActive === true)) return false;
+      if (!p?.pos || !Number.isFinite(p.rot)) return false;
+      return Math.abs(p.rot - start.rot) > 0.01
+        && Math.hypot(p.pos.x - start.x, p.pos.z - start.z) > 0.1;
+    }, 'pad movement');
+    const after = moved.player;
+    t.diagnostic(`autonomous worker: ship displaced ${Math.hypot(after.pos.x - start.x, after.pos.z - start.z).toFixed(3)} WU and turned ${(after.rot - start.rot).toFixed(3)} radians`);
     pad.axes = [0, 0, 0, 0];
     lane.runner.prepareWithoutAdvance();
-    await waitFor(() => state.input.moveZ === 0 && state.input.turnIntent === 0, 'neutral release');
+    await waitFor(({ state: st }) => Math.hypot(st.input.moveX || 0, st.input.moveZ || 0) < 0.05
+      && st.input.aimIntentActive === false, 'neutral release');
     assert.equal(workerError, undefined);
   } finally {
+    if (heartbeat) clearInterval(heartbeat);
     lane?.close();
     await worker.terminate();
     if (previousNavigator) Object.defineProperty(globalThis, 'navigator', previousNavigator);

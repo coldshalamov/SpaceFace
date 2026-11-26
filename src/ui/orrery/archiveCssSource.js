@@ -157,12 +157,15 @@ ${CX} .cx-filed { color:rgb(252 250 244); }
 ${CX} > .k-stage { ${PLAIN} padding:0 0 26px 14px !important; margin-left:-14px !important; overflow:hidden auto; }
 ${CX}[data-plate="on"] > .k-stage { padding-right:calc(var(--cx-plate) + clamp(28px, 3vw, 64px)) !important; }
 ${CX} > .k-stage { display:flex !important; flex-direction:column; }
-/* ui-polish-394: .sf-codex-entry wears 1px bone ~18% / radius 10 / faint fill; densify 8→6.
+/* ui-polish-394: .sf-codex-entry wears the promise-scale hairline card; densify 8→6.
    Drop PLAIN so the card can keep border/radius/fill. Internal pad seats lore inside the chrome;
-   stage-child keeps the 14px left gutter pull so the scroll-extent thumb rides outside the first letters. */
+   stage-child keeps the 14px left gutter pull so the scroll-extent thumb rides outside the first letters.
+   The first alphas (.18/.025) vanished against the lit title backdrop — the Records Wall finding —
+   so the face sits on the house E0 tokens (bench 2026-11-15). */
 ${CX} .sf-codex-entry { position:relative; display:block !important; max-width:none !important; min-height:0 !important;
   box-sizing:border-box; padding:18px 20px !important; margin:0 !important; color:${INK};
-  border:1px solid rgb(${BONE} / .18); border-radius:10px; background:rgb(${BONE} / .025); }
+  border:1px solid rgb(${BONE} / .3); border-radius:10px; background:var(--sf-face, rgb(8 11 16 / .8));
+  box-shadow:var(--sf-edge, inset 0 1px 0 rgb(236 230 216 / .1), inset 0 -1px 0 rgb(0 0 0 / .5)); }
 @media (max-height:820px) { ${CX} .sf-codex-entry { border-radius:8px; } }
 @media (max-height:460px) { ${CX} .sf-codex-entry { border-radius:8px; } }
 @media (max-height:400px) { ${CX} .sf-codex-entry { border-radius:6px; } }

@@ -194,6 +194,43 @@ export const EVENT_BRIDGE_ADAPTERS = {
   ...SHIPBREAKING_YARD_EVENT_BRIDGE_ADAPTERS,
   ...SWARM_FORTIFY_EVENT_BRIDGE_ADAPTERS,
   'run:wavePlanned': projectSurvivalWavePlan,
+  // Composed-encounter cast announcement carries groups[i].cast[j] (depth 4), which exceeded
+  // EVENT_BRIDGE_DEPTH and was dropped at the worker->main bridge. Project its bounded display
+  // fields explicitly so the Swarm round card receives every live cast announcement.
+  'encounter:castAnnounced': (p) => {
+    if (!p || typeof p !== 'object') return undefined;
+    const jobs = Array.isArray(p.jobs)
+      ? p.jobs.slice(0, 16).filter((j) => typeof j === 'string' && j).map((j) => j.slice(0, 32))
+      : [];
+    const groups = Array.isArray(p.groups)
+      ? p.groups.slice(0, 16).map((g) => {
+        if (!g || typeof g !== 'object') return null;
+        const cast = Array.isArray(g.cast)
+          ? g.cast.slice(0, 24).map((c) => {
+            if (!c || typeof c !== 'object') return null;
+            return {
+              enemyId: typeof c.enemyId === 'string' ? c.enemyId.slice(0, 80) : null,
+              count: Number.isSafeInteger(c.count) ? c.count : 0,
+            };
+          }).filter(Boolean)
+          : [];
+        return {
+          id: typeof g.id === 'string' ? g.id.slice(0, 80) : null,
+          atS: Number.isFinite(g.atS) ? g.atS : 0,
+          cast,
+        };
+      }).filter(Boolean)
+      : [];
+    return {
+      wave: Number.isSafeInteger(p.wave) ? p.wave : null,
+      recipeId: typeof p.recipeId === 'string' ? p.recipeId.slice(0, 120) : null,
+      line: typeof p.line === 'string' ? p.line.slice(0, 200) : '',
+      answer: typeof p.answer === 'string' ? p.answer.slice(0, 200) : '',
+      jobs,
+      groups,
+      tick: Number.isSafeInteger(p.tick) ? p.tick : null,
+    };
+  },
   // Cryo's prop points and Storm's pylon/relay poses are authored room geometry.
   // Project the room view as its own bounded subtree so those points survive
   // while the rest of the install receipt keeps the ordinary depth limit.

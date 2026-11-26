@@ -2,7 +2,7 @@ import { makeShipEntitySpec } from '../../systems/ships.js';
 import { getCombatKernel } from '../../combat/kernel.js';
 import { attachmentBindsOccupant } from '../../combat/attachments.js';
 import { physicsBodyNativeReady, writePhysicsControl, syncDerivedPhysicsMass } from '../../core/physicsAuthority.js';
-import { addCargo, removeCargo, sellableCargoQuantity, cargoUnitVolume } from '../../systems/cargo.js';
+import { addCargo, removeCargo, sellableCargoQuantity, slotFitFor } from '../../systems/cargo.js';
 import { stationServices } from '../../systems/stationServices.js';
 
 // This module owns only these finite bodies and their berth controls. Flight, Rapier,
@@ -383,12 +383,9 @@ export function createTenderPhysical(ctx) {
         if (!current()) break;
         if (line.qty <= 0 || (selection && line.commodityId !== selection.commodityId)) continue;
         const requested = selection ? Math.min(line.qty, selection.quantity) : line.qty;
-        // Reserve only the exact whole units the canonical volume-capped writer
-        // can accept. Its first callback observes the committed hold and source.
-        const volume = cargoUnitVolume(state, line.commodityId);
-        const free = state.player.cargo.capVolume - state.player.cargo.usedVolume;
-        const accepted = volume === 0 ? requested : Number.isFinite(free)
-          ? Math.min(requested, Math.max(0, Math.floor(free / volume))) : 0;
+        // Reserve only the exact whole units the slot-capped writer can accept.
+        // Its first callback observes the committed hold and source.
+        const accepted = Math.min(requested, slotFitFor(state, line.commodityId));
         if (!accepted) continue;
         line.qty -= accepted; before.totalQty -= accepted;
         r.manifest = clone(before); publishMass();

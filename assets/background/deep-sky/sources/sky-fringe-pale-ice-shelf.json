@@ -1,0 +1,223 @@
+{
+  "id": "sky-fringe-pale-ice-shelf",
+  "title": "Fringe - the pale ice shelf",
+  "notes": [
+    "PLACES-1 (INV-25 item 2): the icy fringe's base sky - Haumea Rift, Eris Margin, Nereid Shoal.",
+    "The eight-sector CRIMSON family split: those three fly over one huge pale ice sheet, sheared",
+    "and torn by dark rift cracks, instead of the magenta tidal filament every other fringe sector",
+    "shares. Same construction law as the other backdrops: a small number of large authored forms",
+    "with real negative space, quiet lower-left play corridor, mean luminance in the",
+    "action-brighter-than-sky band (~0.013-0.017) so in-flight play reads above the sky."
+  ],
+  "width": 2048,
+  "height": 1024,
+  "seed": 20261,
+  "floor": [
+    0.007,
+    0.011,
+    0.019
+  ],
+  "edgeFade": 0.12,
+  "exposure": 1.0,
+  "knee": 0.68,
+  "budgets": {
+    "median": 0.03,
+    "coverage10": 0.14,
+    "coverage25": 0.05,
+    "corridorCoverage05": 0.008,
+    "edgeMean": 0.03
+  },
+  "layers": [
+    {
+      "kind": "glow",
+      "comment": "The ice-light spill under everything: broad, low, one gradient - the shelf's ambience, no detail by design.",
+      "center": [
+        0.85,
+        0.30
+      ],
+      "radius": 1.15,
+      "squash": 0.66,
+      "rotation": -0.16,
+      "edge": 0.9,
+      "falloff": 1.6,
+      "gain": 0.032,
+      "color": "#3d5a7f",
+      "lightAngle": 2.2,
+      "lightStep": 0.10
+    },
+    {
+      "kind": "mass",
+      "comment": "The shelf itself: one broad pale sheet across the upper right, plateau envelope so the noise tears the silhouette.",
+      "center": [
+        0.88,
+        0.40
+      ],
+      "radius": 0.86,
+      "squash": 0.62,
+      "rotation": -0.18,
+      "edge": 0.85,
+      "falloff": 1.7,
+      "gain": 0.17,
+      "color": "#9fc4e8",
+      "shadowColor": "#060a14",
+      "rimColor": "#e8f4ff",
+      "rimGain": 0.34,
+      "rimPow": 3.2,
+      "absorb": 1.4,
+      "lightAngle": 2.2,
+      "lightStep": 0.10,
+      "thresholdLo": 0.16,
+      "thresholdHi": 0.62,
+      "grain": 0.85,
+      "warp": 0.34,
+      "octaves": 6,
+      "erode": 0.5,
+      "detailGrain": 4.4,
+      "filament": 0.16,
+      "bias": 0.22
+    },
+    {
+      "kind": "arc",
+      "comment": "The sheared shelf edge: a cold swept band, torn and lit, both ends dissolving.",
+      "center": [
+        0.92,
+        0.30
+      ],
+      "radius": 0.64,
+      "squash": 0.70,
+      "rotation": -0.12,
+      "arcCenter": 2.6,
+      "halfSpan": 1.30,
+      "width": 0.09,
+      "taper": 1.35,
+      "edge": 0.62,
+      "falloff": 1.35,
+      "gain": 0.36,
+      "color": "#7fa8cf",
+      "shadowColor": "#08101e",
+      "rimColor": "#dceeff",
+      "rimGain": 0.52,
+      "rimPow": 3.0,
+      "absorb": 2.2,
+      "lightAngle": 2.2,
+      "lightStep": 0.058,
+      "thresholdLo": 0.17,
+      "thresholdHi": 0.54,
+      "grain": 1.5,
+      "warp": 0.34,
+      "octaves": 6,
+      "erode": 0.58,
+      "detailGrain": 4.3,
+      "filament": 0.30,
+      "bias": 0.08
+    },
+    {
+      "kind": "mass",
+      "comment": "A distant companion floe upper-left: the second form so the shelf is a place, not a stripe.",
+      "center": [
+        -1.12,
+        0.56
+      ],
+      "radius": 0.34,
+      "squash": 0.78,
+      "rotation": 0.3,
+      "edge": 0.6,
+      "falloff": 1.5,
+      "gain": 0.24,
+      "color": "#a8c8e8",
+      "shadowColor": "#071020",
+      "rimColor": "#eaf4ff",
+      "rimGain": 0.6,
+      "rimPow": 2.8,
+      "absorb": 2.0,
+      "lightAngle": 2.35,
+      "lightStep": 0.05,
+      "thresholdLo": 0.18,
+      "thresholdHi": 0.54,
+      "coreRadius": 0.26,
+      "coreGain": 0.12,
+      "coreColor": "#f0f8ff",
+      "grain": 1.8,
+      "warp": 0.38,
+      "octaves": 6,
+      "erode": 0.56,
+      "detailGrain": 4.2,
+      "filament": 0.26,
+      "bias": 0.06
+    },
+    {
+      "kind": "lane",
+      "comment": "The rift itself: one dark seam cut across the shelf - Haumea's crack, the shelf's read-at-a-glance signature.",
+      "points": [
+        [
+          0.06,
+          0.62
+        ],
+        [
+          0.58,
+          0.50
+        ],
+        [
+          1.10,
+          0.36
+        ],
+        [
+          1.52,
+          0.20
+        ]
+      ],
+      "widths": [
+        0.02,
+        0.05,
+        0.068,
+        0.028
+      ],
+      "strength": 0.62,
+      "feather": 1.8,
+      "grain": 2.6,
+      "roughness": 0.78,
+      "seed": 6613
+    },
+    {
+      "kind": "lane",
+      "comment": "A shorter settling crack low on the shelf face, so the sheet reads as thickness, not paint.",
+      "points": [
+        [
+          0.86,
+          0.10
+        ],
+        [
+          1.28,
+          0.02
+        ],
+        [
+          1.62,
+          -0.05
+        ]
+      ],
+      "widths": [
+        0.026,
+        0.04,
+        0.018
+      ],
+      "strength": 0.44,
+      "feather": 1.9,
+      "grain": 3.0,
+      "roughness": 0.8,
+      "seed": 6617
+    },
+    {
+      "kind": "void",
+      "comment": "Protected play corridor - the fight's patch of sky stays genuinely dark.",
+      "center": [
+        -0.92,
+        -0.54
+      ],
+      "radius": 1.92,
+      "squash": 0.85,
+      "rotation": 0.05,
+      "falloff": 1.15,
+      "strength": 0.97
+    }
+  ]
+}

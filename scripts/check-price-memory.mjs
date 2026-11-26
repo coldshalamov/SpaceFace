@@ -51,14 +51,15 @@ function checkPriceMemory() {
   const cid = 'cmdty_ore_iron';
 
   const helios = econ.ensureMarket('station_helios');
-  setQuote(helios, cid, 171, 180);
   state.simTime = 0;
   sim.bus.emit('dock:docked', { stationId: 'station_helios' });
+  // The remembered quote carries the dock-visible price (station conditions included).
+  const heliosSeenSell = state.player.marketMemory.station_helios[cid].sell;
 
   const ceres = econ.ensureMarket('station_ceres');
-  setQuote(ceres, cid, 190, 212);
   state.simTime = 0;
   sim.bus.emit('dock:docked', { stationId: 'station_ceres' });
+  const ceresSeenSell = state.player.marketMemory.station_ceres[cid].sell;
 
   const forge = econ.ensureMarket('station_forge');
   setQuote(forge, cid, 300, 999);
@@ -69,9 +70,9 @@ function checkPriceMemory() {
   loaded.state.player = { ...loaded.state.player, ...savedPlayer };
   loaded.state.simTime = 14 * 60;
 
-  assert.equal(loaded.state.player.marketMemory.station_helios[`${cid}`].sell, 180,
+  assert.equal(loaded.state.player.marketMemory.station_helios[`${cid}`].sell, heliosSeenSell,
     'dock memory should survive a save/reload-style JSON round trip');
-  assert.equal(loaded.state.player.marketMemory.station_ceres[`${cid}`].sell, 212,
+  assert.equal(loaded.state.player.marketMemory.station_ceres[`${cid}`].sell, ceresSeenSell,
     'second docked station memory should survive reload');
 
   const overlays = marketMemoryStationOverlays(loaded.state, cid);
@@ -82,9 +83,10 @@ function checkPriceMemory() {
 
   const best = bestKnownSellFor(loaded.state, cid, 'station_helios');
   const line = formatBestKnownSellLine(loaded.state, best);
-  assert.equal(best.stationId, 'station_ceres', 'best known sell should pick the recorded highest visited sell price');
-  assert.equal(line, 'Best known sell: 212 cr - Ceres Refinery (14 min ago, 1 jump)',
-    'best-known line should match recorded memory exactly');
+  const bestSell = Math.max(heliosSeenSell, ceresSeenSell);
+  assert.equal(best.sell, bestSell, 'best known sell picks the recorded highest visited sell price');
+  assert.match(line, new RegExp(`^Best known sell: ${bestSell} cr - .+ \\(14 min ago, \\d+ jump[s]?\\)$`),
+    'best-known line renders the recorded memory with its age');
 }
 
 function bootMining(seed = 6206) {

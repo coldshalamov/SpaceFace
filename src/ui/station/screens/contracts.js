@@ -95,7 +95,10 @@ export function clauseWhyAttr(clause) {
 }
 const reward = (m) => num(m.reward != null ? m.reward : (m.reward_cr != null ? m.reward_cr : (m.rewardCr != null ? m.rewardCr : m.payout)));
 const risk = (m) => num(m.riskTier != null ? m.riskTier : m.risk);
-const typeLabel = (t) => String(t || 'mission').replace(/_/g, ' ');
+// A works contract says which kind of work it is: that is what a pilot scans the board for.
+const WORKS_KIND_LABEL = Object.freeze({ rover: 'rover job', build: 'building job', yard: 'field build job', planet: 'planet job' });
+const typeLabel = (t, m = null) => (m && m.params && m.params.works && WORKS_KIND_LABEL[m.params.works.rung])
+  || String(t || 'mission').replace(/_/g, ' ');
 const facName = (m) => { const f = FAC.get(m.factionId); return (f && f.name) || (m.factionName) || 'Open mission'; };
 
 /** The client's crest at row size (the kit's `.k-crest--row`; a generic mark when unknown). */
@@ -289,14 +292,19 @@ function recommendedBadge(pick, missionId) {
 }
 
 function sortBoardOffers(list, state, focusId) {
+  // The recommended job stands at the top of the board, where a stranger looks first; authored
+  // first-hour rows keep their own order (they own the badge when present).
+  const pick = boardRecommendedOfferId(list, state);
+  const pickId = pick && pick.missionId && !pick.blocker ? String(pick.missionId) : null;
   const decorated = list.map((offer, index) => ({
     offer,
     index,
     firstHour: firstHourBoardOfferPresentation(state, offer),
+    picked: pickId != null && String(mid(offer)) === pickId,
   }));
   decorated.sort((a, b) => {
-    const aRank = a.firstHour ? a.firstHour.rank : Number.POSITIVE_INFINITY;
-    const bRank = b.firstHour ? b.firstHour.rank : Number.POSITIVE_INFINITY;
+    const aRank = a.firstHour ? a.firstHour.rank : (a.picked ? -2 : Number.POSITIVE_INFINITY);
+    const bRank = b.firstHour ? b.firstHour.rank : (b.picked ? -2 : Number.POSITIVE_INFINITY);
     if (aRank !== bRank) return aRank - bRank;
     if (focusId) {
       const aFocus = String(mid(a.offer)) === String(focusId) ? 0 : 1;
@@ -375,7 +383,10 @@ function finalDispositionDossierHtml(mission, filing, options = {}) {
  * stand outside the arc's ends. composeDossier mounts the two arcGauge halves into the
  * `.orr-ct-standgauge` placeholder; the ticks, key and labels below are static string.
  */
-const CT_STAND = { cx: 264, cy: 96, r: 46, half: 40, keyY: 61, labelY: 61, labelL: 226, labelR: 302, flatY: 42 };
+// cy 90 (was 96): the arc's ends clear the ON FAILURE / ON SUCCESS label line instead of touching
+// its baseline; labels 226/302 → 214/314 give the arc's ends and the gauge head's bloom their own
+// air instead of starting at the labels' last glyph; flatY 34 keeps NO CHANGE above the raised crown
+const CT_STAND = { cx: 264, cy: 90, r: 46, half: 40, keyY: 61, labelY: 61, labelL: 214, labelR: 314, flatY: 34 };
 const CT_STAND_COMPACT = { cx: 192, cy: 76, r: 40, half: 40, keyY: 48, labelY: 51, labelL: 158, labelR: 226, flatY: 28 };
 
 /**
@@ -425,8 +436,12 @@ export function consequenceScalesSvg(m, state, { compact = false } = {}) {
   out += `<text class="orr-ct-scale__key" x="0" y="${P.keyY}">STANDING</text>`;
   // the reading runs the way the gauge does: the loss outside the left end, the gain outside the right
   if (compact) {
-    if (loss > 0) out += `<text class="orr-ct-scale__word" x="${P.labelL}" y="${P.labelY}" text-anchor="end"><tspan class="orr-ct-scale__lossword">−${loss}</tspan></text>`;
-    if (gain > 0) out += `<text class="orr-ct-scale__word" x="${P.labelR}" y="${P.labelY}" text-anchor="start"><tspan class="orr-ct-scale__gain">+${gain}</tspan></text>`;
+    // a bare "−3 ⌒ +4" read as a code: the reading names both outcomes in one line right of the
+    // arc (the left of the arc belongs to the STANDING key)
+    const parts = [];
+    if (gain > 0) parts.push(`<tspan class="orr-ct-scale__gain">+${gain}</tspan><tspan class="orr-ct-scale__end"> IF DONE</tspan>`);
+    if (loss > 0) parts.push(`${parts.length ? '<tspan class="orr-ct-scale__end"> · </tspan>' : ''}<tspan class="orr-ct-scale__lossword">−${loss}</tspan><tspan class="orr-ct-scale__end"> IF FAILED</tspan>`);
+    if (parts.length) out += `<text class="orr-ct-scale__word" x="${P.labelR}" y="${P.labelY}" text-anchor="start">${parts.join('')}</text>`;
     if (!loss && !gain) out += `<text class="orr-ct-scale__word" x="${P.cx}" y="${P.flatY}" text-anchor="middle">NO CHANGE</text>`;
   } else {
     out += `<text class="orr-ct-scale__end" x="${P.labelL}" y="${P.labelY}" text-anchor="end">${loss > 0 ? `<tspan class="orr-ct-scale__lossword">−${loss}</tspan><tspan> · ON FAILURE</tspan>` : 'ON FAILURE'}</text>`;
@@ -437,17 +452,20 @@ export function consequenceScalesSvg(m, state, { compact = false } = {}) {
   return out;
 }
 
-/** The risk in one sentence: the tier, then what success and failure do to the account. */
+/** The risk in one sentence: the tier, then what finishing and failing do to the account. */
 function riskSentence(m, consequences, facShort) {
   const r = Math.min(risk(m), 5);
-  const gain = `+${cr(reward(m))}${consequences.repReward > 0 ? ` and +${consequences.repReward} ${facShort} standing` : ''}`;
-  const loss = consequences.collateral
-    ? `costs ${cr(consequences.collateral)} collateral${consequences.repPenalty < 0 ? ` and ${consequences.repPenalty} ${facShort} standing` : ''}`
-    : (consequences.repPenalty < 0 ? `costs ${consequences.repPenalty} ${facShort} standing` : 'costs nothing');
+  const pay = cr(reward(m));
+  const repUp = consequences.repReward > 0 ? ` and +${consequences.repReward} ${facShort} standing` : '';
+  const repDown = consequences.repPenalty < 0
+    ? `${Math.abs(consequences.repPenalty)} ${facShort} standing` : '';
+  const miss = consequences.collateral
+    ? `you forfeit ${cr(consequences.collateral)}${repDown ? ` and ${repDown}` : ''}`
+    : (repDown ? `you lose ${repDown}` : 'you lose nothing');
   // SF-112: the premium names its cause when the offer was priced on a real complication —
   // a customs weir on the lane, or the destination sector's thin patrol cover.
   const note = typeof m.riskNote === 'string' && m.riskNote ? ` — ${m.riskNote}` : '';
-  return `${RISK_LABEL[r]} risk${note}. Success pays ${gain}; failure ${loss}.`;
+  return `${RISK_LABEL[r]} job${note}. Pays ${pay}${repUp}. If missed: ${miss}.`;
 }
 
 /**
@@ -470,7 +488,7 @@ export function missionDossierHtml(m, state, options = {}) {
   const upfrontCr = missionUpfrontCost(m);
   const facShort = escapeHtml((FAC.get(m.factionId) || {}).short || 'faction');
   const authoredSummary = missionDossierSummary(m);
-  const title = m.title || typeLabel(m.type);
+  const title = m.title || typeLabel(m.type, m);
   const routeScope = missionRouteScope(m, state);
   const routeText = routeScope && routeScope.text
     ? routeScope.text
@@ -485,7 +503,7 @@ export function missionDossierHtml(m, state, options = {}) {
   // route, and known hazards, paired with a concrete approach — not another flavor paragraph.
   const briefing = missionBriefingDiagram(m, state, origin);
   return bindStationMarkup(contractDossierView({
-    typeName: typeLabel(m.type),
+    typeName: typeLabel(m.type, m),
     titleHtml: entitySpanHtml('contract:' + String(mid(m)), escapeHtml(title)),
     clientHtml: clientEntityHtml(m),
     reward: reward(m).toLocaleString('en-US'),
@@ -493,21 +511,24 @@ export function missionDossierHtml(m, state, options = {}) {
     routeHtml: `${originEntityHtml(state, origin)} → ${destEntityHtml(m)} · ${escapeHtml(routeText)}`,
     briefingHtml: briefingDiagramHtml(briefing),
     riskHtml: riskSentence(m, consequences, facShort),
-    termsHtml: (cargoName ? termRow('Payload', cargoEntityHtml(cargo, cargoName), cargo.qty ? `${num(cargo.qty)} u` : '') : '')
+    termsHtml: (cargoName ? termRow('Payload', cargoEntityHtml(cargo, cargoName), cargo.qty ? `${num(cargo.qty)} units` : '') : '')
       + termRow('Time', escapeHtml(m.timeLabel || (m.timeLimitMin ? m.timeLimitMin + ' min' : 'Flexible')))
       // a forfeit is a loss: the one term that carries the threat channel's red tick
       // the collateral term always holds its line, so the commit key never moves between missions
       + (consequences.collateral ? termRow('Collateral', cr(consequences.collateral), 'on failure', { cls: 'sx-term--threat' }) : termRow('Collateral', 'None', '', { cls: 'sx-term--none' }))
       + (upfrontCr ? termRow('Upfront', cr(upfrontCr), 'to accept') : '')
-      + (missionOffersFollowUp(m) ? termRow('Follow-up', 'Posted on success', 'same contract family') : '')
-      + (m.featured ? termRow('Featured', 'Day rate', `pays ×${m.featured.rewardMult} · +${m.featured.repBonus} rep`) : '')
+      // plain words (R18): a follow-up is "another job after this one", a featured day is a bonus
+      + (missionOffersFollowUp(m) ? termRow('Next', 'Another job follows this one') : '')
+      + (m.featured ? termRow('Bonus', `Pays ×${m.featured.rewardMult}`, `+${m.featured.repBonus} standing`) : '')
       + book4MissionChips(m, state).map((chip) => termRow(chip.label || 'Note', escapeHtml(chip.text || ''))).join('')
-      + termRow('Readiness', escapeHtml(readiness.label), escapeHtml(readiness.detail)),
+      // a ready job needs no readiness line ("Route clear · Ship and account ready" read as a
+      // checklist); a warning says what to check, and a blocker is named under the Accept key
+      + (readiness.canAccept && readiness.warning ? termRow('Check', escapeHtml(readiness.detail)) : ''),
     readiness,
     clausesHtml: clauses.map((c) => `<li class="k-t-fine k-62"><span class="sx-tag"${clauseWhyAttr(c)}>${escapeHtml(c.label || c.id || 'clause')}</span></li>`).join(''),
     focusAccept,
     action: { id: mid(m), ready, focus: focusAccept && ready,
-      readyLabel: 'Accept', blockedLabel: 'Resolve Readiness', aria: acceptAria, reason: readiness.detail },
+      readyLabel: 'Accept', blockedLabel: 'Not ready yet', aria: acceptAria, reason: readiness.detail },
   }));
 }
 
@@ -530,14 +551,11 @@ function isPlayerDeskJob(mission) {
   return true;
 }
 
-/** The word under Accept. Collateral always says hold. A first trade says hold even with nothing at risk. */
+/** The word under Accept: 'hold' when collateral is at risk, otherwise nothing. Accept is a press;
+ *  only a job that can cost you money asks you to hold it (a stranger's first click on a safe job
+ *  takes it). */
 export function contractAcceptHoldNote(state, collateral) {
-  if (Number(collateral) > 0) return 'hold';
-  const missions = state && state.missions;
-  const active = missions && Array.isArray(missions.active) ? missions.active : [];
-  const receipts = missions && Array.isArray(missions.receipts) ? missions.receipts : [];
-  const accepted = active.some(isPlayerDeskJob) || receipts.some(isPlayerDeskJob);
-  return accepted ? '' : 'hold';
+  return Number(collateral) > 0 ? 'hold' : '';
 }
 
 export function createContractsScreen(ctx) {
@@ -575,6 +593,9 @@ export function createContractsScreen(ctx) {
   // the dossier happens to paint now.
   let pendingCommit = null;
   let acceptHoldMs = 450;
+  /** True only while the shown offer puts collateral at risk: then Accept is held. Otherwise one
+   *  press (click, Enter, Space, pad A) takes the job, and the ring plays through as its receipt. */
+  let acceptNeedsHold = false;
   let pointerAt = -1;
   let keyAt = -1;
   // the tether's hold painter, armed by layTether once the combined path is measured; the bench
@@ -652,23 +673,58 @@ export function createContractsScreen(ctx) {
     try {
       if (typeof window === 'undefined' || window.innerHeight > 800) { boardEl.style.maxHeight = ''; return; }
       boardEl.style.maxHeight = '';
-      const top = boardEl.getBoundingClientRect().top;
-      const limit = top + boardEl.clientHeight;
+      // Layout boxes, not painted ones: the arrival rise slides each row up from below, and its
+      // transform made a list that fits read as overflowing (scrollHeight, getBoundingClientRect),
+      // so the last row was hidden behind MORE with the column half empty. A list that fits
+      // keeps every row.
       const rows = [...boardEl.querySelectorAll('.sx-ct__rows .sx-ct-row, .sx-decision .sx-ct-row')];
+      if (!rows.length) return;
+      // A row's top inside the board's padding box, from offsetTop (which no transform moves).
+      const layoutTop = (node) => {
+        let y = 0;
+        let n = node;
+        while (n && n !== boardEl && !n.contains(boardEl)) { y += n.offsetTop; n = n.offsetParent; }
+        if (!n || n === boardEl) return y;
+        let a = 0;
+        for (let m = boardEl; m && m !== n; m = m.offsetParent) a += m.offsetTop;
+        return y - a - boardEl.clientTop;
+      };
+      const limit = boardEl.clientHeight;
+      const last = rows[rows.length - 1];
+      if (layoutTop(last) + last.offsetHeight <= limit + 1) return;
       let cut = 0;
       for (const row of rows) {
-        const r = row.getBoundingClientRect();
-        if (r.bottom <= limit - 2) cut = r.bottom;
-        else { if (cut) boardEl.style.maxHeight = `${Math.round(Math.min(cut, r.top) - top)}px`; return; }
+        const t = layoutTop(row);
+        const b = t + row.offsetHeight;
+        if (b <= limit - 2) cut = b;
+        else { if (cut) boardEl.style.maxHeight = `${Math.round(Math.min(cut, t))}px`; return; }
       }
     } catch (_) { /* a headless host has no boxes to fit */ }
+  }
+  // The window is fitted to the column it stands in: a render while the door was still settling
+  // (head and foot not yet at their final size) cut the list a row early for the whole visit.
+  let hangFitObserver = null;
+  let hangFitFrame = 0;
+  {
+    const hangEl = el.querySelector('.sx-ct__hang');
+    if (hangEl && typeof ResizeObserver === 'function' && typeof requestAnimationFrame === 'function') {
+      hangFitObserver = new ResizeObserver(() => {
+        if (hangFitFrame) return;
+        hangFitFrame = requestAnimationFrame(() => { hangFitFrame = 0; fitLadderWindow(); });
+      });
+      hangFitObserver.observe(hangEl);
+    }
   }
 
   function renderBoard(state) {
     const list = sortBoardOffers(offers(state), state, focusId());
     const stationId = state && state.ui && state.ui.dockedStationId;
     if (list.length && (!selectedId || !list.some((offer) => String(mid(offer)) === selectedId))) {
-      selectedId = String(mid(list[0]));
+      // The board opens on its one recommendation when it has one (sorted to the top), so the
+      // dossier beside it is the job to take and Accept is the one obvious press.
+      const pick = boardRecommendedOfferId(list, state);
+      selectedId = pick && pick.missionId && list.some((offer) => String(mid(offer)) === pick.missionId)
+        ? pick.missionId : String(mid(list[0]));
     }
     const dispatch = missionBoardDispatchLabel(state, stationId, list.length);
     const standing = [replayStandingLines(state).join(' '), standingOrderProgressLines(state, stationId).join(' ')].filter(Boolean).join(' ');
@@ -738,31 +794,42 @@ export function createContractsScreen(ctx) {
         const r = risk(m);
         const filing = finalDispositionPresentation(m);
         const firstHour = firstHourBoardOfferPresentation(state, m);
-        const destTag = firstHour ? firstHourOfferDestinationTag(state, m) : '';
+        // The one recommended job needs only its word: its title already names where it goes (the
+        // tag ran "RECOMMENDED → TETHYS TRADE HUB · TETH…" off the row). Choice rows keep theirs.
+        const destTag = firstHour && firstHour.kind !== 'recommended' ? firstHourOfferDestinationTag(state, m) : '';
         // Authored first-hour provenance keeps the badge slot when it owns this offer; otherwise a
         // featured day's premium mark outranks the best-next pick. Never more than one, never a reorder.
         const badge = firstHour ? firstHour.label
-          : (m.featured ? 'FEATURED' : recommendedBadge(recommended, id));
+          : (recommendedBadge(recommended, id) || (m.featured ? 'FEATURED' : ''));
         const badgePrefix = badge ? `${badge}${destTag ? ' ' + destTag : ''} · ` : '';
         const rowAria = filing
           ? `${m.title || `Choice ${filing.choiceId}`}, final disposition from ${filing.issuerName}, separate irreversible confirmation required`
-          : `${badgePrefix}${m.title || typeLabel(m.type)}, ${reward(m).toLocaleString('en-US')} credits, ${RISK_LABEL[Math.min(r, 5)]} risk${missionOffersFollowUp(m) ? ', follow-up available on success' : ''}`;
+          : `${badgePrefix}${m.title || typeLabel(m.type, m)}, ${reward(m).toLocaleString('en-US')} credits, ${RISK_LABEL[Math.min(r, 5)]} job${missionOffersFollowUp(m) ? ', follow-up available on success' : ''}`;
+        // FEATURED (and the other one-word marks) ride the type line in the row's own small
+        // caps: "BOUNTY HUNT · FEATURED", not a heading above the list.
+        const typeChip = missionTypeChipHtml(m.type, { label: typeLabel(m.type, m) });
+        const typeMark = badge
+          ? `<span class="k-t-fine sx-ct-row__badge" aria-hidden="true"> · ${escapeHtml(badge)}${destTag ? ` <span class="sx-ct-row__dest">${escapeHtml(destTag)}</span>` : ''}</span>`
+          : '';
+        const typeLine = typeMark ? typeChip.replace(/<\/span>$/, `${typeMark}</span>`) : typeChip;
         return (
           `<li><button type="button" ${stationControlAttrs('mission-row')} class="sx-ct-row${rowClasses}${needs}" data-mid="${escapeHtml(id)}" role="tab" aria-selected="${selected}" tabindex="${selected ? 0 : -1}"` +
             ` aria-label="${escapeHtml(rowAria)}${needs ? ', needs attention' : ''}">` +
             `<span class="sx-ct-row__crest" aria-hidden="true">${crestHtml(m.factionId)}</span>` +
-            // The badge sits in the row's top pad zone, above the title — emitted as a row child,
-            // not inside the title: the title's overflow:hidden would clip it entirely.
-            (badge ? `<span class="k-t-fine k-signal sx-ct-row__badge" aria-hidden="true">${escapeHtml(badge)}${destTag ? ` <span class="sx-ct-row__dest">${escapeHtml(destTag)}</span>` : ''}</span>` : '') +
             `<span class="k-row__name sx-ct-row__title">` +
               // DUST P5: the type chip leads the title (glyph is decorative; the type word is
               // real content, so the spoken row names its verb before its prose).
-              `${missionTypeChipHtml(m.type, { label: typeLabel(m.type) })}` +
-              `${escapeHtml(m.title || typeLabel(m.type))}` +
+              `${typeLine}` +
+              `${escapeHtml(m.title || typeLabel(m.type, m))}` +
             `</span>` +
             `<span class="k-row__num sx-ct-row__rew">${filing ? 'Review' : reward(m).toLocaleString('en-US')}</span>` +
           `</button>` +
-          (optionsByMission.get(id) || []).map((e) => optionHtml(e, true, m.title || typeLabel(m.type))).join('') +
+          // A dispatch option that only names its own job is that job's Accept again: a second
+          // row ("DISPATCH THIS JOB · risk 2 · Forge Foundry · 9 min") read as a stray line on
+          // the list. Only an option that changes something beyond the job keeps a sub-row.
+          (optionsByMission.get(id) || [])
+            .filter(({ option }) => String(option.label || '').trim().toLowerCase() !== String(m.title || typeLabel(m.type, m)).trim().toLowerCase())
+            .map((e) => optionHtml(e, true, m.title || typeLabel(m.type, m))).join('') +
           `</li>`
         );
       }).join('') +
@@ -966,6 +1033,23 @@ export function createContractsScreen(ctx) {
       // the reading hangs from the line (never up into the terms at a short height)
       // at 720 the reading stands above the line (the column's foot fades below it); at full size it hangs under the line
       cap.style.top = `${Math.round(ky / z + (window.innerHeight <= 800 ? -30 : 18))}px`;
+      // a reading that runs past the tab panel's visible glass folds back ABOVE the line: the
+      // dossier's own rect can be taller than the window the shell clips it to, so the clamp
+      // measures the nearest clipping ancestor, not `dr` (bench 1440x900: Tethys Junction)
+      const clip = (() => {
+        for (let n = cap.parentElement; n && n !== document.body; n = n.parentElement) {
+          const o = getComputedStyle(n).overflowY;
+          if (o === 'hidden' || o === 'auto' || o === 'scroll' || o === 'clip') return n;
+        }
+        return null;
+      })();
+      if (clip) {
+        const over = cap.getBoundingClientRect().bottom - clip.getBoundingClientRect().bottom + 6;
+        if (over > 0) {
+          const capH = cap.offsetHeight || 0;
+          cap.style.top = `${Math.max(8, Math.round(ky / z - capH - 10))}px`;
+        }
+      }
       tether.style.display = '';
       cap.style.display = '';
       // the ladder's foot closes on the tether's line: the YOURS block bottom-anchors six px above it, so the
@@ -1131,12 +1215,13 @@ export function createContractsScreen(ctx) {
     // early retracts it; at full the berth ignites and the mission commits.
     const accept = dossier.querySelector('.sx-ct-commit[data-accept]');
     const consequences = missionConsequenceSummary(m, state);
-    acceptHoldMs = consequences.collateral > 0 ? 720 : 450;
+    acceptNeedsHold = consequences.collateral > 0;
+    acceptHoldMs = acceptNeedsHold ? 720 : 180;
     const holdNote = contractAcceptHoldNote(state, consequences.collateral);
     if (accept && !accept.disabled) {
-      const hint = consequences.collateral > 0
+      const hint = acceptNeedsHold
         ? ` Hold to accept: ${cr(consequences.collateral)} collateral is at risk.`
-        : ' Hold to accept.';
+        : '';
       accept.setAttribute('aria-label', `${accept.getAttribute('aria-label') || 'Accept'}${hint}`);
       if (!accept.querySelector('.dp-holdring')) {
         const ring = document.createElement('span');
@@ -1451,7 +1536,7 @@ export function createContractsScreen(ctx) {
           const sub = [objectiveText(m), status].filter(Boolean).join(' · ');
           return (
             `<li class="k-row k-row--static sx-job${tracked ? ' is-tracked' : ''}${needs ? ' is-attention' : ''}" data-active-mid="${escapeHtml(id)}">` +
-              `<span class="k-row__name sx-job__title">${missionTypeGlyphSvg(m.type)}${escapeHtml(m.title || typeLabel(m.type))}</span>` +
+              `<span class="k-row__name sx-job__title">${missionTypeGlyphSvg(m.type)}${escapeHtml(m.title || typeLabel(m.type, m))}</span>` +
               `<span class="k-row__sub sx-job__meta${needs ? ' k-signal' : ''}">${escapeHtml(sub)}</span>` +
               `<button type="button" ${stationControlAttrs('track')} class="k-word k-word--fine sx-job__track" data-track="${escapeHtml(id)}" aria-pressed="${tracked}">${tracked ? 'Tracked' : 'Track'}</button>` +
             `</li>`
@@ -1479,6 +1564,9 @@ export function createContractsScreen(ctx) {
     renderBoard(state);
     renderDossier(state);
     renderActive(state);
+    // The ladder window is measured again once YOURS has its rows: measured before them, a short
+    // screen cut the posted list a row early and left the column's foot empty under MORE.
+    fitLadderWindow();
   }
 
   function applyShowOptions(options = {}) {
@@ -1571,9 +1659,11 @@ export function createContractsScreen(ctx) {
   // belongs to that hold; the pad's A (a synthetic click) arms a hold that lasts while A stays down;
   // a bare activation with nothing held (assistive tech) runs the hold through on its own.
   const onAccept = (ev) => (ev.target && ev.target.closest ? ev.target.closest('.sx-ct-commit[data-accept]:not(:disabled)') : null);
-  el.addEventListener('pointerdown', (ev) => { if (onAccept(ev) && ev.button === 0) { pointerAt = holdClock(); startHold('pointer'); } });
+  el.addEventListener('pointerdown', (ev) => {
+    if (onAccept(ev) && ev.button === 0 && acceptNeedsHold) { pointerAt = holdClock(); startHold('pointer'); }
+  });
   el.addEventListener('pointerup', (ev) => {
-    if (onAccept(ev) || hold?.source === 'pointer') { pointerAt = holdClock(); releaseHold('pointer'); }
+    if ((onAccept(ev) && acceptNeedsHold) || hold?.source === 'pointer') { pointerAt = holdClock(); releaseHold('pointer'); }
   }, true);
   for (const type of ['pointercancel', 'pointerleave']) {
     el.addEventListener(type, (ev) => {
@@ -1582,14 +1672,15 @@ export function createContractsScreen(ctx) {
         if (accept && ev.relatedTarget
           && (accept === ev.relatedTarget || accept.contains?.(ev.relatedTarget))) return;
       }
-      if (onAccept(ev) || hold?.source === 'pointer') { pointerAt = holdClock(); cancelHold(); }
+      if ((onAccept(ev) && acceptNeedsHold) || hold?.source === 'pointer') { pointerAt = holdClock(); cancelHold(); }
     }, true);
   }
   el.addEventListener('keydown', (ev) => {
     if (!onAccept(ev) || (ev.key !== 'Enter' && ev.key !== ' ')) return;
     ev.preventDefault();
     keyAt = holdClock();
-    if (!ev.repeat) startHold('key');
+    // nothing at risk: the press is the accept (the ring plays through on its own)
+    if (!ev.repeat) startHold(acceptNeedsHold ? 'key' : 'auto');
   });
   el.addEventListener('keyup', (ev) => {
     if (!onAccept(ev) || (ev.key !== 'Enter' && ev.key !== ' ')) return;
@@ -1687,6 +1778,11 @@ export function createContractsScreen(ctx) {
       lifecycleTarget?.removeEventListener?.('blur', onWindowBlur, true);
       lifecycleTarget?.removeEventListener?.('pagehide', cancelInteraction, true);
       for (const stop of stopDecrypt.splice(0)) stop();
+      if (hangFitObserver) { hangFitObserver.disconnect(); hangFitObserver = null; }
+      if (hangFitFrame && typeof cancelAnimationFrame === 'function') {
+        cancelAnimationFrame(hangFitFrame);
+        hangFitFrame = 0;
+      }
       if (routeInstrument) { routeInstrument.dispose(); routeInstrument = null; }
       cancelPendingCommit();
       endHold();

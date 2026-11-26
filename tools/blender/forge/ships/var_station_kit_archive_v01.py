@@ -24,7 +24,26 @@ COLORS = {
 GLYPHS = 18
 
 
+def signature(s):
+    """The reading room inside the ring: archive racks with shelved lines, one lamp per stack."""
+    racks, shelves, lamps = [], [], []
+    for i, a in enumerate((30.0, 120.0, 210.0, 300.0)):
+        rz = math.radians(a)
+        x, y, _ = K.polar(23.0, a)
+        racks.append(((x, y, 12.0), (4.0, 9.0, 16.0), rz))
+        for k in range(5):
+            shelves += K.face_rows(a, 25.1, 5.5 + k * 3.0, 3, 7.0, 1.8, 0.5, 0.3)
+        lamps.append(K.polar(25.5, a, 21.0))
+    F.boxes(s, 'ArchiveRacks', racks, 'paint2', bevel=0.06)
+    F.boxes(s, 'ArchiveShelves', shelves, 'stripe', bevel=0.0)
+    s.detail = 1
+    for i, p in enumerate(lamps):
+        F.light(s, f'ArchiveRackLamp{i}', p, 'glow_warm.arc', size=0.35)
+    s.detail = 0
+
+
 def dress(s):
+    K.interior(s, 'stripe', 'glow_warm.arc')
     # vellum band: deep indigo plate — the page the glyphs are pressed into
     K.ring_wall(s, 'VellumBand', K.SHELL_R + 0.8, 9.0, 25.0, 2.4, 'paint2', segs=56)
     # stacked scroll courses — the scriptorium's shelved lines
@@ -56,6 +75,7 @@ def dress(s):
     s.detail = 1
     K.lamp_ring(s, 'Reading', 'glow_warm.arc', r=K.SHELL_R + 1.7, z=26.4, count=12, size=0.4)
     s.detail = 0
+    signature(s)
 
 
 def build():

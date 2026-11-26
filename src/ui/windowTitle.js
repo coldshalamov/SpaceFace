@@ -16,15 +16,21 @@ const RULESET_LABEL = Object.freeze({
   block: 'Foundry Block',
 });
 
+export function runRulesetLabel(ruleset) {
+  return typeof ruleset === 'string' && Object.hasOwn(RULESET_LABEL, ruleset)
+    ? RULESET_LABEL[ruleset] : null;
+}
+
 const KIND_LABEL = Object.freeze({
   adventure: 'Adventure',
   campaign: 'Adventure',
-  survival: 'Crucible',
+  // A survival run with no named ruleset is still the Swarm to a player (R18: no internal names).
+  survival: 'Swarm',
 });
 
 const ALLOWED_LABELS = new Set([
   'Adventure', 'Swarm', 'Gauntlet', 'Boss circuit', 'Foundry Block',
-  'Racing', 'Crucible', 'Flight',
+  'Racing', 'Flight',
 ]);
 
 // Mode and sector changes. Never a per-tick event.
@@ -62,7 +68,7 @@ function resolveLabel(view) {
   if (!view || typeof view !== 'object') return null;
   if (typeof view.modeLabel === 'string' && ALLOWED_LABELS.has(view.modeLabel)) return view.modeLabel;
   if (view.racing === true) return 'Racing';
-  const ruleset = typeof view.ruleset === 'string' ? RULESET_LABEL[view.ruleset] : null;
+  const ruleset = runRulesetLabel(view.ruleset);
   if (ruleset) return ruleset;
   const kind = typeof view.runKind === 'string' ? KIND_LABEL[view.runKind] : null;
   if (kind) return kind;

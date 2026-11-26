@@ -6,6 +6,8 @@ import {
   EMPTY_SNAPSHOT,
 } from '../core/fields/fieldReadModel.js';
 import { oneFeelPhaseTable, oneFeelCooldownS, oneFeelPhaseAt } from '../data/swarmFeelProfile.js';
+import { getSimStepProfiler, nowNs } from '../core/simStepProfiler.js';
+import { simCoreFlag } from '../core/simCoreFlags.js';
 export {
   FIELD_VELOCITY_TERM_TYPES, FIELD_WINDUP_S, FIELD_DISSIPATE_S,
   FIELD_PHASE_WINDING, FIELD_PHASE_ACTIVE, FIELD_PHASE_DISSIPATING,
@@ -45,12 +47,12 @@ import {
   mergeClusterSecondaries,
   rateClusterMoment,
 } from '../core/fields/clusterDetonate.js';
-import { queryPhysicalBodies, deliverPhysicalImpulseDetailed } from '../combat/physicalEffects.js';
+import { queryPhysicalBodies, deliverPhysicalImpulseDetailed, deliverContinuousImpulseInto } from '../combat/physicalEffects.js';
 import { isAnchoredPhysicalBody } from '../core/physicalResponse.js';
 import { queuePhysicsImpulse, queuePhysicsTorqueImpulse, resolvePhysicsBodySpec } from '../core/physicsAuthority.js';
 import { entityIndexLaneVersion } from '../world/livingWorldViews.js';
 import { isDynamicPhysicsBodyEntity } from '../core/physicsAuthority.js';
-import { Masks } from '../core/entity.js';
+import { Masks, occupantGenerationOf } from '../core/entity.js';
 import { getCombatKernel } from '../combat/kernel.js';
 import { ensureCombatant } from '../combat/runtime.js';
 import { publishHitstunImpulse, recordImpulseProvenance, signedHitSide } from '../combat/impulseKernel.js';
@@ -71,13 +73,28 @@ import { createCollectorKnots } from '../matter/collectorKnot.js';
 import { COLLECTOR_KNOT } from '../data/collectorKnot.js';
 import { isSwarmSpecialistRun, swarmSpecialistKind, SWARM_SPECIALIST_TUNING } from '../data/swarmSpecialists.js';
 import { swarmFieldRadiusScale, swarmFieldCooldownScale } from './playerModifiers.js';
+import {
+  PILOT_ECHO_DELAY_S,
+  PILOT_ECHO_STRENGTH,
+  pilotHas,
+  pilotPowerCooldownScale,
+  pilotPowerDepthScale,
+} from './powerVerbs.js';
 import { syncRookReceivingBrake, noteRookPadSpawned, resetRookPadIndex, resolveRookPadEntity } from './rookReceivingBrake.js';
 import { syncKesslerDeckDamping } from './kesslerDeckDamping.js';
+import { ensurePlow, launchPlow, tickPlow } from './plow.js';
 
 const EMITTER_MATERIAL = 'projectile'; // ghost collider: projectile sweeps can hit it, ships don't broadphase against it
 // PQ-147.01 — NPC tools share the kernel but not the player's four-slot cap.
 const FIELD_NPC_MAX_ACTIVE = 4;
 const NPC_CONE_HOLD_TICKS = 180;
+// OVH-01c2 — Conjurer tuning (Echo's delay/strength live in powerVerbs' shared seam). Combo
+// needs two different powers on one body within this window, and pays out at most once per body
+// per window. PT-FIX-C item 4: at most this many bodies detonate per tick (queued during the
+// force pass, fired from the drain after it — never synchronously, never recursively).
+export const PILOT_COMBO_WINDOW_S = 2;
+export const PILOT_COMBO_MAX_BLASTS_PER_TICK = 8;
+const PILOT_COMBO_LEDGER_CAP = 64;
 // Discover new NPC field deploys on this cadence; live cone geometry stays every tick.
 const NPC_FIELD_PLAN_PERIOD_TICKS = 4;
 // SF-041 (PB-ORD-C): 'mine' rides the loose-body family — a Well/Repulsor cone moves a placed
@@ -462,6 +479,13 @@ export const fields = {
     // Pull collector knots (packet 05): a library between this emitter owner, the shared capture
     // seam and Gyre's thrown-aggregate lifecycle. Runtime only, never serialized.
     this._knots = createCollectorKnots(this);
+    // OVH-01c2 — Conjurer runtime-only state: the pending Echo queue (second fires at half
+    // strength 0.5 s later) and the Combo touch ledger + queue (two different powers on one body
+    // within 2 s detonate — queued during the force pass, fired after it). Cleared with every
+    // other fields boundary in _clearAll.
+    this._pilotEcho = [];
+    this._comboTouches = new Map();
+    this._comboQueue = [];
     ensureRuntime(ctx.state);
     if (this.bus && typeof this.bus.on === 'function') {
       this._lifecycleUnsubs = [
@@ -469,7 +493,17 @@ export const fields = {
         this.bus.on('sector:enter', () => this._clearAll(FIELD_END_REASONS.cleared, 'sector_enter')),
         this.bus.on('game:new', () => this._clearAll(FIELD_END_REASONS.cleared, 'new_game')),
         this.bus.on('run:waveCleared', () => this._releaseSwarmSpecialistAnchors('wave_cleared')),
-        this.bus.on('run:ended', () => this._releaseSwarmSpecialistAnchors('run_ended')),
+        this.bus.on('run:ended', () => { this._releaseSwarmSpecialistAnchors('run_ended'); this._clearPilotQueues(); }),
+        this.bus.on('game:newGame', () => this._clearPilotQueues()),
+        // evolution_black_hole (Pilot Tree, 2026-11-20): going dark leaves a Pull well, twice as
+        // strong, where the ship was — the pack chasing you falls into it. Queued like an Echo so
+        // it deploys inside this system's own tick, free of the Pull cooldown.
+        this.bus.on('cloak:engaged', () => this._queueBlackHole()),
+        // Victory is a terminal phase reached by transition — no run:ended follows it, and the
+        // wave owner may carry cohort bodies across run:started, so anchors release here.
+        this.bus.on('run:transitioned', (p) => {
+          if (p && (p.phase === 'victory' || p.phase === 'ended')) this._releaseSwarmSpecialistAnchors('run_transitioned');
+        }),
         this.bus.on('save:loaded', () => {
           if(!this._restoredOnLoad)this._clearAll(FIELD_END_REASONS.cleared, 'save_loaded');
           this._restoredOnLoad=false;
@@ -491,6 +525,10 @@ export const fields = {
         // job this tick, so a cooling repulsor does not read the press as a failure.
         this.bus.on('bombs:commanded', (p) => this._noteShoveDetonation(p)),
         this.bus.on('charge:detonated', (p) => { if (p && p.trigger === 'manual') this._noteShoveDetonation(p); }),
+        // OVH-01c2 conjurer_combo — the Bomb's blast touches every body it reaches; the combo
+        // ledger (this file) already sees the four field powers per tick in _applyForces.
+        this.bus.on('bombs:detonated', (p) => this._noteBombComboTouch(p || {})),
+        this.bus.on('charge:detonated', (p) => this._noteBombComboTouch(p || {})),
       ];
     }
   },
@@ -519,6 +557,8 @@ export const fields = {
   // boundaries; the register order is the sync lane's, so the run stays bit-identical.
   *deserializeChunked(raw,remap=new Map()) {
     this._restoredOnLoad=false;
+    // A loaded world inherits no Echo, Combo ledger or queued Combo from the session before it.
+    this._clearPilotQueues();
     if(raw?.revision!==1||!Array.isArray(raw.fields))return;
     const mapped=id=>id==null?id:remap.get(String(id))??id,rt=defaultRuntime();
     this._kernel.clear();
@@ -557,13 +597,16 @@ export const fields = {
       if (++restored % 8 === 0) yield 'fields-kernel-batch';
     }
     yield 'fields-kernel';
-    for(const [id,h] of Object.entries(raw.hitches??{})){const eid=mapped(id);const ent=this.state.entities.get(eid)||this.state.entities.get(Number(eid));if(ent&&this._kernel.has(h.fieldId))rt.hitches[eid]={...h,sourceId:mapped(h.sourceId)};}
+    for(const [id,h] of Object.entries(raw.hitches??{})){const eid=mapped(id);const ent=this.state.entities.get(eid)||this.state.entities.get(Number(eid));if(ent&&this._kernel.has(h.fieldId))rt.hitches[eid]={...h,sourceId:mapped(h.sourceId),generation:ent.occupantGeneration??null};}
     yield 'fields-hitches';
     // NPC cone recs are id-keyed mirror state for kernel fields already restored
     // above — without them the field lives on as an orphan nobody retires.
     for(const [sid,rec] of Object.entries(raw.npcFields??{})){
       if(!rec||!this._kernel.has(rec.fieldId))continue;
       const restored={...rec,sourceId:mapped(rec.sourceId??sid)};
+      // Occupant tokens never round-trip a save: re-stamp from the live source hull so
+      // a restored cone keeps its generation proof instead of carrying a dead token.
+      restored.sourceGeneration=this.state.entities.get(restored.sourceId)?.occupantGeneration??null;
       if(rec.industrial===true){
         restored.targetId=mapped(rec.targetId);
         restored.targetGeneration=this.state.entities.get(restored.targetId)?.occupantGeneration;
@@ -715,7 +758,14 @@ export const fields = {
     const field = this._kernel.get(fieldId);
     if (!field) return null;
     const rt = ensureRuntime(s);
-    const rec = { fieldId, sourceId: field.sourceId, attachedAt: nowOf(s) };
+    // Entity ids recycle: record the latched body's occupant token so _syncHitches
+    // can tell "our hitched body still lives" from "a new hull took the id" — only
+    // the real occupant may hold the frame lock (deserialize re-stamps this).
+    const ent = s.entities && s.entities.get
+      ? (s.entities.get(entityId) || s.entities.get(Number(entityId)))
+      : null;
+    const rec = { fieldId, sourceId: field.sourceId, attachedAt: nowOf(s),
+      generation: ent ? (ent.occupantGeneration ?? null) : null };
     rt.hitches[entityId] = rec;
     this.bus.emit('fields:hitchLatched', { entityId, fieldId, sourceId: rec.sourceId });
     return rec;
@@ -817,7 +867,11 @@ export const fields = {
         const ent = state.entities && state.entities.get
           ? (state.entities.get(id) || state.entities.get(Number(id)))
           : null;
-        if (!rec || !ent || ent.alive === false || !this._kernel.has(rec.fieldId)) delete rt.hitches[id];
+        // A live occupant at a recycled id is not the body that latched — without the
+        // generation proof the hitch frame-locks a foreign hull until it leaves range.
+        const recycled = rec && rec.generation != null
+          && (ent ? ent.occupantGeneration : null) !== rec.generation;
+        if (!rec || !ent || ent.alive === false || recycled || !this._kernel.has(rec.fieldId)) delete rt.hitches[id];
       }
     }
     const field = this._seedLockFieldId ? this._kernel.get(this._seedLockFieldId) : null;
@@ -880,6 +934,9 @@ export const fields = {
     this._fieldForcePass++;
     const rt = ensureRuntime(state);
     this._familyDt = dt;
+    // OVH-01c2 conjurer_echo — a pending second fire lands before any idle/quiet latch can
+    // starve it (the first fire keeps the kernel non-idle for its whole duration anyway).
+    this._drainPilotEcho(state, rt);
     // The set of entity ids a live field claims this tick, published for the activity
     // classifier's FIELD_DRIVEN pin — a shelved hull freezes mid-pull and strands its queued
     // impulses forever. Cleared up front so every no-force path (gate/non-flight/quiet/idle)
@@ -890,6 +947,7 @@ export const fields = {
     fieldsRuntime.affectedIds = affectedIds;
     // Golden-safety gate (layer b): strict no-op unless enabled (OFF under node).
     if (!fieldsFlag('enabled')) {
+      if (this._comboQueue) this._comboQueue.length = 0;
       if (this._familyPrevPins) this._familyPrevPins.clear();
       if (this._familyPrevMines) this._familyPrevMines.clear();
       rt.familyRead = EMPTY_FAMILY_READ;
@@ -899,6 +957,7 @@ export const fields = {
       // Not flying (docked / station): apply no forces, but still tick expiry + destruction so a
       // field never outlives its bounded lifetime while the player is away, and keep the cone off.
       if (rt.coneActive) this._setConeActive(state, rt, false, FIELD_END_REASONS.toggledOff);
+      if (this._comboQueue) this._comboQueue.length = 0;
       this._syncSkimSheet(state, rt);
       this._syncEmitters(state, rt, /*applyForces*/ false, dt);
       this._syncSeedLockField(state, rt);
@@ -927,7 +986,9 @@ export const fields = {
     // quiet-path producers for up to 0.5 s while membership is stable; wake on entity-index
     // bump, rescan, or leaving idle (input/skim already ran above and clear idle when the
     // player deploys). Unlatched idle still runs every quiet-path producer each tick.
-    let idle = fieldsIdleSnapshot(rt, this._kernel, state);
+    // A queued Combo keeps the tick live: the well that set it up may already have expired, and
+    // the queue drains only after the force pass (agy2 delta review).
+    let idle = fieldsIdleSnapshot(rt, this._kernel, state) && !(this._comboQueue && this._comboQueue.length > 0);
     if (idle) {
       if (FIELDS_IDLE_QUIET_LATCH !== false) {
         const membership = fieldsMembershipVersion(state);
@@ -1001,7 +1062,13 @@ export const fields = {
     // _syncEmitters returns nothing; force application happens in _applyForces so the accel sum can
     // be published. Order: geometry settled → forces → publish.
     const applied = this._applyForces(dt, state, rt);
+    // PT-FIX-C item 4 — queued combos fire HERE, after the force pass: iterative, capped, and
+    // never inside the membership loop that queued them.
+    this._drainComboQueue(state);
+    const ph = getSimStepProfiler();
+    const phT = ph.active ? nowNs() : 0;
     this._publish(state, rt, applied.queries, applied.affected, applied.accelSum);
+    if (ph.active) ph.record('fields.publish', nowNs() - phT);
     state.fieldsRuntime = state.fieldsRuntime || {};
     state.fieldsRuntime.quietLatched = false;
   },
@@ -1209,6 +1276,154 @@ export const fields = {
     if (actions.toggleClearingCone) { actions.toggleClearingCone = false; this._toggleCone(state, rt); }
   },
 
+  // ── OVH-01c2 Conjurer: Echo's second fire and the Combo ledger ─────────────────────────────
+
+  /**
+   * conjurer_echo — fire the remembered second shot: the SAME deploy path (a real emitter, a real
+   * kernel field, real force) at the first fire's aim point and radius, at half its strength,
+   * free of the cooldown the first shot started. Sim time only; the queue is bounded and cleared
+   * on every fields boundary.
+   */
+  _queueBlackHole() {
+    const state = this.state;
+    if (!state || !pilotHas(state, 'evolution_black_hole')) return;
+    const player = this._player(state);
+    if (!player || !player.pos) return;
+    const queue = this._pilotEcho || (this._pilotEcho = []);
+    if (queue.length >= 8) queue.shift();
+    queue.push({ kind: 'well', center: { x: player.pos.x, z: player.pos.z }, at: nowOf(state), scale: 2 });
+  },
+
+  _drainPilotEcho(state, rt) {
+    const queue = this._pilotEcho;
+    if (!queue || queue.length === 0) return;
+    const now = nowOf(state);
+    for (let i = queue.length - 1; i >= 0; i--) {
+      const rec = queue[i];
+      if (rec.at > now) continue;
+      queue.splice(i, 1);
+      this._deployRadial(state, rt, rec.kind, {
+        free: true,
+        echo: true,
+        center: rec.center,
+        radius: rec.radius,
+        strength: rec.strength,
+        strengthScale: Number.isFinite(rec.scale) ? rec.scale : PILOT_ECHO_STRENGTH,
+      });
+    }
+  },
+
+  /** The Bomb's blast touches every body it reaches (bombs.js and impulseCharges receipts).
+   * PT-FIX-C item 4 — a combo's OWN detonation receipt (trigger 'pilot_combo') never touches:
+   * combos must not breed combos, whatever else the blast sets off. */
+  _noteBombComboTouch(payload) {
+    const state = this.state;
+    if (!state || payload.ownerId == null || String(payload.ownerId) !== String(state.playerId)) return;
+    if (payload.trigger === 'pilot_combo') return;
+    if (!Array.isArray(payload.hits)) return;
+    for (const id of payload.hits) {
+      const body = state.entities && state.entities.get ? state.entities.get(id) : null;
+      if (body) this._notePowerComboTouch(state, body, 'bomb');
+    }
+  },
+
+  /** One body's membership in the live player power fields this force pass (Pull/Shove/Rig/Pin). */
+  _noteFieldComboTouches(state, rt, body, fields) {
+    if (!pilotHas(state, 'conjurer_combo')) return;
+    for (let i = 0; i < fields.length; i++) {
+      const verb = this._playerPowerVerbOfField(state, rt, fields[i]);
+      if (verb) this._notePowerComboTouch(state, body, verb);
+    }
+  },
+
+  _playerPowerVerbOfField(state, rt, field) {
+    if (!field || field.ownerId == null || String(field.ownerId) !== String(state.playerId)) return null;
+    const deployed = rt.deployed[field.id];
+    if (deployed && deployed.powerVerb) return deployed.powerVerb;
+    if (rt.coneFieldId === field.id) return 'rig';
+    if (rt.skimFieldId === field.id) return 'rig';
+    if (this._seedLockFieldId === field.id) return 'pin';
+    return null;
+  },
+
+  /**
+   * conjurer_combo — a body touched by two different powers inside PILOT_COMBO_WINDOW_S detonates:
+   * the Bomb's blast at 60 % strength at that body (impulseCharges owns the blast; the detonation
+   * is credited to the player), at most once per body per window. PT-FIX-C item 4: the touch only
+   * QUEUES — the blast fires from _drainComboQueue after the force pass, at most
+   * PILOT_COMBO_MAX_BLASTS_PER_TICK per tick, so a pack of bodies can never recurse or spike a
+   * single tick. The ledger row carries the body's occupant generation, so a recycled id
+   * inherits nothing. Sim time only; cleared with the fields runtime.
+   */
+  _notePowerComboTouch(state, body, power) {
+    if (!pilotHas(state, 'conjurer_combo')) return;
+    if (!body || body.alive === false || body.id === state.playerId || !body.pos) return;
+    const now = nowOf(state);
+    const generation = occupantGenerationOf(body);
+    let rec = this._comboTouches.get(body.id);
+    if (!rec || rec.generation !== generation || now - rec.lastAt > PILOT_COMBO_WINDOW_S) {
+      if (this._comboTouches.size >= PILOT_COMBO_LEDGER_CAP) {
+        // Insertion-order FIFO: the oldest row dies, never the just-touched body.
+        this._comboTouches.delete(this._comboTouches.keys().next().value);
+      }
+      rec = { generation, touches: new Map(), lastAt: now, detonatedAt: -Infinity };
+      this._comboTouches.set(body.id, rec);
+    }
+    let partner = null;
+    for (const [verb, at] of rec.touches) {
+      if (verb !== power && now - at <= PILOT_COMBO_WINDOW_S) { partner = verb; break; }
+    }
+    rec.touches.set(power, now);
+    rec.lastAt = now;
+    if (partner == null || now - rec.detonatedAt < PILOT_COMBO_WINDOW_S) return;
+    // Close the row and queue: "once per body per window" is paid HERE, whether or not this
+    // tick's blast cap has room left for it. The blast itself never runs inside the force pass
+    // or inside a detonation receipt.
+    rec.touches.clear();
+    rec.detonatedAt = now;
+    const queue = this._comboQueue || (this._comboQueue = []);
+    if (queue.length >= PILOT_COMBO_MAX_BLASTS_PER_TICK) return;
+    queue.push({ body, partner, power, at: now });
+  },
+
+  /**
+   * Fire the queued combos — iteratively, after the force pass, at most
+   * PILOT_COMBO_MAX_BLASTS_PER_TICK per tick. Entries the cap cannot serve this tick are spent
+   * (their rows already closed); a blast's own receipt is ignored by _noteBombComboTouch, so
+   * nothing here can re-enter the queue synchronously.
+   */
+  _drainComboQueue(state) {
+    const queue = this._comboQueue;
+    if (!queue || queue.length === 0) return;
+    const charges = this.registry && typeof this.registry.get === 'function'
+      ? this.registry.get('impulseCharges') : null;
+    if (!charges || typeof charges.comboBlast !== 'function') {
+      queue.length = 0;
+      return;
+    }
+    const now = nowOf(state);
+    let fired = 0;
+    while (queue.length > 0 && fired < PILOT_COMBO_MAX_BLASTS_PER_TICK) {
+      const entry = queue.shift();
+      const body = entry.body;
+      if (!body || body.alive === false || !body.pos) continue;
+      if (now - entry.at > PILOT_COMBO_WINDOW_S) continue; // the window closed while queued
+      const result = charges.comboBlast(state, { x: body.pos.x, z: body.pos.z }, state.playerId, {
+        trigger: 'pilot_combo',
+      });
+      if (!result) continue;
+      fired += 1;
+      this.bus.emit('pilot:comboDetonated', {
+        sourceId: state.playerId,
+        targetId: body.id,
+        powers: [entry.partner, entry.power],
+        pos: { x: body.pos.x, z: body.pos.z },
+        tick: state.tick,
+      });
+    }
+    queue.length = 0;
+  },
+
   _player(state) {
     return state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
   },
@@ -1251,7 +1466,8 @@ export const fields = {
     // held-key preview print the current role and next action.
     let collector = false;
     let replacing = null;
-    if (kind === 'well' && collectorFitted(state)) {
+    const echoDeploy = !!(opts && opts.echo);
+    if (kind === 'well' && !echoDeploy && collectorFitted(state)) {
       const intent = this._knots.intent(state, rt);
       if (intent === 'busy') return;
       if (intent === 'release') {
@@ -1272,8 +1488,10 @@ export const fields = {
     const swarmPhases = collector ? null : oneFeelPhaseTable(kind);
     const deployDurationS = swarmPhases ? swarmPhases.punchS + swarmPhases.fadeS : def.durationS;
     // A01-05 Wide Bore take: power cooldowns read the run ledger's own multiplier.
+    // OVH-01c2 conjurer_quick_cast: …and the pilot record's own (×0.75 with the node).
     const deployCooldownS = (swarmPhases ? oneFeelCooldownS(kind) : def.cooldownS)
-      * swarmFieldCooldownScale(state);
+      * swarmFieldCooldownScale(state)
+      * pilotPowerCooldownScale(state);
     const cd = rt.cooldowns[kind] || 0;
     if (!free && now < cd) {
       rt.lastDenial = { kind, reason: 'cooldown', at: now, readyAt: cd };
@@ -1294,6 +1512,13 @@ export const fields = {
     // radii (swarm drops) pass through untouched below.
     if (Number.isFinite(spec.radius)) spec.radius *= swarmFieldRadiusScale(state);
     if (opts && opts.radius > 0) spec.radius = opts.radius;
+    // OVH-01c2 conjurer_echo — the second fire lands at the aim the first one used, and
+    // conjurer_deep_cast — a held Pull key deepens the well it releases (aimed powers only; the
+    // collector knot and the press-fired Shove keep their authored strength).
+    if (opts && opts.center) spec.center = opts.center;
+    if (kind === 'well' && !collector) spec.strength *= pilotPowerDepthScale(state, 'pull');
+    if (opts && Number.isFinite(opts.strength)) spec.strength = opts.strength;
+    if (opts && opts.strengthScale > 0) spec.strength *= opts.strengthScale;
     const cx = spec.center.x, cz = spec.center.z;
 
     // Replacing an empty collector: recall the old emitter first (its cooldown gate passed above).
@@ -1353,7 +1578,10 @@ export const fields = {
           // S1: the kernel record stays normalized, so the phase table rides the deployed
           // receipt; _applySwarmDeployedPhases rewrites strength/damping each force pass.
           swarmFeelPhases: swarmPhases || undefined,
-          baseStrength: spec.strength, baseDamping: spec.damping || 0 };
+          baseStrength: spec.strength, baseDamping: spec.damping || 0,
+          // OVH-01c2 conjurer_combo — names the power whose field this is (key fires and their
+          // echoes; a swarm drop's one-off free deploy stays unnamed).
+          powerVerb: (!free || echoDeploy) ? (kind === 'well' ? 'pull' : 'shove') : undefined };
     if (!free) rt.cooldowns[kind] = now + deployCooldownS;
     rt.lastDenial = null;
 
@@ -1363,6 +1591,19 @@ export const fields = {
     this._emitDeployCue(kind, cx, cz, spec.radius);
     if (kind === 'well') this._pullMarkLockedTarget(state, player, cx, cz, def.radius, fieldId);
     if (collector) this._knots.publish(state, true);
+    // OVH-01c2 conjurer_echo — the key's own fire schedules its second: half strength, 0.5 s of
+    // sim time later, at this same aim point. The queue is bounded and dies on every boundary.
+    if (!free && !collector && pilotHas(state, 'conjurer_echo')) {
+      const queue = this._pilotEcho || (this._pilotEcho = []);
+      if (queue.length >= 8) queue.shift();
+      queue.push({
+        kind,
+        center: { x: cx, z: cz },
+        radius: spec.radius,
+        strength: spec.strength,
+        at: now + PILOT_ECHO_DELAY_S,
+      });
+    }
     // CV-EAR: no generic UI confirm here — each power's own deploy voice arrives via the
     // fields:deployed → accessibility-cue path in audioSystem.
   },
@@ -1394,6 +1635,11 @@ export const fields = {
   _toggleCone(state, rt) {
     const player = this._player(state);
     if (this._deployBlocked(state, player)) return;
+    // R17 / 03 §4: the second press fires the pack. Everything aboard leaves along the nose,
+    // energised, and the Plow closes.
+    if (rt.coneActive && ensurePlow(rt).held.length > 0) {
+      launchPlow({ state, rt, player, bus: this.bus });
+    }
     this._setConeActive(state, rt, !rt.coneActive, FIELD_END_REASONS.toggledOff);
   },
 
@@ -1407,7 +1653,12 @@ export const fields = {
       const fieldId = `field_cone_${player.id}`;
       const coneSpec = playerFieldSpec('cone', player, state);
       const center = coneSpec.center;
-      this._kernel.register({ ...coneSpec, id: fieldId, sourceId: player.id, createdAt: now });
+      // R17: the wedge force shoves SHIPS aside; loose mass is captured by the Plow (plow.js).
+      this._kernel.register({
+        ...coneSpec, id: fieldId, sourceId: player.id, createdAt: now,
+        filters: { ...(coneSpec.filters || {}), types: ['ship'] },
+      });
+      ensurePlow(rt).held.length = 0;
       rt.coneActive = true;
       rt.coneFieldId = fieldId;
       // CV-EAR: the cone's deploy is a fields:deployed emit like every other power (the wedge
@@ -1419,6 +1670,10 @@ export const fields = {
     } else {
       if (rt.coneFieldId) this._kernel.unregister(rt.coneFieldId);
       const wasId = rt.coneFieldId;
+      // Closing for any other reason (disrupted, docked, toggled with nothing aboard) lets go.
+      const dropped = ensurePlow(rt).held.length;
+      ensurePlow(rt).held.length = 0;
+      if (dropped > 0) this.bus.emit('fields:plowDropped', { count: dropped, reason: offReason });
       rt.coneActive = false;
       rt.coneFieldId = null;
       this.bus.emit('fields:coneToggled', { active: false, fieldId: wasId, reason: offReason });
@@ -1439,6 +1694,7 @@ export const fields = {
     this._coneCenter.x = player.pos.x + this._coneDir.x * def.originGap;
     this._coneCenter.z = player.pos.z + this._coneDir.z * def.originGap;
     this._kernel.update(rt.coneFieldId, { center: this._coneCenter, dir: this._coneDir });
+    tickPlow({ state, rt, player, dt: this._familyDt, helpers: this.helpers, bus: this.bus });
   },
 
   /**
@@ -1520,6 +1776,9 @@ export const fields = {
         fieldId,
         kind: 'cone',
         sourceId: entity.id,
+        // The id recycles; the occupant token is the proof the cone still belongs to
+        // the hull that deployed it (deserialize re-stamps it from the live source).
+        sourceGeneration: entity.occupantGeneration ?? null,
         role: deployRole,
         ...(industrial ? { industrial: true, targetId: plan.massId, targetGeneration: plan.massGeneration } : {}),
         holdUntilTick: (state.tick | 0) + NPC_CONE_HOLD_TICKS,
@@ -1565,7 +1824,11 @@ export const fields = {
         ? state.entities.get(sourceId)
         : null);
       const hull = resolved && resolved.alive !== false ? resolved : null;
-      if (!hull) {
+      // A live hull at a recycled id is a foreign occupant, not the cone's deployer —
+      // without the generation proof the cone re-centers on it and inherits the record.
+      const recycled = !!(rec && rec.sourceGeneration != null
+        && (hull ? hull.occupantGeneration : null) !== rec.sourceGeneration);
+      if (!hull || recycled) {
         if (rec && rec.fieldId && this._kernel) this._kernel.unregister(rec.fieldId);
         delete npcFields[sourceId];
         if (rec) this.bus.emit('fields:ended', { fieldId: rec.fieldId, kind: rec.kind, reason: FIELD_END_REASONS.destroyed });
@@ -1717,6 +1980,12 @@ export const fields = {
     }
   },
 
+  _clearPilotQueues() {
+    if (this._pilotEcho) this._pilotEcho.length = 0;
+    if (this._comboTouches) this._comboTouches.clear();
+    if (this._comboQueue) this._comboQueue.length = 0;
+  },
+
   _clearAll(reason, why) {
     const state = this.state;
     if (!state) return;
@@ -1730,6 +1999,11 @@ export const fields = {
     if (this._orbitWorld) resetOrbitWorld(this._orbitWorld);
     this._orbitScanned = false;
     if (this._kernel) this._kernel.clear();
+    // OVH-01c2 — a pending Echo never crosses a boundary, and a stale Combo ledger or queue must
+    // not carry touches into a fresh sector or run.
+    if (this._pilotEcho) this._pilotEcho.length = 0;
+    if (this._comboTouches) this._comboTouches.clear();
+    if (this._comboQueue) this._comboQueue.length = 0;
     this._acceptedFieldAccel = new WeakMap();
     this._fieldForcePass++;
     this._seedLockFieldId = null;
@@ -2004,6 +2278,10 @@ export const fields = {
   },
 
   _applyForces(dt, state, rt) {
+    // Sub-phase attribution for the step profiler: one boolean read per tick when it is off.
+    const ph = getSimStepProfiler();
+    const phOn = ph.active;
+    let phT = phOn ? nowNs() : 0;
     const pass = ++this._fieldForcePass;
     const now = nowOf(state);
     if (this._kernel && typeof this._kernel.expire === 'function') this._kernel.expire(now);
@@ -2031,56 +2309,211 @@ export const fields = {
     if (this._inertTouched) this._inertTouched.clear();
     this._pinWatch.length = 0;
     this._pinWatchSeen.clear();
+    const memberCache = this._tickMemberCache || (this._tickMemberCache = new Map());
+    memberCache.clear();
+    const memberPool = this._tickMemberPool || (this._tickMemberPool = []);
+    let memberPoolIdx = 0;
     const queryRadius = this.helpers && this.helpers.queryRadius;
     const affected = this._affected;
     affected.clear();
     this._massStateFields.clear();
     this._massStateStrengths.clear();
     let queries = 0;
+    const membershipPool = (pass & 1)
+      ? (this._membershipPoolOdd || (this._membershipPoolOdd = []))
+      : (this._membershipPoolEven || (this._membershipPoolEven = []));
+    membershipPool.length = 0;
     // One bounded spatial-hash query per active field, then union cargo/debris/wrecks that the
     // hash never stored because they spawn with collides:false (jettisoned cargo). A well that
     // only tugs colliding hulls is a toy for ships, not a pile-maker.
+    const maxUnionSpanWu = 2000;
+    let useBatch = false;
+    let minFx = Infinity, maxFx = -Infinity, minFz = Infinity, maxFz = -Infinity;
+    const forceFields = this._forceFieldsScratch || (this._forceFieldsScratch = []);
+    const fieldEnvs = this._forceFieldEnvsScratch || (this._forceFieldEnvsScratch = []);
+    const fieldEnvSq = this._forceFieldEnvSqScratch || (this._forceFieldEnvSqScratch = []);
+    forceFields.length = 0;
+    fieldEnvs.length = 0;
+    fieldEnvSq.length = 0;
     for (let i = 0; i < fieldsList.length; i++) {
-      const field = fieldsList[i];
-      if (field.thermal) continue;
-      this._collectFieldCandidates(field, state, this._queryOut);
-      if (typeof queryRadius === 'function') queries++;
-      let fieldAffected = 0;
-      const maxAffected = Number.isFinite(field.maxAffected) ? field.maxAffected : Infinity;
-      for (let j = 0; j < this._queryOut.length; j++) {
-        const e = this._queryOut[j];
-        this._noteFamilyPin(field, e);
-        if (this._forceableBody(e)) {
-          const profile = fieldBodyMembershipProfile(e, this._membershipProfile);
-          // Excluded matter slips the face. It is not a member of this field's
-          // force set, so the impulse below cannot include it.
-          if (fieldExcludesMaterial(field, profile.materialCategory)) {
-            this._noteInertFieldPass(e, field, state);
-            continue;
+      const f = fieldsList[i];
+      if (!f || f.thermal || !f.center) continue;
+      const env = (f.kind === FIELD_KINDS.SHEET || f.kind === FIELD_KINDS.LANE)
+        ? Math.hypot(finite(f.radius, 0), finite(f.halfWidth, 0)) : finite(f.radius, 0);
+      if (!(env > 0)) continue;
+      forceFields.push(f);
+      fieldEnvs.push(env);
+      fieldEnvSq.push(env * env);
+      const cx = finite(f.center.x, 0), cz = finite(f.center.z, 0);
+      if (cx - env < minFx) minFx = cx - env;
+      if (cx + env > maxFx) maxFx = cx + env;
+      if (cz - env < minFz) minFz = cz - env;
+      if (cz + env > maxFz) maxFz = cz + env;
+    }
+    if (forceFields.length >= 2 && (maxFx - minFx) <= maxUnionSpanWu && (maxFz - minFz) <= maxUnionSpanWu) {
+      useBatch = true;
+    }
+    if (useBatch) {
+      const ux = (minFx + maxFx) * 0.5;
+      const uz = (minFz + maxFz) * 0.5;
+      const ur = Math.hypot((maxFx - minFx) * 0.5, (maxFz - minFz) * 0.5);
+      const unionCenter = this._unionCenterScratch || (this._unionCenterScratch = { x: 0, z: 0 });
+      unionCenter.x = ux;
+      unionCenter.z = uz;
+      const unionOpts = this._unionQueryOpts || (this._unionQueryOpts = {
+        sort: false,
+        contains: (e) => {
+          const ex = e.pos.x, ez = e.pos.z;
+          for (let fi = 0; fi < forceFields.length; fi++) {
+            const f = forceFields[fi];
+            const dx = ex - f.center.x, dz = ez - f.center.z;
+            if (dx * dx + dz * dz <= fieldEnvSq[fi] && fieldContainsPoint(f, ex, ez)) return true;
           }
-          if (!fieldAffectsBody(field, profile)) continue;
-          const membership = affected.get(e) || [];
-          membership.push(field);
-          affected.set(e, membership);
-          this._considerMassState(field, e);
-          fieldAffected++;
-          if (fieldAffected >= maxAffected) break;
+          return false;
+        },
+      });
+      const unionOut = this._unionQueryOut || (this._unionQueryOut = []);
+      if (phOn) { ph.record('fields.prep', nowNs() - phT); phT = nowNs(); }
+      queryPhysicalBodies(state, unionCenter, ur, this.helpers, unionOut, unionOpts);
+      if (phOn) { ph.record('fields.query', nowNs() - phT); phT = nowNs(); }
+      if (typeof queryRadius === 'function') queries += forceFields.length;
+      const perFieldOut = this._queryOut;
+      for (let i = 0; i < forceFields.length; i++) {
+        const field = forceFields[i];
+        const fcx = field.center.x, fcz = field.center.z;
+        const envSq = fieldEnvSq[i];
+        perFieldOut.length = 0;
+        for (let k = 0; k < unionOut.length; k++) {
+          const e = unionOut[k];
+          const dx = e.pos.x - fcx, dz = e.pos.z - fcz;
+          if (dx * dx + dz * dz <= envSq && fieldContainsPoint(field, e.pos.x, e.pos.z)) {
+            this._noteFamilyPin(field, e);
+            perFieldOut.push(e);
+          }
+        }
+        const maxAffected = Number.isFinite(field.maxAffected) ? field.maxAffected : Infinity;
+        if (perFieldOut.length > maxAffected) {
+          perFieldOut.sort((a, b) => {
+            const ad = (a.pos.x - fcx) * (a.pos.x - fcx) + (a.pos.z - fcz) * (a.pos.z - fcz);
+            const bd = (b.pos.x - fcx) * (b.pos.x - fcx) + (b.pos.z - fcz) * (b.pos.z - fcz);
+            return ad - bd || (a.id - b.id);
+          });
+        }
+        let fieldAffected = 0;
+        for (let j = 0; j < perFieldOut.length; j++) {
+          const e = perFieldOut[j];
+          if (this._forceableBody(e)) {
+            let profile = memberCache.get(e);
+            if (!profile) {
+              profile = memberPoolIdx < memberPool.length
+                ? memberPool[memberPoolIdx++]
+                : (memberPool[memberPoolIdx++] = {});
+              fieldBodyMembershipProfile(e, profile);
+              memberCache.set(e, profile);
+            }
+            if (fieldExcludesMaterial(field, profile.materialCategory)) {
+              this._noteInertFieldPass(e, field, state);
+              continue;
+            }
+            if (!fieldAffectsBody(field, profile)) continue;
+            let membership = affected.get(e);
+            if (!membership) {
+              membership = this._membershipSpare?.pop() || [];
+              membership.length = 0;
+              affected.set(e, membership);
+              membershipPool.push(membership);
+            }
+            membership.push(field);
+            this._considerMassState(field, e);
+            fieldAffected++;
+            if (fieldAffected >= maxAffected) break;
+          }
         }
       }
+    } else {
+      for (let i = 0; i < fieldsList.length; i++) {
+        const field = fieldsList[i];
+        if (field.thermal) continue;
+        this._collectFieldCandidates(field, state, this._queryOut);
+        if (typeof queryRadius === 'function') queries++;
+        let fieldAffected = 0;
+        const maxAffected = Number.isFinite(field.maxAffected) ? field.maxAffected : Infinity;
+        for (let j = 0; j < this._queryOut.length; j++) {
+          const e = this._queryOut[j];
+          this._noteFamilyPin(field, e);
+          if (this._forceableBody(e)) {
+            let profile = memberCache.get(e);
+            if (!profile) {
+              profile = memberPoolIdx < memberPool.length
+                ? memberPool[memberPoolIdx++]
+                : (memberPool[memberPoolIdx++] = {});
+              fieldBodyMembershipProfile(e, profile);
+              memberCache.set(e, profile);
+            }
+            // Excluded matter slips the face. It is not a member of this field's
+            // force set, so the impulse below cannot include it.
+            if (fieldExcludesMaterial(field, profile.materialCategory)) {
+              this._noteInertFieldPass(e, field, state);
+              continue;
+            }
+            if (!fieldAffectsBody(field, profile)) continue;
+            let membership = affected.get(e);
+            if (!membership) {
+              membership = this._membershipSpare?.pop() || [];
+              membership.length = 0;
+              affected.set(e, membership);
+              membershipPool.push(membership);
+            }
+            membership.push(field);
+            this._considerMassState(field, e);
+            fieldAffected++;
+            if (fieldAffected >= maxAffected) break;
+          }
+        }
+      }
+    }
+    if (phOn) { ph.record('fields.members', nowNs() - phT); phT = nowNs(); }
+    const spare = this._membershipSpare || (this._membershipSpare = []);
+    const stalePool = (pass & 1) ? this._membershipPoolEven : this._membershipPoolOdd;
+    if (stalePool && stalePool.length) {
+      for (let i = 0; i < stalePool.length; i++) {
+        stalePool[i].length = 0;
+        spare.push(stalePool[i]);
+      }
+      stalePool.length = 0;
     }
     // Publish the claimed set — including bodies at convergence equilibrium whose net accel is
     // ~0 this tick. The field owns their motion until they leave the radius; the classifier pin
     // keeps their physics body alive for exactly that window.
     const affectedIds = this._affectedIds || (this._affectedIds = new Set());
-    for (const e of affected.keys()) affectedIds.add(e.id);
+    // R11 / 03 §5: anything a field moves (the player's powers, hazards, an arena's planted well)
+    // is energised for 3 s — what it then slams into is a consequence, not a bump.
+    const energisedUntil = nowOf(state) + 3;
+    const playerId = state.playerId;
+    for (const [e, mf] of affected) {
+      affectedIds.add(e.id);
+      if (e.data && e.id !== playerId) { e.data.energisedUntil = energisedUntil; e.data.energisedHop = 0; }
+      // OVH-01c2 conjurer_combo — field membership is the power's touch, equilibrium or not.
+      this._noteFieldComboTouches(state, rt, e, mf);
+    }
     const accel = this._accel;
+    const impulseOpts = this._impulseOptsScratch || (this._impulseOptsScratch = {
+      scaleEnvironment: false, continuous: true, dt: 0,
+    });
+    impulseOpts.dt = dt;
+    const leanDelivery = simCoreFlag('fieldLeanDelivery');
+    const deliveredScratch = this._deliveredScratch || (this._deliveredScratch = { accepted: false, x: 0, y: 0, z: 0 });
     let affectedCount = 0, accelSum = 0;
-    for (const e of affected.keys()) {
+    for (const [e, mf] of affected) {
       const massStateField = this._massStateFields.get(e);
       if (massStateField) this._refreshMassState(state, e, massStateField);
-      const profile = this._profileFor(e, state);
+      const cachedMember = memberCache.get(e);
+      const profile = cachedMember
+        ? fieldBodyProfile(e, state, cachedMember, true)
+        : fieldBodyProfile(e, state, this._bodyProfile);
+      profile.primed = this._isPrimedLight(e, state);
       const velSample = fieldVelocityTermApplies(e, profile) ? e.vel : null;
-      sampleFieldAcceleration(e.pos, velSample, affected.get(e), now, profile, accel, this._wellContributions);
+      sampleFieldAcceleration(e.pos, velSample, mf, now, profile, accel, this._wellContributions);
       if (accel.ax === 0 && accel.az === 0) continue;
       // p = a·m·dt, where m must be the mass the SOLVER will use this tick — not the authored one.
       // A Well pins the very bodies it pulls (massScale 6) and a Repulsor unmoors the ones it shoves
@@ -2098,17 +2531,29 @@ export const fields = {
       impulse.x = accel.ax * mass * dt;
       impulse.y = 0;
       impulse.z = accel.az * mass * dt;
-      const evidence = this._fieldEvidence(e, affected.get(e), state, profile);
-      const delivered = deliverPhysicalImpulseDetailed(state, e, impulse, evidence,
-        { scaleEnvironment: false, continuous: true, dt });
-      if (!delivered.accepted) continue;
+      const evidence = this._fieldEvidence(e, mf, state, profile);
+      let deliveredX, deliveredZ;
+      if (leanDelivery) {
+        const delivered = deliverContinuousImpulseInto(state, e, impulse, evidence, dt, deliveredScratch);
+        if (!delivered.accepted) continue;
+        deliveredX = delivered.x; deliveredZ = delivered.z;
+      } else {
+        const delivered = deliverPhysicalImpulseDetailed(state, e, impulse, evidence, impulseOpts);
+        if (!delivered.accepted) continue;
+        deliveredX = delivered.impulse.x; deliveredZ = delivered.impulse.z;
+      }
       let feedback = this._acceptedFieldAccel.get(e);
       if (!feedback) { feedback = {}; this._acceptedFieldAccel.set(e, feedback); }
-      feedback.ax = delivered.impulse.x / (mass * dt);
-      feedback.az = delivered.impulse.z / (mass * dt);
+      feedback.ax = deliveredX / (mass * dt);
+      feedback.az = deliveredZ / (mass * dt);
       feedback.tick = state.tick; feedback.pass = pass;
       feedback.generation = e.occupantGeneration;
-      feedback.fields = affected.get(e);
+      if (feedback.fields) {
+        feedback.fields.length = 0;
+        if (mf) for (let fi = 0; fi < mf.length; fi++) feedback.fields.push(mf[fi]);
+      } else {
+        feedback.fields = affected.get(e).slice();
+      }
       if (evidence?.provenance?.actorId != null) recordImpulseProvenance(e, {
         ...evidence.provenance, magnitude: Math.hypot(impulse.x, impulse.z), appliedTick: state.tick,
       });
@@ -2118,10 +2563,12 @@ export const fields = {
       affectedCount++;
       accelSum += Math.hypot(accel.ax, accel.az);
     }
+    if (phOn) { ph.record('fields.forces', nowNs() - phT); phT = nowNs(); }
     this._detectWellGrind(state);
     this._flushEndedWells(state);
     this._publishClusterWatch(state);
     this._flushInertOccupancy();
+    if (phOn) ph.record('fields.post', nowNs() - phT);
     return { queries, affected: affectedCount, accelSum };
   },
 

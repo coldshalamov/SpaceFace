@@ -22,6 +22,7 @@ import { COMMODITIES } from '../data/commodities.js';
 import { commodityDisplayName } from './commodityNames.js';
 import { SECTORS } from '../data/sectors.js';
 import { hash32 } from '../core/rng.js';
+import { stationLiveEvents } from '../economy/marketModel.js';
 import { deedsFor, markNoted, wasNoted } from '../systems/deedRecord.js';
 import { deedLine } from '../data/deedPhrases.js';
 import {
@@ -203,8 +204,8 @@ export function buildEventCard(ev, opts = {}) {
  */
 export function cardsForStation(state, stationId, opts = {}) {
   const seed = (opts.seed >>> 0) || ((state && state.meta && (hash32(state.meta.seed) >>> 0)) || 0);
-  const econ = state && state.economy;
-  const events = (econ && econ.econEvents) || [];
+  // Scheduled windows + injected rows — the closed form enumerates both, live at t.
+  const events = stationLiveEvents(state, stationId);
   const out = [];
   for (const ev of events) {
     if (ev.stationId !== stationId) continue;
@@ -814,15 +815,37 @@ export function createMarketNews(ctx) {
     const span = document.createElement('span');
     span.className = 'sf-news-ticker__item sf-news-ticker__item--' + (item.kind || 'event');
     span.textContent = item.text;
+    span.title = item.text;
     el.appendChild(span);
     setTickerHostVisible(true);
     // Legibility floor: the flight tape is narrow, and after the BAND / COMMS / HAIL chrome a
     // headline can be squeezed to a couple of characters ("TR…"), which reads as broken text.
     // Flight already surfaces news through the one-voice alert floor, so below a readable width
     // the tape stays chrome-only instead of showing a truncated stub.
-    // 64 px still passed "TRAGE…" (seen live 2026-09-23): a stub is broken below about a dozen
-    // characters, so the floor is a readable headline width, not a couple of glyphs.
-    if (el.clientWidth > 0 && el.clientWidth < TICKER_LEGIBLE_PX) setTickerHostVisible(false);
+    if (el.clientWidth > 0 && el.clientWidth < TICKER_LEGIBLE_PX) {
+      setTickerHostVisible(false);
+    } else if (el.clientWidth > 0 && typeof window !== 'undefined' && typeof getComputedStyle === 'function') {
+      // Headlines wrap cleanly up to 2–3 lines with zero ellipsis. Only an exceptionally long wire
+      // (>3 lines) scrolls horizontally once when motion is enabled; reduced-motion always wraps in full.
+      const reducedMotion = !!(state.settings?.video?.motionReduce
+        || state.settings?.accessibility?.reducedMotion
+        || document.documentElement?.classList?.contains?.('sf-reduce-motion')
+        || (typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches));
+      if (!reducedMotion) {
+        const lh = parseFloat(getComputedStyle(span).lineHeight) || 16;
+        if (span.scrollHeight > lh * 3.4) {
+          span.classList.add('is-scroll-once');
+          const overflowPx = Math.max(0, Math.ceil(span.scrollWidth - el.clientWidth));
+          if (overflowPx > 8) {
+            const durS = Math.max(3.5, Math.min(8, overflowPx / 52));
+            span.style.setProperty('--sf-news-scroll-shift', `${-overflowPx}px`);
+            span.style.setProperty('--sf-news-scroll-dur', `${durS.toFixed(2)}s`);
+          } else {
+            span.classList.remove('is-scroll-once');
+          }
+        }
+      }
+    }
     scheduleTicker(items);
   }
 

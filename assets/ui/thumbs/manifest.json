@@ -1,0 +1,371 @@
+{
+  "generator": "Imagen + sharp studio sprite slicer",
+  "files": {
+    "ore_iron.webp": {
+      "source": "atlas_materials_raw_attempt2_1794874455865.jpg",
+      "cell": [
+        0,
+        0
+      ]
+    },
+    "ore_precious.webp": {
+      "source": "atlas_materials_raw_attempt2_1794874455865.jpg",
+      "cell": [
+        0,
+        1
+      ]
+    },
+    "ore_rare.webp": {
+      "source": "atlas_materials_raw_attempt2_1794874455865.jpg",
+      "cell": [
+        0,
+        2
+      ]
+    },
+    "ice_water.webp": {
+      "source": "atlas_materials_raw_attempt2_1794874455865.jpg",
+      "cell": [
+        1,
+        0
+      ]
+    },
+    "silicate.webp": {
+      "source": "atlas_materials_raw_attempt2_1794874455865.jpg",
+      "cell": [
+        1,
+        1
+      ]
+    },
+    "crystal_quartz.webp": {
+      "source": "atlas_materials_raw_attempt2_1794874455865.jpg",
+      "cell": [
+        1,
+        2
+      ]
+    },
+    "gas_cylinder.webp": {
+      "source": "atlas_materials_raw_attempt2_1794874455865.jpg",
+      "cell": [
+        2,
+        0
+      ]
+    },
+    "bio_specimen.webp": {
+      "source": "atlas_materials_raw_attempt2_1794874455865.jpg",
+      "cell": [
+        2,
+        1
+      ]
+    },
+    "exotic_xenium.webp": {
+      "source": "atlas_materials_raw_attempt2_1794874455865.jpg",
+      "cell": [
+        2,
+        2
+      ]
+    },
+    "refined_metals.webp": {
+      "source": "atlas_goods_industrial_1794874420624.jpg",
+      "cell": [
+        0,
+        0
+      ]
+    },
+    "alloys.webp": {
+      "source": "atlas_goods_industrial_1794874420624.jpg",
+      "cell": [
+        0,
+        1
+      ]
+    },
+    "polymers.webp": {
+      "source": "atlas_goods_industrial_1794874420624.jpg",
+      "cell": [
+        0,
+        2
+      ]
+    },
+    "fuel_cells.webp": {
+      "source": "atlas_goods_industrial_1794874420624.jpg",
+      "cell": [
+        1,
+        0
+      ]
+    },
+    "circuitry.webp": {
+      "source": "atlas_goods_industrial_1794874420624.jpg",
+      "cell": [
+        1,
+        1
+      ]
+    },
+    "quantum_core.webp": {
+      "source": "atlas_goods_industrial_1794874420624.jpg",
+      "cell": [
+        1,
+        2
+      ]
+    },
+    "medical_supply.webp": {
+      "source": "atlas_goods_industrial_1794874420624.jpg",
+      "cell": [
+        2,
+        0
+      ]
+    },
+    "contraband.webp": {
+      "source": "atlas_goods_industrial_1794874420624.jpg",
+      "cell": [
+        2,
+        1
+      ]
+    },
+    "munitions.webp": {
+      "source": "atlas_goods_industrial_1794874420624.jpg",
+      "cell": [
+        2,
+        2
+      ]
+    },
+    "bomb_frag.webp": {
+      "source": "atlas_ordnance_fortify_1794874424323.jpg",
+      "cell": [
+        0,
+        0
+      ]
+    },
+    "bomb_concussion.webp": {
+      "source": "atlas_ordnance_fortify_1794874424323.jpg",
+      "cell": [
+        0,
+        1
+      ]
+    },
+    "bomb_emp.webp": {
+      "source": "atlas_ordnance_fortify_1794874424323.jpg",
+      "cell": [
+        0,
+        2
+      ]
+    },
+    "bomb_goo.webp": {
+      "source": "atlas_ordnance_fortify_1794874424323.jpg",
+      "cell": [
+        1,
+        0
+      ]
+    },
+    "bomb_singularity.webp": {
+      "source": "atlas_ordnance_fortify_1794874424323.jpg",
+      "cell": [
+        1,
+        1
+      ]
+    },
+    "fortify_turret.webp": {
+      "source": "atlas_ordnance_fortify_1794874424323.jpg",
+      "cell": [
+        1,
+        2
+      ]
+    },
+    "fortify_pylon.webp": {
+      "source": "atlas_ordnance_fortify_1794874424323.jpg",
+      "cell": [
+        2,
+        0
+      ]
+    },
+    "fortify_tesla.webp": {
+      "source": "atlas_ordnance_fortify_1794874424323.jpg",
+      "cell": [
+        2,
+        1
+      ]
+    },
+    "fortify_reflector.webp": {
+      "source": "atlas_ordnance_fortify_1794874424323.jpg",
+      "cell": [
+        2,
+        2
+      ]
+    },
+    "wpn_pulse_laser.webp": {
+      "source": "atlas_weapons_stations_1794874423334.jpg",
+      "cell": [
+        0,
+        0
+      ]
+    },
+    "wpn_beam_laser.webp": {
+      "source": "atlas_weapons_stations_1794874423334.jpg",
+      "cell": [
+        0,
+        1
+      ]
+    },
+    "wpn_railgun.webp": {
+      "source": "atlas_weapons_stations_1794874423334.jpg",
+      "cell": [
+        0,
+        2
+      ]
+    },
+    "wpn_torpedo.webp": {
+      "source": "atlas_weapons_stations_1794874423334.jpg",
+      "cell": [
+        1,
+        0
+      ]
+    },
+    "wpn_disc.webp": {
+      "source": "atlas_weapons_stations_1794874423334.jpg",
+      "cell": [
+        1,
+        1
+      ]
+    },
+    "wpn_arc.webp": {
+      "source": "atlas_weapons_stations_1794874423334.jpg",
+      "cell": [
+        1,
+        2
+      ]
+    },
+    "wpn_thermal.webp": {
+      "source": "atlas_weapons_stations_1794874423334.jpg",
+      "cell": [
+        2,
+        0
+      ]
+    },
+    "base_refinery.webp": {
+      "source": "atlas_weapons_stations_1794874423334.jpg",
+      "cell": [
+        2,
+        1
+      ]
+    },
+    "base_teleporter.webp": {
+      "source": "atlas_weapons_stations_1794874423334.jpg",
+      "cell": [
+        2,
+        2
+      ]
+    },
+    "bomb_thermite.webp": {
+      "source": "atlas_misc_gear_1794874536693.jpg",
+      "cell": [
+        0,
+        0
+      ]
+    },
+    "bomb_scrambler.webp": {
+      "source": "atlas_misc_gear_1794874536693.jpg",
+      "cell": [
+        0,
+        1
+      ]
+    },
+    "bomb_anchor.webp": {
+      "source": "atlas_misc_gear_1794874536693.jpg",
+      "cell": [
+        0,
+        2
+      ]
+    },
+    "fortify_gravity_beacon.webp": {
+      "source": "atlas_misc_gear_1794874536693.jpg",
+      "cell": [
+        1,
+        0
+      ]
+    },
+    "mod_cloak.webp": {
+      "source": "atlas_misc_gear_1794874536693.jpg",
+      "cell": [
+        1,
+        1
+      ]
+    },
+    "mod_line_head.webp": {
+      "source": "atlas_misc_gear_1794874536693.jpg",
+      "cell": [
+        1,
+        2
+      ]
+    },
+    "mod_drone_bay.webp": {
+      "source": "atlas_misc_gear_1794874536693.jpg",
+      "cell": [
+        2,
+        0
+      ]
+    },
+    "salvage_wreck.webp": {
+      "source": "atlas_misc_gear_1794874536693.jpg",
+      "cell": [
+        2,
+        1
+      ]
+    },
+    "luxury_trunk.webp": {
+      "source": "atlas_misc_gear_1794874536693.jpg",
+      "cell": [
+        2,
+        2
+      ]
+    },
+    "ore_copper.webp": {
+      "derivedFrom": "ore_precious.webp"
+    },
+    "ore_gold.webp": {
+      "derivedFrom": "ore_precious.webp"
+    },
+    "ore_silver.webp": {
+      "derivedFrom": "ore_rare.webp"
+    },
+    "ore_nickel.webp": {
+      "derivedFrom": "ore_rare.webp"
+    },
+    "ore_platinum.webp": {
+      "derivedFrom": "ore_rare.webp"
+    },
+    "ore_titanium.webp": {
+      "derivedFrom": "ore_iron.webp"
+    },
+    "ore_stellarite.webp": {
+      "derivedFrom": "exotic_xenium.webp"
+    },
+    "gem_emerald.webp": {
+      "derivedFrom": "crystal_quartz.webp"
+    },
+    "gem_ruby.webp": {
+      "derivedFrom": "crystal_quartz.webp"
+    },
+    "crystal_lumin.webp": {
+      "derivedFrom": "crystal_quartz.webp"
+    },
+    "gem_prism.webp": {
+      "derivedFrom": "crystal_quartz.webp"
+    },
+    "gas_helium3.webp": {
+      "derivedFrom": "gas_cylinder.webp"
+    },
+    "ice_volatiles.webp": {
+      "derivedFrom": "ice_water.webp"
+    },
+    "purified_silica.webp": {
+      "derivedFrom": "refined_metals.webp"
+    },
+    "food_provisions.webp": {
+      "derivedFrom": "medical_supply.webp"
+    },
+    "bio_chitin.webp": {
+      "derivedFrom": "bio_specimen.webp"
+    },
+    "tech_electronics.webp": {
+      "derivedFrom": "circuitry.webp"
+    }
+  }
+}

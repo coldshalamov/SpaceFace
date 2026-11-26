@@ -548,6 +548,9 @@ const DYNAMIC_FORWARD = [
 const LEGACY_FORWARD = [
   // Preserve these existing public bridge contracts while current literal scanning
   // does not rediscover their dynamic or symmetric call sites. No new actions.
+  // CARGO-BUILD-1: sim-side subs live behind cargo.js's `subscribe(binding, 'type', fn)`
+  // helper, which the literal scan cannot classify — the hud.js emitters are real.
+  'cargo:jettisonStack', 'cargo:mergeStacks', 'cargo:moveStack', 'cargo:sortBag', 'cargo:splitStack',
   'encounter:resolved', 'industrialDisasters:command',
   'industrialDisasters:presentationReady', 'industrialDisasters:requirePresentation',
   'ledger:evidenceLinked', 'race:restart', 'rigWorkshop:choose',

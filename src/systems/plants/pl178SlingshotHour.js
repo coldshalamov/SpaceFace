@@ -80,6 +80,20 @@ export function laneWidthAt(pos, stream) {
   return { t, w: Math.hypot(pos.x - px, pos.z - pz) };
 }
 
+/**
+ * A hull holding the brake owns its own deceleration. The stream is a free ride for a pilot who
+ * lets it carry them; it is not a source of thrust that can out-vote a deliberate stop. True when
+ * the live sim input has the brake asserted — the pilot's brake, or the flight computer's on a
+ * docking approach, which writes `state.input.brake` through the same seam.
+ */
+export function hullHoldsBrake(state, player) {
+  if (!state || !player || player.id !== state.playerId) return false;
+  const input = state.input || {};
+  if (input.brake === true) return true;
+  const actions = input.actions || null;
+  return !!(actions && actions.brake === true);
+}
+
 export function createPl178SlingshotHour() {
   return {
     name: 'plantsPl178',
@@ -239,10 +253,19 @@ export function createPl178SlingshotHour() {
       const stream = this._stream;
 
       // Ride the stream: a real push along the lane while the player holds the corridor.
+      //
+      // The stream carries a hull that lets it. It never overrides a brake: a hull holding the
+      // brake — the pilot's own, or the flight computer's on a berth run — is deliberately
+      // spending speed, and a push sized at the brake's own authority (rideDvPerS 40 against the
+      // starter's ~40 wu/s² brake) then pins the hull at whatever speed it entered with. Measured
+      // on the Helios approach: the after-throw berth run held 17.5 wu/s while the computer
+      // commanded a full brake for eight seconds, crossed the berth at 18 wu/s against its
+      // 12 wu/s gate, and the overshoot fell out of the lane into the far-side orbit escape
+      // (DEMO-BERTH-1). A braking hull is not riding.
       const player = this._get(s.playerId);
       if (player && player.pos) {
         const { t: pt, w } = laneWidthAt(player.pos, stream);
-        if (w <= t.laneHalfWidthWu && pt >= 0 && pt <= 1) {
+        if (w <= t.laneHalfWidthWu && pt >= 0 && pt <= 1 && !hullHoldsBrake(s, player)) {
           if (player.mass > 0) {
             queuePhysicsImpulse(player, {
               x: stream.flow.x * t.rideDvPerS * player.mass * step,

@@ -330,7 +330,8 @@ export function resolveWeaponImpulseForHit(weapon, damage) {
   if (!weapon || typeof weapon !== 'object') return null;
   const authoredDamage = positive(weapon.dmg, 0);
   const actualDamage = nonNegative(damage);
-  const fraction = authoredDamage > 0 ? clamp(actualDamage / authoredDamage, 0, 4) : 0;
+  // A pure-kick gun (the Tumbler, 03 §10) authors no damage: a landed hit carries its full impulse.
+  const fraction = authoredDamage > 0 ? clamp(actualDamage / authoredDamage, 0, 4) : (weapon.pureImpulse === true ? 1 : 0);
   const magnitude = nonNegative(weapon.impulsePerHit) * fraction;
   const tumbleTorque = nonNegative(weapon.tumbleTorque) * fraction;
   const provenance = stableTag(weapon.impulseProvenance);
@@ -359,6 +360,20 @@ export function recordImpulseProvenance(entity, input = {}) {
     magnitude: nonNegative(input.magnitude),
     ...(input.sourceOwnerId != null ? { sourceOwnerId: input.sourceOwnerId } : {}),
     ...(inheritedHold != null ? { holdUntilTick: inheritedHold } : {}),
+    // OVH-01c1 kick stamp — "a body you kicked" carries { by, at, impulse } on the SAME
+    // provenance record (the packet's contract: extend the existing attribution, never a
+    // parallel field). `at` is simTime seconds; `impulse` is the applied momentum vector;
+    // `kickHops` counts hand-offs between bodies (0 on the projectile kick itself).
+    ...(input.by != null ? {
+      by: input.by,
+      at: Number.isFinite(input.at) ? input.at : 0,
+      impulse: input.impulse && Number.isFinite(input.impulse.x) && Number.isFinite(input.impulse.z)
+        ? Object.freeze({ x: input.impulse.x, z: input.impulse.z }) : null,
+      kickHops: nonNegativeInteger(input.kickHops),
+      // A handed-on stamp keeps the original kick's identity so "once per kick"
+      // (billiards' single kill) survives the hop onto the next body.
+      ...(input.kickRoot ? { kickRoot: input.kickRoot } : {}),
+    } : {}),
   });
   RECENT_IMPULSES.set(entity, record);
   IMPULSE_PROVENANCE_GENERATION = (IMPULSE_PROVENANCE_GENERATION + 1) >>> 0 || 1;
@@ -369,7 +384,8 @@ export function recordImpulseProvenance(entity, input = {}) {
   return record;
 }
 
-export function readRecentImpulseProvenance(entity, tick, maxAgeTicks = IMPULSE_PROVENANCE_MAX_AGE_TICKS) {
+export function readRecentImpulseProvenance(entity, tick, maxAgeTicks = IMPULSE_PROVENANCE_MAX_AGE_TICKS,
+  observeOnly = false) {
   if (!entity || typeof entity !== 'object') return null;
   const record = RECENT_IMPULSES.get(entity) || null;
   if (!record) return null;
@@ -380,7 +396,8 @@ export function readRecentImpulseProvenance(entity, tick, maxAgeTicks = IMPULSE_
   // knocked loose is still the player's kill on the far side of a 4 s flight.
   const held = record.holdUntilTick != null && now <= record.holdUntilTick;
   if (age < 0 || (age > maxAge && !held)) {
-    clearImpulseProvenance(entity);
+    // A deferred contact can ask about an earlier tick. Its query cannot retire a newer cause.
+    if (!observeOnly) clearImpulseProvenance(entity);
     return null;
   }
   return record;
@@ -421,10 +438,55 @@ export function holdImpulseProvenance(entity, untilTick, nowTick, causeAppliedTi
   return held;
 }
 
+// OVH-01c1 — the kick stamp's freshness window: 4 s of simulation time, measured off the
+// record's `at` (simTime at the kick), not the tick window the ordinary provenance uses.
+export const KICK_STAMP_WINDOW_S = 4;
+
+/**
+ * Read a body's fresh player kick stamp, or null. The stamp is the player-only slice of the
+ * ordinary impulse-provenance record (`by`), so NPC kicks never carry one and a stale record
+ * reads as no kick. Pure read — it never mutates the maps.
+ */
+export function readKickStamp(entity, state) {
+  if (!entity || typeof entity !== 'object' || !state) return null;
+  const record = RECENT_IMPULSES.get(entity) || null;
+  if (!record || record.by == null || record.by !== state.playerId) return null;
+  const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+  const at = Number.isFinite(record.at) ? record.at : -Infinity;
+  if (!(now - at >= 0 && now - at <= KICK_STAMP_WINDOW_S)) return null;
+  return Object.freeze({
+    by: record.by,
+    at,
+    impulse: record.impulse || null,
+    kickHops: Number.isInteger(record.kickHops) ? record.kickHops : 0,
+    record,
+  });
+}
+
+// Once-per-kick bookkeeping for bruiser_billiards: a stamp spends its single killing hit on
+// the body carrying it — and the spend keys on the kick's ROOT record, so a stamp that hopped
+// onto a second body (kickRoot) still counts the same kick. WeakSet-backed like the rest of
+// this module so saves never see it; a fresh kick writes a fresh root and earns a new allowance.
+const KICK_STAMP_SPENT = new WeakSet();
+function kickStampRoot(stamp) {
+  const record = stamp && stamp.record;
+  return record ? (record.kickRoot || record) : null;
+}
+export function isKickStampSpent(entity, stamp) {
+  const root = kickStampRoot(stamp);
+  return !!entity && !!root && KICK_STAMP_SPENT.has(root);
+}
+export function markKickStampSpent(entity, stamp) {
+  const root = kickStampRoot(stamp);
+  if (!entity || !root) return;
+  KICK_STAMP_SPENT.add(root);
+}
+
 // Immutable insertion-order view for consumers that must not lose an earlier same-tick impulse when
 // another hit becomes the compatibility/latest record. Filtering is destructive just like the
 // latest reader's stale path, but it never changes which record the latest reader returns.
-export function readRecentImpulseProvenanceHistory(entity, tick, maxAgeTicks = IMPULSE_PROVENANCE_MAX_AGE_TICKS) {
+export function readRecentImpulseProvenanceHistory(entity, tick, maxAgeTicks = IMPULSE_PROVENANCE_MAX_AGE_TICKS,
+  observeOnly = false) {
   if (!entity || typeof entity !== 'object') return EMPTY_IMPULSE_HISTORY;
   const history = RECENT_IMPULSE_HISTORY.get(entity) || EMPTY_IMPULSE_HISTORY;
   if (history.length === 0) return history;
@@ -435,6 +497,7 @@ export function readRecentImpulseProvenanceHistory(entity, tick, maxAgeTicks = I
     return age >= 0 && age <= maxAge;
   });
   if (recent.length === history.length) return history;
+  if (observeOnly) return recent.length > 0 ? Object.freeze(recent) : EMPTY_IMPULSE_HISTORY;
   if (recent.length === 0) {
     RECENT_IMPULSE_HISTORY.delete(entity);
     return EMPTY_IMPULSE_HISTORY;
@@ -450,6 +513,10 @@ export function clearImpulseProvenance(entity) {
     RECENT_IMPULSE_HISTORY.delete(entity);
   }
 }
+
+/** 03 §5: an uncaused bump takes at most this share of the struck hull (and never the last point). */
+export const UNCAUSED_HULL_SHARE = 0.15;
+function finiteOr(v, fb) { const n = Number(v); return Number.isFinite(n) ? n : fb; }
 
 export function resolveCollisionConsequence(input = {}) {
   const target = input.target;
@@ -482,6 +549,13 @@ export function resolveCollisionConsequence(input = {}) {
     ? 'tumble'
     : deltaV >= COLLISION_CONSEQUENCE_LIMITS.staggerDeltaV ? 'stagger' : 'none';
   if (!collisionAllowsHelmLoss(surface, provenance, deltaV)) control = 'none';
+  // R11 / 03 §5 / ledger D19 — the calm world's one safety net. A contact where NEITHER body was
+  // moved by the player or a hazard in the last 3 s (no causal provenance: no gun kick, throw,
+  // shove, pull, plow, ram, freight...) and neither body is the player is a bump: it cannot
+  // tumble, cannot kill, and takes at most UNCAUSED_HULL_SHARE of hull. The caller decides
+  // `uncaused`; physics (the bounce itself) is untouched.
+  const uncaused = input.uncaused === true;
+  if (uncaused) control = 'none';
   const staggerRange = COLLISION_CONSEQUENCE_LIMITS.tumbleDeltaV - COLLISION_CONSEQUENCE_LIMITS.staggerDeltaV;
   const stagger01 = clamp((deltaV - COLLISION_CONSEQUENCE_LIMITS.staggerDeltaV) / staggerRange, 0, 1);
   const staggerTicks = control === 'none'
@@ -531,7 +605,16 @@ export function resolveCollisionConsequence(input = {}) {
     // CH-02 (CRAFT_RAM_LAW): the damage reads the victim's mass-ratio share of the pre-solve
     // closing speed whenever the solver bound truncated it. Control, the receipt's `deltaV`
     // and every reader of them keep the solver's number.
-    if (surface === 'craft' && surfaceDamageMultiplier > 0) {
+    // The debris surface reads the same law: a wreck, a freight pod or a fracture shard is dead
+    // craft matter, and the owner's game is throwing exactly that matter into hulls ("wreckage
+    // you can throw", 03 §6.1 — a chain kill is a wreck carrying the player's cause into the
+    // next hull). Restricting the share to live craft left the debris class reading the solver's
+    // rate-limited exchange alone, so a wreck meeting a hull at 70+ WU/s crumpled itself (the
+    // hull side is craft) while the hull took literally nothing — the thrown-ammunition verb
+    // pq-154 pins was unobservable on the native path. Mass ratio and the minShare floor keep
+    // gentle freight contact soft: a light pod's share of a bump never clears the crumple floor,
+    // and the uncaused/energised net still caps everything else.
+    if ((surface === 'craft' || surface === 'debris') && surfaceDamageMultiplier > 0) {
       const share = craftRamDeltaV(
         input.preSolveClosingSpeed,
         mass,
@@ -551,6 +634,11 @@ export function resolveCollisionConsequence(input = {}) {
         }
       }
     }
+  }
+  if (uncaused && impactDamage > 0) {
+    const hullMax = positive(target.hullMax, 0);
+    const hull = Math.max(0, finiteOr(target.hull, hullMax));
+    impactDamage = Math.min(impactDamage, hullMax * UNCAUSED_HULL_SHARE, Math.max(0, hull - 1));
   }
   const damage01 = damageCap > 0
     ? impactDamage / damageCap : 0;
@@ -583,8 +671,9 @@ export function resolveCollisionConsequence(input = {}) {
     // CH-02: present only when the ram law raised the damage — the Δv the damage read.
     ...(ramDeltaV > 0 ? { ramDeltaV } : {}),
     control,
-    staggerTicks,
+    staggerTicks: uncaused ? 0 : staggerTicks,
     impactDamage,
+    ...(uncaused ? { uncaused: true } : {}),
     debrisCount,
     pos: freezePoint(input.pos),
     normal: freezeDirection(input.normal),
@@ -675,9 +764,9 @@ function collisionProvenance(input) {
 }
 
 function recentImpulseMatches(target, other, actorId, tick) {
-  const onTarget = readRecentImpulseProvenance(target, tick);
+  const onTarget = readRecentImpulseProvenance(target, tick, undefined, true);
   if (onTarget && onTarget.actorId === actorId && onTarget.tag && onTarget.tag !== 'environment') return true;
-  const onOther = readRecentImpulseProvenance(other, tick);
+  const onOther = readRecentImpulseProvenance(other, tick, undefined, true);
   return !!(onOther && onOther.actorId === actorId && onOther.tag && onOther.tag !== 'environment');
 }
 

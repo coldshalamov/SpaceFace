@@ -5,7 +5,9 @@
 //   node scripts/fleet/game-lock.mjs run -- node scripts/fleet/looks/beat-shots.mjs --beat=raid --out=.devshots/fleet/beats/raid
 //
 // Writes <out>/beat-<key>-<n>.png and <out>/beat-<key>.json (current beat, objective line, nearby entities).
-import { chromium } from 'playwright';
+import { chromium as rawChromium } from 'playwright';
+import { quietChromium } from '../../lib/quietLaunch.mjs';
+const chromium = quietChromium(rawChromium);
 import { spawn } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';

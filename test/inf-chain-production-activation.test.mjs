@@ -22,12 +22,23 @@ test('production Node host activates event-only chain owner and bridges native w
   const player=runtime.spawn(makeShipEntitySpec('ship_kestrel',{isPlayer:true,team:0,pos:{x:-250,z:0},fittings:[]}));state.playerId=player.id;
   const ship=(x,vx)=>runtime.spawn({type:'ship',team:1,pos:{x,z:0},vel:{x:vx,z:0},radius:12,mass:25,hull:1,hullMax:100,shield:0,shieldMax:0,armorHp:0,armorMax:0,collides:true,
    physicsBody:{schemaVersion:1,radius:12,mass:25,inertiaY:40,dynamic:true,ccd:true,material:'ship',revision:0},data:{defId:'ship_wasp',shipClass:'fighter',combatProfileId:'combat_profile_standard_ship'}});
-  const first=ship(0,75), second=ship(220,0), events=[];
+  const first=ship(0,75), events=[];
   const step=async(n=1)=>{const reply=await lane.tick({tick:++tick,steps:n,ackEnd:init.initRebuild?.end??0,commands:[]});events.push(...reply.events);};
   await step();const combat=registry.get('combat');combat.kill(first,player.id,{origin:{kind:'weapon',id:'wpn_autocannon_s'},packet:{source:{kind:'weapon',weaponId:'wpn_autocannon_s'}}});
+  await step(); // the kill-wreck body mints on the deferred lane inside this step's lifetimeSweep
   const wreck=[...state.entities.values()].find(e=>e.type==='wreck'&&e.data?.markerId&&e.data?.aftermath?.victimId===first.id) || [...state.entities.values()].find(e=>e.type==='wreck'&&e.data?.markerId);
   assert.ok(wreck,'actual aftermath wreck');await step();assert.ok(currentChainWreckWitness(state,wreck));
   combat.onHit({targetId:wreck.id,ownerId:player.id,weaponId:'wpn_autocannon_s',damagePacket:{channels:{kinetic:0},impulse:{x:100,z:0},source:{kind:'weapon',weaponId:'wpn_autocannon_s',impulseProvenance:'weapon_hit'}}});
+  // The victim is spawned late, directly on the wreck's live velocity line. Anything spawned
+  // up front inside the player's activation bubble is a combatant the production tactical stack
+  // flies — it accelerates away long before a coasting wreck can cross a long approach (correct
+  // game behavior, useless fixture) — while a hull spawned close aboard physically cannot clear
+  // its own radius sum in the handful of ticks before contact, whatever it decides. The line is
+  // computed from the wreck's live motion rather than pinned constants because the minted wreck
+  // separates from its own kill cloud with a small lateral knock, so a fixed z drifts off target.
+  const wreckSpeed=Math.max(1e-6,Math.hypot(wreck.vel.x,wreck.vel.z));
+  const second=runtime.spawn({type:'ship',team:1,pos:{x:wreck.pos.x+wreck.vel.x/wreckSpeed*32,z:wreck.pos.z+wreck.vel.z/wreckSpeed*32},vel:{x:0,z:0},radius:12,mass:25,hull:1,hullMax:100,shield:0,shieldMax:0,armorHp:0,armorMax:0,collides:true,
+   physicsBody:{schemaVersion:1,radius:12,mass:25,inertiaY:40,dynamic:true,ccd:true,material:'ship',revision:0},data:{defId:'ship_wasp',shipClass:'fighter',combatProfileId:'combat_profile_standard_ship'}});
   for(let i=0;i<240 && second.alive;i++)await step();
   assert.equal(second.alive,false,'actual native collision killed the second original');
   const receipts=events.filter(e=>e.t==='combat:chainKill');assert.equal(receipts.length,1);

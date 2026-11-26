@@ -8,6 +8,16 @@
 //   INTERACT — contextual verb from target: sell / buy / load / unload / dock / repair / build
 //   GUARD    — follow an entity, engage hostiles (how escorts work — allied NPC, no new engine)
 //   WAIT     — on a condition: cargo full, hull<X, threat near, or a timer
+
+// Slot law: the bag is full when no slot is unclaimed; a hold without slot data falls back to
+// the volume read it shipped with.
+function holdFullForAlphabet(cargo) {
+  if (!cargo) return false;
+  if (Array.isArray(cargo.slots) || Number.isFinite(cargo.slotCount)) {
+    return freeSlotCount(cargo.slots, cargo.slotCount) <= 0 && Number(cargo.slotCount) > 0;
+  }
+  return !!(cargo.usedVolume >= cargo.capVolume - 0.01);
+}
 //
 // SCOPE (per IMPROVEMENT_IDEAS #28 refinement): the primitives exist as typed data; templates are
 // named sequences; ONE runtime executes a drone's current template step-by-step. No conditional
@@ -24,6 +34,7 @@ import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { hasMachineProtocol } from '../data/alienEcology.js';
 import { isHostileForAI } from '../ai/engagementAuthority.js';
 import { COMMODITIES } from '../data/commodities.js';
+import { freeSlotCount } from '../data/cargoSlots.js';
 import { DRONES } from '../data/automation.js';
 import { SECTORS } from '../data/sectors.js';
 
@@ -283,7 +294,7 @@ export function evaluateCondition(cond, group, ctx) {
       const cargo = ctx.state && ctx.state.player && ctx.state.player.cargo;
       return typeof ctx.operationFull === 'function'
         ? !!ctx.operationFull()
-        : !!(cargo && cargo.usedVolume >= cargo.capVolume - 0.01);
+        : holdFullForAlphabet(cargo);
     }
     case 'hull_low': {
       if (typeof ctx.isHullLow === 'function') return !!ctx.isHullLow();
@@ -451,7 +462,7 @@ export function tickProgram(group, ctx, dt) {
   const cargo = ctx.state && ctx.state.player && ctx.state.player.cargo;
   const holdFull = typeof ctx.operationFull === 'function'
     ? !!ctx.operationFull()
-    : !!(cargo && cargo.usedVolume >= cargo.capVolume - 0.01);
+    : holdFullForAlphabet(cargo);
 
   switch (step.op) {
     case P.MINE: {

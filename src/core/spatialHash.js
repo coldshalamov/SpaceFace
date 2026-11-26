@@ -61,6 +61,7 @@ export class SpatialHash {
     this._staticMemberRemoveScratch = [];
     this._staticDirtyRects = [];
     this._seenIds = new Map();
+    this._seenIdArray = new Int32Array(4096);
     this._spanScratch = { r: 0, x0: 0, x1: 0, z0: 0, z1: 0 };
     this._batchSeenIds = [];
     this._batchFootprints = [];
@@ -108,6 +109,7 @@ export class SpatialHash {
     this._clearDynamicLayer();
     this._clearStaticLayer();
     this._seenIds.clear();
+    this._seenIdArray.fill(0);
     this._queryStamp = 1;
     this._staticVersion = null;
     this._dynamicsVersion = null;
@@ -243,7 +245,20 @@ export class SpatialHash {
         }
       }
 
-      const span = this._cellSpan(e);
+      const px = e.pos.x;
+      const pz = e.pos.z;
+      const pr = e.radius || 0;
+      if (prev && prev.entity === e && prev.lastX === px && prev.lastZ === pz && prev.lastR === pr) {
+        prev.stamp = stamp;
+        unchanged++;
+        continue;
+      }
+
+      const c = this.cell;
+      const x0 = Math.floor((px - pr) / c);
+      const x1 = Math.floor((px + pr) / c);
+      const z0 = Math.floor((pz - pr) / c);
+      const z1 = Math.floor((pz + pr) / c);
 
       if (!prev || prev.entity !== e) {
         // New entity, id reuse with a different object, or first insert after clear.
@@ -253,7 +268,8 @@ export class SpatialHash {
         this._insertInto(this.buckets, this._activeBuckets, this._activeCellX, this._activeCellZ, e);
         this._dynamicMembers.set(id, {
           entity: e,
-          x0: span.x0, x1: span.x1, z0: span.z0, z1: span.z1, r: span.r,
+          x0, x1, z0, z1, r: pr,
+          lastX: px, lastZ: pz, lastR: pr,
           stamp,
         });
         reinserts++;
@@ -261,14 +277,15 @@ export class SpatialHash {
       }
 
       if (
-        prev.x0 !== span.x0 || prev.x1 !== span.x1 ||
-        prev.z0 !== span.z0 || prev.z1 !== span.z1 ||
-        prev.r !== span.r
+        prev.x0 !== x0 || prev.x1 !== x1 ||
+        prev.z0 !== z0 || prev.z1 !== z1 ||
+        prev.r !== pr
       ) {
         this._removeDynamicMemberRecord(prev);
         this._insertInto(this.buckets, this._activeBuckets, this._activeCellX, this._activeCellZ, e);
         prev.entity = e;
-        prev.x0 = span.x0; prev.x1 = span.x1; prev.z0 = span.z0; prev.z1 = span.z1; prev.r = span.r;
+        prev.x0 = x0; prev.x1 = x1; prev.z0 = z0; prev.z1 = z1; prev.r = pr;
+        prev.lastX = px; prev.lastZ = pz; prev.lastR = pr;
         prev.stamp = stamp;
         reinserts++;
         continue;
@@ -276,6 +293,9 @@ export class SpatialHash {
 
       // Same coverage: membership stays; live pos/radius queries remain correct.
       prev.entity = e;
+      prev.lastX = px;
+      prev.lastZ = pz;
+      prev.lastR = pr;
       prev.stamp = stamp;
       unchanged++;
     }
@@ -489,6 +509,7 @@ export class SpatialHash {
     this._dynamicMembers.set(e.id, {
       entity: e,
       x0: span.x0, x1: span.x1, z0: span.z0, z1: span.z1, r: span.r,
+      lastX: e.pos.x, lastZ: e.pos.z, lastR: span.r,
       stamp: this._dynamicSyncStamp,
     });
   }
@@ -555,6 +576,7 @@ export class SpatialHash {
     candidates += staticResult.candidates;
     const staticEntities = staticResult.entities;
     const seen = this._seenIds;
+    const seenArr = this._seenIdArray;
     const cache = this._dynamicQueryCache;
     const key = dynamicQueryCacheKey(x0, x1, z0, z1, scanActive);
     let dynamicEntities = cache.get(key);
@@ -563,7 +585,11 @@ export class SpatialHash {
       this.diagnostics.dynamicQueryCacheHits++;
       if (staticEntities.length > 0) {
         stamp = this._nextQueryStamp();
-        for (const entity of dynamicEntities) seen.set(entity.id, stamp);
+        for (let i = 0; i < dynamicEntities.length; i++) {
+          const id = dynamicEntities[i].id;
+          if (id >= 0 && id < 4096 && (id | 0) === id) seenArr[id] = stamp;
+          else seen.set(id, stamp);
+        }
       }
     } else {
       this.diagnostics.dynamicQueryCacheMisses++;
@@ -577,10 +603,17 @@ export class SpatialHash {
       cache.set(key, dynamicEntities);
       this.diagnostics.dynamicQueryCacheEntries = cache.size;
     }
-    for (const entity of dynamicEntities) out.push(entity);
-    for (const entity of staticEntities) {
-      if (seen.get(entity.id) === stamp) continue;
-      seen.set(entity.id, stamp);
+    for (let i = 0; i < dynamicEntities.length; i++) out.push(dynamicEntities[i]);
+    for (let i = 0; i < staticEntities.length; i++) {
+      const entity = staticEntities[i];
+      const id = entity.id;
+      if (id >= 0 && id < 4096 && (id | 0) === id) {
+        if (seenArr[id] === stamp) continue;
+        seenArr[id] = stamp;
+      } else {
+        if (seen.get(id) === stamp) continue;
+        seen.set(id, stamp);
+      }
       out.push(entity);
     }
     if (!(opts && opts.countDiagnostics === false)) {
@@ -742,17 +775,24 @@ export class SpatialHash {
       metas,
       metaCount,
     );
+    const seen = this._seenIds;
+    const seenArr = this._seenIdArray;
     for (let index = 0; index < metaCount; index++) {
       const meta = metas[index];
       const staticEntities = meta.staticEntities;
+      const metaStamp = meta.stamp;
       for (let staticIndex = 0; staticIndex < staticEntities.length; staticIndex++) {
         const entity = staticEntities[staticIndex];
+        const id = entity.id;
         if (meta.scanActive) {
-          if (meta.batchSeen.has(entity.id)) continue;
-          meta.batchSeen.add(entity.id);
+          if (meta.batchSeen.has(id)) continue;
+          meta.batchSeen.add(id);
+        } else if (id >= 0 && id < 4096 && (id | 0) === id) {
+          if (seenArr[id] === metaStamp) continue;
+          seenArr[id] = metaStamp;
         } else {
-          if (this._seenIds.get(entity.id) === meta.stamp) continue;
-          this._seenIds.set(entity.id, meta.stamp);
+          if (seen.get(id) === metaStamp) continue;
+          seen.set(id, metaStamp);
         }
         meta.out.push(entity);
       }
@@ -864,6 +904,7 @@ export class SpatialHash {
   _queryLayer(buckets, activeBuckets, activeCellX, activeCellZ, scanActive, x0, x1, z0, z1, stamp, out) {
     let candidates = 0;
     const seen = this._seenIds;
+    const seenArr = this._seenIdArray;
     if (scanActive) {
       for (let i = 0; i < activeBuckets.length; i++) {
         const cx = activeCellX[i];
@@ -872,9 +913,16 @@ export class SpatialHash {
         if (cz < z0 || cz > z1) continue;
         const b = activeBuckets[i];
         candidates += b.length;
-        for (const e of b) {
-          if (seen.get(e.id) === stamp) continue;
-          seen.set(e.id, stamp);
+        for (let k = 0; k < b.length; k++) {
+          const e = b[k];
+          const id = e.id;
+          if (id >= 0 && id < 4096 && (id | 0) === id) {
+            if (seenArr[id] === stamp) continue;
+            seenArr[id] = stamp;
+          } else {
+            if (seen.get(id) === stamp) continue;
+            seen.set(id, stamp);
+          }
           out.push(e);
         }
       }
@@ -887,9 +935,16 @@ export class SpatialHash {
         const b = row.get(cz);
         if (!b) continue;
         candidates += b.length;
-        for (const e of b) {
-          if (seen.get(e.id) === stamp) continue;
-          seen.set(e.id, stamp);
+        for (let k = 0; k < b.length; k++) {
+          const e = b[k];
+          const id = e.id;
+          if (id >= 0 && id < 4096 && (id | 0) === id) {
+            if (seenArr[id] === stamp) continue;
+            seenArr[id] = stamp;
+          } else {
+            if (seen.get(id) === stamp) continue;
+            seen.set(id, stamp);
+          }
           out.push(e);
         }
       }
@@ -902,6 +957,7 @@ export class SpatialHash {
     if (stamp > 0x7fffffff) {
       stamp = 1;
       this._seenIds.clear();
+      this._seenIdArray.fill(0);
     }
     this._queryStamp = stamp;
     return stamp;

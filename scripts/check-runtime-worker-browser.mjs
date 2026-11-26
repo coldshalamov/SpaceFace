@@ -1,7 +1,9 @@
 // Isolated real-Worker integration test; not a replacement for the full-game launch probe.
 import assert from 'node:assert/strict';
 import { writeFile, mkdir } from 'node:fs/promises';
-import { chromium, webkit, devices } from 'playwright';
+import { chromium as rawChromium, webkit, devices } from 'playwright';
+import { quietChromium } from './lib/quietLaunch.mjs';
+const chromium = quietChromium(rawChromium);
 import { resolveWorkerContractUrls, runMobileWorkerContract } from './lib/mobileWorkerContract.mjs';
 const url = new URL(process.env.MOBILE_PROBE_URL || 'http://127.0.0.1:8765/');
 const engine = process.env.MOBILE_PROBE_ENGINE || 'webkit';

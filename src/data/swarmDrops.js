@@ -38,7 +38,7 @@ export const SWARM_DROP_DEFS = Object.freeze([
   Object.freeze({
     id: 'full_rack',
     name: 'Full Rack',
-    effect: 'every gun\'s ammo/heat and every power\'s cooldown refilled at once',
+    effect: 'every gun and power refills at once',
     line: 'Reload, darling.',
     weight: 1.0,
     durationS: 0,
@@ -46,7 +46,7 @@ export const SWARM_DROP_DEFS = Object.freeze([
   Object.freeze({
     id: 'heavy_hands',
     name: 'Heavy Hands',
-    effect: '20 s: every weapon\'s knockback impulse doubled',
+    effect: '20 seconds: your guns knock twice as hard',
     line: 'Oh, now you\'ve done it.',
     weight: 1.0,
     durationS: 20,
@@ -54,7 +54,7 @@ export const SWARM_DROP_DEFS = Object.freeze([
   Object.freeze({
     id: 'dead_weight',
     name: 'Dead Weight',
-    effect: '20 s: any body the player throws kills the ship it touches (light and medium; heavies take 60 %)',
+    effect: '20 seconds: anything you throw kills what it touches; heavies lose 60%',
     line: 'Throw something. Anything.',
     weight: 1.0,
     durationS: 20,
@@ -62,7 +62,7 @@ export const SWARM_DROP_DEFS = Object.freeze([
   Object.freeze({
     id: 'magnet',
     name: 'Magnet',
-    effect: 'every scrap/credit pickup on the floor flies to the player (reuse mining\'s magnet pull)',
+    effect: 'every Scrap pickup on the floor flies to you',
     line: 'Tidy.',
     weight: 1.0,
     durationS: 0,
@@ -70,7 +70,7 @@ export const SWARM_DROP_DEFS = Object.freeze([
   Object.freeze({
     id: 'big_bang',
     name: 'Big Bang',
-    effect: 'one Shove centred on the player with radius = the arena radius (the Shove field with a one-off radius)',
+    effect: 'one huge Shove centred on you, room-wide',
     line: 'Everybody out.',
     weight: 1.0,
     durationS: 0,
@@ -78,7 +78,7 @@ export const SWARM_DROP_DEFS = Object.freeze([
   Object.freeze({
     id: 'double_scrap',
     name: 'Double Scrap',
-    effect: '30 s: run scrap/purse earnings doubled',
+    effect: '30 seconds: everything you earn doubles',
     line: 'The sponsors are generous.',
     weight: 1.0,
     durationS: 30,
@@ -86,7 +86,7 @@ export const SWARM_DROP_DEFS = Object.freeze([
   Object.freeze({
     id: 'loose_cannon',
     name: 'Loose Cannon',
-    effect: 'a small auto-turret body that fires at the nearest enemy; tetherable, so the player can tow it; 60 s life',
+    effect: 'a little auto-turret for 60 seconds: tow it with the Line',
     line: 'It\'s not house-trained.',
     weight: 1.0,
     durationS: 60,
@@ -94,7 +94,7 @@ export const SWARM_DROP_DEFS = Object.freeze([
   Object.freeze({
     id: 'free_forge',
     name: 'Free Forge',
-    effect: 'sets run.freeForge = true',
+    effect: 'your next Forge job is free, once',
     line: 'On the house. Once.',
     weight: 0.25,
     durationS: 0,

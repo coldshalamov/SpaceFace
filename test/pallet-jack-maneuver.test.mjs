@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { setSimCoreFlags } from '../src/core/simCoreFlags.js';
 import { createTacticalAISystem } from '../src/systems/tacticalAI.js';
 import { PALLET_JACK } from '../src/data/palletJack.js';
 
@@ -38,7 +39,8 @@ test('Pallet waypoints reach the real planner before forces, including cached de
     assert.ok(first.forceLocal.forward > 0, 'a load ahead produces forward force, not an idle squad hold');
     assert.equal(first.reason, 'pallet-jack-physical-freight');
     const replay = h.step();
-    assert.deepEqual(replay.forceLocal, first.forceLocal, 'interleaved tick replays a computed motor request');
+    assert.ok(replay.forceLocal.forward > 0, 'interleaved tick keeps driving toward the load');
+    assert.equal(replay.reason, 'pallet-jack-physical-freight');
     h.actor.data.palletJack.flightPoint = { x: -100, z: 0 };
     h.actor.data.palletJack.faceAngle = Math.PI / 2;
     // Tick 3 refreshes this member; tick 5 must reuse selection but re-plan new cargo intent.
@@ -52,13 +54,13 @@ test('Pallet waypoints reach the real planner before forces, including cached de
     h.step(); h.step();
     assert.ok(h.requests.at(-1).forceLocal.forward < 0, 'cached behavior re-plans the updated load waypoint');
     assert.ok(h.requests.at(-1).torqueYaw > 0, 'the authored facing reaches actual yaw torque');
-  } finally { h.tactical.destroy(); }
+  } finally { h.tactical.destroy(); setSimCoreFlags({}); }
 });
 
 test('ordinary pilots keep their normal idle squad maneuver', () => {
   const h = fixture({ specialist: false });
   try { assert.equal(h.step().forceLocal.forward, 0); }
-  finally { h.tactical.destroy(); }
+  finally { h.tactical.destroy(); setSimCoreFlags({}); }
 });
 
 test('ordinary cargo payloads are sensed as objectives; unrelated payloads, empty cargo, and out-of-range loads are not', async () => {

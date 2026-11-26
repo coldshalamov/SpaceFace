@@ -50,6 +50,7 @@ export function isEscortingDeadStick(distWu, tuning = DEAD_STICK_TUNING) {
 }
 
 export const deadStickPlant = {
+  modes: ['flight'],
   name: 'plants249',
 
   init(ctx) {

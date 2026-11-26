@@ -135,16 +135,40 @@ html body #screens .sf-crucible-door .sf-crd-hulls .fh-tile {
   .sf-cru-activation { color: ButtonText; }
 }
 
-/* Swarm keeps the flight HUD's hardware. Adventure-only instruments hide so the arena owns
-   the centre; the Crucible readout stays in the comms strip. Do not restyle materials here —
-   that overlay was the cheap web-HUD the owner named on 2026-09-20 (PQ-210.05). */
+/* Swarm keeps the flight HUD's hardware untouched (owner 2026-11-23). Adventure-only controls
+   hide cleanly behind body.sf-swarm-hud / body.sf-swarm-flight; Swarm's own layer (.sf-swhud)
+   sits along the top perimeter. Do not restyle or round the shared flight instruments. */
 .sf-swarm-flight .sf-overview,
 .sf-swarm-flight .sf-mission-tracker,
 .sf-swarm-flight #sf-wpnstat,
-.sf-swarm-flight #sf-rolestat { display: none !important; }
-.sf-swarm-flight #hud .sf-stat[data-chip] { display: none !important; }
+.sf-swarm-flight #sf-rolestat,
+.sf-swarm-hud .sf-overview,
+.sf-swarm-hud .sf-mission-tracker,
+.sf-swarm-hud .sf-nav-readout,
+.sf-swarm-hud .sf-nav-label,
+.sf-swarm-hud #sf-wpnstat,
+.sf-swarm-hud #sf-rolestat { display: none !important; }
+.sf-swarm-flight #hud .sf-stat[data-chip],
+.sf-swarm-hud #hud .sf-stat[data-chip] { display: none !important; }
 .sf-swarm-flight #hud .sf-pslot[data-slot="9"],
-.sf-swarm-flight #hud .sf-pslot[data-slot="8"][data-state="locked"] { display: none; }
+.sf-swarm-flight #hud .sf-pslot[data-slot="8"][data-state="locked"],
+.sf-swarm-hud #hud .sf-pslot[data-slot="9"],
+.sf-swarm-hud #hud .sf-pslot[data-slot="8"][data-state="locked"] { display: none; }
+/* DEMO-SWARM-HUD-2 Item 7: nothing Adventure-only in a Swarm run (M·Chart / Survey buttons,
+   Overhead, COMMS, Radio, Hail, Field Build, objective tracker, old top-left run card). */
+:root body:is(.sf-swarm-hud, .sf-swarm-flight) #hud .sf-visor-utility-row,
+:root body:is(.sf-swarm-hud, .sf-swarm-flight)[data-hud-skin="orrery"] #hud .sf-visor-utility-row,
+:root body:is(.sf-swarm-hud, .sf-swarm-flight) #hud .sf-commtape,
+:root body:is(.sf-swarm-hud, .sf-swarm-flight) #sf-comm-backlog-btn,
+:root body:is(.sf-swarm-hud, .sf-swarm-flight) #sf-band-hud,
+:root body:is(.sf-swarm-hud, .sf-swarm-flight) #race-tape,
+:root body:is(.sf-swarm-hud, .sf-swarm-flight) #sf-contact-hail,
+:root body:is(.sf-swarm-hud, .sf-swarm-flight) .fb-pill-btn,
+:root body:is(.sf-swarm-hud, .sf-swarm-flight) .sf-flight-chart__footer,
+:root body.sf-swarm-hud #hud > .sf-leftcontext > .sf-crun,
+:root body.sf-swarm-hud[data-hud-skin="orrery"] #hud > .sf-leftcontext > .sf-crun {
+  display: none !important;
+}
 .sf-crucible-door .k-title h1 { font-weight: 800; letter-spacing: -.055em; }
 .sf-crucible-door .k-word[aria-checked="true"] { color: var(--dp-lamp-hot, #ffd98c); }
 .sf-crucible-door .sf-crd-settings .k-row > .k-row__name { color: var(--dp-ink-mute, #96948e); }
@@ -158,4 +182,1163 @@ html body #screens .sf-crucible-door .sf-crd-hulls .fh-tile {
 }
 @media (max-width: 480px) {
   .sf-crucible-armory .sf-cru-cards { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* ============================================================================================
+   SWARM BENCH / REFIT (.sf-bench) — release kit matching PLAY (swarm-play.png):
+   Flat obsidian #0c0c0d, #141416 cards, 1px hairline borders, 8px radius, Archivo display
+   numerals/title, Instrument Sans body, solid gold #f2b950 primary CTA, zero concentric rings.
+   High-specificity selector wins cleanly over legacy injected refit sheets.
+   ============================================================================================ */
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit:not(.sf-bench) .sf-bench__kicker,
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit:not(.sf-bench) .sf-bench__head-meta,
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit:not(.sf-bench) .sf-bench__aside {
+  display: none !important;
+}
+
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  grid-template-rows: auto minmax(0, 1fr) auto !important;
+  gap: 14px !important;
+  padding: 20px clamp(24px, 4vw, 56px) 18px !important;
+  height: 100dvh !important;
+  max-height: 100dvh !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+  background: #0c0c0d !important;
+  color: #f4f5f7 !important;
+  font-family: var(--dp-face-read, "Instrument Sans", system-ui, sans-serif) !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench::before,
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench::after {
+  display: none !important;
+}
+
+/* Header — clean open typography (never a cramped bordered box touching the title) */
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench > .k-title {
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  min-width: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 6px !important;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-bench__head-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  min-width: 0;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-bench__head-left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-bench__kicker {
+  margin: 0;
+  font: 600 13px/1.2 var(--dp-face-read, "Instrument Sans", sans-serif);
+  color: #f2b950;
+  letter-spacing: 0;
+  text-transform: none;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench > .k-title h1,
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench > .k-title .k-t-title {
+  margin: 0 !important;
+  padding: 0 !important;
+  font: 800 38px/1 var(--dp-face-display, "Archivo", sans-serif) !important;
+  letter-spacing: -0.02em !important;
+  text-transform: none !important;
+  color: #ffffff !important;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-bench__head-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-bench__pill {
+  margin: 0;
+  padding: 8px 14px;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  background: #141416;
+  border: 1px solid rgb(255 255 255 / .08);
+  border-radius: 8px;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-bench__pill-val {
+  font: 800 18px/1 var(--dp-face-display, "Archivo", sans-serif);
+  font-variant-numeric: tabular-nums;
+  color: #ffffff;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-bench__pill--wallet .sf-bench__pill-val {
+  color: #f2b950;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-bench__pill-lbl {
+  font: 500 13px/1 var(--dp-face-read, "Instrument Sans", sans-serif);
+  color: #9a9da4;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench > .k-title .sf-cru-sub {
+  display: none !important;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench > .k-title .sf-cru-note {
+  margin: 0 !important;
+  font: 500 13px/1.35 var(--dp-face-read, "Instrument Sans", sans-serif) !important;
+  color: #ffd98c !important;
+  display: block !important;
+  -webkit-line-clamp: unset !important;
+  overflow: visible !important;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench > .k-title .sf-cru-note:empty {
+  display: none !important;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench > .k-title .sf-cru-preview {
+  margin: 0 !important;
+  padding: 0 !important;
+  max-width: 100% !important;
+  font: 400 14px/1.35 var(--dp-face-read, "Instrument Sans", sans-serif) !important;
+  color: #a3a6ad !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  display: block !important;
+  -webkit-line-clamp: unset !important;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench > .k-title .sf-cru-preview[hidden] {
+  display: none !important;
+}
+
+/* Stage — clean two-column bench: 8 plain one-line slots left, ship + inspector right */
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench > .sf-cru-stage {
+  position: relative !important;
+  inset: auto !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1.18fr) minmax(320px, 0.88fr) !important;
+  gap: 20px !important;
+  min-height: 0 !important;
+  height: 100% !important;
+  max-height: 100% !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  overflow: hidden !important;
+  align-items: stretch !important;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench > .sf-cru-stage::before,
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench > .sf-cru-stage .orr-hull__pool,
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench > .sf-cru-stage .orr-hull__svg,
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench > .sf-cru-stage .orr-hull__art,
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench > .sf-cru-stage .orr-hull__scan,
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench > .sf-cru-stage .orr-hull-fitcount {
+  display: none !important;
+}
+
+/* Slot rows column */
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench > .sf-cru-stage > .sf-cru-rows {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 6px !important;
+  margin: 0 !important;
+  padding: 0 2px 0 0 !important;
+  list-style: none !important;
+  min-height: 0 !important;
+  max-height: 100% !important;
+  overflow-y: auto !important;
+  scrollbar-width: thin !important;
+  -webkit-mask-image: none !important;
+  mask-image: none !important;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-cru-row {
+  position: relative !important;
+  display: grid !important;
+  grid-template-columns: 32px minmax(0, 1fr) auto !important;
+  align-items: center !important;
+  gap: 12px !important;
+  margin: 0 !important;
+  padding: 8px 12px !important;
+  min-height: 48px !important;
+  box-sizing: border-box !important;
+  background: #141416 !important;
+  border: 1px solid rgb(255 255 255 / .08) !important;
+  border-radius: 8px !important;
+  box-shadow: none !important;
+  color: #f4f5f7 !important;
+  cursor: pointer !important;
+  transition: border-color 140ms ease-out, background-color 140ms ease-out !important;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-cru-row + .sf-cru-row {
+  margin-top: 0 !important;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-cru-row:hover {
+  border-color: rgb(255 255 255 / .2) !important;
+  background: #18181b !important;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-cru-row.is-lit {
+  border-color: #f2b950 !important;
+  background: #1c1912 !important;
+  box-shadow: none !important;
+  color: #ffffff !important;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-bench__thumb-box {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  background: #0e0e10;
+  border: 1px solid rgb(255 255 255 / .07);
+  overflow: hidden;
+  flex: none;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-bench__thumb-box img,
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-bench__thumb-box svg {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  display: block;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-bench__row-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  overflow: hidden;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-bench__slot {
+  font: 500 14px/1.2 var(--dp-face-read, "Instrument Sans", sans-serif);
+  color: #9a9da4;
+  white-space: nowrap;
+  flex: none;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-cru-row.is-lit .sf-bench__slot {
+  color: #ffd98c;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-bench__dot {
+  color: rgb(255 255 255 / .28);
+  flex: none;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-bench__item {
+  font: 600 15px/1.25 var(--dp-face-read, "Instrument Sans", sans-serif);
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  text-decoration: none !important;
+  border-bottom: 0 !important;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-bench__item--empty {
+  font-weight: 500;
+  color: #84878f;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-bench__spare-tag {
+  margin-left: 4px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: rgb(242 185 80 / .12);
+  border: 1px solid rgb(242 185 80 / .28);
+  font: 600 12px/1.3 var(--dp-face-read, "Instrument Sans", sans-serif);
+  color: #ffd98c;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 180px;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-bench__spare-more {
+  font: 600 12px/1 var(--dp-face-read, "Instrument Sans", sans-serif);
+  color: #9a9da4;
+  white-space: nowrap;
+  flex: none;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-bench__bare-word {
+  font: 500 12px/1 var(--dp-face-read, "Instrument Sans", sans-serif);
+  color: #7c7f87;
+  white-space: nowrap;
+}
+
+/* Strip / Fit row button — ONE clean key per row, zero stray dash ::before glyph */
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-cru-rows .k-word::before,
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-cru-rows .sf-cru-act::before,
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-cru-rows .sf-cru-act::after {
+  content: none !important;
+  display: none !important;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-bench__act {
+  min-width: 64px !important;
+  height: 30px !important;
+  padding: 0 12px !important;
+  margin: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: #1a1a1d !important;
+  border: 1px solid rgb(255 255 255 / .14) !important;
+  border-radius: 6px !important;
+  box-shadow: none !important;
+  color: #f4f5f7 !important;
+  font: 600 13px/1 var(--dp-face-read, "Instrument Sans", sans-serif) !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+  cursor: pointer !important;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-bench__act[hidden] {
+  display: none !important;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-bench__act--fit {
+  background: rgb(242 185 80 / .16) !important;
+  border-color: rgb(242 185 80 / .45) !important;
+  color: #ffd98c !important;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-cru-row.is-lit .sf-bench__act--fit,
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-bench__act--fit:not(:disabled):is(:hover, :focus-visible) {
+  background: #f2b950 !important;
+  border-color: #f2b950 !important;
+  color: #141414 !important;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-bench__act:not(.sf-bench__act--fit):not(:disabled):is(:hover, :focus-visible) {
+  background: #27272c !important;
+  border-color: rgb(255 255 255 / .34) !important;
+  color: #ffffff !important;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-bench__act:focus-visible {
+  outline: 2px solid #f2b950 !important;
+  outline-offset: 2px !important;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-bench__act--fit:focus-visible {
+  outline-color: #ffffff !important;
+}
+
+/* Right column: Ship picture (zero rings!) + Selected slot inspector */
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-bench__aside {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-bench__ship-card {
+  flex: 1 1 56%;
+  min-height: 170px;
+  display: flex;
+  flex-direction: column;
+  padding: 12px 14px;
+  box-sizing: border-box;
+  background: #141416;
+  border: 1px solid rgb(255 255 255 / .08);
+  border-radius: 8px;
+  overflow: hidden;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-bench__ship-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex: none;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-bench__ship-name {
+  font: 600 14px/1.2 var(--dp-face-read, "Instrument Sans", sans-serif);
+  color: #ffffff;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-bench__ship-count {
+  font: 500 12px/1.2 var(--dp-face-read, "Instrument Sans", sans-serif);
+  color: #9a9da4;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-bench__ship-canvas {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  margin-top: 6px;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-bench__ship-img {
+  position: absolute;
+  inset: 4px;
+  width: calc(100% - 8px);
+  height: calc(100% - 8px);
+  object-fit: contain;
+  display: block;
+  pointer-events: none;
+  filter: drop-shadow(0 10px 24px rgb(0 0 0 / .65));
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-bench__pins {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  aspect-ratio: 1 / 1;
+  max-width: calc(100% - 8px);
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-bench__pin {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  background: rgb(18 18 20 / .92);
+  border: 1px solid rgb(255 255 255 / .34);
+  color: #f4f5f7;
+  font: 700 12px/1 var(--dp-face-read, "Instrument Sans", sans-serif);
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgb(0 0 0 / .7);
+  transition: transform 120ms ease-out, background-color 120ms ease-out, border-color 120ms ease-out;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-bench__pin.is-open {
+  border-style: dashed;
+  border-color: rgb(242 185 80 / .72);
+  color: #ffd98c;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-bench__pin.is-bare {
+  border-color: rgb(255 255 255 / .2);
+  color: #8b8e96;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-bench__pin:hover {
+  transform: translate(-50%, -50%) scale(1.1);
+  border-color: #ffd98c;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-bench__pin.is-lit {
+  background: #f2b950;
+  border-style: solid;
+  border-color: #ffd98c;
+  color: #141414;
+  transform: translate(-50%, -50%) scale(1.14);
+  z-index: 2;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-bench__pin:focus-visible {
+  outline: 2px solid #ffd98c;
+  outline-offset: 2px;
+}
+
+/* Selected slot inspector card */
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-bench__inspector {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  box-sizing: border-box;
+  background: #141416;
+  border: 1px solid rgb(255 255 255 / .08);
+  border-radius: 8px;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-bench__insp-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-bench__insp-kicker {
+  margin: 0;
+  font: 600 12px/1.2 var(--dp-face-read, "Instrument Sans", sans-serif);
+  color: #f2b950;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-bench__insp-badge {
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: rgb(255 255 255 / .06);
+  font: 600 12px/1.2 var(--dp-face-read, "Instrument Sans", sans-serif);
+  color: #c9cbcf;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-bench__insp-badge.is-open {
+  background: rgb(242 185 80 / .14);
+  color: #ffd98c;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-bench__insp-part {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-bench__insp-thumb {
+  width: 40px;
+  height: 40px;
+  flex: none;
+  border-radius: 6px;
+  background: #0e0e10;
+  border: 1px solid rgb(255 255 255 / .08);
+  padding: 3px;
+  box-sizing: border-box;
+  object-fit: contain;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-bench__insp-part-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-bench__insp-name {
+  margin: 0;
+  font: 700 16px/1.25 var(--dp-face-read, "Instrument Sans", sans-serif);
+  color: #ffffff;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-bench__insp-desc {
+  margin: 0;
+  font: 400 13px/1.4 var(--dp-face-read, "Instrument Sans", sans-serif);
+  color: #a3a6ad;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-bench__spares {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-bench__spare-opt {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  margin: 0;
+  background: #1a1a1d;
+  border: 1px solid rgb(255 255 255 / .12);
+  border-radius: 6px;
+  color: #f4f5f7;
+  font: 600 13px/1.2 var(--dp-face-read, "Instrument Sans", sans-serif);
+  cursor: pointer;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-bench__spare-opt[aria-checked="true"] {
+  background: rgb(242 185 80 / .16);
+  border-color: #f2b950;
+  color: #ffd98c;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-bench__spare-opt:focus-visible {
+  outline: 2px solid #f2b950;
+  outline-offset: 2px;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-bench__spare-thumb {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-bench__compare {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgb(255 255 255 / .08);
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-bench__compare-line {
+  margin: 0;
+  font: 500 13px/1.35 var(--dp-face-read, "Instrument Sans", sans-serif);
+  color: #ffd98c;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-bench__compare-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-bench__bar-row {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr) 38px;
+  align-items: center;
+  gap: 10px;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-bench__bar-lbl {
+  font: 500 12px/1 var(--dp-face-read, "Instrument Sans", sans-serif);
+  color: #9a9da4;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-bench__bar-track {
+  position: relative;
+  height: 6px;
+  border-radius: 3px;
+  background: #232327;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-bench__bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: #f2b950;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-bench__bar-ref {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 2px;
+  background: #f4f5f7;
+  border-radius: 1px;
+  transform: translateX(-50%);
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-bench__bar-val {
+  text-align: right;
+  font: 700 12px/1 var(--dp-face-display, "Archivo", sans-serif);
+  font-variant-numeric: tabular-nums;
+  color: #ffffff;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-bench__insp-foot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-top: 6px;
+  border-top: 1px solid rgb(255 255 255 / .08);
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-bench__sell {
+  height: 34px;
+  padding: 0 14px;
+  margin: 0;
+  background: #1a1a1d;
+  border: 1px solid rgb(255 255 255 / .14);
+  border-radius: 8px;
+  color: #f4f5f7;
+  font: 600 13px/1 var(--dp-face-read, "Instrument Sans", sans-serif);
+  cursor: pointer;
+  transition: border-color 140ms ease-out, background-color 140ms ease-out;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-bench__sell:hover {
+  background: #242428;
+  border-color: rgb(255 255 255 / .32);
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-bench__sell:focus-visible {
+  outline: 2px solid #f2b950;
+  outline-offset: 2px;
+}
+
+/* Footer — the three ways out matching PLAY's gold primary + quiet dark keys */
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench > .k-foot {
+  position: relative !important;
+  inset: auto !important;
+  margin: 0 !important;
+  padding: 12px 0 0 !important;
+  border: 0 !important;
+  border-top: 1px solid rgb(255 255 255 / .08) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  overflow: visible !important;
+  max-height: none !important;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench > .k-foot::before {
+  display: none !important;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .k-foot .k-words {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)) !important;
+  gap: 8px 14px !important;
+  align-items: start !important;
+  width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  list-style: none !important;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .k-foot .k-words > li {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 5px !important;
+  min-width: 0 !important;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .k-foot .k-word {
+  width: 100% !important;
+  min-height: 44px !important;
+  height: auto !important;
+  padding: 8px 16px !important;
+  margin: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 10px !important;
+  background: #1a1a1d !important;
+  border: 1px solid rgb(255 255 255 / .12) !important;
+  border-radius: 8px !important;
+  box-shadow: none !important;
+  color: #f4f5f7 !important;
+  font: 600 14px/1.2 var(--dp-face-read, "Instrument Sans", sans-serif) !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+  white-space: nowrap !important;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .k-foot .k-word::before {
+  content: none !important;
+  display: none !important;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .k-foot .k-word:hover {
+  background: #242428 !important;
+  border-color: rgb(255 255 255 / .3) !important;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .k-foot .k-word:focus-visible {
+  outline: 2px solid #f2b950 !important;
+  outline-offset: 2px !important;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .k-foot .k-word.k-word--primary,
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .k-foot .k-word.k-word--primary:not(.is-lamp) {
+  background: #f2b950 !important;
+  border: 0 !important;
+  color: #141414 !important;
+  font: 700 16px/1.2 var(--dp-face-read, "Instrument Sans", sans-serif) !important;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .k-foot .k-word.k-word--primary:hover {
+  background: #ffcf5c !important;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .k-foot .k-word.k-word--primary .sf-cru-label {
+  color: #141414 !important;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .k-foot .sf-cru-kbd {
+  margin-left: 0 !important;
+  padding: 3px 7px !important;
+  border: 0 !important;
+  border-radius: 6px !important;
+  background: rgb(255 255 255 / .07) !important;
+  color: #c9cbcf !important;
+  font: 600 12px/1 var(--dp-face-read, "Instrument Sans", sans-serif) !important;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .k-foot .k-word.k-word--primary .sf-cru-kbd {
+  background: rgb(0 0 0 / .14) !important;
+  color: #141414 !important;
+}
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .k-foot .sf-cru-keynote,
+html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .k-foot .sf-cru-fine {
+  margin: 0 !important;
+  max-width: none !important;
+  font: 400 12px/1.35 var(--dp-face-read, "Instrument Sans", sans-serif) !important;
+  color: #9a9da4 !important;
+}
+
+/* Compact laptop height (1366x650) */
+@media (max-height: 700px) and (min-width: 761px) {
+  html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench {
+    gap: 10px !important;
+    padding: 14px clamp(20px, 3vw, 40px) 12px !important;
+  }
+  html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench > .k-title h1,
+  html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench > .k-title .k-t-title {
+    font-size: 32px !important;
+  }
+  html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-cru-row {
+    min-height: 44px !important;
+    padding: 6px 10px !important;
+  }
+  html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-bench__ship-card {
+    padding: 10px 12px;
+    min-height: 150px;
+  }
+  html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-bench__inspector {
+    padding: 10px 12px;
+    gap: 8px;
+  }
+  html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench > .k-foot {
+    padding-top: 10px !important;
+  }
+  html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .k-foot .k-word {
+    min-height: 40px !important;
+    padding: 6px 12px !important;
+  }
+}
+
+/* Mobile portrait (390x844) */
+@media (max-width: 760px) {
+  html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+    padding: 16px 16px 20px !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+  }
+  html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-bench__head-row {
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+  html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench > .k-title h1,
+  html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench > .k-title .k-t-title {
+    font-size: 30px !important;
+  }
+  html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-bench__pill {
+    padding: 6px 10px;
+  }
+  html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-bench__pill-val {
+    font-size: 15px;
+  }
+  html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench > .k-title .sf-cru-preview {
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    font-size: 13px !important;
+  }
+  html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench > .sf-cru-stage {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    flex: none !important;
+  }
+  html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench > .sf-cru-stage > .sf-cru-rows {
+    overflow: visible !important;
+    max-height: none !important;
+    padding-right: 0 !important;
+  }
+  html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-cru-row.is-open .sf-bench__item--empty {
+    display: none;
+  }
+  html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-bench__spare-tag {
+    margin-left: 0;
+    max-width: 150px;
+  }
+  html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-bench__aside {
+    overflow: visible;
+  }
+  html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-bench__ship-card {
+    flex: none;
+    height: 196px;
+  }
+  html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .sf-bench__pin {
+    width: 22px;
+    height: 22px;
+  }
+  html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench > .k-foot {
+    flex: none !important;
+    padding-top: 12px !important;
+    overflow: visible !important;
+    max-height: none !important;
+  }
+  html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .k-foot .k-words {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 10px !important;
+  }
+  html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit.sf-bench.sf-bench.sf-bench .k-foot .sf-cru-kbd {
+    display: none !important;
+  }
+}
+
+/* ============================================================================================
+   RUN OVER (.sf-runover) — footer row balance + ring-free Fatal Blow & Last Hits card
+   Matching PLAY's exact kit (#141416 cards, #1a1a1d quiet keys, #f2b950 gold CTA, zero rings).
+   ============================================================================================ */
+html body #screens > .k-screen.sf-crucible-results.sf-runover.sf-runover.sf-runover.sf-runover.sf-runover .sf-runover__figure {
+  background: #141416;
+  border: 1px solid rgb(255 255 255 / .08);
+}
+html body #screens > .k-screen.sf-crucible-results.sf-runover.sf-runover.sf-runover.sf-runover.sf-runover .sf-runover__again {
+  background: #f2b950;
+  color: #141414;
+  box-shadow: none;
+  height: 52px;
+  font-size: 17px;
+  gap: 12px;
+}
+html body #screens > .k-screen.sf-crucible-results.sf-runover.sf-runover.sf-runover.sf-runover.sf-runover .sf-runover__again:hover {
+  background: #ffcf5c;
+  filter: none;
+  box-shadow: none;
+}
+html body #screens > .k-screen.sf-crucible-results.sf-runover.sf-runover.sf-runover.sf-runover.sf-runover .sf-runover__key {
+  border: 0;
+  border-radius: 6px;
+  background: rgb(0 0 0 / .12);
+  color: #141414;
+}
+/* Defeat / retired / extracted: full-width gold Again over ONE balanced row of quiet buttons (no orphaned Share!) */
+html body #screens > .k-screen.sf-crucible-results.sf-runover.sf-runover.sf-runover.sf-runover.sf-runover:not([data-plate="win"]) .sf-runover__foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+html body #screens > .k-screen.sf-crucible-results.sf-runover.sf-runover.sf-runover.sf-runover.sf-runover:not([data-plate="win"]) .sf-runover__again {
+  flex: 1 0 100%;
+}
+html body #screens > .k-screen.sf-crucible-results.sf-runover.sf-runover.sf-runover.sf-runover.sf-runover:not([data-plate="win"]) .sf-runover__quiet {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 40px;
+  padding: 0 12px;
+  background: #1a1a1d;
+  border: 1px solid rgb(255 255 255 / .12);
+  font-size: 14px;
+  white-space: nowrap;
+}
+html body #screens > .k-screen.sf-crucible-results.sf-runover.sf-runover.sf-runover.sf-runover.sf-runover[data-plate="win"] .sf-runover__quiet {
+  height: 52px;
+  padding: 0 22px;
+  background: #1a1a1d;
+  border: 1px solid rgb(255 255 255 / .12);
+  font-size: 15px;
+}
+html body #screens > .k-screen.sf-crucible-results.sf-runover.sf-runover.sf-runover.sf-runover.sf-runover .sf-runover__quiet:hover {
+  background: #242428;
+  border-color: rgb(255 255 255 / .3);
+}
+
+/* Right-side ring-free Fatal Blow & Last Hits card */
+html body #screens > .k-screen.sf-crucible-results.sf-runover.sf-runover.sf-runover.sf-runover.sf-runover > .sf-runover__impact {
+  position: absolute;
+  right: clamp(24px, 4.5vw, 72px);
+  top: 50%;
+  transform: translateY(-50%);
+  width: min(440px, calc(42vw - 32px));
+  padding: 20px 22px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background: rgb(18 18 20 / .92);
+  border: 1px solid rgb(255 255 255 / .08);
+  border-radius: 8px;
+  z-index: 2;
+  pointer-events: none;
+}
+html body #screens > .k-screen.sf-crucible-results.sf-runover.sf-runover.sf-runover.sf-runover.sf-runover .sf-runover__impact-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+html body #screens > .k-screen.sf-crucible-results.sf-runover.sf-runover.sf-runover.sf-runover.sf-runover .sf-runover__impact-kicker {
+  font: 600 13px/1.2 var(--dp-face-read, "Instrument Sans", sans-serif);
+  color: #a3a6ad;
+}
+html body #screens > .k-screen.sf-crucible-results.sf-runover.sf-runover.sf-runover.sf-runover.sf-runover .sf-runover__impact-dir {
+  padding: 3px 10px;
+  border-radius: 6px;
+  background: rgb(255 80 56 / .14);
+  border: 1px solid rgb(255 80 56 / .32);
+  font: 600 12px/1.25 var(--dp-face-read, "Instrument Sans", sans-serif);
+  color: #ff8e7a;
+}
+html body #screens > .k-screen.sf-crucible-results.sf-runover.sf-runover.sf-runover.sf-runover.sf-runover .sf-runover__impact-stage {
+  position: relative;
+  height: 190px;
+  display: grid;
+  place-items: center;
+  background: #0e0e10;
+  border: 1px solid rgb(255 255 255 / .06);
+  border-radius: 8px;
+  overflow: hidden;
+}
+html body #screens > .k-screen.sf-crucible-results.sf-runover.sf-runover.sf-runover.sf-runover.sf-runover .sf-runover__impact-hull {
+  width: 112px;
+  height: 112px;
+  object-fit: contain;
+  display: block;
+  z-index: 1;
+  filter: drop-shadow(0 8px 20px rgb(0 0 0 / .7));
+}
+html body #screens > .k-screen.sf-crucible-results.sf-runover.sf-runover.sf-runover.sf-runover.sf-runover .sf-runover__arc-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2;
+}
+html body #screens > .k-screen.sf-crucible-results.sf-runover.sf-runover.sf-runover.sf-runover.sf-runover .sf-runover__vitals {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+html body #screens > .k-screen.sf-crucible-results.sf-runover.sf-runover.sf-runover.sf-runover.sf-runover .sf-runover__vital {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+html body #screens > .k-screen.sf-crucible-results.sf-runover.sf-runover.sf-runover.sf-runover.sf-runover .sf-runover__vital-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px;
+}
+html body #screens > .k-screen.sf-crucible-results.sf-runover.sf-runover.sf-runover.sf-runover.sf-runover .sf-runover__vital-word {
+  font: 500 12px/1 var(--dp-face-read, "Instrument Sans", sans-serif);
+  color: #9a9da4;
+}
+html body #screens > .k-screen.sf-crucible-results.sf-runover.sf-runover.sf-runover.sf-runover.sf-runover .sf-runover__vital-pct {
+  font: 700 12px/1 var(--dp-face-display, "Archivo", sans-serif);
+  font-variant-numeric: tabular-nums;
+  color: #ffffff;
+}
+html body #screens > .k-screen.sf-crucible-results.sf-runover.sf-runover.sf-runover.sf-runover.sf-runover .sf-runover__vital.is-empty .sf-runover__vital-pct {
+  color: #ff7a5c;
+}
+html body #screens > .k-screen.sf-crucible-results.sf-runover.sf-runover.sf-runover.sf-runover.sf-runover .sf-runover__vital-track {
+  height: 4px;
+  border-radius: 2px;
+  background: #232327;
+  overflow: hidden;
+}
+html body #screens > .k-screen.sf-crucible-results.sf-runover.sf-runover.sf-runover.sf-runover.sf-runover .sf-runover__vital.is-empty .sf-runover__vital-track {
+  background: rgb(255 80 56 / .2);
+}
+html body #screens > .k-screen.sf-crucible-results.sf-runover.sf-runover.sf-runover.sf-runover.sf-runover .sf-runover__vital-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: #f4f5f7;
+}
+html body #screens > .k-screen.sf-crucible-results.sf-runover.sf-runover.sf-runover.sf-runover.sf-runover .sf-runover__hits {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 14px;
+  border-top: 1px solid rgb(255 255 255 / .08);
+}
+html body #screens > .k-screen.sf-crucible-results.sf-runover.sf-runover.sf-runover.sf-runover.sf-runover .sf-runover__hits-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+html body #screens > .k-screen.sf-crucible-results.sf-runover.sf-runover.sf-runover.sf-runover.sf-runover .sf-runover__hits-title {
+  font: 600 13px/1.2 var(--dp-face-read, "Instrument Sans", sans-serif);
+  color: #f4f5f7;
+}
+html body #screens > .k-screen.sf-crucible-results.sf-runover.sf-runover.sf-runover.sf-runover.sf-runover .sf-runover__hits-total {
+  font: 700 13px/1.2 var(--dp-face-display, "Archivo", sans-serif);
+  font-variant-numeric: tabular-nums;
+  color: #ff8e7a;
+}
+html body #screens > .k-screen.sf-crucible-results.sf-runover.sf-runover.sf-runover.sf-runover.sf-runover .sf-runover__hit-strip {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 8px;
+  align-items: end;
+  padding: 10px 10px 8px;
+  background: #0e0e10;
+  border: 1px solid rgb(255 255 255 / .06);
+  border-radius: 8px;
+}
+html body #screens > .k-screen.sf-crucible-results.sf-runover.sf-runover.sf-runover.sf-runover.sf-runover .sf-runover__hit-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+}
+html body #screens > .k-screen.sf-crucible-results.sf-runover.sf-runover.sf-runover.sf-runover.sf-runover .sf-runover__hit-val {
+  font: 700 12px/1 var(--dp-face-display, "Archivo", sans-serif);
+  font-variant-numeric: tabular-nums;
+  color: #c9cbcf;
+}
+html body #screens > .k-screen.sf-crucible-results.sf-runover.sf-runover.sf-runover.sf-runover.sf-runover .sf-runover__hit-col.is-fatal .sf-runover__hit-val {
+  color: #ff8e7a;
+}
+html body #screens > .k-screen.sf-crucible-results.sf-runover.sf-runover.sf-runover.sf-runover.sf-runover .sf-runover__hit-well {
+  width: 100%;
+  height: 46px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+html body #screens > .k-screen.sf-crucible-results.sf-runover.sf-runover.sf-runover.sf-runover.sf-runover .sf-runover__hit-bar {
+  width: 12px;
+  border-radius: 3px 3px 0 0;
+  background: rgb(255 112 88 / .48);
+}
+html body #screens > .k-screen.sf-crucible-results.sf-runover.sf-runover.sf-runover.sf-runover.sf-runover .sf-runover__hit-col.is-fatal .sf-runover__hit-bar {
+  background: #ff5038;
+  box-shadow: 0 0 12px rgb(255 80 56 / .45);
+}
+html body #screens > .k-screen.sf-crucible-results.sf-runover.sf-runover.sf-runover.sf-runover.sf-runover .sf-runover__hit-who {
+  font: 600 12px/1 var(--dp-face-read, "Instrument Sans", sans-serif);
+  color: #9a9da4;
+}
+html body #screens > .k-screen.sf-crucible-results.sf-runover.sf-runover.sf-runover.sf-runover.sf-runover .sf-runover__hit-col.is-fatal .sf-runover__hit-who {
+  color: #ffffff;
+}
+html body #screens > .k-screen.sf-crucible-results.sf-runover.sf-runover.sf-runover.sf-runover.sf-runover .sf-runover__impact .sf-runover__legend {
+  margin: 0;
+  text-align: left;
+  font: 500 12px/1.35 var(--dp-face-read, "Instrument Sans", sans-serif);
+  color: #9a9da4;
+}
+
+@media (max-height: 700px) and (min-width: 761px) {
+  html body #screens > .k-screen.sf-crucible-results.sf-runover.sf-runover.sf-runover.sf-runover.sf-runover > .sf-runover__impact {
+    padding: 16px 18px;
+    gap: 12px;
+  }
+  html body #screens > .k-screen.sf-crucible-results.sf-runover.sf-runover.sf-runover.sf-runover.sf-runover .sf-runover__impact-stage {
+    height: 156px;
+  }
+  html body #screens > .k-screen.sf-crucible-results.sf-runover.sf-runover.sf-runover.sf-runover.sf-runover .sf-runover__impact-hull {
+    width: 96px;
+    height: 96px;
+  }
+  html body #screens > .k-screen.sf-crucible-results.sf-runover.sf-runover.sf-runover.sf-runover.sf-runover .sf-runover__hit-well {
+    height: 36px;
+  }
+}
+
+@media (max-width: 760px) {
+  html body #screens > .k-screen.sf-crucible-results.sf-runover.sf-runover.sf-runover.sf-runover.sf-runover > .sf-runover__plate {
+    padding: 16px 16px 12px;
+  }
+  html body #screens > .k-screen.sf-crucible-results.sf-runover.sf-runover.sf-runover.sf-runover.sf-runover .sf-runover__title {
+    font-size: 38px;
+  }
+  html body #screens > .k-screen.sf-crucible-results.sf-runover.sf-runover.sf-runover.sf-runover.sf-runover .sf-runover__kiln {
+    margin-top: 8px;
+  }
+  html body #screens > .k-screen.sf-crucible-results.sf-runover.sf-runover.sf-runover.sf-runover.sf-runover .sf-runover__quote {
+    font-size: 18px;
+  }
+  html body #screens > .k-screen.sf-crucible-results.sf-runover.sf-runover.sf-runover.sf-runover.sf-runover .sf-runover__rows {
+    margin-top: 12px;
+    gap: 8px;
+  }
+  html body #screens > .k-screen.sf-crucible-results.sf-runover.sf-runover.sf-runover.sf-runover.sf-runover .sf-runover__figures {
+    margin-top: 12px;
+  }
+  html body #screens > .k-screen.sf-crucible-results.sf-runover.sf-runover.sf-runover.sf-runover.sf-runover .sf-runover__row--build {
+    margin-top: 10px;
+  }
+  html body #screens > .k-screen.sf-crucible-results.sf-runover.sf-runover.sf-runover.sf-runover.sf-runover .sf-runover__take {
+    margin-top: 8px;
+  }
+  html body #screens > .k-screen.sf-crucible-results.sf-runover.sf-runover.sf-runover.sf-runover.sf-runover .sf-runover__foot {
+    margin-top: 14px;
+  }
+  html body #screens > .k-screen.sf-crucible-results.sf-runover.sf-runover.sf-runover.sf-runover.sf-runover .sf-runover__again {
+    height: 46px;
+  }
+  html body #screens > .k-screen.sf-crucible-results.sf-runover.sf-runover.sf-runover.sf-runover.sf-runover:not([data-plate="win"]) .sf-runover__quiet {
+    padding: 0 8px;
+    font-size: 13px;
+    height: 38px;
+  }
+  html body #screens > .k-screen.sf-crucible-results.sf-runover.sf-runover.sf-runover.sf-runover.sf-runover[data-plate="win"] .sf-runover__foot {
+    flex-direction: column;
+  }
+  html body #screens > .k-screen.sf-crucible-results.sf-runover.sf-runover.sf-runover.sf-runover.sf-runover[data-plate="win"] .sf-runover__again {
+    flex: 0 0 auto;
+    width: 100%;
+    height: 48px;
+  }
+  html body #screens > .k-screen.sf-crucible-results.sf-runover.sf-runover.sf-runover.sf-runover.sf-runover[data-plate="win"] .sf-runover__quiet {
+    flex: 0 0 auto;
+    width: 100%;
+    min-height: 44px;
+    height: 44px;
+  }
+  html body #screens > .k-screen.sf-crucible-results.sf-runover.sf-runover.sf-runover.sf-runover.sf-runover > .sf-runover__impact {
+    position: static;
+    transform: none;
+    width: auto;
+    margin: 0 16px 16px;
+    padding: 12px 14px;
+    gap: 10px;
+  }
+  html body #screens > .k-screen.sf-crucible-results.sf-runover.sf-runover.sf-runover.sf-runover.sf-runover .sf-runover__impact-stage {
+    height: 108px;
+  }
+  html body #screens > .k-screen.sf-crucible-results.sf-runover.sf-runover.sf-runover.sf-runover.sf-runover .sf-runover__impact-hull {
+    width: 68px;
+    height: 68px;
+  }
+  html body #screens > .k-screen.sf-crucible-results.sf-runover.sf-runover.sf-runover.sf-runover.sf-runover .sf-runover__hits {
+    padding-top: 10px;
+    gap: 8px;
+  }
+  html body #screens > .k-screen.sf-crucible-results.sf-runover.sf-runover.sf-runover.sf-runover.sf-runover .sf-runover__hit-strip {
+    padding: 8px 8px 6px;
+  }
+  html body #screens > .k-screen.sf-crucible-results.sf-runover.sf-runover.sf-runover.sf-runover.sf-runover .sf-runover__hit-well {
+    height: 26px;
+  }
 }

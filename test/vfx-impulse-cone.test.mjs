@@ -228,7 +228,23 @@ test('impulse charge producer emits bounded per-hit directions and no spherical 
     'impulse charges must not emit the generic spherical explosion cue');
 });
 
-test('live charge handler paints real shove sheets and ribbons, not rings', () => {
+// The charge blast is drawn by the VFX kit (vfx/kit/powerFx.js): a real explosion (flash, shock
+// front, fire, soot, sparks) plus a jet of sparks along every shoved body's own push direction.
+function kitBlastAxes(fx) {
+  const kit = fx._powerFx;
+  const out = { kit, plusX: false, minusX: false, soot: 0, fronts: 0 };
+  if (!kit) return out;
+  const A = kit.sparks.arrays[0]; const V = kit.sparks.arrays[1]; const C1 = kit.sparks.arrays[4];
+  for (let i = 0; i < kit.sparks.highWater; i++) {
+    const vx = V[i * 4]; const vz = V[i * 4 + 2]; const sp = Math.hypot(vx, vz);
+    if (sp > 1) { if (vx / sp > 0.97) out.plusX = true; if (vx / sp < -0.97) out.minusX = true; }
+    if (C1[i * 4 + 3] >= 0.8) out.soot++;
+  }
+  for (let i = 0; i < kit.shells.highWater; i++) if (kit.shells.arrays[3][i * 4] === 0) out.fronts++;
+  return out;
+}
+
+test('live charge handler paints a real blast with causal axes, not sheets or rings', () => {
   const world = makeChargeWorld();
   const bus = createBus();
   const charges = Object.create(impulseCharges);
@@ -256,13 +272,12 @@ test('live charge handler paints real shove sheets and ribbons, not rings', () =
   charges.update(SIM_DT, world.state);
 
   assert.equal(liveSprites(fx).some((sprite) => sprite.kind === ringKind), false,
-    'charge detonation must not keep the old spherical ring identity');
-  const flashes = liveSprites(fx).filter((sprite) => sprite.kind === flashKind);
-  assert.ok(flashes.some((sprite) => sprite.size0 > sprite.size1), 'compact collapsing core remains');
-  assert.ok(flashes.some((sprite) => sprite.aspect >= 2.5), 'shock sheets carry the shove family');
-  const streaks = liveStreaks(fx);
-  assert.ok(streaks.some((streak) => streak.ax > 0.9));
-  assert.ok(streaks.some((streak) => streak.ax < -0.9),
+    'charge detonation must not use the old soft ring card');
+  const blast = kitBlastAxes(fx);
+  assert.ok(blast.kit, 'the VFX kit draws the blast');
+  assert.ok(blast.fronts >= 1, 'a thin shock front races out');
+  assert.ok(blast.soot >= 4, 'fire cools into soot that darkens what is behind it');
+  assert.ok(blast.plusX && blast.minusX,
     'two opposite victims must produce two real directions, not one invented axis');
   fx.destroy();
 });
@@ -312,9 +327,8 @@ test('reduced-motion keeps causal axes for concussion, rail, and impulse charge'
   fx.init({ state: world.state, bus, helpers: {} });
   world.state.input.actions.chargeDetonate = true;
   charges.update(SIM_DT, world.state);
-  const reducedStreaks = liveStreaks(fx);
-  assert.ok(reducedStreaks.some((streak) => streak.ax > 0.9));
-  assert.ok(reducedStreaks.some((streak) => streak.ax < -0.9));
+  const reduced = kitBlastAxes(fx);
+  assert.ok(reduced.plusX && reduced.minusX, 'reduced motion keeps both causal axes');
   assert.equal(liveSprites(fx).some((sprite) => sprite.kind === ringKind), false);
   fx.destroy();
 });

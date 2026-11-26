@@ -6,6 +6,7 @@ import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import { starterBuoySpec, starterMiningReceiptMatches, isOriginalStarterBuoyTow, playerHoldsStarterBuoy } from '../missions/starterWorkday.js';
 import { authoredCinderRoute, observeCinderKill, cinderExtrasSatisfied, acceptCinderRookReceipt, driveCinderRoute } from '../missions/cinderRoute.js';
 import { recordFurnaceAftermathFact, prepareFurnaceSettlement } from '../missions/furnaceWorksiteRuntime.js';
+import { resolveClearSpawnPos } from './spawnClearance.js';
 import { authoredFurnaceWorksite, furnaceAccounting, isFurnaceOwnedLot, furnaceLots, furnaceReceiptMatches, furnaceLotCallout, newFurnaceCasingRecord } from '../missions/furnaceWorksite.js';
 // Row 413 extraction — methods moved verbatim out of missions.js;
 // spread back onto the missions object, so `this` still binds to the system at call time.
@@ -42,6 +43,14 @@ import { ensureSpineBreakWorksite, isSpineBreakOperation, noteSpineBreakDisposit
   spineBreakOutcome } from '../missions/spineBreakWorksite.js';
 import { hasExplicitPickupAcceptance, finiteWholePickupAmount } from '../core/pickupAcceptance.js';
 import { counted } from '../core/numberFormat.js';
+
+// Hoisted out of _onEntityDestroyed: a destroyed receipt used to allocate this Set on every
+// corpse in a burst. One frozen module-level row is identical — the membership test is all
+// the call site ever needed.
+const IGNORED_SPINE_BREAK_REMOVAL_REASONS = new Set([
+  'run_reset', 'save_restore', 'spine_break_retry',
+  'spine_break_stale_cast', 'spine_break_duplicate_cast',
+]);
 
 
 export const missionObjectiveOps = {
@@ -641,10 +650,7 @@ export const missionObjectiveOps = {
     this._heistEach((h) => heistMissionRuntime.onEntityDestroyed(this._heistCtx(), h, p.id));
     // The Book 4 mission owns its train and retries one complete cast before it can fail.
     // Do not treat Continue cleanup or the owner's retry retirement as a real loss.
-    const ignoredSpineBreakRemoval = new Set([
-      'run_reset', 'save_restore', 'spine_break_retry',
-      'spine_break_stale_cast', 'spine_break_duplicate_cast',
-    ]).has(p.reason);
+    const ignoredSpineBreakRemoval = IGNORED_SPINE_BREAK_REMOVAL_REASONS.has(p.reason);
     for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
       const m = this.state.missions.active[i];
       if (!isSpineBreakOperation(m) || m.status !== 'active' || ignoredSpineBreakRemoval) continue;
@@ -675,7 +681,14 @@ export const missionObjectiveOps = {
       const m = this.state.missions.active[i];
       if (isSpineBreakOperation(m)) continue; // handled by the mission-owned retry above
       if (m.status !== 'active' || m.type !== 'escort') continue;
-      if (m._escorteeId != null && m._escorteeId === p.id) {
+      // The id can have recycled onto a replacement escortee before this queued receipt
+      // flushes: the destroyed occupant must still be the hull this mission bound, not
+      // merely whatever held the id. A mission stamped before generations existed keeps
+      // the plain id match (generation == null fails open).
+      const escortReceiptIsOurs = m._escorteeId != null && m._escorteeId === p.id
+        && (p.entity == null || m._escorteeGeneration == null
+          || p.entity.occupantGeneration === m._escorteeGeneration);
+      if (escortReceiptIsOurs) {
         const site = escortLossSite(p.pos, this.state.world && this.state.world.currentSectorId);
         if (site) {
           m._escorteeSectorId = site.sectorId;
@@ -1108,8 +1121,8 @@ export const missionObjectiveOps = {
         params.rumorPurchased = true;
         params.bearingFixed = phase === 'fixed' || phase === 'decision' || phase === 'salvaged';
         offer.upfrontCostCr = 0;
-        offer.title = `Reconcile the Known Bearing: ${wreckName}`;
-        offer.summary = `${wreckName} is already in your ledger. Reconcile its bearing and proceed to recovery.`;
+        offer.title = `Check her bearing: ${wreckName}`;
+        offer.summary = `${wreckName} is already in your book. Check where she lies, then fetch her.`;
         changed = true;
         boardChanged = true;
       }
@@ -1355,7 +1368,7 @@ export const missionObjectiveOps = {
     }, this.state.simTime || 0);
     this._refreshTrackedMissionNav(m);
     this.bus.emit('mission:updated', { missionId: m.id, investigationStage: 'identified' });
-    this._sayStoryLine('Registry match: civilian maintenance vessel. For custody, keep the living vessel on your Line within 60 WU and reel. Force remains a choice.', 10);
+    this._sayStoryLine('Registry match: civilian maintenance vessel. For custody, keep the living vessel on your Line within 60 m and reel. Force remains a choice.', 10);
     return true;
   },
 
@@ -1873,6 +1886,7 @@ export const missionObjectiveOps = {
       return slot;
     };
     const spawnAt = (durableSlot, spec) => {
+      resolveClearSpawnPos(this.state, spec);
       const ent = helpers.spawnEntity(spec);
       if (!ent) return null;
       this._stampMissionTargetIdentity(ent, m, durableSlot);
@@ -2134,6 +2148,7 @@ export const missionObjectiveOps = {
         spec.data.scanLabel = actor.scanLabel || actor.role;
         if (spec.type === 'wreck') spec.collisionMask = MISSION_WRECK_COLLISION_MASK;
         if (actor.tetherable) spec.data.tetherable = true;
+        resolveClearSpawnPos(this.state, spec);
         const ent = helpers.spawnEntity(spec);
         if (!ent) continue;
         this._stampMissionTargetIdentity(ent, m, durableSlot);
@@ -2302,6 +2317,7 @@ export const missionObjectiveOps = {
     }
     let ent = null;
     try {
+      resolveClearSpawnPos(this.state, spec);
       ent = helpers.spawnEntity(spec);
     } catch (error) {
       if (budget && typeof budget.releaseSome === 'function') budget.releaseSome(requester, 1);
@@ -2757,13 +2773,13 @@ export const missionObjectiveOps = {
       if (isSlateCore(m) && m.params.slateCore?.entityId === target.id
           && (p.sourceId === this.state.playerId || p.ownerId === this.state.playerId || p.actorId === this.state.playerId || p.controllerId === this.state.playerId)) {
         m.params.slateCore.handled = true;
-        this._sayStoryLine('Slate: Bring it 110 WU west to the receiving beacon. Within 70 WU, below 18 WU/s. Keep the line or release it clean.', 8);
+        this._sayStoryLine('Slate: Bring it 110 m west to the receiving beacon. Within 70 m, below 18 m/s. Keep the line or release it clean.', 8);
       }
       if (hasMawReceiving(m) && m.params.mawStuns === 3
           && m.params.mawBodies?.[0]?.entityId === target.id
           && (p.sourceId === this.state.playerId || p.ownerId === this.state.playerId || p.actorId === this.state.playerId || p.controllerId === this.state.playerId)) {
         m.params.mawHandledAfterStun = true;
-        this._sayStoryLine('Ceres traffic: receiving beacon east of the worksite. Within 80 WU, below 18 WU/s. Short pulls, early release. Keep clear of its drift.', 8);
+        this._sayStoryLine('Ceres traffic: receiving beacon east of the worksite. Within 80 m, below 18 m/s. Short pulls, early release. Keep clear of its drift.', 8);
       }
       m.params.latchedRole = role;
       m.params.latchedTargetId = p.targetId;

@@ -207,7 +207,8 @@ test('actual partial paid-run credit survives destruction, regrowth and owner re
   const payments = () => h.creditIntents.filter(event => event.reason === 'understory_compost_run');
   assert.equal(payments().length, 0);
   h.player.data.derived.propulsion.mainAccel = 500;
-  h.state.player.cargo.capVolume = 400; h.state.player.cargo.capMass = 400;
+  // Slot law: capVolume is a readout; the bag size is slotCount — 20 slots holds the 255-unit load.
+  h.state.player.cargo.capVolume = 400; h.state.player.cargo.capMass = 400; h.state.player.cargo.slotCount = 20;
   assert.equal(addCargo(h.state, IRON, 255), 255);
   h.feed(h.jettison(255)); // 204t actual contents brings prior36 to exactly240.
   assert.ok(Math.abs(regrown.data.compostFedMass - 240) < 1e-9);

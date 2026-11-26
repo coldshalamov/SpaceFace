@@ -188,7 +188,6 @@ try {
   });
 
   // Drive with public controls: G latches auto-target on the nearest hostile; held LMB fires.
-  await page.bringToFront();
   await page.keyboard.press('KeyG');
   const started = Date.now();
   await page.mouse.down();

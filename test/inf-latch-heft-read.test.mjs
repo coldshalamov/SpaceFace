@@ -140,7 +140,7 @@ function anchorDisc(particles, target) {
   return particles.filter((q) => q.x === target.pos.x && q.z === target.pos.z);
 }
 
-test('live latch: an ice sliver glitters loose, a heavy ice slab throws slow chunks under a ring', () => {
+test('live latch: an ice sliver glitters loose, a heavy ice slab throws slow chunks and seats with one bite, never a ring (no rings around things, owner 2026-11-23)', () => {
   const sliver = rock('ice-s', 20, { substance: 'ice' });
   const s = latchHost(world(sliver));
   s.host._onTetherLatch({ actorId: 'p', targetId: sliver.id });
@@ -157,11 +157,16 @@ test('live latch: an ice sliver glitters loose, a heavy ice slab throws slow chu
   const avg = (rows, k) => rows.reduce((a, q) => a + q[k], 0) / rows.length;
   assert.ok(avg(hDisc, 'speed') < avg(sDisc, 'speed'), 'and slower');
   assert.ok(hDisc[0].size0 > sDisc[0].size0, 'and bigger');
-  const rings = h.sprites.filter((q) => q.kind === 'ring');
-  assert.equal(rings.length, 1, 'the load seats one ring');
-  assert.equal(rings[0].x, slab.pos.x);
-  assert.equal(rings[0].size0, slab.radius * 2);
-  assert.equal(rings[0].col, LATCH_HEFT_SPRAY.ice.ring);
+  assert.equal(h.sprites.filter((q) => q.kind === 'ring').length, 0,
+    'no ring around the caught body (no rings around things, owner 2026-11-23)');
+  // The load still seats: one contact bite across the hitch, in the substance's seating colour,
+  // sized off the caught body's own radius.
+  const bites = h.sprites.filter((q) => q.kind === 'flash' && q.col === LATCH_HEFT_SPRAY.ice.ring);
+  assert.equal(bites.length, 1, 'the load seats one contact bite');
+  assert.equal(bites[0].x, slab.pos.x);
+  assert.ok(Math.abs(bites[0].size0 - slab.radius * 2 * 0.7) < 1e-9, 'the bite is sized off the body');
+  assert.equal(s.sprites.filter((q) => q.kind === 'flash' && q.col === LATCH_HEFT_SPRAY.ice.ring).length, 0,
+    'a loose body seats nothing');
   // The connection read is untouched: both ends still flash the Line's cyan.
   assert.equal(h.sprites.filter((q) => q.kind === 'flash' && q.col === '#a6f0ff').length, 2);
 });
@@ -196,14 +201,16 @@ test('live latch: a body with no surface and no mass reads exactly as before', (
   assert.equal(h.sprites.filter((q) => q.kind === 'ring').length, 0);
 });
 
-test('live latch: reduced motion keeps the ring and the spray, slower and softer', () => {
+test('live latch: reduced motion keeps the seating bite and the spray, softer (no rings around things, owner 2026-11-23)', () => {
   const slab = rock('r', 2000, { substance: 'silicate' });
   const full = latchHost(world(slab));
   full.host._onTetherLatch({ actorId: 'p', targetId: slab.id });
   const calm = latchHost(world(slab), { reduced: true });
   calm.host._onTetherLatch({ actorId: 'p', targetId: slab.id });
-  const ringFull = full.sprites.find((q) => q.kind === 'ring');
-  const ringCalm = calm.sprites.find((q) => q.kind === 'ring');
-  assert.ok(ringCalm && ringCalm.life > ringFull.life && ringCalm.op0 < ringFull.op0);
+  assert.equal([...full.sprites, ...calm.sprites].filter((q) => q.kind === 'ring').length, 0,
+    'no rings around things, owner 2026-11-23');
+  const biteFull = full.sprites.find((q) => q.kind === 'flash' && q.col === LATCH_HEFT_SPRAY.rock.ring);
+  const biteCalm = calm.sprites.find((q) => q.kind === 'flash' && q.col === LATCH_HEFT_SPRAY.rock.ring);
+  assert.ok(biteFull && biteCalm && biteCalm.op0 < biteFull.op0, 'reduced motion seats the load softer, never silent');
   assert.ok(anchorDisc(calm.particles, slab).length >= 6, 'the spray is stretched, not silenced');
 });

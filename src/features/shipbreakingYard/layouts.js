@@ -16,7 +16,7 @@ export const SHIPBREAKING_LAYOUTS = frozen([
   {
     id: 'lark', name: 'LARK / postal tender', title: 'LARK', difficulty: 'Open work', fee: 80,
     summary: 'A clean outer engine, one cargo saddle, and a light command frame. Room to learn the pull.',
-    firstAction: 'Start with the exposed stern engine. Aim and attach a MassLine, scan it, then release its single clamp under a gentle pull. Fly the freed original inside the receiving ring and brake for handover.',
+    firstAction: 'Start with the exposed stern engine. Aim and attach the Line, scan it, then release its single clamp under a gentle pull. Fly the freed original inside the receiving ring and brake for handover.',
     strategy: 'One connection holds the engine. Release under low strain; the two masses keep their motion. The frame remains worth scrap.',
     modules: [
       m('frame', 'Lark command frame', 'frame', 0, 0, 240, 11, 90),
@@ -46,7 +46,7 @@ export const SHIPBREAKING_LAYOUTS = frozen([
     ],
     couplings: [
       c('cargo-saddle', 'frame', 'cargo', 'Outer cassette saddle'),
-      c('cage-crossbrace', 'cargo', 'brace', 'Cargo cage crossbrace', { kind: 'brace', requiresReleased: ['cargo-saddle'], releaseImpulse: 0, warning: 'Under Massline tension this crossbrace can swing the cage across the flywheel. Ease the pull before release.' }),
+      c('cage-crossbrace', 'cargo', 'brace', 'Cargo cage crossbrace', { kind: 'brace', requiresReleased: ['cargo-saddle'], releaseImpulse: 0, warning: 'Under line tension this crossbrace can swing the cage across the flywheel. Ease the pull before release.' }),
       c('pump-collar', 'brace', 'pump', 'Governor service collar', { requiresReleased: ['cage-crossbrace'], requiresClear: ['cargo'], warning: 'The cargo cassette still crowds the extraction lane. Tow the cassette clear first.' }),
       c('drive-mount', 'frame', 'drive', 'Drive mounting ring'),
       c('tank-mount', 'frame', 'tank', 'Reserve bottle saddle'),
@@ -90,7 +90,7 @@ export function createYardLayout(id, variant = 0) {
     layout.name = 'LARK / postal sorting refit';
     layout.title = 'LARK · SORTING REFIT';
     layout.summary = 'A light sorting motor and relay cassette on the original heavy frame.';
-    layout.firstAction = 'Attach your MassLine to the 18t sorting motor, scan it and release its clamp.';
+    layout.firstAction = 'Attach your Line to the 18t sorting motor, scan it and release its clamp.';
     layout.strategy = 'Two light loads on a heavy frame; release and recover each separately.';
     Object.assign(layout.modules.find(m => m.id === 'engine'), YARD_ASSETS.machine,
       { label: 'Postal sorting motor', role: 'machine', mass: 18, value: 160, valueCr: 160 });

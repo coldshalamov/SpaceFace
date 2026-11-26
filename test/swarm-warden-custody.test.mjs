@@ -1,10 +1,17 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createSimulation } from '../src/core/sim.js';
+import { createRunState } from '../src/core/runState.js';
 import { aiPorts } from '../src/systems/aiPorts.js';
+import { combat } from '../src/systems/combat.js';
+import { spawnBudget } from '../src/systems/spawnBudget.js';
+import { planWave } from '../src/systems/survivalWavePlanner.js';
+import { survivalWave } from '../src/systems/survivalWave.js';
+import { noteSwarmPilotAction } from '../src/systems/swarmSafety.js';
 import { CombatDoctrineRuntime, CombatDoctrineId } from '../src/ai/combatDoctrine.js';
 import { ObjectiveKind } from '../src/ai/contracts.js';
 import { applySpecialistCounterplay, wardScreenTarget } from '../src/ai/specialistCounterplay.js';
+import { scalarHitToDamagePacket } from '../src/combat/damage.js';
 import { SWARM_SPECIALIST_TUNING } from '../src/data/swarmSpecialists.js';
 
 const WARDEN_WINDUP = SWARM_SPECIALIST_TUNING.warden.windupTicks;
@@ -102,6 +109,131 @@ test('a hit against a dead ward does not consume an active Warden link', (t) => 
   h.ward.alive = false;
   assert.equal(wardScreenTarget(h.state, h.player, h.ward, { kind: 'weapon' }), null);
   assert.equal(h.guard.data.swarmSpecialist.linkEnergy, energy);
+});
+
+function openUmbrella(t) {
+  const seed = 4242;
+  const wave = 26;
+  const arenaId = 'helios_core';
+  const sim = createSimulation({ seed, systems: [spawnBudget, combat, aiPorts, survivalWave] });
+  t.after(() => sim.dispose());
+  const { state, bus, helpers } = sim;
+  state.mode = 'flight';
+  state.run = createRunState({ kind: 'survival', ruleset: 'swarm', seed });
+  Object.assign(state.run, { arenaId, wave, phase: 'active' });
+  const player = sim.spawn(ship(0, 0, 0));
+  state.playerId = player.id;
+  noteSwarmPilotAction(state);
+  const plan = planWave({ seed, wave, arenaId, ruleset: 'swarm' });
+  bus.emit('run:wavePlanned', { wave, plan });
+  bus.emit('run:waveStarted', { wave });
+  const guards = state.entityList.filter(e => e.alive && e.data?.lootTableId === 'warden_escort');
+  assert.equal(guards.length, 2, 'the live opening admits exactly the authored pair');
+  assert.ok(state.entityList.some(e => e.alive && e.data?.lootTableId === 'lancer_sniper'),
+    'the allied gunners are also present');
+  const [first, second] = guards;
+  const shotEvents = [];
+  bus.on('combat:warded', event => shotEvents.push(event));
+  const runtime = new CombatDoctrineRuntime({ seed });
+  const directive = { objective: { kind: ObjectiveKind.SCREEN, targetId: player.id }, formation: {} };
+  const origin = { kind: 'weapon', id: 'swarm-warden-custody-test' };
+  const hit = (target, damage = 20) => helpers.routeCombatDamage({ attackerId: player.id, targetId: target.id,
+    packet: scalarHitToDamagePacket({ damage, pos: target.pos }), origin });
+  const from = (front, back, perpendicular = false) => {
+    const dx = front.pos.x - back.pos.x;
+    const dz = front.pos.z - back.pos.z;
+    const scale = 400 / Math.hypot(dx, dz);
+    Object.assign(player.pos, { x: front.pos.x + (perpendicular ? -dz : dx) * scale,
+      z: front.pos.z + (perpendicular ? dx : dz) * scale });
+  };
+  function step(tick) {
+    state.tick = tick;
+    state.simTime = tick / 60;
+    state.spatialHash.rebuild(state.entityList);
+    return guards.filter(guard => guard.alive).map(guard => {
+      const frame = helpers.aiSensors.frameFor(guard.id, tick);
+      const doctrine = runtime.update({ tick, entityId: guard.id,
+        doctrineId: CombatDoctrineId.ESCORT_SCREEN, perception: frame, directive });
+      assert.ok(doctrine);
+      applySpecialistCounterplay({ state, specialist: guard, enemyId: 'warden_escort',
+        doctrinePhase: doctrine.phase, doctrine, tick });
+      return frame;
+    });
+  }
+  from(first, second);
+  return { sim, state, player, first, second, step, hit, from, origin, shotEvents };
+}
+
+function deployUmbrella(h) {
+  assert.ok(Math.hypot(h.first.pos.x - h.second.pos.x, h.first.pos.z - h.second.pos.z)
+    < SWARM_SPECIALIST_TUNING.warden.linkRange);
+  assert.deepEqual(h.step(0).map(frame => frame.self.swarmWardTargetId), [h.second.id, h.first.id],
+    'the actual initial sensor frame gives each Warden its own partner');
+  assert.equal(wardScreenTarget(h.state, h.player, h.second, h.origin), null, 'windup has no redirect');
+  for (let tick = 1; tick < 150; tick++) {
+    h.step(tick);
+    if ([h.first, h.second].every(guard => guard.data.swarmSpecialist?.phase === 'active')) break;
+  }
+  assert.ok(h.state.tick >= WARDEN_WINDUP);
+  assert.deepEqual([h.first, h.second].map(guard => guard.data.swarmSpecialist.targetId), [h.second.id, h.first.id]);
+}
+
+test('round 26 deploys reciprocal finite Ward links through the live shot router', (t) => {
+  const h = openUmbrella(t);
+  deployUmbrella(h);
+  const maxEnergy = SWARM_SPECIALIST_TUNING.warden.linkMaxEnergy;
+  const firstLink = h.first.data.swarmSpecialist;
+  const secondLink = h.second.data.swarmSpecialist;
+  h.from(h.second, h.first, true);
+  assert.equal(wardScreenTarget(h.state, h.player, h.second, h.origin), null, 'a wide bearing dodges the guard');
+  h.from(h.first, h.second);
+  const forward = h.hit(h.second, 100);
+  assert.equal(forward.warderId, h.first.id);
+  assert.ok(forward.swarmGuardRedirected > 0 && forward.totalApplied > 0, 'both bodies take their own share');
+  assert.equal(firstLink.linkEnergy, maxEnergy - 40);
+  assert.equal(secondLink.linkEnergy, maxEnergy, 'the redirected share cannot trigger the reciprocal link');
+  h.from(h.second, h.first);
+  const backward = h.hit(h.first, 100);
+  assert.equal(backward.warderId, h.second.id);
+  assert.equal(secondLink.linkEnergy, maxEnergy - 40);
+  assert.deepEqual(h.shotEvents.map(event => [event.escortId, event.targetId]),
+    [[h.first.id, h.second.id], [h.second.id, h.first.id]], 'the existing shield effect sees one receipt per shot');
+  h.from(h.first, h.second);
+  h.hit(h.second, 100);
+  assert.equal(firstLink.linkEnergy, maxEnergy - 80);
+  assert.equal(h.hit(h.second, 100).warderId, h.first.id, 'the final share spends the remaining finite pool');
+  assert.equal(firstLink.linkEnergy, 0);
+  assert.equal(firstLink.phase, 'recovery');
+  assert.equal(wardScreenTarget(h.state, h.player, h.second, h.origin), null, 'a spent link is open to counterfire');
+});
+
+test('round 26 breaks when separated, and a retired partner never guards a new occupant', (t) => {
+  const h = openUmbrella(t);
+  deployUmbrella(h);
+  const firstLink = h.first.data.swarmSpecialist;
+  const position = { x: h.second.pos.x, z: h.second.pos.z };
+  const dx = position.x - h.first.pos.x;
+  const dz = position.z - h.first.pos.z;
+  const scale = 350 / Math.hypot(dx, dz);
+  Object.assign(h.second.pos, { x: h.first.pos.x + dx * scale, z: h.first.pos.z + dz * scale });
+  h.from(h.first, h.second);
+  assert.equal(wardScreenTarget(h.state, h.player, h.second, h.origin), null, 'the shot line cannot extend link range');
+  assert.equal(firstLink.phase, 'recovery');
+  Object.assign(h.second.pos, position);
+  const oldId = h.first.id;
+  const oldGeneration = h.first.occupantGeneration;
+  assert.equal(h.second.data.swarmSpecialist.targetGeneration, oldGeneration);
+  assert.equal(h.sim.helpers.removeEntity(oldId, { immediate: true }), true);
+  const replacement = h.sim.spawn(ship(h.first.pos.x, h.first.pos.z, h.first.team, {
+    runCohort: 'survival', runWave: 26, lootTableId: 'warden_escort', swarmWardPair: h.first.data.swarmWardPair,
+  }));
+  assert.equal(replacement.id, oldId, 'exercise actual numeric id recycling');
+  assert.notEqual(replacement.occupantGeneration, oldGeneration);
+  h.from(h.second, replacement);
+  assert.equal(wardScreenTarget(h.state, h.player, replacement, h.origin), null);
+  h.step(h.state.tick + 1);
+  assert.equal(h.second.data.swarmSpecialist.targetId, null, 'the surviving Warden drops its retired partner');
+  assert.equal(h.second.data.swarmSpecialist.phase, 'recovery');
 });
 
 test('production Anchor timing keeps the announced active window and caps close-range recovery', (t) => {

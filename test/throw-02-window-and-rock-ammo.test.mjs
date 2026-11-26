@@ -108,6 +108,35 @@ function windowPairs(events) {
   return pairs;
 }
 
+test('the Raider lesson lights its throw cue only for impact speed that can complete the lesson', () => withFlags(() => {
+  for (const [swingOmega, expectedReady] of [[0.35, false], [1, true]]) {
+    const w = world({ swingOmega });
+    const rock = w.state.entities.get(3);
+    rock.type = 'asteroid';
+    rock.data = { onboarding: true, raidRole: 'throwRock', typeId: 'ast_raid_throw_rock' };
+    rock.radius = 48;
+    rock.physicsBody = { dynamic: false, radius: 55.68 };
+    w.payload.data.onboardingRaid = true;
+    w.state.onboarding = { raid: { active: true, ids: { raider: w.payload.id, throwRock: rock.id } } };
+    w.host.helpers.raycastToPlane = () => rock.pos;
+    w.latch();
+    const phase = Math.atan2(w.payload.pos.z, w.payload.pos.x) + swingOmega * DT;
+    // The faster trajectory clips the actual shell beyond the nominal display radius.
+    const offset = expectedReady ? 66 : 0;
+    const along = 120 * swingOmega * 1.5;
+    rock.pos = { x: (120 + offset) * Math.cos(phase) - along * Math.sin(phase),
+      z: (120 + offset) * Math.sin(phase) + along * Math.cos(phase) };
+    w.tick(1);
+
+    const { aimTargetId, solution } = w.state.massline2.throw;
+    assert.equal(aimTargetId, rock.id);
+    assert.equal(solution.valid, true, 'the trajectory is measurable at both speeds');
+    assert.equal(solution.onSolution, expectedReady);
+    assert.equal(releaseWindowOpen(w.state, rock.id), expectedReady);
+    w.system.destroy();
+  }
+}));
+
 test('a one-tick band crossing still reports a release window of at least 0.20 s of sim time', () => withFlags(() => {
   // omega 6 rad/s puts the contact band under ~1.5 ticks wide — the Swarm sub-frame case.
   const w = world({ swingOmega: 6.0 });

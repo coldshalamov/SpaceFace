@@ -482,7 +482,6 @@ async function runProbe() {
     });
 
     await page.goto(server.baseUrl, { waitUntil: 'domcontentloaded', timeout: 60000 });
-    await page.bringToFront();
 
     await page.waitForFunction(() => !!(window.SF && window.SF.state), null, { timeout: 30000 });
 

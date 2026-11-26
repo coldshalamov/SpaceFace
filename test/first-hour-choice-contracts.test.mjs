@@ -24,11 +24,11 @@ import {
 // it), so a literal index silently points at a different lesson.
 const DOCK_BEAT = BEATS.findIndex((beat) => beat.key === 'dock');
 const CHOICE_BEAT = BEATS.findIndex((beat) => beat.key === 'choice');
-const MARKER_BEAT = BEATS.findIndex((beat) => beat.key === 'marker');
+const THRUST_BEAT = BEATS.findIndex((beat) => beat.key === 'thrust');
 
 function completePostDockDrills(state) {
-  // e14ae4e294f5 moved these flight drills between the first dock and job choice.
-  for (const key of ['marker', 'focus', 'burst', 'disengage']) {
+  // The opening puts the first throw before speed lessons. These drills all follow the first dock.
+  for (const key of ['thrust', 'brake', 'marker', 'focus', 'burst', 'disengage']) {
     state.onboarding.beatDoneAt[key] = state.simTime - 10;
   }
 }
@@ -133,7 +133,7 @@ test('the first post-dock flight drill starts when flight and the silence interv
   assert.equal(h.state.onboarding.currentBeat, DOCK_BEAT, 'the silence gate still applies in flight');
   h.state.simTime += 5;
   h.onboarding._tryAdvanceBeat();
-  assert.equal(h.state.onboarding.currentBeat, MARKER_BEAT);
+  assert.equal(h.state.onboarding.currentBeat, THRUST_BEAT);
 });
 
 test('starter-progression: undocking from B5 without a job retires the rail and keeps the offers', () => {

@@ -106,7 +106,25 @@ export function isSharedPlayerStoreKey(key) {
   return typeof key === 'string' && KEY_RE.test(key);
 }
 
+// Throwaway work in this realm (the sim worker's boot rehearsal: a scripted fight in its own host
+// before the real game exists) must never touch the player's store. Its storage writes land in the
+// lane shim, which the worker clears afterwards, but a store mirror is a network write that
+// nothing clears: the rehearsal's checkpoint opening reached the drawer as "Resume round 3" on a
+// brand-new profile. While a hold is open the store reads as absent in this realm, so nothing is
+// fetched from or mirrored to it. Holds nest; each release is idempotent.
+let _storeHolds = 0;
+export function holdSharedPlayerStore() {
+  _storeHolds += 1;
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    _storeHolds = Math.max(0, _storeHolds - 1);
+  };
+}
+
 export function sharedPlayerStoreAvailable() {
+  if (_storeHolds > 0) return false;
   try {
     const loc = globalThis.location;
     return !!(loc && (loc.protocol === 'http:' || loc.protocol === 'https:'));

@@ -62,6 +62,8 @@ export function createLoadingProgressModel() {
     setReduced(value) { reduced = value === true; },
     adopt(value) { if (Number.isFinite(value)) shown = Math.max(shown, Math.min(complete ? 1 : .997, value)); },
     snapshot() { return { shown, verified, ceiling, id, complete }; },
-    format() { return shown === 1 && complete ? '100%' : `${(Math.floor(shown * 1000) / 10).toFixed(1)}%`; },
+    // Whole percents, as a finished game prints a load: a tenth-of-a-percent readout reads as a
+    // debug counter. The arc carries the motion between whole steps; 100% only once complete.
+    format() { return shown === 1 && complete ? '100%' : `${Math.min(99, Math.floor(shown * 100))}%`; },
   };
 }

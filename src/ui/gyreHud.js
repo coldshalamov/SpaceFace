@@ -239,7 +239,7 @@ export const gyreHud = {
     // a beam whose ONLY job is bending fire still isn't bare SEARCHING.
     const handlingTxt = (tow > 0 ? ` · TOWING ×${tow}` : '')
       + (deflect > 0 ? ` · DEFLECT ×${deflect}` : '')
-      + (heavy > 0 ? ` · TOO HEAVY ×${heavy}` : '');
+      + (heavy > 0 ? ` · TOO BIG ×${heavy}` : '');
     // The watch ledger caps at ballWatchMax — live marks past it fly silent to
     // TTL. Name the pile's tail instead of letting it die invisible.
     const over = Math.max(0, g.ballOverflow || 0);
@@ -262,7 +262,7 @@ export const gyreHud = {
           // The mass text names the same payload the DMG× does — _bowlMass is the
           // clumpMass ledger and can diverge from the frozen ball on an adopter edge.
           const bowlT = Math.round(g.ballMass != null ? g.ballMass : (this._bowlMass || 0));
-          return { text: `GYRE — BOWL ×${this._bowlN} · ${bowlT}t · DMG×${bowlDmg}${fuseTxt}${ballTxt}${overTxt}`, cls: 'gyre-launched', fuse: fuseS, row: 'bowl' };
+          return { text: `GATHER — BALL ×${this._bowlN} · ${bowlT}t · DMG×${bowlDmg}${fuseTxt}${ballTxt}${overTxt}`, cls: 'gyre-launched', fuse: fuseS, row: 'bowl' };
         }
         const mass = Math.round(g.ballMass || 0);
         // A sweep-adopted ball has no member ledger (ballMembers never serialized) —
@@ -273,7 +273,7 @@ export const gyreHud = {
         // DMG× names the destructive yield while it flies — the "growth → weapon"
         // arc stays legible instead of revealing itself only on impact.
         const dmg = dmgText(g.ballMass || 0);
-        const label = mass > 0 ? (count != null ? `GYRE — BALL AWAY ×${count} · ${mass}t · DMG×${dmg}` : `GYRE — BALL AWAY · ${mass}t · DMG×${dmg}`) : 'GYRE — BALL AWAY';
+        const label = mass > 0 ? (count != null ? `GATHER — BALL AWAY ×${count} · ${mass}t · DMG×${dmg}` : `GATHER — BALL AWAY · ${mass}t · DMG×${dmg}`) : 'GATHER — BALL AWAY';
         return { text: label + ballTxt + overTxt, cls: 'gyre-ball', fuse: fuseS, row: 'ball' };
       }
       // No primary, but secondaries are still streaking (one retires before the rest) —
@@ -295,7 +295,8 @@ export const gyreHud = {
         }
         const sDmg = dmgText(sMassMax);
         const sMassTxt = sMass > 0 ? ` · ${Math.round(sMass)}t · DMG×${sDmg}` : '';
-        return { text: `GYRE — ${bs.length > 1 ? `${bs.length} BALLS` : 'BALL'} AWAY${sMassTxt}${sTxt}${overTxt}`, cls: 'gyre-ball', fuse: fuseS, row: 'ball' };
+        const bsWord = bs.length > 1 ? `${bs.length} BALLS` : 'BALL';
+        return { text: `GATHER — ${bsWord} AWAY${sMassTxt}${sTxt}${overTxt}`, cls: 'gyre-ball', fuse: fuseS, row: 'ball' };
       }
       return { text: '', cls: '' };
     }
@@ -322,7 +323,7 @@ export const gyreHud = {
       const bowlDmg = dmgText(g.ballMass != null ? g.ballMass : bowlMass);
       // Mass text reads the frozen payload too — one row, one ball.
       const bowlT = Math.round(g.ballMass != null ? g.ballMass : bowlMass);
-      return { text: `GYRE — BOWL ×${bowlN} · ${bowlT}t · DMG×${bowlDmg}${fuseTxt}${ballTxt}${overTxt}`, cls: 'gyre-launched', fuse: fuseS, row: 'bowl' };
+      return { text: `GATHER — BALL ×${bowlN} · ${bowlT}t · DMG×${bowlDmg}${fuseTxt}${ballTxt}${overTxt}`, cls: 'gyre-launched', fuse: fuseS, row: 'bowl' };
     }
     if (g.phase === 'holding') {
       const count = (g.absorbs || 0) + 1;
@@ -345,7 +346,7 @@ export const gyreHud = {
       // channel a swelling-but-not-full clump named its size through.
       const mfrac = (g.maxClumpMass || 0) > 0 ? Math.min(1, (g.clumpMass || 0) / g.maxClumpMass) : 0;
       if (this._strainOn) {
-        return { text: `GYRE — STRAIN ×${count} · ${mass}t${dmg}${tail}${fuseTxt}${ballTxt}${overTxt}`, cls: 'gyre-strain', strain: s, fuse, mass: mfrac, row: 'strain' };
+        return { text: `GATHER — STRAIN ×${count} · ${mass}t${dmg}${tail}${fuseTxt}${ballTxt}${overTxt}`, cls: 'gyre-strain', strain: s, fuse, mass: mfrac, row: 'strain' };
       }
       // Saturation reads: the cap is a hard ceiling, so "why isn't it eating?" gets a flag.
       // The system's `full` is the member-ledger truth; the mass read stays as the
@@ -354,9 +355,9 @@ export const gyreHud = {
         ? g.full
         : (g.maxClumpMass != null && (g.clumpMass || 0) >= g.maxClumpMass);
       if (full) {
-        return { text: `GYRE — ×${count} · ${mass}t${dmg} FULL${tail}${fuseTxt}${ballTxt}${overTxt}`, cls: 'gyre-full', strain: s, fuse, mass: mfrac, row: 'full' };
+        return { text: `GATHER — ×${count} · ${mass}t${dmg} FULL${tail}${fuseTxt}${ballTxt}${overTxt}`, cls: 'gyre-full', strain: s, fuse, mass: mfrac, row: 'full' };
       }
-      return { text: `GYRE — ×${count} · ${mass}t${dmg}${tail}${fuseTxt}${ballTxt}${overTxt}`, cls: 'gyre-holding', strain: s, fuse, mass: mfrac, row: 'holding' };
+      return { text: `GATHER — ×${count} · ${mass}t${dmg}${tail}${fuseTxt}${ballTxt}${overTxt}`, cls: 'gyre-holding', strain: s, fuse, mass: mfrac, row: 'holding' };
     }
     // Net anticipation: material already inside the cone names the catch before it
     // lands — "×N IN NET" instead of a bare SEARCHING sweep. A beam towing only
@@ -366,27 +367,30 @@ export const gyreHud = {
     if (net > 0) {
       // A mixed net carries the warm face + the refusal count too — an uneatable
       // body inside is the actionable read, same as the tow branch's own rule.
-      // handlingTxt already ends in `· TOO HEAVY ×N` — the suffix comes once.
-      return { text: `GYRE — ×${net} IN NET${handlingTxt}${fuseTxt}${ballTxt}${overTxt}`, cls: heavy > 0 ? 'gyre-heavy' : 'gyre-holding', fuse: fuseS, row: 'net' };
+      // handlingTxt already ends in `· TOO BIG ×N` — the suffix comes once.
+      return { text: `GATHER — ×${net} IN NET${handlingTxt}${fuseTxt}${ballTxt}${overTxt}`, cls: heavy > 0 ? 'gyre-heavy' : 'gyre-holding', fuse: fuseS, row: 'net' };
     }
     if (tow > 0) {
-      // The too-heavy read is the actionable half of the line — carry the warm
+      // The too-big read is the actionable half of the line — carry the warm
       // face whenever a body it can never eat is inside, not only when tow==0.
       // Same for the defensive payoff: a beam towing loot while it bends a
       // volley names both — the deflect ledger isn't silently discarded.
-      return { text: `GYRE — TOWING ×${tow}${heavy > 0 ? ` · TOO HEAVY ×${heavy}` : ''}${deflect > 0 ? ` · DEFLECT ×${deflect}` : ''}${fuseTxt}${ballTxt}${overTxt}`, cls: heavy > 0 ? 'gyre-heavy' : 'gyre-search', fuse: fuseS, row: 'tow' };
+      const heavyTxt = heavy > 0 ? ` · TOO BIG ×${heavy}` : '';
+      const deflectTxt = deflect > 0 ? ` · DEFLECT ×${deflect}` : '';
+      return { text: `GATHER — TOWING ×${tow}${heavyTxt}${deflectTxt}${fuseTxt}${ballTxt}${overTxt}`, cls: heavy > 0 ? 'gyre-heavy' : 'gyre-search', fuse: fuseS, row: 'tow' };
     }
     if (heavy > 0) {
-      return { text: `GYRE — TOO HEAVY ×${heavy}${deflect > 0 ? ` · DEFLECT ×${deflect}` : ''}${fuseTxt}${ballTxt}${overTxt}`, cls: 'gyre-heavy', fuse: fuseS, row: 'heavy' };
+      const heavyDeflectTxt = deflect > 0 ? ` · DEFLECT ×${deflect}` : '';
+      return { text: `GATHER — TOO BIG ×${heavy}${heavyDeflectTxt}${fuseTxt}${ballTxt}${overTxt}`, cls: 'gyre-heavy', fuse: fuseS, row: 'heavy' };
     }
     if (deflect > 0) {
       // The defensive-only read: nothing to tow or eat — the cone is purely
       // bending their fire. Its own word so the pill isn't silent SEARCHING
       // while the weapon's one defensive payoff does real work — the warm face
       // like IN NET: the beam is working, not sweeping an empty sky.
-      return { text: `GYRE — DEFLECTING ×${deflect}${fuseTxt}${ballTxt}${overTxt}`, cls: 'gyre-holding', fuse: fuseS, row: 'deflect' };
+      return { text: `GATHER — DEFLECTING ×${deflect}${fuseTxt}${ballTxt}${overTxt}`, cls: 'gyre-holding', fuse: fuseS, row: 'deflect' };
     }
-    return { text: `GYRE — SEARCHING${fuseTxt}${ballTxt}${overTxt}`, cls: 'gyre-search', fuse: fuseS, row: 'search' };
+    return { text: `GATHER — SEARCHING${fuseTxt}${ballTxt}${overTxt}`, cls: 'gyre-search', fuse: fuseS, row: 'search' };
   },
 
   _apply(dom, text, cls, strain, fuse, mass, row) {

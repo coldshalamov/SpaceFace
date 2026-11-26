@@ -17,6 +17,7 @@ import { findScarSeat, reinforceScarSeat } from './scarSeats.js';
 import { weaponEffectSeed } from './energyBoltPool.js';
 import { planPlayerSurfaceSplash } from './playerSurfaceSplash.js';
 import { QuarksVfxSystem } from '../vfx/quarksSystem.js';
+import { isVfxBudgetActive } from '../vfx/vfxBudget.js';
 import { addShieldContact, ageShieldContacts, clearShieldContacts, shieldContactsActiveCount } from './shieldContacts.js';
 import {
   shouldDrawTableVfx,
@@ -564,9 +565,12 @@ export class WeaponVfxPresenter {
     this._syncWellDistortion();
     this.distortion.update(dt);
     this.lights.update(dt);
+    const vfxBudgetOn = isVfxBudgetActive(this.state);
+    this.ribbons.setBudgetActive(vfxBudgetOn);
     this.ribbons.setCamera(camera, viewportHeight);
     this.ribbons.update(dt, camera && camera.position, accessibilityProfile);
     if (this.quarks) {
+      this.quarks.setBudgetActive(vfxBudgetOn);
       const now=this.state?.simTime;
       let particleDt=dt;
       if(Number.isFinite(now)){

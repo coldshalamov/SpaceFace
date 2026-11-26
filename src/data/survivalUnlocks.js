@@ -194,7 +194,7 @@ export const SURVIVAL_UNLOCK_CATALOG = freezeDeep([
   entry({
     id: 'unlock_kit_massline',
     kind: 'starter',
-    label: 'Massline Rig',
+    label: 'Line Rig',
     blurb: 'Start on the rope hull.',
     earn: { kind: 'pick_and_waves', verb: 'Whip', minWaves: 8 },
     grants: { starters: ['massline_rig'] },

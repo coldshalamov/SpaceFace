@@ -43,13 +43,15 @@ assert.match(flightDrillSrc, /Latch it\. Massline\./, 'B1 entry must teach massl
 assert.match(flightDrillSrc, /on:\s*'tether:reel'/, 'B1 cut follow-up must use production tether:reel');
 assert.match(onboardingSrc, /_onTetherReel/, 'B1 must gate reel follow-up on tether:reel payload');
 
-// OPENING-1: movement first, the story through the first berth, then optional flight drills.
-const EXPECTED_KEYS = ['thrust', 'brake', 'tether', 'raid', 'claimed', 'seam', 'dock',
-  'marker', 'focus', 'burst', 'disengage', 'choice'];
+// Demo route (2026-11-23): rope the loose rock and throw it, then dock at Helios (the first job
+// lives there), then the story (raid, claimed salvage, seam, the sample delivery), then the
+// optional flight drills and the job choice.
+const EXPECTED_KEYS = ['tether', 'berth', 'raid', 'claimed', 'seam', 'dock',
+  'thrust', 'brake', 'marker', 'focus', 'burst', 'disengage', 'choice'];
 assert.deepEqual(
   BEATS.map((b) => b.key),
   EXPECTED_KEYS,
-  'the story opening must reach seam and dock before staging the optional flight drills',
+  'the opening must rope and throw first, then dock, before the story beats and the optional drills',
 );
 
 // ── Assertion 3: tutorial copy is authored and safe for an inline localized UI surface ──
@@ -108,12 +110,13 @@ for (const [index, previous] of BEATS.slice(0, -1).entries()) {
   assert.deepEqual(lines, [], 'the departure waits for silence after the last tutorial line');
   state.simTime = 15;
   owner._tryAdvanceBeat();
-  assert.equal(BEATS[state.onboarding.currentBeat].key, 'marker');
+  // The flight drills wait behind the sample delivery; a pilot who already flew folds them.
+  assert.equal(BEATS[state.onboarding.currentBeat].key, 'thrust');
 }
 
 {
   const { state, owner, lines } = openingClock('dock');
-  state.onboarding.beatDoneAt = { dock: 10, marker: 1, focus: 2, burst: 3, disengage: 4 };
+  state.onboarding.beatDoneAt = { dock: 10, thrust: 1, brake: 1, marker: 1, focus: 2, burst: 3, disengage: 4 };
   owner._tryAdvanceBeat({ atBerth: true });
   assert.equal(BEATS[state.onboarding.currentBeat].key, 'choice', 'a pilot who already drilled can choose at the berth');
   assert.deepEqual(lines, [{ text: BEATS.at(-1).line, at: 10 }]);

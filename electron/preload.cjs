@@ -49,6 +49,17 @@ try {
   else localStorage.removeItem('sf.domainProfile');
 } catch (_) { /* storage gated — the lane selector falls back to station */ }
 
+// Shell process start for the page's boot timeline: main.cjs stamps its launch
+// wall clock into the renderer argv; index.html's inline timeline mint maps it
+// onto the navigation-start clock as 'electron-process-start'. Same localStorage
+// channel as the lane selector — set before any page module evaluates.
+try {
+  const arg = (process.argv || []).find((a) => typeof a === 'string' && a.startsWith('--sf-shell-boot-at='));
+  const stamp = arg ? Number(arg.slice('--sf-shell-boot-at='.length)) : NaN;
+  if (Number.isFinite(stamp) && stamp > 0) localStorage.setItem('sf.shellBootAt', String(stamp));
+  else localStorage.removeItem('sf.shellBootAt');
+} catch (_) { /* storage gated — the mark is diagnostic-only */ }
+
 const SHELL_LIFECYCLE_CHANNEL = 'spaceface:shell-lifecycle';
 const ALLOWED_STATES = new Set([
   'foreground-visible',

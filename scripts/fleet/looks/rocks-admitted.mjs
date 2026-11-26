@@ -1,7 +1,9 @@
 // LOOK-05A: Swarm round N with the authored place_rock bodies ADMITTED (waits for them), shoots the frame and
 // crops around the authored rocks that are on screen, upscaled 2x so the surface reads.
 //   node scripts/fleet/game-lock.mjs run -- node scripts/fleet/looks/rocks-admitted.mjs <outPrefix> <round>
-import { chromium } from 'playwright';
+import { chromium as rawChromium } from 'playwright';
+import { quietChromium } from '../../lib/quietLaunch.mjs';
+const chromium = quietChromium(rawChromium);
 import { spawn } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';

@@ -29,10 +29,15 @@ test('all authored station market memories fit both bounded save import paths', 
     const main = mainPreflight(envelope);
 
     assert.equal(SAVE_IMPORT_MAX_NODES, 500_000);
-    assert.equal(Object.keys(data.economy.marketIntel).length, 34);
-    assert.equal(Object.keys(data.player.marketMemory).length, 34);
+    // 6fddfd284f: the closed-form listing now covers all 35 authored stations — the count is
+    // incidental; the claim under test is that every one fits the bounded import budget.
+    assert.equal(Object.keys(data.economy.marketIntel).length, 35);
+    assert.equal(Object.keys(data.player.marketMemory).length, 35);
     assert.ok(main.ok, `canonical owner snapshot should fit the new bounded node ceiling: ${JSON.stringify(main)}`);
-    assert.ok(main.nodes > 200_000, 'fixture crosses the old ceiling that rejected the live save');
+    // 6fddfd284f: stored-curve markets shrunk the same intel ~5x — the envelope no longer
+    // crosses the retired 200k ceiling. The floor below still proves the fixture is the real
+    // authored world, not a token payload; the oversize rejection below proves the bound bites.
+    assert.ok(main.nodes > 30_000, `fixture must carry the full authored world: ${main.nodes}`);
     assert.ok(main.nodes < SAVE_IMPORT_MAX_NODES);
     assert.ok(encodedLength < SAVE_IMPORT_MAX_BYTES, 'node headroom does not relax the independent byte limit');
     assert.deepEqual(workerPreflight(envelope), main, 'main and worker import gates must agree');

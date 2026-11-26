@@ -185,6 +185,9 @@ export function createSimulation(options = {}) {
       if (stepping) throw new Error('Simulation step is not re-entrant');
       if (!(Number.isFinite(dt) && dt > 0)) throw new RangeError('Simulation dt must be finite and > 0');
       stepping = true;
+      // SIM-RATE-TIERS-BREADTH: open the step-deferred presentation window — emits of the
+      // deferral set inside the step collect and deliver once at drainStepDeferred below.
+      if (bus.beginStep) bus.beginStep(state.playerId);
       // Tier-1 causal counting, mirroring createRegistry's production step. This registry is a
       // separate implementation, so without this the sim-side families read zero on every harness
       // that drives createSimulation — a counter that fails toward good news. One hoisted boolean
@@ -223,6 +226,8 @@ export function createSimulation(options = {}) {
             system.update(updatePartitions.updateDt(system, dt, state), state);
             profiler.record(system.name, nowNs() - t0);
           }
+          // Deferred presentation emits land once, in order, before the sweep.
+          if (bus.drainStepDeferred) bus.drainStepDeferred();
           if (core.lifetimeSweep) {
             const t0 = nowNs();
             if (countSystems) tier1.countSystemInvocation('core.lifetimeSweep');
@@ -241,12 +246,14 @@ export function createSimulation(options = {}) {
             if (countSystems) tier1.countSystemInvocation(system.name);
             system.update(updatePartitions.updateDt(system, dt, state), state);
           }
+          if (bus.drainStepDeferred) bus.drainStepDeferred();
           if (core.lifetimeSweep) {
             if (countSystems) tier1.countSystemInvocation('core.lifetimeSweep');
             core.lifetimeSweep(dt, state);
           }
         }
       } finally {
+        if (bus.endStep) bus.endStep();
         hiddenKeepaliveTier1 = null;
         countHiddenKeepalive = false;
         stepping = false;

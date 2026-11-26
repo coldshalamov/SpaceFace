@@ -306,10 +306,225 @@ function authoredProxyManifest(entity) {
   return manifest;
 }
 
+// Every input the resolver reads, captured as one flat key on the entity. The
+// SG-02 body owner compares proxy ids every sync and the projectile broadphase
+// walks every collidable each sweep; both paid the resolver's internal key walk
+// per call. When the fingerprint still matches, no read the resolver makes can
+// have moved — the cached manifest is the same object it would return.
+// Mutating the body in place must bump body.revision (the spec contract the
+// owner already relies on); the fingerprint carries the whole data.* read set
+// because canonical identity is allowed to rewrite those fields in place.
+const PROXY_FP_BODY = 0;
+const PROXY_FP_BODY_REVISION = 1;
+const PROXY_FP_BODY_MANIFEST = 2;
+const PROXY_FP_BODY_MATERIAL = 3;
+const PROXY_FP_BODY_MEASURED_SKIN = 4;
+const PROXY_FP_BODY_SHAPE = 5;
+const PROXY_FP_BODY_DYNAMIC = 6;
+const PROXY_FP_COLLIDES = 7;
+const PROXY_FP_TYPE = 8;
+const PROXY_FP_ID = 9;
+const PROXY_FP_RADIUS = 10;
+const PROXY_FP_KIND = 11;
+const PROXY_FP_DATA = 12;
+const PROXY_FP_DATA_PROXY = 13;
+const PROXY_FP_DATA_ROOM_OWNER = 14;
+const PROXY_FP_DATA_ROOM_KIND = 15;
+const PROXY_FP_DATA_COMPOUND_SKIN = 16;
+const PROXY_FP_DATA_DEF_ID = 17;
+const PROXY_FP_DATA_TYPE_ID = 18;
+const PROXY_FP_DATA_SILHOUETTE = 19;
+const PROXY_FP_DATA_MAJOR_WRECK = 20;
+const PROXY_FP_DATA_PLACE_ID = 21;
+const PROXY_FP_DATA_ARCHETYPE_GLB = 22;
+const PROXY_FP_DATA_STATION_TYPE_ID = 23;
+const PROXY_FP_DATA_LOOT_TABLE_ID = 24;
+const PROXY_FP_DATA_TRAFFIC_ROLE = 25;
+const PROXY_FP_DATA_IS_GATE = 26;
+const PROXY_FP_DATA_IS_WORMHOLE = 27;
+// isFixedPhysicsEntity (inside the dynamic-mode read) also keys on landmark
+// markers and the body/entity radius fallback — every one changes the fixed/dynamic
+// verdict, so all belong to the key.
+const PROXY_FP_DATA_IS_LANDMARK = 28;
+const PROXY_FP_DATA_IS_LANDMARK_ROCK = 29;
+const PROXY_FP_DATA_LANDMARK = 30;
+const PROXY_FP_DATA_ARCHETYPE = 31;
+const PROXY_FP_BODY_RADIUS = 32;
+const PROXY_FP_LENGTH = 33;
+
+function captureProxyFingerprint(entity, fp) {
+  const body = entity.physicsBody && typeof entity.physicsBody === 'object' ? entity.physicsBody : null;
+  const data = entity.data && typeof entity.data === 'object' ? entity.data : null;
+  fp[PROXY_FP_BODY] = entity.physicsBody;
+  fp[PROXY_FP_BODY_REVISION] = body ? body.revision : entity.physicsBody;
+  fp[PROXY_FP_BODY_MANIFEST] = body ? body.collisionProxyManifest : undefined;
+  fp[PROXY_FP_BODY_MATERIAL] = body ? body.material : undefined;
+  fp[PROXY_FP_BODY_MEASURED_SKIN] = body ? body.useMeasuredSkin : undefined;
+  fp[PROXY_FP_BODY_SHAPE] = body ? body.shape : undefined;
+  fp[PROXY_FP_BODY_DYNAMIC] = body ? body.dynamic : undefined;
+  fp[PROXY_FP_COLLIDES] = entity.collides;
+  fp[PROXY_FP_TYPE] = entity.type;
+  fp[PROXY_FP_ID] = entity.id;
+  fp[PROXY_FP_RADIUS] = entity.radius;
+  fp[PROXY_FP_KIND] = entity.kind;
+  fp[PROXY_FP_DATA] = entity.data;
+  fp[PROXY_FP_DATA_PROXY] = data ? data.collisionProxy : undefined;
+  fp[PROXY_FP_DATA_ROOM_OWNER] = data ? data.roomOwner : undefined;
+  fp[PROXY_FP_DATA_ROOM_KIND] = data ? data.roomKind : undefined;
+  fp[PROXY_FP_DATA_COMPOUND_SKIN] = data ? data.compoundSkin : undefined;
+  fp[PROXY_FP_DATA_DEF_ID] = data ? data.defId : undefined;
+  fp[PROXY_FP_DATA_TYPE_ID] = data ? data.typeId : undefined;
+  fp[PROXY_FP_DATA_SILHOUETTE] = data ? data.silhouette : undefined;
+  fp[PROXY_FP_DATA_MAJOR_WRECK] = data ? data.isMajorWreck : undefined;
+  fp[PROXY_FP_DATA_PLACE_ID] = data ? data.placeId : undefined;
+  fp[PROXY_FP_DATA_ARCHETYPE_GLB] = data ? data.archetypeGlb : undefined;
+  fp[PROXY_FP_DATA_STATION_TYPE_ID] = data ? data.stationTypeId : undefined;
+  fp[PROXY_FP_DATA_LOOT_TABLE_ID] = data ? data.lootTableId : undefined;
+  fp[PROXY_FP_DATA_TRAFFIC_ROLE] = data ? data.trafficRole : undefined;
+  fp[PROXY_FP_DATA_IS_GATE] = data ? data.isGate : undefined;
+  fp[PROXY_FP_DATA_IS_WORMHOLE] = data ? data.isWormhole : undefined;
+  fp[PROXY_FP_DATA_IS_LANDMARK] = data ? data.isLandmark : undefined;
+  fp[PROXY_FP_DATA_IS_LANDMARK_ROCK] = data ? data.isLandmarkRock : undefined;
+  fp[PROXY_FP_DATA_LANDMARK] = data ? data.landmark : undefined;
+  fp[PROXY_FP_DATA_ARCHETYPE] = data ? data.archetype : undefined;
+  fp[PROXY_FP_BODY_RADIUS] = body ? body.radius : undefined;
+  return fp;
+}
+
+// The sim-step epoch for the resolve cache. Zero (the default: main thread, tools, tests that
+// never step through the worker stepper) means every call checks the full fingerprint.
+let proxyResolveEpoch = 0;
+/** Called once at the top of each worker sim step. */
+export function advanceCollisionProxyResolveEpoch() {
+  proxyResolveEpoch = proxyResolveEpoch >= 0x3fffffff ? 1 : proxyResolveEpoch + 1;
+}
+
+function proxyFingerprintMatches(entity, fp, allDataUndef = false, nullBody = false) {
+  if (!fp || fp.length !== PROXY_FP_LENGTH) return false;
+  // The body and data shells are each read once: every read off an entity is a megamorphic
+  // lookup (entities span many hidden classes) and this check runs for every body every step.
+  const rawData = entity.data;
+  const rawBody = entity.physicsBody;
+  if (fp[PROXY_FP_ID] !== entity.id
+    || fp[PROXY_FP_TYPE] !== entity.type
+    || fp[PROXY_FP_DATA] !== rawData
+    || fp[PROXY_FP_BODY] !== rawBody
+    || fp[PROXY_FP_RADIUS] !== entity.radius
+    || fp[PROXY_FP_COLLIDES] !== entity.collides
+    || fp[PROXY_FP_KIND] !== entity.kind) return false;
+  const body = rawBody && typeof rawBody === 'object' ? rawBody : null;
+  if (nullBody) {
+    if (body !== null) return false;
+  } else if (fp[PROXY_FP_BODY_REVISION] !== (body ? body.revision : rawBody)
+    || fp[PROXY_FP_BODY_RADIUS] !== (body ? body.radius : undefined)
+    || fp[PROXY_FP_BODY_MANIFEST] !== (body ? body.collisionProxyManifest : undefined)
+    || fp[PROXY_FP_BODY_MATERIAL] !== (body ? body.material : undefined)
+    || fp[PROXY_FP_BODY_MEASURED_SKIN] !== (body ? body.useMeasuredSkin : undefined)
+    || fp[PROXY_FP_BODY_SHAPE] !== (body ? body.shape : undefined)
+    || fp[PROXY_FP_BODY_DYNAMIC] !== (body ? body.dynamic : undefined)) return false;
+  const data = rawData && typeof rawData === 'object' ? rawData : null;
+  if (!data) return true;
+  if (allDataUndef) {
+    return data.collisionProxy === undefined
+      && data.roomOwner === undefined
+      && data.roomKind === undefined
+      && data.compoundSkin === undefined
+      && data.defId === undefined
+      && data.typeId === undefined
+      && data.silhouette === undefined
+      && data.isMajorWreck === undefined
+      && data.placeId === undefined
+      && data.archetypeGlb === undefined
+      && data.stationTypeId === undefined
+      && data.lootTableId === undefined
+      && data.trafficRole === undefined
+      && data.isGate === undefined
+      && data.isWormhole === undefined
+      && data.isLandmark === undefined
+      && data.isLandmarkRock === undefined
+      && data.landmark === undefined
+      && data.archetype === undefined;
+  }
+  return fp[PROXY_FP_DATA_PROXY] === data.collisionProxy
+    && fp[PROXY_FP_DATA_ROOM_OWNER] === data.roomOwner
+    && fp[PROXY_FP_DATA_ROOM_KIND] === data.roomKind
+    && fp[PROXY_FP_DATA_COMPOUND_SKIN] === data.compoundSkin
+    && fp[PROXY_FP_DATA_DEF_ID] === data.defId
+    && fp[PROXY_FP_DATA_TYPE_ID] === data.typeId
+    && fp[PROXY_FP_DATA_SILHOUETTE] === data.silhouette
+    && fp[PROXY_FP_DATA_MAJOR_WRECK] === data.isMajorWreck
+    && fp[PROXY_FP_DATA_PLACE_ID] === data.placeId
+    && fp[PROXY_FP_DATA_ARCHETYPE_GLB] === data.archetypeGlb
+    && fp[PROXY_FP_DATA_STATION_TYPE_ID] === data.stationTypeId
+    && fp[PROXY_FP_DATA_LOOT_TABLE_ID] === data.lootTableId
+    && fp[PROXY_FP_DATA_TRAFFIC_ROLE] === data.trafficRole
+    && fp[PROXY_FP_DATA_IS_GATE] === data.isGate
+    && fp[PROXY_FP_DATA_IS_WORMHOLE] === data.isWormhole
+    && fp[PROXY_FP_DATA_IS_LANDMARK] === data.isLandmark
+    && fp[PROXY_FP_DATA_IS_LANDMARK_ROCK] === data.isLandmarkRock
+    && fp[PROXY_FP_DATA_LANDMARK] === data.landmark
+    && fp[PROXY_FP_DATA_ARCHETYPE] === data.archetype;
+}
+
 /** Declared manifests and adopted measured skins resolve here. An authored
  * physicsBody.collisionProxyManifest wins when valid; a declared non-skin proxy id beats a skin;
  * an eligible entity that declares nothing still takes its measured skin on older saves. */
 export function resolveCollisionProxyManifest(entity) {
+  if (entity && typeof entity === 'object') {
+    const slot = entity._collisionProxyResolve;
+    if (slot) {
+      // Validated once per sim step: a body asked many times in one step (line checks, witness
+      // occluders, dock reads, impact consequences) pays the full 33-field fingerprint once and
+      // a 4-field identity check after. A body, data shell, revision or type swap is still seen
+      // at once; an in-place edit of a data field is seen from the next step.
+      if (proxyResolveEpoch > 0 && slot.epoch === proxyResolveEpoch) {
+        const fp = slot.fp;
+        // Body and data shells read once each (megamorphic reads; see proxyFingerprintMatches).
+        const rawBody = entity.physicsBody;
+        const rawData = entity.data;
+        const body = rawBody && typeof rawBody === 'object' ? rawBody : null;
+        const data = rawData && typeof rawData === 'object' ? rawData : null;
+        // The in-place edits that really happen mid-step (hull swap rewrites data.defId, a stamped
+        // proxy, a collides toggle, a resize, a body reshape) are still seen at once.
+        if (fp[PROXY_FP_BODY] === rawBody && fp[PROXY_FP_DATA] === rawData
+          && fp[PROXY_FP_TYPE] === entity.type && fp[PROXY_FP_COLLIDES] === entity.collides
+          && fp[PROXY_FP_RADIUS] === entity.radius
+          && fp[PROXY_FP_BODY_REVISION] === (body ? body.revision : rawBody)
+          && fp[PROXY_FP_BODY_SHAPE] === (body ? body.shape : undefined)
+          && fp[PROXY_FP_BODY_MANIFEST] === (body ? body.collisionProxyManifest : undefined)
+          && fp[PROXY_FP_DATA_DEF_ID] === (data ? data.defId : undefined)
+          && fp[PROXY_FP_DATA_PROXY] === (data ? data.collisionProxy : undefined)) {
+          return slot.manifest;
+        }
+      } else if (proxyFingerprintMatches(entity, slot.fp, slot.allDataUndef, slot.nullBody)) {
+        slot.epoch = proxyResolveEpoch;
+        return slot.manifest;
+      }
+    }
+    const manifest = resolveCollisionProxyManifestInner(entity);
+    // A sealed or frozen body can't take the slot — it resolves fresh every call,
+    // exactly as before the cache existed.
+    if (Object.isExtensible(entity)) {
+      const fp = captureProxyFingerprint(entity, slot && slot.fp ? slot.fp : new Array(PROXY_FP_LENGTH));
+      let allDataUndef = true;
+      for (let i = PROXY_FP_DATA_PROXY; i <= PROXY_FP_DATA_ARCHETYPE; i++) {
+        if (fp[i] !== undefined) { allDataUndef = false; break; }
+      }
+      const nullBody = !(entity.physicsBody && typeof entity.physicsBody === 'object');
+      entity._collisionProxyResolve = {
+        fp,
+        manifest,
+        epoch: proxyResolveEpoch,
+        allDataUndef,
+        nullBody,
+      };
+    }
+    return manifest;
+  }
+  return resolveCollisionProxyManifestInner(entity);
+}
+
+function resolveCollisionProxyManifestInner(entity) {
   const authored = authoredProxyManifest(entity);
   if (authored) return authored;
   const data = entity && entity.data;
@@ -491,9 +706,32 @@ function rotateProxyPrimitives(primitives, rad) {
 
 /** World-space primitives for an entity (registration + debug publication). Entity rotation is
  * applied to local offsets; primitive-local orientations become world orientations. */
+// Per-body memo of the last world primitive set (ENGINE spikes): line-of-sight, sweeps and law
+// witnesses re-ask for the same static bodies many times per tick, and each answer used to mint a
+// fresh array of fresh objects. The key is the full input space of the expansion (manifest, scale,
+// corridor bearing, approach bearing, pose); a Ceres slide pose reads live slide state, so those
+// bodies are never memoized. Callers treat the result as read-only.
+const _worldPrimitiveMemo = new WeakMap();
 export function proxyWorldPrimitives(entity, manifest) {
   const scale = proxyScaleFor(entity, manifest);
   const corridorDeg = effectiveCorridorBearingDeg(manifest, entity);
+  const memoable = entity && typeof entity === 'object' && !ceresWorkfleetSlideRole(entity, manifest);
+  const rot0 = finite(entity && entity.rot);
+  const px0 = finite(entity && entity.pos && entity.pos.x);
+  const pz0 = finite(entity && entity.pos && entity.pos.z);
+  const approach = entity && entity.data ? entity.data.corridorBearingDeg : undefined;
+  if (memoable) {
+    const hit = _worldPrimitiveMemo.get(entity);
+    if (hit && hit.manifest === manifest && hit.scale === scale && hit.corridorDeg === corridorDeg
+      && hit.approach === approach && hit.rot === rot0 && hit.px === px0 && hit.pz === pz0) return hit.result;
+    const result = buildProxyWorldPrimitives(entity, manifest, scale, corridorDeg);
+    _worldPrimitiveMemo.set(entity, { manifest, scale, corridorDeg, approach, rot: rot0, px: px0, pz: pz0, result });
+    return result;
+  }
+  return buildProxyWorldPrimitives(entity, manifest, scale, corridorDeg);
+}
+
+function buildProxyWorldPrimitives(entity, manifest, scale, corridorDeg) {
   // Pass the entity through: 'approach'-framed manifests (gates) rotate by the stamped bearing,
   // and a debug/test path that omits it would silently publish unrotated primitives.
   const local = expandProxyPrimitives(manifest, { corridorBearingDeg: corridorDeg, entity });
@@ -666,6 +904,18 @@ export function resolveDockAnchor(entity, manifest, ship) {
     ...gate,
     kind: 'mooring',
   };
+}
+
+/** The world point a berth distance is measured to: the deck berth a hull can physically take,
+ *  else the mooring standoff, else the station centre. One owner for the simulation's objective
+ *  distance ('Dock at Helios Station ↗ 456 m') and the flight helm's [E] chip: the two surfaces
+ *  cannot quote different distances to the same berth. Pure geometry. */
+export function berthAnchorFor(station, hull) {
+  if (!station || !station.pos) return null;
+  const manifest = resolveCollisionProxyManifest(station);
+  const anchor = (manifest && resolveDockAnchor(station, manifest, hull)) || null;
+  if (anchor && Number.isFinite(anchor.x) && Number.isFinite(anchor.z)) return { x: anchor.x, z: anchor.z };
+  return { x: station.pos.x, z: station.pos.z };
 }
 
 /**

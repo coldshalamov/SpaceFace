@@ -3,19 +3,21 @@
 // The output belongs under .devshots/ and embeds either explicitly named runtime files or,
 // with --all-runtime, index.html + vendor/three.module.js + the complete src/**/*.{js,json},
 // scripts/lib runtime and styles trees.
-// Assets, node_modules, and every other unlisted working-tree file stay outside the capture.
+// An explicit working-tree candidate can also pin asset hashes without embedding the assets.
+// All unlisted working-tree files stay outside the capture.
 
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
-import { mkdir, readFile, readdir, writeFile, rename } from 'node:fs/promises';
+import { mkdir, readFile, readdir, stat, writeFile, rename } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
+import { gzipSync } from 'node:zlib';
 import { readGitCatFileBatch } from './lib/gitCatFileBatch.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const { normalizeSourceOverlayPath, sourceOverlayDigest } = createRequire(import.meta.url)('./lib/gameServer.cjs');
+const { normalizeSourceOverlayPath, sourceOverlayDigest, SOURCE_OVERLAY_MAX_FILE_BYTES } = createRequire(import.meta.url)('./lib/gameServer.cjs');
 
 // Historical performance write set. Keep this list deliberately explicit: the baseline is meant
 // to pin the files owned by the performance campaign while every other source, asset, and package
@@ -63,7 +65,7 @@ function allValues(name) {
 
 function usage(message) {
   if (message) console.error(`create-source-baseline: ${message}`);
-  console.error('Usage: node scripts/create-source-baseline.mjs [--working-tree] [--all-runtime | --path=index.html --path=src/main.js] [--paths-file=owned.txt] [--commit=HEAD] [--out=.devshots/source-baselines/name.json]');
+  console.error('Usage: node scripts/create-source-baseline.mjs [--working-tree] [--all-runtime | --path=index.html --path=src/main.js] [--paths-file=owned.txt] [--candidate-assets-file=assets.txt] [--commit=HEAD] [--out=.devshots/source-baselines/name.json.gz]');
   process.exitCode = 2;
   return null;
 }
@@ -148,17 +150,45 @@ function bytesAtWorkingTree(relativePath) {
   return readFileSync(path.join(ROOT, relativePath));
 }
 
+async function captureCandidateAssetPins(listPath, embeddedPaths) {
+  if (listPath === null) return [];
+  if (!listPath) throw new Error('--candidate-assets-file requires a path list');
+  const input = await readFile(path.resolve(ROOT, listPath), 'utf8');
+  const paths = input.split(/\r?\n/).map((line) => line.trim()).filter(Boolean).map(repoRelative);
+  if (!paths.length || paths.some((file) => !file?.startsWith('assets/'))) {
+    throw new Error('candidate asset pins must name files under assets/');
+  }
+  if (new Set(paths).size !== paths.length || paths.some((file) => embeddedPaths.has(file))) {
+    throw new Error('a candidate asset path must appear only once');
+  }
+  const pins = [];
+  for (const file of paths.sort()) {
+    const info = await stat(path.join(ROOT, file));
+    if (!info.isFile() || info.size < 1 || info.size > SOURCE_OVERLAY_MAX_FILE_BYTES) {
+      throw new Error(`invalid candidate asset size or type: ${file}`);
+    }
+    const body = bytesAtWorkingTree(file);
+    if (body.length !== info.size) throw new Error(`candidate asset changed while reading: ${file}`);
+    pins.push({ path: file, bytes: body.length, sha256: createHash('sha256').update(body).digest('hex') });
+  }
+  return pins;
+}
+
 const commitRef = value('--commit') || 'HEAD';
 const workingTree = process.argv.includes('--working-tree');
 const allRuntime = process.argv.includes('--all-runtime');
+const candidateAssetsFile = value('--candidate-assets-file');
 const outputArg = value('--out');
 const name = value('--name') || `baseline-${commitRef.replace(/[^a-z0-9_-]+/gi, '-').toLowerCase().slice(0, 32)}`;
-const output = path.resolve(ROOT, outputArg || path.join('.devshots', 'source-baselines', `${name}.json`));
+const outputExtension = allRuntime ? '.json.gz' : '.json';
+const output = path.resolve(ROOT, outputArg || path.join('.devshots', 'source-baselines', name + outputExtension));
 const outputRel = path.relative(ROOT, output).replace(/\\/g, '/');
 if (!outputRel.startsWith('.devshots/') || outputRel.includes('/../') || outputRel === '.devshots') {
   usage('--out must remain inside the ignored .devshots directory');
 } else if (workingTree && value('--commit') && value('--commit') !== 'HEAD') {
   usage('--working-tree requires --commit=HEAD when a commit is supplied');
+} else if (candidateAssetsFile !== null && !workingTree) {
+  usage('--candidate-assets-file requires --working-tree');
 } else {
   const direct = allValues('--path');
   const fromFile = value('--paths-file');
@@ -240,6 +270,8 @@ if (!outputRel.startsWith('.devshots/') || outputRel.includes('/../') || outputR
               contentBase64: body.toString('base64'),
             };
           });
+          const assetPins = await captureCandidateAssetPins(candidateAssetsFile, new Set(presentPaths));
+          const inventory = [...files, ...assetPins];
           const manifest = {
             schema: 'spaceface.sourceBaseline.v1',
             sourceCommit,
@@ -251,15 +283,17 @@ if (!outputRel.startsWith('.devshots/') || outputRel.includes('/../') || outputR
             runtimePathPolicy: allRuntime
               ? ALL_RUNTIME_PATH_POLICY
               : 'explicit performance path set',
-            sourceOverlayDigest: sourceOverlayDigest(files),
+            sourceOverlayDigest: sourceOverlayDigest(inventory),
             requestedPaths: uniquePaths,
             omittedPaths: missingPaths,
             createdAt: new Date().toISOString(),
             files,
+            ...(assetPins.length ? { assetPins } : {}),
           };
           await mkdir(path.dirname(output), { recursive: true });
           const temporary = `${output}.tmp-${process.pid}`;
-          await writeFile(temporary, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
+          const text = `${JSON.stringify(manifest, null, 2)}\n`;
+          await writeFile(temporary, path.extname(output).toLowerCase() === '.gz' ? gzipSync(text) : text);
           await rename(temporary, output);
           console.log(JSON.stringify({
             manifest: output,
@@ -267,8 +301,9 @@ if (!outputRel.startsWith('.devshots/') || outputRel.includes('/../') || outputR
             sourceMode: manifest.sourceMode,
             captureScope: manifest.captureScope,
             sourceOverlayDigest: manifest.sourceOverlayDigest,
-            fileCount: files.length,
-            totalBytes: files.reduce((sum, file) => sum + file.bytes, 0),
+            fileCount: inventory.length,
+            totalBytes: inventory.reduce((sum, file) => sum + file.bytes, 0),
+            ...(assetPins.length ? { assetPinCount: assetPins.length } : {}),
           }, null, 2));
         }
       }

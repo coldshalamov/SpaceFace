@@ -235,9 +235,10 @@ test('PQ-006 release cues clamp offscreen without visor arcs and keep a static n
       label: throwCue.label,
       state: throwCue.state,
     },
-    { visible: true, x: 30, y: 450, offscreen: true, direction: 'left', label: 'RELEASE', state: 'open' },
+    { visible: true, x: 30, y: 450, offscreen: true, direction: 'left', label: '', state: 'open' },
   );
-  assert.match(throwCue.ariaLabel, /Massline throw release window open/i);
+  assert.match(throwCue.ariaLabel, /Line throw window open/i);
+  assert.doesNotMatch(throwCue.ariaLabel, /ALIGN|RELEASE|LET GO|SELF-SLING/i, 'the Line speaks one grammar, director 2026-11-23');
   assert.match(throwCue.ariaLabel, /offscreen left/i);
 
   const waypointCue = masslineHudModule.resolveReleaseCue({ x: 1720, y: -80, onScreen: false }, {
@@ -287,11 +288,12 @@ test('R3B HUD anchors fixed release targets at their captured world point', () =
   assert.ok(Math.abs(entityPoint.z - (movingTarget.pos.z + movingTarget.vel.z * (1 / 120))) < 1e-9);
 });
 
-test('PQ-006 HUD declares static reduced-flash and forced-color release states', () => {
-  assert.match(masslineHudModule.MASSLINE_HUD_CSS, /ml2-reduced-flash/);
+test('PQ-006 HUD declares forced-color release states and a non-colour open window', () => {
+  // Owner 2026-11-23: the throw aim is the 'RMB · THROW' words only — no pulsing diamond is left
+  // for reduced-flash to calm. The open window still reads without colour: the tag gains a frame.
   assert.match(masslineHudModule.MASSLINE_HUD_CSS, /forced-colors:\s*active[\s\S]*ml2-mark/);
-  assert.match(masslineHudModule.MASSLINE_HUD_CSS, /ml2-hot[\s\S]*outline/,
-    'the open window keeps a shape boundary when pulse/color are unavailable');
+  assert.match(masslineHudModule.MASSLINE_HUD_CSS, /ml2-hot \.ml2-mark-label[^}]*outline/,
+    'the open window keeps a shape boundary on the tag when colour is unavailable');
 });
 
 test('PQ-006 new games declare Snap as the release-assist profile default', () => {

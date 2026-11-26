@@ -35,10 +35,10 @@ test('the player hull names the part that died and the part that comes back', ()
     'Drive out — the ship is not pushing',
     'Guns out — the battery is dark',
     'Sensors out — the board is blind',
-    'Massline spool out — the rope will not hold',
+    'Line spool out — the rope will not hold',
     'Clamp out — the load is no longer held',
     'Drive back online',
-    'Massline spool back online',
+    'Line spool back online',
   ]);
   assert.deepEqual(captions(events), ['Drive out — the ship is not pushing']);
 });

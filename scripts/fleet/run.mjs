@@ -10,9 +10,10 @@
 //                              Never on acct3: that account is the lead's and only its free SWE-2 is used.
 //   deepseek                   OpenCode 2.x, opencode-go/deepseek-v4.1-flash#max
 //   flash                      Antigravity (agy), gemini-3.8-flash-high
-//   codex                      Codex 0.163, gpt-6.1-sol high — the senior agent (reviews, architecture, 3D, images)
+//   codex                      Codex 0.167, gpt-6.2-sol high — the senior agent (reviews, architecture, 3D, images)
+//   codexro                    the same model for adversarial review/investigation; source edits are rejected
 //   hydrogen                   agy, gemini-4-hydrogen-xhigh — critic/investigator; reads frames (verify its claims)
-//   grok | dsx                 cursor-agent, grok-4.7-high | deepseek-v41-flash-1017-max — investigators (verify)
+//   grok | grok46 | dsx        cursor-agent, grok-4.7-high | cursor-grok-4.6-high | deepseek-v41-flash-1017-max
 //
 // Investigation packets (READ-ONLY, the usual use of hydrogen/grok/dsx): the packet says so; the worker
 // writes findings with file:line evidence to its RECEIPT.md and changes no tracked file.
@@ -29,9 +30,12 @@ import { fileURLToPath } from 'node:url';
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const PACKETS = join(REPO, 'design', 'program', 'fleet', 'packets');
 const RUNS = join(REPO, '.devshots', 'fleet', 'runs');
-const HOME = process.env.USERPROFILE || 'C:\\Users\\93rob';
+const REAL_HOME = existsSync('C:\\Users\\93rob\\.config\\opencode') ? 'C:\\Users\\93rob' : (process.env.USERPROFILE || 'C:\\Users\\93rob');
+const HOME = REAL_HOME;
 const BASH = 'C:\\Program Files\\Git\\bin\\bash.exe';
-const OPENCODE = join(HOME, 'AppData', 'Roaming', 'npm', 'node_modules', '@opencode', 'cli', 'bin', 'opencode.exe');
+const OPENCODE = existsSync(join(REAL_HOME, 'AppData', 'Roaming', 'npm', 'node_modules', '@opencode', 'cli', 'bin', 'opencode.exe'))
+  ? join(REAL_HOME, 'AppData', 'Roaming', 'npm', 'node_modules', '@opencode', 'cli', 'bin', 'opencode.exe')
+  : join(REAL_HOME, '.opencode', 'bin', 'opencode.exe');
 const AGY = join(HOME, 'AppData', 'Local', 'agy', 'bin', 'agy.exe');
 const CURSOR = join(HOME, 'AppData', 'Local', 'cursor-agent', 'cursor-agent.cmd');
 const CODEX_JS = join(HOME, 'AppData', 'Roaming', 'npm', 'node_modules', '@openai', 'codex', 'bin', 'codex.js');
@@ -44,14 +48,20 @@ if (args[0] === '--list') {
 const [packetId, backend] = args;
 const timeoutMin = Number((args.find((a) => a.startsWith('--timeout-min=')) || '=90').split('=')[1]);
 if (!packetId || !backend) {
-  console.error('usage: node scripts/fleet/run.mjs <PACKET-ID> <devin1|devin2|devin3|sonnet1|sonnet2|deepseek|flash|codex|hydrogen|grok|dsx> [--timeout-min=90]');
+  console.error('usage: node scripts/fleet/run.mjs <PACKET-ID> <devin1|devin2|devin3|sonnet1|sonnet2|deepseek|glm|neon1|neon2|flash|codex|codexro|hydrogen|grok|grok46|dsx> [--timeout-min=90]');
   process.exit(2);
 }
 const packetPath = join(PACKETS, `${packetId}.md`);
 if (!existsSync(packetPath)) { console.error(`no packet ${packetPath}`); process.exit(2); }
 
 // Machine safety (owner, 2026-11-11: two crashes under load): at most MAX_ACTIVE workers at once.
-const MAX_ACTIVE = Number(process.env.FLEET_MAX_ACTIVE || 4);
+let MAX_ACTIVE = Number(process.env.FLEET_MAX_ACTIVE || 4);
+// The director can raise the cap for queued chains at runtime: .devshots/fleet/max-active.txt holds a
+// number; the larger of it and the env value wins (owner 2026-11-23: keep every seat busy).
+try {
+  const fileCap = Number(readFileSync(join(REPO, '.devshots', 'fleet', 'max-active.txt'), 'utf8').trim());
+  if (fileCap > MAX_ACTIVE) MAX_ACTIVE = fileCap;
+} catch { /* no override */ }
 const ACTIVE = join(REPO, '.devshots', 'fleet', 'active');
 mkdirSync(ACTIVE, { recursive: true });
 const isAlive = (pid) => { try { process.kill(pid, 0); return true; } catch { return false; } };
@@ -75,11 +85,10 @@ const receiptRel = `.devshots/fleet/runs/${packetId}.${backend}.${stamp}/RECEIPT
 
 const prompt = [
   `You are a worker on the SpaceFace game repository (current folder).`,
-  `Step 1: read design/program/fleet/PROTOCOL.md in full and obey it.`,
+  `Step 1: read AGENTS.md, then design/program/fleet/PROTOCOL.md in full.`,
   `Step 2: read design/program/fleet/packets/${packetId}.md in full. It is your whole job: do all of it.`,
   `Step 3: write your receipt to ${receiptRel} using the protocol's headings.`,
   `MACHINE SAFETY: anything that starts the game, a browser or Electron (check:playable, player-truth, probes, ui-bench, the gate) must run through the lock: node scripts/fleet/game-lock.mjs run -- <command>. Never run two at once. Never run the whole test suite.`,
-  `Do not edit design/program/fleet/QUEUE.md — the lead keeps it while you run headless.`,
   `Work until the packet is finished or genuinely blocked. Do not ask questions; nobody will answer.`,
 ].join('\n');
 writeFileSync(join(runDir, 'PROMPT.txt'), prompt);
@@ -93,7 +102,15 @@ function gitHead() {
 const before = gitStatus();
 const headBefore = gitHead();
 
-let cmd; let cmdArgs; const env = { ...process.env, FLEET_PROMPT: prompt };
+let cmd; let cmdArgs;
+const env = {
+  ...process.env,
+  FLEET_PROMPT: prompt,
+  USERPROFILE: REAL_HOME,
+  HOME: REAL_HOME,
+  APPDATA: join(REAL_HOME, 'AppData', 'Roaming'),
+  LOCALAPPDATA: join(REAL_HOME, 'AppData', 'Local'),
+};
 const devin = /^(?:devin([1-4])|sonnet([12]))$/.exec(backend);
 const devinAcct = devin ? (devin[1] || devin[2]) : null;
 const devinModel = devin && devin[2] ? 'claude-sonnet-5-5-high' : 'swe-2-max';
@@ -104,12 +121,35 @@ if (devin) {
 } else if (backend === 'deepseek') {
   cmd = OPENCODE;
   cmdArgs = ['run', '-m', 'opencode-go/deepseek-v4.1-flash#max', '--auto', prompt];
-} else if (backend === 'codex') {
-  // The senior agent (owner, 2026-11-11): GPT 6.1 Sol, high effort, via the npm codex 0.163 shim
+} else if (backend === 'glm') {
+  // OpenCode Go, GLM 5.3 at max reasoning (owner 2026-11-20): the default outside coder. No vision.
+  cmd = OPENCODE;
+  cmdArgs = ['run', '-m', 'opencode-go/glm-5.3#max', '--auto', prompt];
+} else if (backend === 'neon1' || backend === 'neon2') {
+  // Gemini Neon XHigh via agy under an isolated account profile (owner 2026-11-20): a different mind for
+  // second opinions, frontend and frames. neon1 = devteamrob account, neon2 = the owner's account.
+  cmd = process.env.ComSpec || 'C:\\Windows\\System32\\cmd.exe';
+  const acct = backend === 'neon1' ? ['agy1', 'devteamrob.helix@gmail.com'] : ['agy2', '93robingattis@gmail.com'];
+  cmdArgs = ['/d', '/s', '/c', join(HOME, 'bin', 'agy-acct.cmd'), acct[0], '--acct', acct[1], '--print',
+    // Windows command lines mangle a long quoted prompt: hand agy one line that points at the prompt file.
+    `Read the file ${join(runDir, 'PROMPT.txt')} and follow it exactly. Work in ${REPO}.`, '--model', 'gemini-4-neon-xhigh', '--dangerously-skip-permissions', '--output-format', 'text'];
+} else if (backend === 'zcode') {
+  // ZCode harness on the Z.ai coding plan, GLM 5.3 at max effort: a second GLM seat with its own limit.
+  // It rewrites CRLF files as LF: check `git diff --stat` on its commits and restore endings if needed.
+  cmd = process.env.ComSpec || 'C:\\Windows\\System32\\cmd.exe';
+  cmdArgs = ['/d', '/s', '/c', join(HOME, 'bin', 'zcode.cmd'), '-p',
+    `Read the file ${join(runDir, 'PROMPT.txt')} and follow it exactly. Work in ${REPO}.`,
+    '-m', 'glm-5.3', '--provider', 'account:zai-individual-coding-plan', '--mode', 'build', '--effort', 'max', '-C', REPO];
+} else if (backend === 'codex' || backend === 'codexro') {
+  // The senior agent (owner, 2026-11-24): GPT 6.2 Sol, high effort, via the npm codex 0.167 shim
   // (the codex.exe on PATH is an old desktop bundle). Prompt on stdin. Use for hard backend /
   // architecture reviews, batched reviews, 3D/Blender work and image/texture/mockup generation.
+  // Review packets are source-read-only by instruction and diff audit, but the Windows shell needs
+  // the full-access sandbox to read the local checkout. Implementation packets still stay inside
+  // the shared checkout rather than creating worktrees, with exact file ownership doing collision control.
   cmd = process.execPath;
-  cmdArgs = [CODEX_JS, 'exec', '-m', 'gpt-6.1-sol', '-c', 'model_reasoning_effort="high"', '-s', 'danger-full-access', '-C', REPO, '-'];
+  const sandbox = backend === 'codexro' ? 'danger-full-access' : 'workspace-write';
+  cmdArgs = [CODEX_JS, 'exec', '--ignore-user-config', '-m', 'gpt-6.2-sol', '-c', 'model_reasoning_effort="high"', '-s', sandbox, '-C', REPO, '-'];
 } else if (backend === 'flash') {
   cmd = AGY;
   cmdArgs = ['--print', prompt, '--model', 'gemini-3.8-flash-high', '--dangerously-skip-permissions', '--output-format', 'text'];
@@ -117,11 +157,12 @@ if (devin) {
   // Gemini 4 Hydrogen XHigh via agy (owner 2026-11-15: large separate budget). Reads images; good critic and investigator.
   cmd = AGY;
   cmdArgs = ['--print', prompt, '--model', 'gemini-4-hydrogen-xhigh', '--dangerously-skip-permissions', '--output-format', 'text'];
-} else if (backend === 'grok' || backend === 'dsx') {
+} else if (backend === 'grok' || backend === 'grok46' || backend === 'dsx') {
   // cursor-agent (owner 2026-11-15: two large separate buckets). grok = Grok 4.7 High; dsx = DeepSeek V4.1 Flash Max.
   // Launched through cmd.exe with the prompt in an env var: a quoted prompt as an argv word gets split on Windows.
   cmd = process.env.ComSpec || 'C:\\Windows\\System32\\cmd.exe';
-  const model = backend === 'grok' ? 'grok-4.7-high' : 'deepseek-v41-flash-1017-max';
+  // grok46 = Grok 4.6 High (owner 2026-11-23: same bucket as 4.7; 4.7 is bigger, 4.6 may be more coherent).
+  const model = backend === 'grok' ? 'grok-4.7-high' : backend === 'grok46' ? 'cursor-grok-4.6-high' : 'deepseek-v41-flash-1017-max';
   cmdArgs = ['/d', '/s', '/c', `""${CURSOR}" -p --force --trust --output-format text --model ${model} --workspace "${REPO}" "%FLEET_PROMPT_LINE%""`];
   env.FLEET_PROMPT_LINE = prompt.replace(/\r?\n/g, ' ').replace(/"/g, "'");
 } else {
@@ -160,8 +201,8 @@ function launch(resume) {
   log.write(`
 [fleet] attempt ${attempt}${resume ? ' (resume)' : ''} at ${new Date().toISOString()}
 `);
-  const child = spawn(cmd, a, { cwd: REPO, env, windowsHide: true, windowsVerbatimArguments: backend === 'grok' || backend === 'dsx' });
-  if (backend === 'codex') child.stdin.end(prompt); else child.stdin.end();
+  const child = spawn(cmd, a, { cwd: REPO, env, windowsHide: true, windowsVerbatimArguments: backend === 'grok' || backend === 'grok46' || backend === 'dsx' });
+  if (backend === 'codex' || backend === 'codexro') child.stdin.end(prompt); else child.stdin.end();
   const onData = (d) => { log.write(d); tail = (tail + d.toString()).slice(-4000); };
   child.stdout.on('data', onData);
   child.stderr.on('data', onData);
@@ -171,7 +212,15 @@ function launch(resume) {
   child.stdout.on('data', () => { lastOutputAt = Date.now(); });
   child.stderr.on('data', () => { lastOutputAt = Date.now(); });
   const idleWatch = setInterval(() => {
-    if (existsSync(join(runDir, 'RECEIPT.md')) && Date.now() - lastOutputAt > 180_000) {
+    // Only a receipt that says the work is finished ends an idle worker: packets ask for an early,
+    // incremental receipt (Result: PARTIAL / in progress), and cursor-agent prints nothing until it
+    // ends, so 'receipt exists + quiet' alone cut live workers off mid-task (2026-11-24).
+    let receiptDone = false;
+    try {
+      const head = readFileSync(join(runDir, 'RECEIPT.md'), 'utf8').slice(0, 400);
+      receiptDone = /Result:\s*(DONE|BLOCKED|FAILED)/i.test(head) && !/in progress|PARTIAL/i.test(head);
+    } catch { /* no receipt yet */ }
+    if (receiptDone && Date.now() - lastOutputAt > 180_000) {
       log.write('\n[fleet] receipt written and worker idle 3 min; ending it\n');
       clearInterval(idleWatch);
       killWorkerTree(child);

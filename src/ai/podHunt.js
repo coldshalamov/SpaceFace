@@ -281,8 +281,11 @@ export function onPodEjected(ctx, payload) {
   const pod = entityById(ctx.state, payload.entityId);
   if (!huntablePod(ctx, pod)) return null;
   const h = ensureHunt(ctx.own);
-  if (h.seen[pod.id]) return null;
-  h.seen[pod.id] = true;
+  // Key the once-per-pod dedupe on the causal record, not the raw id: pod ids recycle, and a
+  // stale entry must not silence the new pod that inherits the id.
+  const rec = liveCausalRec(ctx, pod.id);
+  if (h.seen[pod.id] === rec) return null;
+  h.seen[pod.id] = rec;
   return dispatchForPod(ctx, pod, null);
 }
 
@@ -331,6 +334,14 @@ function tickErrand(ctx, rec, tick, now) {
     return;
   }
   const ai = hunter.data.ai;
+  if (!ai.podHunt) {
+    // The stamp went away without the book: entity ids recycle through freeIds, so a live
+    // hull at this id that never carried the stamp is a different ship on a recycled id —
+    // the errand is over, not adopted.
+    delete h.errands[rec.hunterId];
+    if (h.byPod[rec.podId] === rec.hunterId) delete h.byPod[rec.podId];
+    return;
+  }
 
   if (rec.phase === 'leave') {
     if (now >= rec.leaveUntil) endErrand(ctx, rec, { cooldownS: 0, reason: 'resumed' });
@@ -409,7 +420,9 @@ export function tickPodHunts(ctx) {
     // Prune bookkeeping for pods that are gone so the book stays bounded.
     if ((tick % POD_HUNT.scanEveryTicks) === 0) {
       for (const key of Object.keys(h.seen)) {
-        if (!liveCausalRec(ctx, key)) delete h.seen[key];
+        // Entries are causal-record identities: prune when the pod resolved OR the id was
+        // recycled onto a different record.
+        if (h.seen[key] !== liveCausalRec(ctx, key)) delete h.seen[key];
       }
       for (const key of Object.keys(h.cooldown)) {
         if (!(h.cooldown[key] > now)) delete h.cooldown[key];

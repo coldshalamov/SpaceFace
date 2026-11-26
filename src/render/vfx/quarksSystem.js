@@ -28,6 +28,8 @@
 //   - All spawn paths reuse scratch vectors/matrices; bursts only (emissionOverTime: 0).
 
 import * as THREE from 'three';
+import { frameCostFixOn } from '../frameCostSwitches.js';
+import { VFX_BUDGET } from './vfxBudget.js';
 import { ForceParticleFlow } from './forceParticleFlow.js';
 import { impactOutwardNormal, impactTangentFraction } from '../combat/impactEventRecord.js';
 import {
@@ -147,6 +149,8 @@ export class QuarksVfxSystem {
     this.root.name = 'SF_QuarksEmittersRoot';
     this.flow = new ForceParticleFlow(this.root, { capacity: 256 });
     this._flowSequence = 0;
+    this._budgetActive = false;
+    this._emptyBatchPending = false;
     this._flowFrame = { reducedMotion: false, reducedFlash: false };
     this._flowEvent = { kind: 'heat', x: 0, y: 0, z: 0, dx: 1, dz: 0, radius: 10,
       seed: 0, count: 8, life: 0.8, strength: 1 };
@@ -591,6 +595,11 @@ export class QuarksVfxSystem {
     batch.setupBuffers();
   }
 
+  /** Live integrated-GPU burst & live-ceiling budget (?rfx=-vfxBudget restores full bursts). */
+  setBudgetActive(active) {
+    this._budgetActive = !!active;
+  }
+
   /**
    * Spawn against a hard ceiling. A burst that would overrun the pool is truncated rather than
    * growing the buffers; the family keeps its oldest matter and simply throws less new matter.
@@ -599,8 +608,27 @@ export class QuarksVfxSystem {
     const cap = this._solidCap ? this._solidCap.get(sys) : null;
     let n = Math.round(Number(count) || 0);
     if (n <= 0) return 0;
-    if (cap != null) n = Math.min(n, Math.max(0, cap - sys.particleNum));
+    let effCap = cap;
+    if (this._budgetActive) {
+      if (n > 1) n = Math.max(1, Math.round(n * VFX_BUDGET.quarksBurstScale));
+      if (effCap != null) effCap = Math.max(4, Math.round(effCap * VFX_BUDGET.quarksSolidCapScale));
+    }
+    if (effCap != null) n = Math.min(n, Math.max(0, effCap - sys.particleNum));
     if (n <= 0) return 0;
+    sys.spawn(n, sys.emissionState, matrix);
+    this._quietEmpty = false;
+    return n;
+  }
+
+  _spawnAdditiveBudgeted(sys, name, count, matrix) {
+    let n = Math.round(Number(count) || 0);
+    if (n <= 0) return 0;
+    if (this._budgetActive) {
+      if (n > 1) n = Math.max(2, Math.round(n * VFX_BUDGET.quarksBurstScale));
+      const cap = VFX_BUDGET.quarksAdditiveCaps[name];
+      if (cap != null) n = Math.min(n, Math.max(0, cap - sys.particleNum));
+      if (n <= 0) return 0;
+    }
     sys.spawn(n, sys.emissionState, matrix);
     this._quietEmpty = false;
     return n;
@@ -682,9 +710,15 @@ export class QuarksVfxSystem {
     // Quiet settled flight: BatchedParticleRenderer.update walked all 11 empty
     // families every frame after the last burst died. Trust particleNum and skip
     // once already observed empty; spawn/_spawnCapped/_emitFlow clear _quietEmpty.
-    if (!this._anyParticleLive() && this._quietEmpty) return;
+    if (!this._anyParticleLive() && this._quietEmpty) {
+      // An empty batch that had not been drawn yet when the system went quiet is withheld as
+      // soon as its first draw has happened.
+      if (this._emptyBatchPending) this._emptyBatchPending = this._hideEmptyBatches();
+      return;
+    }
     const clampedDt = Math.min(0.05, dt);
     this.renderer.update(clampedDt);
+    this._emptyBatchPending = this._hideEmptyBatches();
     const profile = accessibility?.id || '';
     this._flowFrame.reducedMotion = !!accessibility?.reducedMotion || profile.includes('motion');
     this._flowFrame.reducedFlash = !!accessibility?.reducedFlash || profile.includes('flash');
@@ -692,11 +726,57 @@ export class QuarksVfxSystem {
     this._quietEmpty = !this._anyParticleLive();
   }
 
+  // An empty batch used to be submitted every frame anyway: its program and material were bound,
+  // its uniforms refreshed, and a draw of zero elements issued. In a Foundry fight seven of the ten
+  // particle batches were empty on an ordinary frame (referee census, 2026-11-22). A batch is only
+  // withheld after it has really been drawn once, so its first use (uniform map, buffers) still
+  // happens on the first frames behind the veil and never on the first burst of a fight; a batch
+  // hidden for any other reason is left alone. ?rfx=-emptyBatches restores the empty draws.
+  _hideEmptyBatches() {
+    const batches = this.renderer.batches;
+    if (!batches || !frameCostFixOn('emptyBatches')) return false;
+    let pending = false;
+    for (let i = 0; i < batches.length; i++) {
+      const batch = batches[i];
+      if (!batch || !batch.geometry) continue;
+      const data = batch.userData;
+      if (data.sfEmptyDrawGate !== true) {
+        data.sfEmptyDrawGate = true;
+        data.sfDrawnOnce = false;
+        const previous = batch.onAfterRender;
+        batch.onAfterRender = function onFirstBatchDraw(...args) {
+          data.sfDrawnOnce = true;
+          batch.onAfterRender = previous;
+          if (typeof previous === 'function') return previous.apply(this, args);
+          return undefined;
+        };
+      }
+      const geometry = batch.geometry;
+      const live = geometry.isInstancedBufferGeometry === true
+        ? geometry.instanceCount !== 0
+        : !(geometry.drawRange && geometry.drawRange.count === 0);
+      if (live) {
+        if (data.sfHiddenEmpty === true) { data.sfHiddenEmpty = false; batch.visible = true; }
+      } else if (batch.visible === true) {
+        if (data.sfDrawnOnce === true) {
+          data.sfHiddenEmpty = true;
+          batch.visible = false;
+        } else {
+          pending = true;
+        }
+      }
+    }
+    return pending;
+  }
+
   _emitFlow(kind, x, y, z, dx, dz, radius, count, life, strength = 1, seed = null) {
     this._quietEmpty = false;
+    const effCount = this._budgetActive && count > 2
+      ? Math.max(2, Math.round(count * VFX_BUDGET.quarksBurstScale))
+      : count;
     const event = this._flowEvent;
     event.kind = kind; event.x = x; event.y = y; event.z = z; event.dx = dx; event.dz = dz;
-    event.radius = radius; event.count = count; event.life = life; event.strength = strength;
+    event.radius = radius; event.count = effCount; event.life = life; event.strength = strength;
     event.seed = Number.isFinite(seed) ? seed : ++this._flowSequence;
     return this.flow.emit(event);
   }
@@ -728,12 +808,11 @@ export class QuarksVfxSystem {
     this._scratchMatrix.compose(this._scratchPos, this._scratchQuat, _scaleOne);
 
     if (hitShield) {
-      this.shieldShards.spawn(10, this.shieldShards.emissionState, this._scratchMatrix);
+      this._spawnAdditiveBudgeted(this.shieldShards, 'shieldShards', 10, this._scratchMatrix);
     } else {
       const count = variant === 2 ? 16 : (variant === 3 ? 20 : 10);
-      this.impactSpall.spawn(count, this.impactSpall.emissionState, this._scratchMatrix);
+      this._spawnAdditiveBudgeted(this.impactSpall, 'impactSpall', count, this._scratchMatrix);
     }
-    this._quietEmpty = false;
   }
 
   /**
@@ -748,16 +827,15 @@ export class QuarksVfxSystem {
     this._scratchMatrix.compose(this._scratchPos, this._scratchQuat, _scaleOne);
 
     const sparkCount = variant === 3 ? 16 : (variant === 2 ? 12 : 8);
-    this.muzzleSparks.spawn(sparkCount, this.muzzleSparks.emissionState, this._scratchMatrix);
+    this._spawnAdditiveBudgeted(this.muzzleSparks, 'muzzleSparks', sparkCount, this._scratchMatrix);
 
     if (ejectCasing || variant === 2) {
       // Eject casing out the side (+right and slightly up)
       this._scratchDir.set(dirZ, 0.4, -dirX).normalize();
       this._scratchQuat.setFromUnitVectors(_vForward, this._scratchDir);
       this._scratchMatrix.compose(this._scratchPos, this._scratchQuat, _scaleOne);
-      this.casingEjection.spawn(1, this.casingEjection.emissionState, this._scratchMatrix);
+      this._spawnAdditiveBudgeted(this.casingEjection, 'casingEjection', 1, this._scratchMatrix);
     }
-    this._quietEmpty = false;
   }
 
   /**
@@ -772,9 +850,8 @@ export class QuarksVfxSystem {
     this._scratchMatrix.compose(this._scratchPos, this._scratchQuat, _scaleOne);
 
     const count = Math.max(2, Math.min(8, Math.round(intensity * 6)));
-    this.retroVenting.spawn(count, this.retroVenting.emissionState, this._scratchMatrix);
+    this._spawnAdditiveBudgeted(this.retroVenting, 'retroVenting', count, this._scratchMatrix);
     this._emitFlow('coherent', x, y, z, dirX, dirZ, 7 + intensity * 8, Math.min(5, count), 0.34, intensity * 0.6);
-    this._quietEmpty = false;
   }
 
   /**
@@ -827,9 +904,8 @@ export class QuarksVfxSystem {
     if (this._scratchDir.lengthSq() < 1e-4) this._scratchDir.set(0, 0, 1);
     this._scratchQuat.setFromUnitVectors(_vForward, this._scratchDir);
     this._scratchMatrix.compose(this._scratchPos, this._scratchQuat, _scaleOne);
-    this.damageVenting.spawn(count, this.damageVenting.emissionState, this._scratchMatrix);
+    this._spawnAdditiveBudgeted(this.damageVenting, 'damageVenting', count, this._scratchMatrix);
     this._emitFlow('propulsion', x, y, z, dirX, dirZ, 5.5, Math.min(5, count), 0.7, 0.65);
-    this._quietEmpty = false;
   }
 
   /**
@@ -840,8 +916,7 @@ export class QuarksVfxSystem {
     this._scratchPos.set(x, y, z);
     this._scratchQuat.identity();
     this._scratchMatrix.compose(this._scratchPos, this._scratchQuat, _scaleOne);
-    this.shieldShards.spawn(count, this.shieldShards.emissionState, this._scratchMatrix);
-    this._quietEmpty = false;
+    this._spawnAdditiveBudgeted(this.shieldShards, 'shieldShards', count, this._scratchMatrix);
   }
 
   /**

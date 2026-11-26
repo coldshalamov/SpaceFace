@@ -54,6 +54,7 @@ export function inOrder(progress, idx) {
 }
 
 export const theOldTrailPlant = {
+  modes: ['flight'],
   name: 'plants169',
 
   init(ctx) {

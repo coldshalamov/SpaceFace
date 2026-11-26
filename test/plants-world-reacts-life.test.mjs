@@ -14,6 +14,7 @@ import assert from 'node:assert/strict';
 import { createBus } from '../src/core/eventBus.js';
 import { createSimulation } from '../src/core/sim.js';
 import { traffic } from '../src/systems/traffic.js';
+import { materializeWaveBatch } from '../src/systems/waveMaterialization.js';
 import { BUS_TUNING, isBennyBus } from '../src/systems/plants/busDoesntMove.js';
 import { towLatch, towTargetIdOf } from '../src/systems/plants/towWatch.js';
 import { hash32 } from '../src/core/rng.js';
@@ -904,6 +905,77 @@ test('PL-251 a disabled stranger hails the nearest good hull — today that is y
   assert.ok(popups.some((p) => p.text === STRANGER_HAIL_LINE), 'the hail text');
   assert.equal(stranger.data.lampsFlashing, true, 'the stranger holds a lamp out');
   otherSidePlant.destroy();
+});
+
+test('PL-251 civilian rescue stays in Adventure across a Swarm run', () => {
+  // The real wave materializer supplies the attacker. This focused plant host grants
+  // one spawn without running the rest of Round 20 or its budget timers.
+  const sim = createSimulation({ systems: [otherSidePlant], helpers: {
+    spawnBudget: { request: (count) => count, bindEntity: () => true },
+  } });
+  try {
+    const { state, bus, helpers, registry } = sim;
+    state.mode = 'flight';
+    const player = sim.spawn({ type: 'ship', isPlayer: true, team: 0, pos: { x: 0, z: 0 }, hull: 100, hullMax: 100 });
+    state.playerId = player.id;
+    const courier = () => sim.spawn({
+      type: 'ship', team: 0, pos: { x: 100, z: 0 }, hull: 10, hullMax: 100,
+      data: { trafficRole: 'courier', disabled: true },
+    });
+    const playerImpact = (id) => bus.emit('physics:impact', { aId: id, bId: player.id, causalActorId: player.id });
+    const hails = [];
+    const deliveries = [];
+    bus.on(PLANTS_STRANGER_HAIL_EVENT, (event) => hails.push(event.strangerId));
+    bus.on(PLANTS_STRANGER_DELIVERED_EVENT, (event) => deliveries.push(event.strangerId));
+    sim.spawn({ type: 'station', pos: { x: 300, z: 0 }, radius: 60, data: { stationId: 'dockA' } });
+
+    const before = courier();
+    sim.step();
+    before.pos.x = 220;
+    playerImpact(before.id);
+    sim.step();
+    assert.deepEqual(hails, [before.id]);
+    assert.deepEqual(deliveries, [before.id]);
+    helpers.removeEntity(before.id);
+
+    const waiting = courier();
+    sim.step();
+    assert.deepEqual(hails, [before.id, waiting.id]);
+    state.run = { kind: 'survival', phase: 'active', ruleset: 'swarm', wave: 20 };
+    bus.emit('run:started', state.run);
+    const wave = materializeWaveBatch({ state, helpers, registry }, {
+      enemyId: 'wasp_swarmer', count: 1, swarm: true, wave: 20, level: 20,
+      seed: 4242, gateGroup: 'east', positions: [{ x: 700, z: 0 }],
+    });
+    assert.equal(wave.spawnedIds.length, 1);
+    const wasp = state.entities.get(wave.spawnedIds[0]);
+    assert.equal(wasp.data.runCohort, 'survival');
+    wasp.pos.x = 180;
+    wasp.hull = wasp.hullMax * 0.2;
+    playerImpact(waiting.id);
+    bus.emit('tether:snapCatch', { targetId: waiting.id });
+    sim.step();
+    assert.deepEqual(hails, [before.id, waiting.id]);
+    assert.equal(wasp.data.lampsFlashing, undefined);
+
+    helpers.removeEntity(wasp.id);
+    state.run.phase = 'inactive';
+    bus.emit('run:ended', state.run);
+    // With no live tether truth, the plant reads its subscribed fallback receipts.
+    state.player.tether = null;
+    waiting.pos.x = 220;
+    sim.step();
+    assert.deepEqual(deliveries, [before.id]);
+    bus.emit('tether:snapCatch', { targetId: waiting.id });
+    sim.step();
+    assert.deepEqual(deliveries, [before.id, waiting.id]);
+    const after = courier();
+    sim.step();
+    assert.deepEqual(hails, [before.id, waiting.id, after.id]);
+  } finally {
+    sim.registry.get(otherSidePlant.name)?.destroy();
+    sim.dispose();
+  }
 });
 
 for (const sceneryCount of [0, 90]) {

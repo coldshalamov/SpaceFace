@@ -129,7 +129,7 @@ export class NocturneRuntime {
     if (!active) this.content.probes.clear();
   }
 
-  prepare(dt, camera, membrane, meshes, playerLamp = true) {
+  prepare(dt, camera, membrane, meshes, playerLamp = true, keyOwnsShadows = false) {
     const video = this.state?.settings?.video || EMPTY;
     const step = Math.min(0.25, Math.max(0, Number.isFinite(dt) ? dt : 0));
     const quality = resolveNocturneQuality(video, this.gpu);
@@ -141,7 +141,7 @@ export class NocturneRuntime {
       this.atmosphere?.setQuality(quality);
     }
     const enabled = this.enabled && video.nocturne !== false;
-    this.shadowsEnabled = enabled && video.nocturneShadows !== false;
+    this.shadowsEnabled = !keyOwnsShadows && enabled && video.nocturneShadows !== false;
     const options = this._options;
     options.meshes = meshes; options.camera = camera; options.playerLamp = playerLamp;
     options.reducedFlash = !!(this.state.settings?.accessibility?.flashReduce || video.flashReduce);
@@ -170,7 +170,7 @@ export class NocturneRuntime {
     direct.enabled = enabled; direct.shadowEnabled = this.shadowsEnabled;
     direct.casterEpoch = this.content.casterEpoch;
     this.director.update(step, camera, direct);
-    this.atmosphere?.setEnabled(enabled && video.nocturneAtmosphere !== false && video.postFx !== false);
+    this.atmosphere?.setEnabled(!keyOwnsShadows && enabled && video.nocturneAtmosphere !== false && video.postFx !== false);
     // Authored adaptation, not histogram metering: darkness never asks the camera to brighten it.
     const range = this.content.exposureRange;
     const factor = enabled ? Math.max(range[0], Math.min(range[1], this.content.exposureTarget)) : 1;

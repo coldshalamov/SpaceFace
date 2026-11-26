@@ -395,6 +395,15 @@ test('dry-fire resolver: unarmed, blocked, cycling, armed', () => {
     data: { ...armed.data, weaponVentUntil: 100 },
   };
   assert.equal(resolveDryFireReadiness(venting, { simTime: 50 }).clack, true, 'a venting trigger is dead');
+
+  const perGunLocked = {
+    ...base,
+    data: { weapons: [{ defId: 'wpn_pulse_laser_s', energyCost: 1, _cooldown: 0, _heat: 90, heatMax: 100, _lockUntil: 51.2 }], combat: {} },
+  };
+  assert.equal(resolveDryFireReadiness(perGunLocked, { simTime: 50.5 }).clack, true,
+    'OVH-08b per-gun lock triggers dry-fire clack while locked');
+  assert.equal(resolveDryFireReadiness(perGunLocked, { simTime: 51.3 }).clack, false,
+    'once _lockUntil expires, the mount is armed again');
 });
 
 test('a dead trigger clacks on the press edge and not while held', () => {

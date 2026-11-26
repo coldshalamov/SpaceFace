@@ -8,9 +8,13 @@ import {
 } from './userContent.js';
 import { BLACK_FLAG_MODULES } from './shipjackEquipment.js';
 import { LINE_HEAD_MODULES } from './lineProgression.js';
+// PORT-PRO-FIVE KINETIC CATALYSTS: three mutually exclusive salvage-only utility
+// relics. Records live with the feature so fitting exclusivity stays one writer.
+import { CATALYST_MODULES } from '../features/kineticCatalysts/catalog.js';
 
 const SHIPPED_MODULES = [
   ...BLACK_FLAG_MODULES,
+  ...CATALYST_MODULES,
   // ===================== FIRST-HAUL RACK (DUST P2a, 2026-10-31) =====================
   // The honest early rung. Story beats pay 400-3,000 cr and the Foothold wage is 6,000 cr/h, but
   // the cheapest existing fitting was 4,000 cr (Stripped RCS / Cargo Scanner S) — the first
@@ -279,7 +283,7 @@ const SHIPPED_MODULES = [
     requiresTech: 'tech_capture_cradle',
     energyDraw: 4,
     mods: { captureSurvivalMult: 0.85 },
-    description: 'A padded field cage for the massline. Release the latch while it is fitted and the animal comes aboard alive.',
+    description: 'A padded field cage for the line. Release the latch while it is fitted and the animal comes aboard alive.',
   },
   {
     // K-table — a protocol transponder: machines resolve your compliance in half the time.
@@ -322,7 +326,7 @@ const SHIPPED_MODULES = [
   {
     // G14 — resonant massline tuning: the beam strike carries a dead-matter signature;
     // dormant fauna do not wake on your mining noise.
-    id: 'mod_resonant_massline_m', name: 'Resonant Massline Coil', slotType: 'utility', size: 'M', tier: 4, mass: 3, price: 0,
+    id: 'mod_resonant_massline_m', name: 'Resonant Line Coil', slotType: 'utility', size: 'M', tier: 4, mass: 3, price: 0,
     purchasable: false, unique: true, salvageOnly: true,
     energyDraw: 3,
     mods: { resonantMassline: true },
@@ -660,12 +664,12 @@ const SHIPPED_MODULES = [
     energyDraw: 0, mods: { towFlail: true },
   },
   {
-    id: 'mod_massline_spool_m', name: 'Industrial Massline Spool', slotType: 'utility', size: 'M', tier: 3,
+    id: 'mod_massline_spool_m', name: 'Industrial Line Spool', slotType: 'utility', size: 'M', tier: 3,
     mass: 8, price: 46000, requiresTech: 'tech_bulk_logistics',
     energyDraw: 4, mods: { tetherSpoolMult: 3 },
   },
   {
-    id: 'mod_massline_spool_l', name: 'Capital Massline Spool', slotType: 'utility', size: 'L', tier: 5,
+    id: 'mod_massline_spool_l', name: 'Capital Line Spool', slotType: 'utility', size: 'L', tier: 5,
     mass: 20, price: 220000, requiresTech: 'tech_fire_control',
     energyDraw: 8, mods: { tetherSpoolMult: 6 },
   },

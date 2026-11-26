@@ -9,15 +9,164 @@ import { getPromptDevice } from './bindings.js';
 import { controlPrompt } from './controlPrompts.js';
 import { isSwarmGlass, swarmGlassAdmits, swarmCalloutText } from './swarmGlass.js';
 import { attentionAdmits, isAdventureFlight, plainCallout, receiptSource } from './attentionGlass.js';
+import { isHostileToPlayer } from '../systems/scannerReadModel.js';
 import { counted } from './numberFormat.js';
 import { getStage } from './stage.js';
 
 
 export const RECEIPT_MAX = 2;
+export const HUD_ATTENTION_HULL_HIT_WINDOW_S = 8;
+export const HUD_ATTENTION_DEFAULT_WEAPONS_RANGE = 950;
+const COMBAT_AI_STATES = new Set(['attack', 'attacking', 'chase', 'chasing', 'pursue', 'pursuing', 'engage', 'engaged', 'combat', 'strafe', 'strafing', 'flank', 'intercept']);
+
+function playerWeaponsRangeWu(player) {
+  const weapons = player && (player.data?.weapons || player.weapons);
+  let maxRange = 0;
+  if (Array.isArray(weapons)) {
+    for (let i = 0; i < weapons.length; i++) {
+      const w = weapons[i];
+      if (!w) continue;
+      const r = Number(w.range ?? w.maxRange ?? w.fireRange);
+      if (Number.isFinite(r) && r > maxRange) maxRange = r;
+    }
+  }
+  if (maxRange > 0) return Math.max(800, Math.min(1400, maxRange));
+  return HUD_ATTENTION_DEFAULT_WEAPONS_RANGE;
+}
+
+function hostileEntityEngagedOrInRange(state, player, rangeWu) {
+  if (!state || !player || player.alive === false) return false;
+  const targetId = state.player && state.player.targetId;
+  const entities = state.entities;
+  if (targetId != null && entities && typeof entities.get === 'function') {
+    const locked = entities.get(targetId);
+    if (locked && locked.alive !== false && locked !== player && isHostileToPlayer(locked, player.team, state)) {
+      return true;
+    }
+  }
+  const index = state.entityIndex;
+  const ships = (index && index.__spacefaceEntityIndexV1 && Array.isArray(index.ships))
+    ? index.ships
+    : (Array.isArray(state.entityList) ? state.entityList
+      : (entities && typeof entities.values === 'function' ? entities.values() : []));
+  const rangeSq = rangeWu * rangeWu;
+  const px = Number(player.pos?.x);
+  const pz = Number(player.pos?.z);
+  const hasPos = Number.isFinite(px) && Number.isFinite(pz);
+  for (const e of ships) {
+    if (!e || e === player || e.alive === false || e.type !== 'ship') continue;
+    if (!isHostileToPlayer(e, player.team, state)) continue;
+    const ai = e.data && e.data.ai;
+    if (ai) {
+      if (ai.targetId === player.id) return true;
+      const st = typeof ai.state === 'string' ? ai.state.toLowerCase() : '';
+      if (st && COMBAT_AI_STATES.has(st)) return true;
+    }
+    if (e.data?.engaged === true) return true;
+    if (hasPos && e.pos && Number.isFinite(e.pos.x) && Number.isFinite(e.pos.z)) {
+      const dx = e.pos.x - px;
+      const dz = e.pos.z - pz;
+      if (dx * dx + dz * dz <= rangeSq) return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Resolve the single flight HUD attention state (`teach` | `fight` | `calm`).
+ *
+ * - `fight`: a Swarm round is live, a hostile is engaged or within weapons range, or the
+ *   player's hull took damage within the last 8 s.
+ * - `teach`: the first two minutes (120 s) of a new Adventure save (when not fighting).
+ * - `calm`: everything else.
+ */
+export function resolveHudAttention(state, { lastPlayerHullHitAt = -Infinity, weaponsRangeWu = null } = {}) {
+  if (!state || typeof state !== 'object') return 'calm';
+  if (isSwarmGlass(state) || (state.run && state.run.kind === 'survival' && state.run.phase && state.run.phase !== 'inactive' && state.run.phase !== 'ended')) {
+    return 'fight';
+  }
+  const now = Number(state.simTime);
+  if (Number.isFinite(now) && Number.isFinite(lastPlayerHullHitAt)
+    && now >= lastPlayerHullHitAt && (now - lastPlayerHullHitAt) <= HUD_ATTENTION_HULL_HIT_WINDOW_S) {
+    return 'fight';
+  }
+  const player = state.entities && state.playerId != null && typeof state.entities.get === 'function'
+    ? state.entities.get(state.playerId)
+    : null;
+  const range = Number.isFinite(weaponsRangeWu) && weaponsRangeWu > 0
+    ? weaponsRangeWu
+    : playerWeaponsRangeWu(player);
+  if (hostileEntityEngagedOrInRange(state, player, range)) return 'fight';
+  if (openingWindowActive(state)) return 'teach';
+  return 'calm';
+}
+// ── One voice per moment (design/overhaul/08 §1.2, §4) ───────────────────────────────────────
+// The objective line says what is next and the aim tag says the verb; besides those, ONE thing
+// speaks. Every surface that can speak on the flight glass is ranked here, once, and the HUD's
+// slow pass seats the highest one present: the rest step aside (they keep their place and
+// come back when the seat frees). Ranks, highest first:
+//   deck    a decision card waiting on the player's choice (rare in a fight; it owns the moment)
+//   tell    an enemy is about to do something and the tag says the answer ("FLYBY Break the beam")
+//   danger  a timed danger announcement with no world equivalent (SHIELDS DOWN, OUT OF FUEL)
+//   speaker a named voice's card (Kessler's line)
+//   floor   the banner's ordinary line (a story, tutorial or objective nudge)
+//   feed    the receipt cards
+// Standing lamps (ttl Infinity, class sf-alert--lamp: WANTED, HULL CRITICAL, MISSILE LOCK, bingo
+// fuel, and the other condition lights) are not voices. They stay lit beside whoever holds the
+// seat, and they never take the danger seat or hide another surface. A warning tag still outranks
+// a timed danger line. The dock prompt is the station's verb tag ("E Dock") and a standing status
+// pill (a hazard zone, a gate in range) is a lamp, so neither is one of the voices: they stay up
+// beside the speaker, a banner line or a receipt, and step aside only for a tell, a danger line or
+// a decision. Sound captions are an accessibility channel and never step aside. Under an open centre dialog the
+// world tells step aside too (the dialog owns the screen).
+export const VOICE_SEAT_ORDER = Object.freeze(['deck', 'tell', 'danger', 'speaker', 'floor', 'feed']);
+const VOICE_SEAT_STANDING = Object.freeze(['dock', 'pill']);
+const VOICE_SEAT_STANDING_YIELDS = new Set(['deck', 'tell', 'danger']);
+
+/**
+ * Seat one voice. `present` maps each VOICE_SEAT_ORDER name (and the standing `dock` / `pill`) to
+ * whether that surface is up right now. Returns `{ seat, yields }`: the name holding the seat (or
+ * null) and the set of present surface names that must step aside this moment.
+ */
+export function resolveVoiceSeat(present = {}, { dialogOpen = false } = {}) {
+  const yields = new Set();
+  let seat = null;
+  for (const name of VOICE_SEAT_ORDER) {
+    if (!present[name]) continue;
+    if (name === 'tell' && dialogOpen) { yields.add(name); continue; }
+    if (seat === null) seat = name;
+    else yields.add(name);
+  }
+  if (seat !== null && VOICE_SEAT_STANDING_YIELDS.has(seat)) {
+    for (const name of VOICE_SEAT_STANDING) if (present[name]) yields.add(name);
+  }
+  return { seat, yields };
+}
+
+/**
+ * Which one-voice channel a live alert card occupies.
+ * A standing lamp (ttl Infinity, class `sf-alert--lamp`) is never the danger voice: WANTED,
+ * HULL CRITICAL, MISSILE LOCK and bingo fuel stay lit beside whoever is speaking. A dock lamp
+ * stays the dock verb tag. Only a timed danger line (no lamp class) takes `danger`.
+ */
+export function alertVoiceChannel(classList) {
+  const has = (name) => {
+    if (!classList) return false;
+    if (typeof classList.contains === 'function') return classList.contains(name);
+    return ` ${classList} `.includes(` ${name} `);
+  };
+  if (has('sf-alert--lamp')) return has('sf-alert--dock') ? 'dock' : 'pill';
+  if (has('sf-alert--dock')) return 'dock';
+  if (has('sf-alert--danger')) return 'danger';
+  if (has('sf-alert--floor')) return 'floor';
+  return 'pill';
+}
+
 export const VITAL_NUMERIC_LOW = 0.5;
 export const SHIP_GLYPH_BOX = Object.freeze({ width: 62, height: 74 });
 
 const TARGET_RECEIPT = /^\s*target\s*:/i;
+const LINE_CONTROL_DENIAL = /^\s*line (reel-in|pay-out) blocked:\s*(minimum|maximum) line length reached/i;
 const CONTROL_LAUNDRY = /\s+•\s+/;
 const BIND_WALL = /\b(thrusts?|steer|mouse aims|lmb fire|left stick flies)\b/i;
 const COMBAT_KEEP = /\b(cr|credit|cargo|rep|save|saved|cannot|insufficient|no wingmen|wanted)\b/i;
@@ -109,6 +258,11 @@ export function admitReceipt({
     }
   }
   if (isFightCaptionSentence(line)) return { admit: false, reason: 'fight-caption' };
+  // The rope never refuses on the glass (08 §4): a winch at its end stop shows itself in the
+  // cable and the reel's sound. "Line reel-in blocked: minimum line length reached" every time a
+  // player holds the reel to the stop was a developer readout, not a receipt. A dead spool or a
+  // lost attachment still speaks: those are news.
+  if (LINE_CONTROL_DENIAL.test(line)) return { admit: false, reason: 'line-control' };
   if (_fromVoice) return { admit: false, reason: 'voice-mirror' };
   if (channel === 'bark' || channel === 'chatter' || channel === 'news') {
     return { admit: false, reason: 'chatter' };
@@ -209,16 +363,9 @@ export function tetherRingRead(tether) {
   return Object.freeze({ load, strain, hot: load >= 0.5 || strain >= 0.5 });
 }
 
-/** The release-read receipt line: tonnage and strain the moment the Line lets go. */
-export function releaseReadReceipt({ tonnageU = 0, load = 0, strain = 0 } = {}) {
-  const t = Math.max(0, Math.round(Number(tonnageU) || 0));
-  const l = Math.max(0, Math.min(1, Number(load) || 0));
-  const s = Math.max(0, Math.min(1, Number(strain) || 0));
-  if (!t && !l && !s) return '';
-  // A plain sentence, not a stat string: the flight glass never tier (D240) drops compact debug
-  // fields, and the receipt lane reads in sentence case.
-  const read = [t ? `${t} t` : '', `load ${Math.round(l * 100)}%`, `strain ${Math.round(s * 100)}%`].filter(Boolean);
-  return `Line released: ${read.join(', ')}`;
+/** The release toast stays quiet. Strain is the cable's colour; the grade pill is the word. */
+export function releaseReadReceipt() {
+  return '';
 }
 
 /** VERB-05 — one receipt, the trick's name. Amendments are a different event and stay quiet. */
@@ -529,7 +676,7 @@ export const FIRST_USE_LINE = Object.freeze({
   masslineCadenceWinch: 'Swing carries — reel under BOOST to pump.',
   // TEACH-05 — the mass seed's first deploy names the warning-then-collapse rule it lives
   // by; the lesson belongs at the deploy, never at the collapse.
-  massSeedDeploy: 'Anchor seed out — it warns, then it folds.',
+  massSeedDeploy: 'Pin planted — swing on it with the Line. It slips before it breaks.',
   masslineBulletTime: 'Hold to stretch time.',
   masslineCloak: 'Coast to stay hidden.',
   // FB-013 — the four silent heads announce themselves once, on the head's first defining
@@ -593,7 +740,7 @@ export function missingThreeBeatLine(verbId) {
 // embeds the LIVE binding label (keyboard code, pad chord, or nothing on touch) so a rebind can
 // never strand the words. ≤12-word drill budget, binding excluded.
 export const SHELF_VERB_LINES = Object.freeze({
-  travelBurn: 'The burn keeps the speed',
+  travelBurn: 'Your burn holds the speed',
   chargeThrow: 'A charge is racked',
   bulletTime: 'The clock widens',
   cloak: 'The shroud is fitted',

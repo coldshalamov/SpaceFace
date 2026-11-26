@@ -25,6 +25,33 @@ const QUICK = {
   ruleset: 'swarm',
 };
 
+test('the Easy bare-Hornet SFC1 v1 code still means the legacy funded opening', () => {
+  const literal = 'SFC1-eyJhIjoiaGVsaW9zX2NvcmUiLCJnIjowLCJoIjoic2hpcF9ob3JuZXQiLCJrIjoiaHVsbDpzaGlwX2hvcm5ldCIsInIiOiJzd2FybSIsInMiOjQyNDIsInQiOiJleGhpYml0aW9uIiwidiI6MX0-9afcb9b4';
+  const written = doorRunShareCode({ ...QUICK, seed: 4242, starterId: 'hull:ship_hornet', stake: 'exhibition' });
+  assert.equal(written.code, literal);
+  const applied = applyRunShareCode(literal);
+  assert.equal(applied.ok, true);
+  assert.equal(applied.starterId, 'hull:ship_hornet');
+  assert.equal(applied.stake, 'exhibition');
+  assert.equal(applied.ghostHash, 0);
+  assert.equal(applied.zeroScrapOpening, undefined);
+});
+
+test('an ordinary opening code keeps the exact bare hull and effective choices', () => {
+  const written = doorRunShareCode({ ...QUICK, starterId: 'hull:ship_kestrel', stake: 'contender',
+    zeroScrapOpening: true, swarmThreats: ['fast_lane', 'thick_pack'], openingLesson: true });
+  assert.equal(written.ok, true);
+  const applied = applyRunShareCode(written.code);
+  assert.equal(applied.zeroScrapOpening, true);
+  assert.equal(applied.starterId, 'hull:ship_kestrel');
+  assert.equal(applied.hullId, 'ship_kestrel');
+  assert.equal(applied.stake, 'contender');
+  assert.deepEqual(applied.loadout, []);
+  assert.deepEqual(applied.swarmThreats, ['fast_lane', 'thick_pack']);
+  assert.equal(applied.openingLesson, true);
+  assert.equal(applied.ghostHash, null);
+});
+
 test('INF-038: a copied door code reproduces the intended configuration', () => {
   const res = doorRunShareCode({
     ...QUICK,
@@ -62,8 +89,7 @@ test('INF-038: malformed pastes fail closed with a useful error', () => {
   }
 });
 
-test('INF-038: the door carries Quick play, Copy code, and the daily identity', () => {
-  assert.match(DOOR_SOURCE, /Quick play/, 'Quick play stands on the door');
+test('INF-038: the door carries Copy code and the daily identity', () => {
   assert.match(DOOR_SOURCE, /Copy code/, 'the share-code action goes both ways');
   assert.match(DOOR_SOURCE, /Today's challenge/, 'the daily challenge names its date and seed');
 });

@@ -38,6 +38,7 @@ export function isRungKill(payload, gongPos, radiusWu = RUNG_TUNING.gongRadiusWu
 }
 
 export const rungPlant = {
+  modes: ['swarm'],
   name: 'plants189',
 
   init(ctx) {

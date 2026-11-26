@@ -3,10 +3,18 @@ import test from 'node:test';
 
 import { createSimulation } from '../src/core/sim.js';
 import { SECTORS } from '../src/data/sectors.js';
-import { allRegionalPressureRecipes } from '../src/economy/regionalSupply.js';
 import { economy } from '../src/systems/economy.js';
 
-const REGIONAL_RECIPES = Object.values(allRegionalPressureRecipes()).flat();
+// ECON-BUILD-1 note: the closed-form market model deleted the old tick's per-listing cycle
+// pass this file used to measure — `state.economy.cycles`, `applyRegionalSupply`,
+// `recomputeLivePrices`-as-listing-pass, and `recordLivePriceHistory` are gone. Regional
+// pressure recipes now only gate which listings a station mints; periodic stock work is
+// authored conveyor lines through the same applyStockPressure single-writer path every
+// other write takes, so there is no second derived pass to coalesce. What survives to
+// measure is the demand-projection share: one refresh pass must not re-derive the sector
+// signal per listing, and the batched writer seam (applyStockPressure with
+// deferDerivedRefresh + a refreshStationDemand drain) must not fork a quote recompute
+// per pressure write.
 
 function bootPopulatedEconomy(seed = 0xEC07_A11) {
   const sim = createSimulation({ seed, systems: [economy] });
@@ -19,101 +27,107 @@ function bootPopulatedEconomy(seed = 0xEC07_A11) {
   return { sim, state, econ };
 }
 
-function economySnapshot(state) {
-  return JSON.parse(JSON.stringify(state.economy));
-}
-
-function installLegacyRegionalSupply(econ) {
-  econ.applyRegionalSupply = function legacyRegionalSupply(tickDt) {
-    const minuteShare = Math.max(0, Number(tickDt) || 0) / 60;
-    if (!(minuteShare > 0)) return;
-    for (const recipe of REGIONAL_RECIPES) {
-      if (!recipe.stationId || !(recipe.units > 0)) continue;
-      this.applyStockPressure(
-        recipe.stationId,
-        recipe.commodityId,
-        recipe.role === 'consume' ? 'buy' : 'sell',
-        recipe.units * minuteShare,
-      );
-    }
-  };
-}
-
-test('regional pressure shares the economy tick derived pass without changing state', () => {
-  const optimized = bootPopulatedEconomy();
-  const legacy = bootPopulatedEconomy();
-  installLegacyRegionalSupply(legacy.econ);
-  const boundaryRecipe = REGIONAL_RECIPES.find((recipe) =>
-    optimized.state.economy.cycles[recipe.stationId]?.[recipe.commodityId]);
-  assert.ok(boundaryRecipe, 'expected one regional listing with a live cycle');
-  for (const run of [optimized, legacy]) {
-    run.state.economy.cycles[boundaryRecipe.stationId][boundaryRecipe.commodityId].regimeEndT = 15;
-  }
-  const missingCycleRecipe = REGIONAL_RECIPES.find((recipe) =>
-    recipe !== boundaryRecipe
-    && optimized.state.economy.cycles[recipe.stationId]?.[recipe.commodityId]);
-  assert.ok(missingCycleRecipe, 'expected another regional listing for lazy cycle creation');
-  for (const run of [optimized, legacy]) {
-    delete run.state.economy.cycles[missingCycleRecipe.stationId][missingCycleRecipe.commodityId];
-  }
-
-  let insideRegionalSupply = false;
-  let regionalLivePriceRefreshes = 0;
-  let regionalLiveHistoryRefreshes = 0;
-  const applyRegionalSupply = optimized.econ.applyRegionalSupply;
-  const recomputeLivePrices = optimized.econ.recomputeLivePrices;
-  const recordLivePriceHistory = optimized.econ.recordLivePriceHistory;
-  optimized.econ.applyRegionalSupply = function measuredRegionalSupply(...args) {
-    insideRegionalSupply = true;
-    try {
-      return applyRegionalSupply.apply(this, args);
-    } finally {
-      insideRegionalSupply = false;
-    }
-  };
-  optimized.econ.recomputeLivePrices = function measuredLivePrices(...args) {
-    if (insideRegionalSupply) regionalLivePriceRefreshes++;
-    return recomputeLivePrices.apply(this, args);
-  };
-  optimized.econ.recordLivePriceHistory = function measuredLiveHistory(...args) {
-    if (insideRegionalSupply) regionalLiveHistoryRefreshes++;
-    return recordLivePriceHistory.apply(this, args);
-  };
-
-  optimized.state.simTime = 15;
-  legacy.state.simTime = 15;
-  optimized.econ.econTick(5, optimized.state);
-  legacy.econ.econTick(5, legacy.state);
-
-  assert.equal(regionalLivePriceRefreshes, 0,
-    'regional stock pressure must not recompute a quote that the owning listing pass immediately replaces');
-  assert.equal(regionalLiveHistoryRefreshes, 0,
-    'regional stock pressure must record its observation in the owning listing pass');
-  assert.deepEqual(economySnapshot(optimized.state), economySnapshot(legacy.state),
-    'coalescing derived work must preserve stock, quotes, history, cycles, clocks, events, and RNG state');
-});
-
-test('one economy tick reuses demand projections for matching sector listings', () => {
+test('one refresh pass reuses one demand projection for matching sector listings', () => {
   const { state, econ } = bootPopulatedEconomy(0xEC07_A12);
   const refreshListingDemand = econ.refreshListingDemand;
-  const seenProjectionCaches = new Set();
+  const projectorsPerStation = new Map();
   let listingRefreshes = 0;
-  econ.refreshListingDemand = function measuredDemandRefresh(...args) {
+  econ.refreshListingDemand = function measuredDemandRefresh(entry, def, stationId, info, projector) {
     listingRefreshes++;
-    const projectionCache = args[4];
-    if (projectionCache instanceof Map) seenProjectionCaches.add(projectionCache);
-    return refreshListingDemand.apply(this, args);
+    if (typeof projector === 'function') {
+      if (!projectorsPerStation.has(stationId)) projectorsPerStation.set(stationId, new Set());
+      projectorsPerStation.get(stationId).add(projector);
+    }
+    return refreshListingDemand.apply(this, arguments);
   };
 
-  state.simTime = 5;
-  econ.econTick(5, state);
+  econ.refreshAllPersistentDemand();
 
-  assert.equal(seenProjectionCaches.size, 1,
-    'the listing pass must share one tick-local demand projection cache');
-  const [projectionCache] = seenProjectionCaches;
-  const projectionCount = [...projectionCache.values()]
-    .reduce((sum, sectorCache) => sum + sectorCache.size, 0);
-  assert.ok(projectionCount > 0);
-  assert.ok(projectionCount < listingRefreshes,
-    `expected fewer sector/commodity projections than ${listingRefreshes} listing refreshes`);
+  assert.ok(listingRefreshes > 0, 'the persistent refresh touches real listings');
+  assert.ok(projectorsPerStation.size > 0, 'the refresh runs through the shared projection seam');
+  for (const [stationId, projectors] of projectorsPerStation) {
+    assert.equal(projectors.size, 1,
+      `station ${stationId} must share one pass-local sector projection across its listings`);
+  }
 });
+
+test('deferred stock pressure drains through one shared station demand pass', () => {
+  const deferred = bootPopulatedEconomy(0xEC07_A13);
+  const immediate = bootPopulatedEconomy(0xEC07_A13);
+
+  const stationIds = Object.keys(immediate.state.economy.markets)
+    .filter((sid) => Object.keys(immediate.state.economy.markets[sid]).length > 1)
+    .slice(0, 2);
+  assert.equal(stationIds.length, 2, 'fixture needs two stations with several listings');
+  const listingsByStation = new Map(stationIds.map((sid) => [
+    sid,
+    Object.keys(immediate.state.economy.markets[sid]).slice(0, 3),
+  ]));
+
+  // Immediate path: every pressure write restamps its own quote — the forked per-write cost.
+  let immediateQuoteStamps = 0;
+  const immediateStamp = immediate.econ._stampEntryQuote;
+  immediate.econ._stampEntryQuote = function countedStamp(...args) {
+    immediateQuoteStamps++;
+    return immediateStamp.apply(this, args);
+  };
+  for (const [sid, cids] of listingsByStation) {
+    for (const cid of cids) immediate.econ.applyStockPressure(sid, cid, 'buy', 7);
+  }
+  assert.ok(immediateQuoteStamps > 0, 'the immediate writer restamps a quote per pressure write');
+
+  // Deferred path: the same writes record dents plus a touched-listing drain — zero quote work.
+  let deferredQuoteStamps = 0;
+  const deferredStamp = deferred.econ._stampEntryQuote;
+  deferred.econ._stampEntryQuote = function countedStamp(...args) {
+    deferredQuoteStamps++;
+    return deferredStamp.apply(this, args);
+  };
+  const touchedListings = new Map();
+  for (const [sid, cids] of listingsByStation) {
+    for (const cid of cids) {
+      deferred.econ.applyStockPressure(sid, cid, 'buy', 7, { deferDerivedRefresh: true, touchedListings });
+    }
+  }
+  assert.equal(deferredQuoteStamps, 0,
+    'a deferred pressure write must not fork its own quote recompute');
+  for (const [sid, cids] of listingsByStation) {
+    assert.deepEqual([...(touchedListings.get(sid) || [])].sort(), cids.slice().sort(),
+      `the batch records every listing it touched on ${sid}`);
+  }
+
+  // The drain is refreshStationDemand: one pass-local sector projector serves every listing.
+  const drainProjectors = new Map();
+  const drainedListings = new Set();
+  const refreshListingDemand = deferred.econ.refreshListingDemand;
+  deferred.econ.refreshListingDemand = function measuredDrain(entry, def, sid, info, projector) {
+    if (typeof projector === 'function') {
+      if (!drainProjectors.has(sid)) drainProjectors.set(sid, new Set());
+      drainProjectors.get(sid).add(projector);
+    }
+    drainedListings.add(`${sid}${def && def.id}`);
+    return refreshListingDemand.apply(this, arguments);
+  };
+  for (const sid of touchedListings.keys()) deferred.econ.refreshStationDemand(sid);
+  for (const [sid, projectors] of drainProjectors) {
+    assert.equal(projectors.size, 1,
+      `station ${sid} drains its batch through one pass-local sector projection`);
+  }
+  for (const [sid, cids] of listingsByStation) {
+    for (const cid of cids) {
+      assert.ok(drainedListings.has(`${sid}${cid}`), `the drain reaches ${sid}/${cid}`);
+    }
+  }
+
+  // The durable pressure record is identical — quotes stay derived, never forked.
+  for (const [sid, cids] of listingsByStation) {
+    for (const cid of cids) {
+      assert.deepEqual(
+        deferred.state.economy.markets[sid][cid].dents,
+        immediate.state.economy.markets[sid][cid].dents,
+        `${sid}/${cid}: deferred and immediate pressure land the same dents`,
+      );
+    }
+  }
+});
+

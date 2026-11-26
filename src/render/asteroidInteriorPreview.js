@@ -388,6 +388,207 @@ export function makeMachine(kind, S, envMap) {
     plate.position.z = S * 0.05; plate.receiveShadow = true; g.add(plate);
     const run = new THREE.Mesh(new THREE.BoxGeometry(S * 0.86, S * 0.13, S * 0.08), metalMat(brass, envMap));
     run.position.z = S * 0.13; run.castShadow = true; g.add(run);
+  } else if (kind === 'charge_press') {
+    // Twin upright columns, upper crosshead beam, reciprocating press ram, and ordnance anvil bed.
+    for (const side of [-1, 1]) {
+      const col = new THREE.Mesh(new THREE.BoxGeometry(S * 0.14, S * 0.7, S * 0.62), paintMat(0x4a3d2c, envMap, 0.64));
+      col.position.set(side * S * 0.3, 0, S * 0.45);
+      col.castShadow = true; col.receiveShadow = true;
+      g.add(col);
+    }
+    const crown = new THREE.Mesh(new THREE.BoxGeometry(S * 0.78, S * 0.24, S * 0.16), metalMat(steel, envMap));
+    crown.position.set(0, S * 0.22, S * 0.76);
+    crown.castShadow = true;
+    g.add(crown);
+    const anvil = new THREE.Mesh(new THREE.BoxGeometry(S * 0.42, S * 0.42, S * 0.16), metalMat(mid, envMap));
+    anvil.position.set(0, -S * 0.14, S * 0.22);
+    anvil.castShadow = true; anvil.receiveShadow = true;
+    g.add(anvil);
+    const ram = new THREE.Mesh(new THREE.CylinderGeometry(S * 0.14, S * 0.1, S * 0.36, 8), metalMat(brass, envMap));
+    ram.rotation.z = Math.PI / 2;
+    ram.position.set(S * 0.05, 0, S * 0.48);
+    ram.castShadow = true;
+    g.add(ram);
+    dyn.piston = ram;
+    dyn.pistonBase = S * 0.05;
+  } else if (kind === 'auto_drill') {
+    // Heavy bore mast, side stabilizer struts, and rotating tungsten auger chuck.
+    const housing = new THREE.Mesh(new THREE.BoxGeometry(S * 0.56, S * 0.52, S * 0.42), paintMat(0x52412c, envMap, 0.6));
+    housing.position.set(0, 0, S * 0.35);
+    housing.castShadow = true; housing.receiveShadow = true;
+    g.add(housing);
+    for (const side of [-1, 1]) {
+      const strut = new THREE.Mesh(new THREE.BoxGeometry(S * 0.74, S * 0.1, S * 0.14), metalMat(steel, envMap));
+      strut.position.set(0, side * S * 0.28, S * 0.42);
+      strut.castShadow = true;
+      g.add(strut);
+    }
+    const chuck = new THREE.Group();
+    chuck.position.set(0, 0, S * 0.62);
+    const bit = new THREE.Mesh(new THREE.ConeGeometry(S * 0.2, S * 0.34, 6), metalMat(brass, envMap));
+    bit.rotation.x = Math.PI / 2;
+    bit.castShadow = true;
+    chuck.add(bit);
+    for (let i = 0; i < 3; i++) {
+      const blade = new THREE.Mesh(new THREE.BoxGeometry(S * 0.44, S * 0.06, S * 0.1), metalMat(steel, envMap));
+      blade.rotation.z = (i * Math.PI) / 3;
+      blade.position.z = -S * 0.04;
+      chuck.add(blade);
+    }
+    g.add(chuck);
+    dyn.orbit = chuck;
+  } else if (kind === 'relay') {
+    // Subterranean signal tower, twin crossarm dipole bars, and rotating telemetry dish.
+    const plinthPod = new THREE.Mesh(new THREE.CylinderGeometry(S * 0.24, S * 0.3, S * 0.24, 8), paintMat(0x283542, envMap, 0.58));
+    plinthPod.rotation.x = Math.PI / 2;
+    plinthPod.position.set(0, 0, S * 0.26);
+    plinthPod.castShadow = true;
+    g.add(plinthPod);
+    const mast = new THREE.Mesh(new THREE.CylinderGeometry(S * 0.06, S * 0.09, S * 0.68, 8), metalMat(steel, envMap));
+    mast.rotation.x = Math.PI / 2;
+    mast.position.set(0, 0, S * 0.54);
+    mast.castShadow = true;
+    g.add(mast);
+    const orbit = new THREE.Group();
+    orbit.position.set(0, 0, S * 0.78);
+    const bar = new THREE.Mesh(new THREE.BoxGeometry(S * 0.66, S * 0.07, S * 0.07), metalMat(brass, envMap));
+    bar.castShadow = true;
+    orbit.add(bar);
+    for (const side of [-1, 1]) {
+      const pod = new THREE.Mesh(new THREE.OctahedronGeometry(S * 0.09, 0), emissiveMat(0x5cc8f2, 0.9));
+      pod.position.set(side * S * 0.32, 0, 0);
+      orbit.add(pod);
+    }
+    g.add(orbit);
+    dyn.orbit = orbit;
+    lampZ = S * 0.96;
+  } else if (kind === 'cryo_condenser') {
+    // Chilled cryo-blue cylindrical manifold, three stacked heat-sink fins, and spinning impeller rotor.
+    const tank = new THREE.Mesh(new THREE.CylinderGeometry(S * 0.28, S * 0.3, S * 0.46, 12), paintMat(0x274759, envMap, 0.48));
+    tank.rotation.x = Math.PI / 2;
+    tank.position.set(0, 0, S * 0.37);
+    tank.castShadow = true; tank.receiveShadow = true;
+    g.add(tank);
+    for (let i = 0; i < 3; i++) {
+      const fin = new THREE.Mesh(new THREE.BoxGeometry(S * 0.74, S * 0.14, S * 0.08), metalMat(steel, envMap));
+      fin.position.set(0, (i - 1) * S * 0.24, S * 0.44);
+      fin.castShadow = true;
+      g.add(fin);
+    }
+    const rotor = new THREE.Group();
+    rotor.position.set(0, 0, S * 0.66);
+    for (let i = 0; i < 3; i++) {
+      const vane = new THREE.Mesh(new THREE.BoxGeometry(S * 0.5, S * 0.08, S * 0.05), emissiveMat(0x7cd4fc, 0.75));
+      vane.rotation.z = (i * Math.PI) / 3;
+      rotor.add(vane);
+    }
+    g.add(rotor);
+    dyn.orbit = rotor;
+  } else if (kind === 'seismic_brace') {
+    // Heavy structural H-beam ceiling truss, twin hydraulic columns, and dynamic load-bearing jack.
+    for (const side of [-1, 1]) {
+      const pillar = new THREE.Mesh(new THREE.BoxGeometry(S * 0.18, S * 0.72, S * 0.56), metalMat(mid, envMap));
+      pillar.position.set(side * S * 0.28, 0, S * 0.42);
+      pillar.castShadow = true; pillar.receiveShadow = true;
+      g.add(pillar);
+    }
+    const beam = new THREE.Mesh(new THREE.BoxGeometry(S * 0.84, S * 0.22, S * 0.18), paintMat(0x635746, envMap, 0.68));
+    beam.position.set(0, 0, S * 0.72);
+    beam.castShadow = true;
+    g.add(beam);
+    const jack = new THREE.Mesh(new THREE.CylinderGeometry(S * 0.11, S * 0.13, S * 0.44, 8), metalMat(brass, envMap));
+    jack.rotation.z = Math.PI / 2;
+    jack.position.set(0, 0, S * 0.45);
+    jack.castShadow = true;
+    g.add(jack);
+    dyn.piston = jack;
+    dyn.pistonBase = 0;
+  } else if (kind === 'capacitor_bank') {
+    // Twin armored high-voltage accumulator cells, heavy copper busbar bridge, and glowing charge core slit.
+    for (const side of [-1, 1]) {
+      const cell = new THREE.Mesh(new THREE.CylinderGeometry(S * 0.18, S * 0.2, S * 0.62, 10), paintMat(0x3a3222, envMap, 0.52));
+      cell.rotation.x = Math.PI / 2;
+      cell.position.set(side * S * 0.23, 0, S * 0.45);
+      cell.castShadow = true; cell.receiveShadow = true;
+      g.add(cell);
+      const cap = new THREE.Mesh(new THREE.CylinderGeometry(S * 0.14, S * 0.14, S * 0.08, 10), metalMat(brass, envMap));
+      cap.rotation.x = Math.PI / 2;
+      cap.position.set(side * S * 0.23, 0, S * 0.78);
+      g.add(cap);
+    }
+    const bridge = new THREE.Mesh(new THREE.BoxGeometry(S * 0.58, S * 0.16, S * 0.1), metalMat(steel, envMap));
+    bridge.position.set(0, 0, S * 0.64);
+    bridge.castShadow = true;
+    g.add(bridge);
+    const slitMat = emissiveMat(0xffd25a, 1.0);
+    const slit = new THREE.Mesh(new THREE.BoxGeometry(S * 0.36, S * 0.09, S * 0.08), slitMat);
+    slit.position.set(0, 0, S * 0.72);
+    g.add(slit);
+    dyn.furnace = slitMat;
+    dyn.furnaceAnchor = slit;
+  } else if (kind === 'deep_synthesizer') {
+    // Machined containment collar, octahedral crystal synthesis chamber, laser-sinter gantry, and core slit.
+    const collar = new THREE.Mesh(new THREE.TorusGeometry(S * 0.34, S * 0.08, 8, 18), paintMat(0x332445, envMap, 0.5));
+    collar.position.set(0, 0, S * 0.36);
+    collar.castShadow = true; collar.receiveShadow = true;
+    g.add(collar);
+    const chamber = new THREE.Group();
+    chamber.position.set(0, 0, S * 0.52);
+    const crystal = new THREE.Mesh(new THREE.OctahedronGeometry(S * 0.18, 0), emissiveMat(0xc79dff, 0.9));
+    crystal.castShadow = true;
+    chamber.add(crystal);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(S * 0.26, S * 0.035, 6, 16), metalMat(steel, envMap));
+    ring.rotation.x = 0.75;
+    chamber.add(ring);
+    g.add(chamber);
+    dyn.orbit = chamber;
+    const gantry = new THREE.Mesh(new THREE.BoxGeometry(S * 0.12, S * 0.58, S * 0.1), metalMat(brass, envMap));
+    gantry.position.set(-S * 0.26, 0, S * 0.74);
+    gantry.castShadow = true;
+    g.add(gantry);
+    dyn.progressBar = gantry;
+    dyn.progressBase = -S * 0.26;
+    dyn.progressTravel = S * 0.52;
+    const coreMat = emissiveMat(0xb67eff, 0.8);
+    const coreDot = new THREE.Mesh(new THREE.BoxGeometry(S * 0.14, S * 0.14, S * 0.06), coreMat);
+    coreDot.position.set(0, 0, S * 0.22);
+    g.add(coreDot);
+    dyn.furnace = coreMat;
+    dyn.furnaceAnchor = coreDot;
+  } else if (kind === 'mass_driver') {
+    // Twin angled electromagnetic launch rails on a recoil cradle with reciprocating induction sled.
+    const cradle = new THREE.Mesh(new THREE.BoxGeometry(S * 0.76, S * 0.44, S * 0.24), paintMat(0x3b2c36, envMap, 0.58));
+    cradle.position.set(0, 0, S * 0.26);
+    cradle.castShadow = true; cradle.receiveShadow = true;
+    g.add(cradle);
+    for (const side of [-1, 1]) {
+      const rail = new THREE.Mesh(new THREE.BoxGeometry(S * 0.78, S * 0.09, S * 0.16), metalMat(steel, envMap));
+      rail.position.set(0, side * S * 0.18, S * 0.54);
+      rail.rotation.y = -0.22;
+      rail.castShadow = true;
+      g.add(rail);
+    }
+    const sled = new THREE.Mesh(new THREE.BoxGeometry(S * 0.24, S * 0.22, S * 0.18), metalMat(brass, envMap));
+    sled.position.set(0, 0, S * 0.52);
+    sled.castShadow = true;
+    g.add(sled);
+    dyn.piston = sled;
+    dyn.pistonBase = 0;
+  } else if (kind === 'harmonic_resonator') {
+    // Geodesic acoustic exciter dome with rotating concentric seismic rings.
+    const dome = new THREE.Mesh(new THREE.CylinderGeometry(S * 0.26, S * 0.36, S * 0.32, 8), paintMat(0x213d37, envMap, 0.54));
+    dome.rotation.x = Math.PI / 2;
+    dome.position.set(0, 0, S * 0.3);
+    dome.castShadow = true; dome.receiveShadow = true;
+    g.add(dome);
+    const orbit = new THREE.Group();
+    orbit.position.set(0, 0, S * 0.56);
+    const outerRing = new THREE.Mesh(new THREE.TorusGeometry(S * 0.3, S * 0.04, 6, 18), metalMat(brass, envMap));
+    orbit.add(outerRing);
+    const dish = new THREE.Mesh(new THREE.OctahedronGeometry(S * 0.14, 0), emissiveMat(0x6ceab8, 0.85));
+    orbit.add(dish);
+    g.add(orbit);
+    dyn.orbit = orbit;
   }
   if (kind !== 'conduit') {
     // The one glyph every machine shares: a small hooded status lamp. It is a LAMP — a real

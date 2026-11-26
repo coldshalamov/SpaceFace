@@ -17,7 +17,9 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { chromium } from 'playwright';
+import { chromium as rawChromium } from 'playwright';
+import { quietChromium } from '../../scripts/lib/quietLaunch.mjs';
+const chromium = quietChromium(rawChromium);
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const OUT = path.join(ROOT, 'assets', 'ships', 'release', 'surfaces', 'rubric');

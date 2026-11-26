@@ -2,7 +2,9 @@
 // surface, each wrapped in the real illustrated-surface governor. Times render + GPU sync (readPixels), alternating
 // A/B four times. Standalone three scene, no game boot.
 //   node scripts/fleet/game-lock.mjs run -- node scripts/fleet/looks/triplanar-cost.mjs
-import { chromium } from 'playwright';
+import { chromium as rawChromium } from 'playwright';
+import { quietChromium } from '../../lib/quietLaunch.mjs';
+const chromium = quietChromium(rawChromium);
 import { spawn } from 'node:child_process';
 const PORT = 8174;
 const server = spawn(process.execPath, ['server.js', String(PORT)], { cwd: process.cwd(), stdio: 'ignore' });

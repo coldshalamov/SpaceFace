@@ -82,6 +82,10 @@ export function describeOutfittingSpendConfirm(def, credits, opts = {}) {
   const fitSlotIndex = opts.fitSlotIndex;
   const willFit = Number.isInteger(fitSlotIndex) && fitSlotIndex >= 0;
   const danger = isOutfittingSpendDanger(price, avail);
+  // A normal fit is one press: the price is on the button and a displaced part goes to module
+  // inventory, so nothing is lost. Only a spend that guts the purse (danger) or a swap that breaks
+  // a job you hold or were offered (jobImpact) asks again.
+  if (!danger && !opts.jobImpact) return null;
   // opts.replacesName: the module this fit displaces (it goes to inventory, not the bin).
   // opts.jobImpact: what the swap does to a held or offered job that gates on a fitted tool.
   const fitLine = (willFit

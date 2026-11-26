@@ -7,6 +7,7 @@ import {
   avatarDrawPos,
   avatarMoveProgress,
   deriveDrillCommitment,
+  cargoFreeUnits,
   drillCellEvidence,
   drillEnergyLimitCopy,
   drillHeatLimitCopy,
@@ -20,6 +21,8 @@ import { entitySpanHtml, decorateEntityNode } from '../entityResolver.js';
 import { escapeHtml } from '../comms.js';
 import { prefersReducedMotion } from '../effects/effectRuntime.js';
 import { formatBindingCode, resolveActionCodes } from '../../systems/input.js';
+import { injectOrrery } from '../orrery/tokens.js';
+import { stagger, reducedMotion } from '../orrery/motion.js';
 
 const { COLS, ROWS, TILE, SCAN_RADIUS, SCAN_COOLDOWN_S, SCAN_ACTIVE_S, GAS_TELL_RADIUS } = DRILL_CONST;
 const COMMODITY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
@@ -88,7 +91,7 @@ function commitmentVeinLine(prefix, vein, commitment) {
   if (commitment.depleted) return `${prefix}: ${name}. Played out — no cargo.`;
   if (commitment.cargoBlocked) return `${prefix}: ${name}. Holds are full.`;
   const holds = Math.max(0, Math.floor(Number(vein.yieldU) || 0));
-  return holds > 0 ? `${prefix}: ${name}, ${holds}u.` : `${prefix}: ${name}. The vein holds nothing.`;
+  return holds > 0 ? `${prefix}: ${name}, ${holds} units.` : `${prefix}: ${name}. The vein holds nothing.`;
 }
 
 function sameCommitmentCell(a, b) {
@@ -128,7 +131,7 @@ export function formatDrillCommitment(commitment) {
       } else {
         const holds = Math.max(0, Math.floor(Number(facing.yieldU) || 0));
         lines.push(holds > 0
-          ? `Known ore ${name}. Next bore can pay ${holds}u.`
+          ? `Known ore ${name}. Next bore can pay ${holds} units.`
           : `Known ore ${name}. The vein holds nothing.`);
       }
     } else if (facing.evidence === 'known' && facing.type === 'gas') {
@@ -166,10 +169,16 @@ export function resolveDrillControlMap(state) {
   const right = unique(bindingCodes(state, 'yawRight'), bindingCodes(state, 'strafeRight'));
   const up = bindingCodes(state, 'forward');
   const down = bindingCodes(state, 'reverse');
-  const scan = bindingCodes(state, 'scanPulse');
+  const movement = unique(up, left, down, right);
+  const scanBindings = bindingCodes(state, 'scanPulse');
+  const custom = state.settings?.controls?.bindings;
+  // Flight's survey lives on the context wheel. Keep the dedicated key inside the mine,
+  // while a pilot's explicit remap, unbind, or rover movement assignment takes precedence.
+  const scan = scanBindings.length === 0 && !Object.hasOwn(custom || {}, 'scanPulse')
+    && !movement.includes('KeyC') ? ['KeyC'] : scanBindings;
   return {
     left, right, up, down, scan,
-    movementLabel: unique(up, left, down, right).map(codeLabel).join(' / ') || 'UNBOUND',
+    movementLabel: movement.map(codeLabel).join(' / ') || 'UNBOUND',
     scanLabel: scan.map(codeLabel).join(' / ') || 'UNBOUND',
   };
 }
@@ -200,7 +209,6 @@ export function drillGasShakeOffset(remainingS, elapsedS, reducedMotion = false)
   };
 }
 
-const PRESS_IMPULSE = Object.freeze({ impulse: true });
 
 /**
  * Convert physical held keys into bounded, fixed-step drill commands.
@@ -233,16 +241,17 @@ export function createDrillInputController({ drillSys, getState }) {
     intent = null;
   }
 
-  function armIntent(direction) {
+  function armIntent(direction, cruise = false) {
     const vector = DIRECTION_VECTORS[direction];
     const d = getState();
     if (!vector || !d?.active || !d.avatar || blockedUntilRelease) return false;
     clearCommand();
-    intent = {
+    const target = {
       direction,
       col: d.avatar.col + vector.dc,
       row: d.avatar.row + vector.dr,
     };
+    intent = { target, options: { target, cruise } };
     held[direction] = true;
     return true;
   }
@@ -250,8 +259,9 @@ export function createDrillInputController({ drillSys, getState }) {
   function settleIntent() {
     const d = getState();
     if (!intent || !d?.avatar) return null;
-    const reached = d.avatar.col === intent.col && d.avatar.row === intent.row;
-    const targetTile = d.field?.[intent.col]?.[intent.row];
+    const { col, row } = intent.target;
+    const reached = d.avatar.col === col && d.avatar.row === row;
+    const targetTile = d.field?.[col]?.[row];
     const rejectedSolid = targetTile?.type !== 'empty'
       && !d.avatar.isDrilling
       && !d.avatar.drillTarget;
@@ -271,7 +281,8 @@ export function createDrillInputController({ drillSys, getState }) {
     if (!intent) return null;
     const d = getState();
     const avatar = d?.avatar;
-    const tile = d?.field?.[intent.col]?.[intent.row];
+    const { col, row } = intent.target;
+    const tile = d?.field?.[col]?.[row];
     return {
       active: !!d?.active,
       asteroidId: d?.asteroidId ?? null,
@@ -314,11 +325,12 @@ export function createDrillInputController({ drillSys, getState }) {
         settleIntent();
       }
     }
-    if (!intent && activeDirection && allowArm && !blockedUntilRelease) armIntent(activeDirection);
+    if (!intent && activeDirection && allowArm && !blockedUntilRelease) armIntent(activeDirection, true);
     const before = getState()?.avatar;
     const beforeCol = before?.col;
     const beforeRow = before?.row;
-    const queued = drillSys.tickInput(held, dt, impulse ? PRESS_IMPULSE : undefined);
+    const options = impulse ? { ...intent?.options, impulse: true } : intent?.options;
+    const queued = drillSys.tickInput(held, dt, options);
     if (queued === true) pendingMirrorReceipt = intentReceipt();
     else settleIntent();
     const after = getState()?.avatar;
@@ -338,7 +350,7 @@ export function createDrillInputController({ drillSys, getState }) {
   // tap's own uncommitted intent stays latched through keyup and lands on its own beat. Only that
   // one owed seat qualifies: releasing always stops a bore, and always stops a cruise.
   function seatPending() {
-    return !!intent && seatOwed && isEmptyFace(intent);
+    return !!intent && seatOwed && isEmptyFace(intent.target);
   }
 
   return {
@@ -357,7 +369,7 @@ export function createDrillInputController({ drillSys, getState }) {
       if (step(DRILL_INPUT_STEP_S, false, true)) seatOwed = false;
       // The seat is only owed while an empty face is still waiting on the beat clock. A bore, a
       // refusal, or a cell that already landed settles the debt here.
-      if (!intent || !isEmptyFace(intent)) seatOwed = false;
+      if (!intent || !isEmptyFace(intent.target)) seatOwed = false;
       return true;
     },
     release(direction) {
@@ -370,7 +382,7 @@ export function createDrillInputController({ drillSys, getState }) {
       // a chain — it is the tap itself — so it stays latched and completes.
       if (!seatPending()) clearCommand();
       // Retire drilling state immediately instead of waiting for the next animation frame.
-      drillSys?.tickInput?.(held, 0);
+      drillSys?.tickInput?.(held, 0, intent?.options);
       return true;
     },
     tick(frameDt) {
@@ -403,7 +415,7 @@ export function createDrillInputController({ drillSys, getState }) {
     hasActiveIntent() { return !!intent || (!!activeDirection && !blockedUntilRelease); },
     /** True while an uncommitted intent is the tap's own promised cell (survives keyup). */
     hasOwedSeat() { return seatPending(); },
-    target() { return intent ? { ...intent } : null; },
+    target() { return intent ? { ...intent.target } : null; },
   };
 }
 
@@ -1499,6 +1511,14 @@ export const drillScreen = {
     srStatus.setAttribute('aria-atomic', 'true');
     wrap.appendChild(srStatus);
     rootEl.appendChild(wrap);
+    // Arrival (ORRERY §3.5): the two housings and the stage rise in on mount; the session's own
+    // refresh never rebuilds this frame, so the entrance runs once per descent.
+    injectOrrery();
+    if (!reducedMotion()) {
+      const units = [leftPanel, centerPanel, rightPanel];
+      stagger(units, { base: 40, step: 60 });
+      for (const unit of units) unit.classList.add('orr-rise');
+    }
 
     const drillSys = ctx.drill || (ctx.registry && ctx.registry.get('drill'));
     drillScreen._drillTier = drillSys ? drillSys.getDrillTier() : 1;
@@ -2810,13 +2830,15 @@ export const drillScreen = {
       setText(hudEls.yield, 'yield', total);
       setText(hudEls.gas, 'gas', d.gasHits);
       const cargo = state.player.cargo;
-      const cap = cargo && cargo.capVolume > 0 ? cargo.capVolume : 0;
-      const used = cargo ? Number(cargo.usedVolume) || 0 : 0;
-      const freeU = cap > 0 ? Math.max(0, Math.floor(cap - used)) : 0;
-      const cargoUsed = cap > 0 ? Math.round((used / cap) * 100) : 0;
-      const cargoFull = cargoUsed >= 100 || (cap > 0 && freeU <= 0);
+      // Slot law: the gauge counts stacks aboard over slots the hull grants.
+      const slotCount = cargo && cargo.slotCount > 0 ? cargo.slotCount : 0;
+      const freeU = cargoFreeUnits(cargo);
+      const cargoUsed = slotCount > 0
+        ? Math.round(((Array.isArray(cargo.slots) ? Math.min(cargo.slots.length, slotCount) : 0) / slotCount) * 100)
+        : 0;
+      const cargoFull = slotCount > 0 && freeU <= 0;
       setText(hudEls.cargo, 'cargo',
-        cargoFull ? '100% FULL' : `${cargoUsed}% · ${freeU}u free`);
+        cargoFull ? '100% FULL' : `${cargoUsed}% · ${freeU} slots free`);
       setClassName(hudEls.cargo, 'cargoCn', cargoFull ? 'bad' : 'v');
       if (cargoFull) {
         showStatusBanner('cargo', DRILL_CARGO_FULL_BANNER);
@@ -2903,9 +2925,7 @@ export const drillScreen = {
       if (hudEls.scan) {
         const tier = drillScreen._drillTier || 1;
         const cargo = state.player && state.player.cargo;
-        const cargoFree = cargo && cargo.capVolume > 0
-          ? Math.max(0, Math.floor(cargo.capVolume - (Number(cargo.usedVolume) || 0)))
-          : Infinity;
+        const cargoFree = cargo ? cargoFreeUnits(cargo) : Infinity;
         const commitment = deriveDrillCommitment(d, { tier, cargoFree });
         commitmentPath = commitment && Array.isArray(commitment.returnPath) ? commitment.returnPath : [];
         let html = escapeHtml(formatDrillCommitment(commitment));

@@ -74,7 +74,7 @@ function bootShips(credits) {
   bus.on('economy:chargeCredits', ({ amount }) => { state.player.credits -= amount; });
   const ships = Object.assign({}, shipsPrototype, { _instSeq: 0 });
   ships.init({ state, bus, helpers: {} });
-  return { state, ships, toasts };
+  return { state, ships, toasts, bus };
 }
 
 test('a refreshed ladder keeps the selected lot and does not trade its neighbor', () => {
@@ -337,4 +337,36 @@ test('a module confirmation refuses a different price and fits the hull it named
   assert.match(SHIPWORKS_SOURCE, /focusNamedStationControl\(/);
   assert.match(SHIPWORKS_SOURCE, /ui:deleteLoadoutPreset',\s*\{\s*shipIndex:\s*statedShipIndex/);
   assert.match(UI_INPUT_SOURCE, /if \(isConfirmOpen\(\)\) \{[\s\S]*?stopPropagation\(\)/);
+});
+
+test('Buy & Fit refuses a changed hardpoint and waits for the pilot to confirm the replacement', () => {
+  const { price } = stationShopOffer(SWING, SID);
+  const h = bootShips(price);
+  const occupant = { defId: 'mod_hull_patch_kit_s', instanceId: 'patch-kit' };
+  h.state.player.moduleInventory.push(occupant);
+  const purchase = {
+    defId: SWING.id, fitSlotIndex: drifterUtilityM, shipIndex: 1,
+    expectedPrice: price, hullDefId: DRIFTER.id, expectedOccupantDefId: null,
+  };
+  const receipts = [];
+  h.bus.on('module:purchased', (receipt) => receipts.push(receipt));
+  const hull = h.state.player.ownedShips[1];
+
+  // The seller quoted an open hardpoint. An earlier fit reaches the authority before
+  // the pending Buy & Fit does.
+  h.bus.emit('ui:fitModule', { shipIndex: 1, slotIndex: drifterUtilityM, instanceId: occupant.instanceId });
+  assert.equal(hull.fittings[drifterUtilityM], occupant.defId);
+  h.bus.emit('ui:buyModule', purchase);
+  assert.equal(h.state.player.credits, price);
+  assert.equal(hull.fittings[drifterUtilityM], occupant.defId);
+  assert.equal(h.state.player.moduleInventory.length, 0);
+  assert.deepEqual(receipts, []);
+  assert.ok(h.toasts.some((toast) => /hardpoint changed/i.test(toast.text)));
+
+  h.bus.emit('ui:buyModule', { ...purchase, expectedOccupantDefId: occupant.defId });
+  assert.equal(h.state.player.credits, 0);
+  assert.equal(hull.fittings[drifterUtilityM], SWING.id);
+  assert.equal(h.state.player.moduleInventory[0].instanceId, occupant.instanceId);
+  assert.equal(receipts.length, 1);
+  assert.equal(receipts[0].price, price);
 });

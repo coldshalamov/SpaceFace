@@ -47,8 +47,16 @@ test('exact touch waits for the actual already-current pending program and resto
   setTimeout(() => { active = false; }, 5);
   const cancelled = await retryPendingExactTouch(touch, { renderer, timeoutMs: 1000, isActive: () => active });
   assert.equal(cancelled.cancelled, true); assert.equal(uniforms, 1);
+  let clock = 0;
   await assert.rejects(admitOpeningUnitsAcrossSlices({ subjects: [mesh], renderer, strict: true,
-    deadlineMs: 1, beginReadinessBatch: () => ({ drain: async () => ({ programs: 0 }), close() {} }),
+    deadlineMs: 1, now: () => clock,
+    beginReadinessBatch: () => ({
+      async drain() {
+        clock = 2;
+        return { programs: 0 };
+      },
+      close() {},
+    }),
     compileOne: async () => ({}), touchOne: touch,
   }), error => error.code === 'SF_PIPELINE_READINESS_TIMEOUT');
   assert.equal(uniforms, 1, 'strict admission rejects without drawing the pending wrapper');
@@ -157,6 +165,28 @@ test('pending drawable roots gate nested draws without changing the visible ligh
   } finally { guard.restore(); }
   assert.equal(census(), 2);
   root.geometry.dispose(); root.material.dispose(); child.geometry.dispose(); child.material.dispose();
+});
+
+test('a pending lightless branch hides and restores its root without visiting children', () => {
+  const { renderer } = rendererHarness();
+  const scene = new THREE.Scene();
+  const root = new THREE.Group();
+  const child = new THREE.Mesh();
+  root.add(child);
+  scene.add(root);
+  root.hasLightsOrLod = () => false;
+  child.traverseVisible = () => assert.fail('the cold root should stop traversal before its children');
+  renderer.userData.spacefacePendingPipelineSubjects = new Set([root]);
+
+  const guard = createUnreadyDrawableGuard(renderer);
+  guard.hide(scene);
+  try {
+    assert.equal(root.visible, false);
+    assert.equal(child.layers.mask, 1);
+  } finally { guard.restore(); }
+  assert.equal(root.visible, true);
+  child.geometry.dispose();
+  child.material.dispose();
 });
 
 test('readiness scan skips hidden subtrees that the scene pass cannot draw', async () => {

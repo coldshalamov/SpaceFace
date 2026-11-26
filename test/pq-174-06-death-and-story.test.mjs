@@ -238,7 +238,8 @@ test('PQ-174.06: the telegraph resolver reports a recent matched tell, fire, or 
   assert.equal(wave.source, 'unrecorded');
 
   assert.equal(telegraphWord('some_new_tell'), 'Some New Tell', 'unknown kinds stay specific');
-  assert.equal(deathCauseText(null, []), 'Unidentified fire took you apart — no single hull to name.');
+  // W2-3 (04_SWARM.md §8): never print "Unidentified fire" or "Unidentified attacker".
+  assert.equal(deathCauseText(null, []), 'Enemy fire took you apart — no single hull to name.');
   assert.ok(counterplayFor({ direction: 'AFT' }).length > 0);
 });
 
@@ -384,20 +385,17 @@ test('PQ-174.06: the mounted plate carries the story band from live telemetry', 
       { verb: 'Pierce', defId: 'wpn_railgun_m', wave: 3 },
     ],
   });
-  const { lines, root } = mountResults(resultA);
+  // Rewritten to Run Over (design/overhaul/04_SWARM.md §8): a Swarm death reads in six lines —
+  // Kiln, what killed you, the best moment (from the same live telemetry), the figures, the
+  // build — then Again. The story band, the armory build code and the tell timing are gone from
+  // this plate; storySentences above still pins the record's own words.
+  const { lines } = mountResults(resultA);
   const text = lines.join('\n');
-  assert.ok(lines.includes('The run'), 'the story band leads the plate');
-  assert.ok(text.includes('Best kill chain 11 on wave 2'), 'the best kill chain with its wave');
-  assert.ok(text.includes('12 kills'), 'a moment with its number');
-  // B3C review: "You converged on …" was a duplicate of the build band's own name line, so the
-  // story dropped the sentence and the build band carries the name instead.
-  assert.ok(!text.includes('You converged on'),
-    'the duplicate build sentence is gone — the build band owns the build name');
-  const buildBand = nodeWithClass(root, 'sf-crres__build-name');
-  assert.ok(buildBand && buildBand.textContent === resultA.buildName,
-    `the converged build is named in the build band (${resultA.buildName})`);
-  assert.ok(text.includes('Build code W2:Volume / W3:Pierce'), 'the shareable code');
-  assert.match(text, /Earlier damage:.*ms before the fatal hit/, 'earlier damage is not a missed tell');
+  assert.equal(lines[0], 'Run over');
+  assert.ok(lines.includes('Best moment'));
+  assert.ok(text.includes('11 kills in one chain in round 2.'), 'the best moment carries its number and round');
+  assert.ok(lines.includes('Killed by'));
+  assert.doesNotMatch(text, /You converged on|Build code|ms before the fatal hit|Recorded tell|\?/);
 });
 
 test('PQ-174.06: the HUD death line names cause and missed tell without a DOM', () => {
@@ -443,9 +441,11 @@ test('PQ-174.06: debrief reader preserves incoming damage instead of inventing a
     assert.equal(deathDialSpec(result).caption.warn, expected);
     assert.equal(new Map(killChainRows(result.defeat, result.death)).get('Earlier damage'),
       'Taking Pulse Laser S fire — 1433 ms before the fatal hit');
+    // Run Over (04_SWARM.md §8) names the killer and its gun; the tell timing stays on the record.
     const text = mountResults(result).lines.join('\n');
-    assert.ok(text.includes(expected));
-    assert.doesNotMatch(text, /It warned you|ms of warning|Wasp Swarmer's tell|Weapon charge/);
+    assert.ok(text.includes('Wasp Swarmer'));
+    assert.match(text, /Pulse Laser S · from the right · through the hull/);
+    assert.doesNotMatch(text, /It warned you|ms of warning|Wasp Swarmer's tell|Weapon charge|ms before/);
     assert.deepEqual(result, before, 'readers preserve the original death and totals');
   } finally {
     survivalRun.destroy(); survivalResults.destroy(); runSession.destroy();
@@ -470,20 +470,18 @@ test('PQ-174.06: debrief reader keeps witnessed tells and legacy events distinct
   assert.equal(deathDialSpec({ defeat: { ...legacy, source: { kind: 'environment' } } }).caption.warn, '');
 });
 
-test('PQ-174.06: run purse and defeat banking disclose starting funds without changing totals', () => {
+test('PQ-174.06: results show the run purse separately from earned-credit banking', () => {
   const result = { ruleset: 'swarm', outcome: 'defeat', seed: 73311, wave: 1,
     kills: 9, bestChain: 9, score: 0, level: 1, xp: 24, credits: 799,
     bankedBounty: 399, hangarBounty: 399, defeat: { attacker: 'Wasp Swarmer' } };
   const before = structuredClone(result);
   const rows = new Map(resultRows(result));
-  assert.equal(rows.get('Run purse'), '799 cr');
+  assert.equal(rows.get('Scrap left'), '799 Scrap');
   assert.equal(rows.has('Salvage'), false);
   assert.equal(rows.get('Score'), '0');
+  // Run Over (04_SWARM.md §8, §5: the Hangar's bounty is cut) carries no purse or banking line.
   const text = mountResults(result).lines.join('\n');
-  assert.match(text, /Run purse/);
-  assert.match(text, /Hangar \+399 cr/);
-  assert.match(text, /Defeat banks 50% of the remaining run purse, including its starting funds/);
-  assert.doesNotMatch(text, /Stunt score|799.*earned/);
+  assert.doesNotMatch(text, /Scrap left|Hangar \+|Defeat banks|purse|Stunt score|799/);
   assert.deepEqual(result, before);
   for (const outcome of ['extracted', 'victory', 'aborted']) {
     assert.doesNotMatch(mountResults({ ...result, outcome }).lines.join('\n'), /Defeat banks/);

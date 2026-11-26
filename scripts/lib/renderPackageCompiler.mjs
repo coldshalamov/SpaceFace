@@ -377,7 +377,7 @@ export function assertSafeMergeBoundaries(semanticManifest) {
 }
 
 async function prepareRenderDocument(document, semanticManifest, resolved) {
-  const { immutableNodes } = preflightRenderDocument(document, semanticManifest, resolved);
+  const { immutableNodes, animatedTransformNodes, skinJointNodes } = preflightRenderDocument(document, semanticManifest, resolved);
 
   for (const { entry, node } of immutableNodes) {
     const sourceMesh = node.getMesh();
@@ -408,7 +408,7 @@ async function prepareRenderDocument(document, semanticManifest, resolved) {
     }
   }
 
-  applyMergeGroups(document, semanticManifest, resolved);
+  applyMergeGroups(document, semanticManifest, resolved, { animatedTransformNodes, skinJointNodes });
   await document.transform(prune({
     propertyTypes: [
       PropertyType.MESH,
@@ -485,7 +485,7 @@ function preflightRenderDocument(document, semanticManifest, resolved) {
   }
 
   assertMergeInputsSupported(semanticManifest, resolved, weightAnimatedNodes);
-  return { immutableNodes };
+  return { immutableNodes, animatedTransformNodes, skinJointNodes };
 }
 
 function assertGeometryAccessorMetadataSupported(root) {
@@ -574,10 +574,9 @@ function assertMergeInputsSupported(semanticManifest, resolved, weightAnimatedNo
   for (const group of semanticManifest.mergeGroups) {
     if (group.nodeIds.length < 2) continue;
     const nodes = group.nodeIds.map((nodeId) => resolved.semanticNodes.get(nodeId).node);
-    const parent = nodes[0].getParentNode();
-    if (nodes.some((node) => node.getParentNode() !== parent)) {
-      throw new Error(`Unsafe merge group ${group.id}: nodes must share one scene parent.`);
-    }
+    // Cross-parent groups are legal: applyMergeGroups bakes every member's ancestor chain to
+    // the lowest common ancestor and refuses chains that cross animation, skins, motion pivots
+    // or node extensions.
     for (const [index, node] of nodes.entries()) {
       const nodeId = group.nodeIds[index];
       const mesh = node.getMesh();
@@ -646,13 +645,27 @@ function stampSemanticLocators(semanticManifest, resolved) {
   }
 }
 
-function applyMergeGroups(document, semanticManifest, resolved) {
+function applyMergeGroups(document, semanticManifest, resolved, guards = {}) {
   for (const group of semanticManifest.mergeGroups) {
     if (group.nodeIds.length < 2) continue;
     const nodes = group.nodeIds.map((nodeId) => resolved.semanticNodes.get(nodeId).node);
-    const parent = nodes[0].getParentNode();
-    if (nodes.some((node) => node.getParentNode() !== parent)) {
-      throw new Error(`Unsafe merge group ${group.id}: nodes must share one scene parent.`);
+    const parents = new Set(nodes.map((node) => node.getParentNode()));
+    let carrierNode = null;
+    if (parents.size === 1) {
+      // Same-parent group: geometry already sits in the shared parent's space after the
+      // per-node bake, so the merged mesh can ride nodes[0] exactly as before.
+      carrierNode = nodes[0];
+    } else {
+      // Cross-parent group: bake every member's ancestor chain down to (excluding) the lowest
+      // common ancestor, so each member's geometry lands in one shared space. The first member
+      // is a baked identity leaf after prepare; move it under that ancestor so it can carry the
+      // merged mesh the same way a same-parent group does (the geometry report and runtime
+      // table read meshes off semantic nodes). Refuses any chain that crosses a transform
+      // animation, a skin joint, a motion pivot or a node extension — those move or instance
+      // their subtree at runtime and must keep their own draws.
+      const host = bakeMembersToCommonAncestor(group, nodes, guards);
+      host.addChild(nodes[0]);
+      carrierNode = nodes[0];
     }
     const meshes = nodes.map((node, index) => {
       const mesh = node.getMesh();
@@ -680,9 +693,65 @@ function applyMergeGroups(document, semanticManifest, resolved) {
       mergedMesh.addPrimitive(primitives.length > 1 ? joinPrimitives(primitives) : primitives[0]);
     }
     for (const node of nodes) node.setMesh(null);
-    nodes[0].setMesh(mergedMesh);
+    carrierNode.setMesh(mergedMesh);
     for (const mesh of meshes) mesh.dispose();
   }
+}
+
+// Column-major 4x4 product a·b, matching glTF's matrix layout.
+function multiplyMatrices(a, b) {
+  const out = new Array(16);
+  for (let c = 0; c < 4; c++) {
+    for (let r = 0; r < 4; r++) {
+      out[c * 4 + r]
+        = a[r] * b[c * 4] + a[4 + r] * b[c * 4 + 1] + a[8 + r] * b[c * 4 + 2] + a[12 + r] * b[c * 4 + 3];
+    }
+  }
+  return out;
+}
+
+// Bake each member's ancestor chain (member-exclusive up to the lowest common ancestor,
+// also exclusive) into its primitives, and return that ancestor as the merged carrier's host.
+function bakeMembersToCommonAncestor(group, nodes, guards) {
+  const chains = nodes.map((node) => {
+    const chain = [];
+    for (let ancestor = node.getParentNode(); ancestor; ancestor = ancestor.getParentNode()) chain.push(ancestor);
+    return chain;
+  });
+  let host = null;
+  for (const candidate of chains[0]) {
+    if (chains.every((chain) => chain.includes(candidate))) { host = candidate; break; }
+  }
+  if (!host) throw new Error(`Unsafe merge group ${group.id}: nodes share no common scene ancestor.`);
+  for (const [index, node] of nodes.entries()) {
+    const chain = chains[index];
+    const stop = chain.indexOf(host);
+    let composed = null;
+    for (let k = 0; k < stop; k++) {
+      const ancestor = chain[k];
+      const name = String(ancestor.getName() || '');
+      if ((guards.animatedTransformNodes && guards.animatedTransformNodes.has(ancestor))
+          || (guards.skinJointNodes && guards.skinJointNodes.has(ancestor))) {
+        throw new Error(`Unsafe merge group ${group.id}: cannot bake across an animated or skinned ancestor (${name || 'unnamed'}).`);
+      }
+      if (name.startsWith('MOTION_')) {
+        throw new Error(`Unsafe merge group ${group.id}: cannot bake across a motion pivot (${name}).`);
+      }
+      if (typeof ancestor.listExtensions === 'function' && ancestor.listExtensions().length > 0) {
+        throw new Error(`Unsafe merge group ${group.id}: cannot bake across a node extension (${name || 'unnamed'}).`);
+      }
+      const local = Array.from(ancestor.getMatrix());
+      if (isIdentityMatrix(local)) continue;
+      composed = composed ? multiplyMatrices(local, composed) : local;
+    }
+    if (!composed) continue;
+    const mesh = node.getMesh();
+    for (const primitive of mesh.listPrimitives()) {
+      promoteDirectionalBakeStreams(primitive);
+      transformPrimitive(primitive, composed);
+    }
+  }
+  return host;
 }
 
 function primitiveCompatibilityKey(primitive, materialIds, allocateMaterialId, allocateUniqueId) {

@@ -19,6 +19,7 @@
 // closed" exactly like a step throw does, so presentationRunner's existing
 // failure surface is the whole error path.
 
+import { frameCostFixOn } from '../render/frameCostSwitches.js';
 import {
   createReadModel,
   applySpawnInfos,
@@ -45,6 +46,15 @@ import { createInputCommandSnapshotQueue } from './inputCommandSnapshot.js';
 import { readLocalTimeEffectsSnapshot, applyRemoteTimeEffectsSnapshot, setTimeEffectsGeneration } from './timeEffects.js';
 import { createSimLaneJournal, createLaneSabJournalArena } from './simLaneJournal.js';
 import {
+  createSharedPoseTable,
+  createPoseTableReader,
+  setActivePoseFeed,
+  POSE_ROW_STRIDE,
+  POSE_PLAYER_FIELDS,
+} from './simPoseTable.js';
+import { setWorldHoldPlate, worldHoldPlateVisible } from '../render/focusPausePlate.js';
+const WORLD_HOLD_PLATE_MS = 200;
+import {
   bindSabEnvelopeChannel,
   decodeReplyFromSab,
   sabEnvelopeAwaitReply,
@@ -55,10 +65,16 @@ import {
 import { flattenEventPayload, resolveEventEntityRef } from '../../scripts/lib/simEventBridge.mjs';
 import { MAIN_TO_SIM_BUS_EVENTS, KNOWN_UNFORWARDED_BUS_EVENTS } from './mainToSimEventSurface.js';
 import { runtimeWorkerUrl } from '../render/runtimeWorkers.js';
+import {
+  PRESENTATION_EXTRAPOLATION_S,
+  EXTRAPOLATION_DECAY_TAU_S,
+} from '../render/snapshotFence.js';
 import { createLaneTouchSurface } from '../systems/mobile/laneTouchSurface.js';
 import { normalizePadSensitivity, sampleGamepadFrame } from '../systems/gamepad.js';
 import { getPromptDevice, getGamepadCaptureHandler } from '../ui/bindings.js';
-import { applySharedPlayerStoreCapability, isSharedPlayerStoreKey } from '../save/sharedPlayerStore.js';
+import { applySharedPlayerStoreCapability, collectLocalSharedStoreKeys, isSharedPlayerStoreKey } from '../save/sharedPlayerStore.js';
+import { RACING_RECORD_STORAGE_KEY } from '../systems/racingSteer.js';
+import { RACING_GHOST_STORAGE_KEY } from '../systems/racingGhosts.js';
 import { PRESENTATION_JOURNAL_KINDS } from './presentationJournal.js';
 import { registerActivityPresentationMirror } from './worldActivityManager.js';
 import { applyAsteroidFieldPresentationDelta } from '../world/asteroidField.js';
@@ -77,7 +93,8 @@ import {
   modalInputActive,
   shouldNeutralizeFlightInput,
   eventCode,
-  isTextEntryTarget,
+  flightKeyDownDescriptor,
+  flightMouseDownDescriptor,
   isUiCommandTarget,
 } from '../systems/input.js';
 import {
@@ -94,6 +111,11 @@ const SIM_LANE = Object.freeze({ MAIN: 'main', WORKER: 'worker' });
 // a chance to dispatch a queued reply after a cold-start GL/DOM task.
 const LANE_STALL_MS = 5000;
 const LANE_WATCHDOG_SAMPLE_MS = 100;
+// close() waits this long for the worker's 'bye' reply — the last carrier of
+// drainStorageOps() durable writes — before terminating the channel anyway.
+// terminate() on a real Worker discards its queued outbound messages, so the
+// reply must land first; the bound keeps teardown from hanging on a dead one.
+const SHUTDOWN_BYE_GRACE_MS = 400;
 // The directive-driven lane has one outstanding reply, while worker-local clock
 // replies can outpace rAF presentation. The physical ring stays bounded and a
 // single coalesced metadata tail absorbs that presentation-only backlog.
@@ -105,10 +127,23 @@ const LANE_COMPLETED_TICK_CAPACITY = 8;
 // worker's own emits are never bridged back — that is the echo-prevention
 // invariant (worker→main replay runs under suppression).
 
-// The save system's keyspace — shipped to the worker on save/load forwards so
-// its own slot-resolution and recovery logic sees real bytes.
-function collectLaneSaveStorage(relayFallback = null, authoritativeFallback = null) {
+// Racing files and reads these browser-local records from the simulation owner.
+function collectLaneRacingStorage() {
   const out = {};
+  try {
+    const storage = globalThis.localStorage;
+    for (const key of [RACING_RECORD_STORAGE_KEY, RACING_GHOST_STORAGE_KEY]) {
+      const value = storage?.getItem(key);
+      if (typeof value === 'string') out[key] = value;
+    }
+  } catch (_) { /* browser storage can be unavailable */ }
+  return out;
+}
+
+// Save/load replaces the worker storage snapshot. Stage the racing keys along
+// with the save keyspace so a later circuit can still see its previous best.
+function collectLaneSaveStorage(relayFallback = null, authoritativeFallback = null) {
+  const out = collectLaneRacingStorage();
   try {
     if (typeof localStorage !== 'undefined') {
       for (let i = 0; i < localStorage.length; i++) {
@@ -285,6 +320,26 @@ function applyLaneSaveStorageOps(ops, relayFallback = null, failedWrites = null,
  *   SPACEFACE_DOMAIN_PROFILE may select the history-bearing commodity profile.
  * Returns { lane, sab, domainProfile, warnings[] }.
  */
+// Changed-notifications whose payload is the full newest value for one ship: within one reply only
+// the last copy per ship carries information.
+const COALESCED_SHIP_EVENTS = new Set(['ship:statsChanged', 'ship:cargoCapChanged', 'ship:slotsChanged']);
+const _coalesceSeen = new Set();
+const _coalesceSkip = new Set();
+export function coalescedEventSkips(events) {
+  _coalesceSeen.clear();
+  _coalesceSkip.clear();
+  for (let i = events.length - 1; i >= 0; i--) {
+    const ev = events[i];
+    if (!ev || !COALESCED_SHIP_EVENTS.has(ev.t)) continue;
+    const id = ev.p && (ev.p.shipId ?? ev.p.id);
+    if (id == null) continue;
+    const key = ev.t + '|' + id;
+    if (_coalesceSeen.has(key)) _coalesceSkip.add(i);
+    else _coalesceSeen.add(key);
+  }
+  return _coalesceSkip.size ? _coalesceSkip : null;
+}
+
 export function resolveSimLaneFlags(search) {
   let params = null;
   try {
@@ -326,7 +381,6 @@ export function resolveSimLaneFlags(search) {
   const sabEnvelope = sab && params?.get('simEnvelope') === '1';
   if (sabExplicit && !sabCapable) {
     warnings.push('simSab=1 requested but crossOriginIsolated/SharedArrayBuffer unavailable — transfer channel');
-    sab = false;
   }
   let requestedDomainProfile = params && params.get('domainProfile');  if (requestedDomainProfile == null && typeof localStorage !== 'undefined') {
     try { requestedDomainProfile = localStorage.getItem('sf.domainProfile'); } catch (_) { /* storage gated */ }
@@ -356,15 +410,35 @@ export function resolveSimLaneFlags(search) {
     if (cycle.length) simStall = cycle;
     else warnings.push(`simStall='${stallParam}' produced no usable entries — no stalls injected`);
   }
+  // Dev A/B only: `?laneLegacy=1` or localStorage sf.laneLegacy=1 restores the pre-2026-11-21
+  // stop-and-wait worker clock and turns the shared pose table off, so the no-freeze gate can
+  // show the old freeze on the same build. Never a player path.
+  let legacyRequested = params && params.get('laneLegacy');
+  // Session storage only (audit housekeeping): a profile can never carry the A/B switch into a
+  // later session — it lives exactly as long as the probe's own window.
+  if (legacyRequested == null && typeof sessionStorage !== 'undefined') {
+    try { legacyRequested = sessionStorage.getItem('sf.laneLegacy'); } catch (_) { /* storage gated */ }
+  }
+  const legacy = IS_DEV && (legacyRequested === '1' || legacyRequested === 'true');
   return {
     lane, sab, sabEnvelope, domainProfile, domainProfileRequested: requestedDomainProfile || null,
-    simStall, warnings,
+    simStall, legacy, warnings,
   };
 }
 
 function nowMs() {
   return (typeof performance !== 'undefined' && performance && typeof performance.now === 'function')
     ? performance.now() : Date.now();
+}
+
+function heartbeatClockKind() {
+  return (typeof performance !== 'undefined' && performance && typeof performance.now === 'function'
+    && Number.isFinite(performance.timeOrigin)) ? 'performance' : 'date';
+}
+
+function wallNowMs() {
+  return heartbeatClockKind() === 'performance'
+    ? performance.timeOrigin + performance.now() : Date.now();
 }
 
 function viewportSize() {
@@ -433,6 +507,14 @@ export function createSimLaneRuntime({
   const workerPumpClearTimeout = typeof pumpScheduler?.clearTimeout === 'function'
     ? pumpScheduler.clearTimeout
     : (handle) => clearTimeout(handle);
+  // The heartbeat stamp needs the producer's epoch-comparable monotonic clock so
+  // the worker can translate it into its own timebase through performance.timeOrigin.
+  // Production uses the realm clock; a deterministic transport fixture injects a
+  // controlled timebase so the emitted stamp exercises the real conversion path
+  // instead of being rewritten at the queue. Single ordered sender, FIFO delivery.
+  const heartbeatStampClock = pumpScheduler && typeof pumpScheduler.nowMs === 'function'
+    && Number.isFinite(pumpScheduler.timeOriginMs)
+    ? { nowMs: pumpScheduler.nowMs, timeOriginMs: pumpScheduler.timeOriginMs } : null;
   for (const w of resolved.warnings) console.warn(`[simLane] ${w}`);
   console.info('[simLane] worker lane active — the sim realm runs the whole authoritative step');
 
@@ -471,7 +553,46 @@ export function createSimLaneRuntime({
   let reconciledEntityCount = -1;
   let reconciledListLength = -1;
   let reconciledVfxSize = -1;
+  // Split reconcile (frame engineer, 2026-11-28): any live weapon-VFX projectile —
+  // i.e. all combat — used to defeat the single guard and refill BOTH lists
+  // O(entities) every reply. state.entityList now refills strictly on roster
+  // change and stays a stable array between roster edits; the VFX list rebuilds
+  // off readModel.weaponVfxVersion (membership + alive flips) and the roster
+  // version its projectile-typed rows ride on. ?rfx=-rosterSplit restores the
+  // combined reconcile.
+  let splitRoster = -1;
+  let splitEntityCount = -1;
+  let splitListLength = -1;
+  let splitVfxVersion = -1;
+  let splitVfxRoster = -1;
+  let splitVfxLength = -1;
   function reconcileEntities() {
+    if (frameCostFixOn('rosterSplit')) {
+      if (readModel.rosterVersion !== splitRoster
+        || readModel.entities.size !== splitEntityCount
+        || laneEntityList.length !== splitListLength) {
+        laneEntityList.length = 0;
+        for (const row of readModel.entities.values()) laneEntityList.push(row);
+        splitRoster = readModel.rosterVersion;
+        splitEntityCount = readModel.entities.size;
+        splitListLength = laneEntityList.length;
+      }
+      if (readModel.weaponVfxVersion !== splitVfxVersion
+        || readModel.rosterVersion !== splitVfxRoster
+        || laneWeaponVfxProjectiles.length !== splitVfxLength) {
+        laneWeaponVfxProjectiles.length = 0;
+        for (const row of readModel.entities.values()) {
+          if (row && row.type === 'projectile') laneWeaponVfxProjectiles.push(row);
+        }
+        for (const row of readModel.weaponVfxProjectiles.values()) {
+          if (row && row.alive !== false) laneWeaponVfxProjectiles.push(row);
+        }
+        splitVfxVersion = readModel.weaponVfxVersion;
+        splitVfxRoster = readModel.rosterVersion;
+        splitVfxLength = laneWeaponVfxProjectiles.length;
+      }
+      return;
+    }
     if (readModel.weaponVfxProjectiles.size === 0 && reconciledVfxSize === 0
       && readModel.rosterVersion === reconciledRoster
       && readModel.entities.size === reconciledEntityCount
@@ -670,12 +791,416 @@ export function createSimLaneRuntime({
     });
   }
 
+  // ---- stepped mirror apply (frame engineer, 2026-11-28) --------------------------
+  // The mirror half of a reply used to land atomically before its events: pack,
+  // spawnInfos (deep canonicalClone per spawn), full-rebuild retire scans, the fold
+  // passes, vitals, aux and domains all ran in one task, so a mass-spawn or rebuild
+  // reply was a multi-frame stall exactly when combat is heaviest. The same
+  // suspend/resume plumbing the event slice uses now covers the mirror: every stage
+  // below mutates complete rows only (a mid-phase park can never show a half-written
+  // row), the phase still finishes before this reply's first event replays, and no
+  // later reply can apply while this one is parked. ?rfx=-mirrorStep restores the
+  // atomic apply.
+  const MIRROR_STEP_BUDGET_MS = 4;
+  const MIRROR_SPAWN_QUANTUM = 24;    // spawnInfos per slice (canonicalClone-heavy)
+  const MIRROR_RECORD_WINDOW = 768;   // journal records per fold/retire slice
+  const MIRROR_SCAN_QUANTUM = 512;    // entity-map keys per full-rebuild retire scan
+  const MIRROR_DESTROY_QUANTUM = 256; // retired/dead rows per slice
+  const MIRROR_VITAL_QUANTUM = 48;    // entityVitals pairs per slice
+  const MIRROR_AUX_QUANTUM = 256;     // aux upserts/removals per slice
+  const MIRROR_DOMAIN_QUANTUM = 8;    // domain updates per slice (each a deep merge)
+  const MIRROR_STAGE = Object.freeze({
+    head: 0, spawns: 1, retireJournal: 2, retireScan: 3, retireDestroy: 4,
+    foldLives: 5, foldApply: 6, vfx: 7, vitals: 8,
+    auxScan: 9, auxUp: 10, auxRem: 11, auxDelta: 12, domains: 13, tail: 14, done: 15,
+  });
+  // Drives the mirror stage machine one quantum at a time; returns true once every
+  // stage has run. Journal scans slice by sequence window (each visitRange call is
+  // atomic and re-reads the segment list) rather than a suspended iterator, so ack
+  // eviction between slices can never strand a mid-range walk. Ordering contract:
+  // the phase completes before the reply's events replay — this only decides WHERE
+  // that completion lands on the wall clock.
+  function runMirrorPhase(msg, m, deadlineMs) {
+    for (;;) {
+      switch (m.stage) {
+        case MIRROR_STAGE.head: {
+          replyCount++;
+          // Keep the worker's own completed-boundary costs beside its liveness counters. Main-thread
+          // frame timings cannot distinguish a slow authoritative step from a slow mirror/pack.
+          const cost = (value) => Number.isFinite(value) && value >= 0 ? value : null;
+          const stallTotalMs = msg.clockDiagnostics && Number.isFinite(msg.clockDiagnostics.stallTotalMs)
+            ? msg.clockDiagnostics.stallTotalMs : null;
+          const previousStallTotalMs = workerLastReplyWork
+            && Number.isFinite(workerLastReplyWork.stallTotalMs)
+            ? workerLastReplyWork.stallTotalMs : 0;
+          workerLastReplyWork = {
+            workMs: cost(msg.workMs),
+            drainMs: cost(msg.drainMs),
+            stepsMs: cost(msg.stepsMs),
+            tailMs: cost(msg.tailMs),
+            packMs: cost(msg.packMs),
+            domainDiffMs: cost(msg.domainDiffMs),
+            boundaryMs: cost(msg.boundaryMs),
+            stallMs: stallTotalMs == null ? null : Math.max(0, stallTotalMs - previousStallTotalMs),
+            stallTotalMs,
+            journalRecords: Number.isSafeInteger(msg.pack?.count) ? msg.pack.count : 0,
+            stepsExecuted: Number.isSafeInteger(msg.stepsExecuted) ? msg.stepsExecuted : null,
+            stepsRequested: Number.isSafeInteger(msg.stepsRequested) ? msg.stepsRequested : null,
+            entityVitals: Array.isArray(msg.entityVitals) ? msg.entityVitals.length : 0,
+            domainUpdates: Array.isArray(msg.domainUpdates) ? msg.domainUpdates.length : 0,
+            domainShipBytes: cost(msg.domainShipBytes),
+            events: Array.isArray(msg.events) ? msg.events.length : 0,
+          };
+          // E2 per-system profile rides a bounded summary, one per simulated second, only when the
+          // worker realm was asked to measure (`?simProfile=1`).
+          if (msg.systemProfile && typeof msg.systemProfile === 'object') {
+            workerSystemProfile = msg.systemProfile;
+          }
+          if (Number.isSafeInteger(msg.stateTick)) lastShippedTick = msg.stateTick;
+
+          // Apply worker save bytes before any mirrored domains or replayed events. Synchronous save
+          // listeners must see the fresh index/envelope while the worker event is being dispatched.
+          applyLaneSaveStorageOps(msg.storageOps, laneSaveRelayFallback, laneSaveStorageFailures, acknowledgeLaneSaveStorage);
+
+          // Input boundary: replay the worker's publishes into the ring via
+          // publish() — reserve+capture atomically, the only order the ring accepts.
+          const inputPublishes = msg.inputPublishes;
+          boundaryCaptureCount += msg.inputPublishCount ?? inputPublishes?.length ?? 0;
+          if (inputSnapshots && Array.isArray(inputPublishes)) {
+            for (const pub of inputPublishes) {
+              const slotSeq = ++nextInputSequence;
+              inputSnapshots.publish(slotSeq, pub.actualTick, lifecycleGeneration, pub.input);
+              const observerError = inputSnapshots.consume(slotSeq, snapshotObserver);
+              if (observerError) snapshotObserverErrors++;
+            }
+          }
+
+          m.phaseStart = nowMs();
+          if (msg.journalFullRebuild === true && msg.pack) {
+            m.rebuildApplied = journal.applyRebuildPack({ start: msg.journalStart, end: msg.journalEnd, pack: msg.pack });
+            m.journalLo = msg.journalStart; m.journalHi = msg.journalEnd;
+          } else if (msg.pack && msg.pack.count > 0) {
+            journal.applyPack(msg.pack);
+            m.journalLo = msg.pack.start; m.journalHi = msg.pack.end;
+          }
+          if (m.journalHi > m.journalLo && typeof window !== 'undefined' && window.__SF_PACK_ARRIVALS__) {
+            const ring = window.__SF_PACK_ARRIVALS__;
+            ring.push([m.journalLo, m.journalHi, Math.round(nowMs()), msg.stateTick, msg.clockSequence, msg.__laneArrivedAtMs ? Math.round(msg.__laneArrivedAtMs) : null, msg.completedTickCount || null]);
+            if (ring.length > 4000) ring.splice(0, 500);
+          }
+          // The apply-time generation comparison is frozen here: stages read
+          // m.genMatch so one parked reply keeps a single coherent answer.
+          m.genMatch = msg.lifecycleGeneration === lifecycleGeneration;
+          m.stage = MIRROR_STAGE.spawns;
+          m.cursor = 0;
+          break;
+        }
+        case MIRROR_STAGE.spawns: {
+          const infos = msg.spawnInfos;
+          if (Array.isArray(infos) && m.cursor < infos.length) {
+            const end = Math.min(m.cursor + MIRROR_SPAWN_QUANTUM, infos.length);
+            applySpawnInfos(readModel, infos.slice(m.cursor, end),
+              m.genMatch ? state : null, msg.lifecycleGeneration);
+            m.cursor = end;
+            if (m.cursor < infos.length) break;
+          }
+          m.stage = MIRROR_STAGE.retireJournal;
+          m.cursor = m.journalLo;
+          m.visited = 0;
+          break;
+        }
+        case MIRROR_STAGE.retireJournal: {
+          // Full-rebuild replacement pass 1: collect the roster's SPAWN ids over
+          // sequence windows. retireMissingFullRebuildEntities' whole-range
+          // visited check is preserved — a malformed range keeps the facade.
+          if (!(msg.journalFullRebuild === true && m.rebuildApplied
+            && Number.isSafeInteger(m.journalLo) && Number.isSafeInteger(m.journalHi)
+            && m.journalHi > m.journalLo && journal.hasRange(m.journalLo, m.journalHi))) {
+            m.ids = null;
+            m.stage = MIRROR_STAGE.foldLives;
+            m.cursor = m.journalLo;
+            break;
+          }
+          if (!m.ids) m.ids = new Set();
+          const end = Math.min(m.cursor + MIRROR_RECORD_WINDOW, m.journalHi);
+          m.visited += journal.visitRange(m.cursor, end, recordScratch, (record) => {
+            if (record.kind === PRESENTATION_JOURNAL_KINDS.SPAWN
+              && Number.isSafeInteger(record.entityId)) m.ids.add(record.entityId);
+          });
+          m.cursor = end;
+          if (m.cursor < m.journalHi) break;
+          if (m.visited === m.journalHi - m.journalLo) {
+            m.retiredIds = [];
+            m.retireIter = readModel.entities.keys();
+            m.stage = MIRROR_STAGE.retireScan;
+          } else {
+            m.ids = null;
+            m.stage = MIRROR_STAGE.foldLives;
+            m.cursor = m.journalLo;
+          }
+          break;
+        }
+        case MIRROR_STAGE.retireScan: {
+          let scanned = 0;
+          while (scanned < MIRROR_SCAN_QUANTUM) {
+            const nx = m.retireIter.next();
+            if (nx.done) {
+              m.retireIter = null;
+              m.ids = null;
+              m.stage = m.retiredIds.length ? MIRROR_STAGE.retireDestroy : MIRROR_STAGE.foldLives;
+              m.cursor = m.retiredIds.length ? 0 : m.journalLo;
+              break;
+            }
+            if (!m.ids.has(nx.value)) m.retiredIds.push(nx.value);
+            scanned++;
+          }
+          break;
+        }
+        case MIRROR_STAGE.retireDestroy: {
+          const end = Math.min(m.cursor + MIRROR_DESTROY_QUANTUM, m.retiredIds.length);
+          applyDestroyIds(readModel, m.retiredIds.slice(m.cursor, end), state);
+          m.cursor = end;
+          if (m.cursor < m.retiredIds.length) break;
+          m.retiredIds = null;
+          m.stage = MIRROR_STAGE.foldLives;
+          m.cursor = m.journalLo;
+          break;
+        }
+        case MIRROR_STAGE.foldLives: {
+          // foldPackIntoReadModel pass 1 (spawnInfos aboard): find each id's final
+          // life in this range, then retire its dead lives before poses fold.
+          if (!(msg.spawnInfos?.length > 0 && m.journalLo >= 0 && m.journalHi > m.journalLo)) {
+            m.finalLives = null;
+            m.stage = MIRROR_STAGE.foldApply;
+            m.cursor = m.journalLo;
+            break;
+          }
+          if (!m.finalLives) m.finalLives = new Map();
+          const end = Math.min(m.cursor + MIRROR_RECORD_WINDOW, m.journalHi);
+          journal.visitRange(m.cursor, end, recordScratch, (rec) => {
+            if (rec.kind === PRESENTATION_JOURNAL_KINDS.SPAWN
+              || rec.kind === PRESENTATION_JOURNAL_KINDS.DESTROY) {
+              m.finalLives.set(rec.entityId, { generation: rec.generation,
+                alive: rec.kind === PRESENTATION_JOURNAL_KINDS.SPAWN });
+            }
+          });
+          m.cursor = end;
+          if (m.cursor < m.journalHi) break;
+          m.lifeIter = m.finalLives.entries();
+          m.foldDestroying = true;
+          m.stage = MIRROR_STAGE.foldApply;
+          m.cursor = m.journalLo;
+          break;
+        }
+        case MIRROR_STAGE.foldApply: {
+          if (m.foldDestroying === true) {
+            let retired = 0;
+            while (retired < MIRROR_DESTROY_QUANTUM) {
+              const nx = m.lifeIter.next();
+              if (nx.done) {
+                m.foldDestroying = false;
+                m.lifeIter = null;
+                m.cursor = m.journalLo;
+                break;
+              }
+              const life = nx.value[1];
+              if (!life.alive) applyDestroyIds(readModel, [nx.value[0]], state);
+              retired++;
+            }
+            break;
+          }
+          if (!(m.journalLo >= 0 && m.journalHi > m.journalLo)) {
+            m.finalLives = null;
+            m.stage = MIRROR_STAGE.vfx;
+            break;
+          }
+          const end = Math.min(m.cursor + MIRROR_RECORD_WINDOW, m.journalHi);
+          const finalLives = m.finalLives;
+          const entityMap = readModel.entities;
+          journal.visitRange(m.cursor, end, recordScratch, (rec) => {
+            if (rec.kind === PRESENTATION_JOURNAL_KINDS.TRANSFORM) {
+              if (finalLives) {
+                const life = finalLives.get(rec.entityId);
+                if (life && !(life.alive && life.generation === rec.generation)) return;
+              }
+              const row = entityMap.get(rec.entityId);
+              if (!row) return;
+              applyFacadePose(readModel, rec.entityId, rec, row);
+            } else if (!finalLives && rec.kind === PRESENTATION_JOURNAL_KINDS.DESTROY) {
+              applyDestroyIds(readModel, [rec.entityId], state);
+            }
+          });
+          m.cursor = end;
+          if (m.cursor < m.journalHi) break;
+          m.finalLives = null;
+          m.stage = MIRROR_STAGE.vfx;
+          break;
+        }
+        case MIRROR_STAGE.vfx: {
+          if (Array.isArray(msg.weaponVfxProjectiles)) {
+            applyWeaponVfxProjectiles(readModel, msg.weaponVfxProjectiles);
+            stampProjectileBases(msg.simTime);
+          }
+          m.stage = MIRROR_STAGE.vitals;
+          m.cursor = 0;
+          break;
+        }
+        case MIRROR_STAGE.vitals: {
+          const vitals = msg.entityVitals;
+          if (Array.isArray(vitals) && m.cursor < vitals.length) {
+            const end = Math.min(m.cursor + MIRROR_VITAL_QUANTUM, vitals.length);
+            applyEntityVitals(readModel, vitals.slice(m.cursor, end),
+              m.genMatch ? state : null, msg.lifecycleGeneration);
+            m.cursor = end;
+            if (m.cursor < vitals.length) break;
+          }
+          m.stage = MIRROR_STAGE.auxScan;
+          m.cursor = 0;
+          break;
+        }
+        case MIRROR_STAGE.auxScan: {
+          // applyLaneAuxDelta's promoted-field-rock scan; the aux tables only
+          // visit it when they actually shipped rows this reply.
+          const upserts = Array.isArray(msg.auxUpserts) ? msg.auxUpserts : [];
+          const removals = Array.isArray(msg.auxRemovals) ? msg.auxRemovals : [];
+          if (!upserts.length && !removals.length) {
+            m.stage = MIRROR_STAGE.domains;
+            m.cursor = 0;
+            break;
+          }
+          const field = state.world?.asteroidField;
+          const infos = msg.spawnInfos;
+          if (!(state.mode === 'flight' && field && m.genMatch && Array.isArray(infos))) {
+            m.stage = MIRROR_STAGE.auxUp;
+            m.cursor = 0;
+            break;
+          }
+          const end = Math.min(m.cursor + MIRROR_AUX_QUANTUM, infos.length);
+          for (; m.cursor < end; m.cursor++) {
+            const info = infos[m.cursor];
+            if (info.promotedFieldRock !== true || !Number.isSafeInteger(info.occupantGeneration)) continue;
+            const dormant = field.byId.get(info.entityId);
+            if (!dormant || dormant.alive === false) continue;
+            const live = readModel.entities.get(info.entityId);
+            if (live?.alive !== true || live.occupantGeneration !== info.occupantGeneration) continue;
+            const root = state.render?.meshes?.get(info.entityId);
+            if (root?.parent && dormant.mesh === root && root.visible && root.userData?.sfAdmittedOnce === true) {
+              root.userData.fieldPromotionPose = {
+                id: info.entityId, life: info.occupantGeneration,
+                sector: state.world.currentSectorId, lifecycle: lifecycleGeneration,
+              };
+            }
+          }
+          if (m.cursor < infos.length) break;
+          m.stage = MIRROR_STAGE.auxUp;
+          m.cursor = 0;
+          break;
+        }
+        case MIRROR_STAGE.auxUp: {
+          const upserts = Array.isArray(msg.auxUpserts) ? msg.auxUpserts : [];
+          if (m.cursor < upserts.length) {
+            const end = Math.min(m.cursor + MIRROR_AUX_QUANTUM, upserts.length);
+            applyAuxUpserts(readModel, upserts.slice(m.cursor, end));
+            m.cursor = end;
+            if (m.cursor < upserts.length) break;
+          }
+          m.stage = MIRROR_STAGE.auxRem;
+          m.cursor = 0;
+          break;
+        }
+        case MIRROR_STAGE.auxRem: {
+          const removals = Array.isArray(msg.auxRemovals) ? msg.auxRemovals : [];
+          if (m.cursor < removals.length) {
+            const end = Math.min(m.cursor + MIRROR_AUX_QUANTUM, removals.length);
+            applyAuxRemovals(readModel, removals.slice(m.cursor, end));
+            m.cursor = end;
+            if (m.cursor < removals.length) break;
+          }
+          m.stage = MIRROR_STAGE.auxDelta;
+          break;
+        }
+        case MIRROR_STAGE.auxDelta: {
+          applyAsteroidFieldPresentationDelta(state,
+            Array.isArray(msg.auxUpserts) ? msg.auxUpserts : [],
+            Array.isArray(msg.auxRemovals) ? msg.auxRemovals : []);
+          m.stage = MIRROR_STAGE.domains;
+          m.cursor = 0;
+          break;
+        }
+        case MIRROR_STAGE.domains: {
+          const updates = Array.isArray(msg.domainUpdates) ? msg.domainUpdates : null;
+          if (!updates || !updates.length) {
+            m.stage = MIRROR_STAGE.tail;
+            break;
+          }
+          if (!m.domainRootsReady) {
+            m.domainRootsReady = true;
+            for (const key of DOMAIN_MIRROR_KEYS) {
+              if (key.indexOf('.') === -1 && state[key] === undefined) state[key] = {};
+            }
+          }
+          const end = Math.min(m.cursor + MIRROR_DOMAIN_QUANTUM, updates.length);
+          for (; m.cursor < end; m.cursor++) {
+            const u = updates[m.cursor];
+            // Same dock-edge bookkeeping as applyDomainUpdates: a true->false
+            // ui.docked mirror wakes the aggregate pause owner once the whole
+            // batch has landed.
+            const useg = u?.segs;
+            const wasDocked = Array.isArray(useg)
+              && (useg.length === 1 ? useg[0] === 'ui.docked' : useg.length === 2 && useg[0] === 'ui' && useg[1] === 'docked')
+              && state.ui?.docked === true;
+            applyDomainUpdate(u);
+            if (wasDocked && state.ui?.docked !== true
+              && !(Array.isArray(state.ui?.screenStack) && state.ui.screenStack.length > 0)) {
+              m.domainDockRelease = true;
+            }
+            const root = u && Array.isArray(u.segs) && u.segs.length
+              ? String(u.segs[0]).split('.')[0] : null;
+            if (root && DOMAIN_MIRROR_EMITS[root]) {
+              (m.domainTouchedEmits || (m.domainTouchedEmits = new Set())).add(DOMAIN_MIRROR_EMITS[root]);
+            }
+          }
+          if (m.cursor < updates.length) break;
+          if (m.domainTouchedEmits && bus && typeof bus.emit === 'function') {
+            for (const type of m.domainTouchedEmits) {
+              try { bus.emit(type, { missionId: null, stationId: null }); }
+              catch (_) { /* listener faults stay caller-owned */ }
+            }
+          }
+          if (m.domainDockRelease && bus && typeof bus.emit === 'function') {
+            try { bus.emit('sim:resume', { source: 'sim-lane-domain-mirror' }); }
+            catch (_) { /* listener faults stay caller-owned */ }
+          }
+          m.stage = MIRROR_STAGE.tail;
+          break;
+        }
+        case MIRROR_STAGE.tail: {
+          const tailStart = nowMs();
+          if (msg.timeEffectsSnapshot) applyRemoteTimeEffectsSnapshot(state, 'simulation', msg.timeEffectsSnapshot);
+          m.mirrorDone = nowMs();
+          reconcileEntities();
+          m.reconcileDone = nowMs();
+          m.tailMs = Math.max(0, m.reconcileDone - tailStart);
+          m.stage = MIRROR_STAGE.done;
+          break;
+        }
+        default:
+          m.stage = MIRROR_STAGE.done;
+          break;
+      }
+      if (m.stage === MIRROR_STAGE.done) { m.done = true; return true; }
+      if (nowMs() >= deadlineMs) return false;
+    }
+  }
+
   // ---- worker channel -------------------------------------------------------------
   const tokenCounter = { value: 0 };
   const pending = new Map();            // seq -> { kind, resolve, reject }
   const pendingRpcs = new Map();        // rpc id -> { resolve, reject }
   let inFlight = null;                  // { seq, sentMs, steps, mainThreadDelayedMs }
   let stallWatchdogTimer = null;
+  let shutdownByeTimer = null;          // bounded wait for the 'bye' reply before terminate()
+  let channelTerminated = false;
   // Worker-local clock commands are not stored in `inFlight`: their replies
   // are unsolicited clockTick messages rather than seq-keyed tickDone
   // replies. Keep a separate identity so a delayed confirmation for an old
@@ -700,6 +1225,216 @@ export function createSimLaneRuntime({
 
   function nextToken() { return `l${++tokenCounter.value}`; }
 
+  // ---- shared pose table (src/core/simPoseTable.js) ------------------------------------------
+  // Poses and the player's HUD vitals never travel through the reliable reply/ACK pipe: the
+  // worker writes them latest-wins after every step, and every presented frame reads them here
+  // once, refreshes the facade rows, and hands the same coherent copy to the renderer.
+  const laneLegacy = resolved.legacy === true;
+  const poseShared = !laneLegacy && workerClockMode === 'worker-local' ? createSharedPoseTable() : null;
+  // A browser without shared memory gets a separate pose port. A deferred
+  // structured-clone reply for the read model cannot queue ahead of motion.
+  const poseChannel = !poseShared && !laneLegacy && workerClockMode === 'worker-local'
+    && typeof channelFactory !== 'function' && typeof MessageChannel === 'function'
+    ? new MessageChannel() : null;
+  const poseReader = createPoseTableReader();
+  if (poseShared) poseReader.bindShared(poseShared);
+  if (poseChannel) {
+    poseChannel.port1.onmessage = ({ data }) => {
+      if (data?.kind === 'poseTable') receivePoseTransfer(data);
+    };
+  }
+  const poseFeed = { active: false, snapshot: null, advanced: false, frame: 0 };
+  let poseTransferArrivals = 0;
+  let poseFeedFrames = 0;
+  let poseFeedLastAdvanceAtMs = -1;
+  let poseFacadeRows = 0;
+  let poseGenerationMismatchFrames = 0;
+  let poseGenerationMismatchLiveFrames = 0;
+  let posePeekWrites = -1;
+  let posePeekChangedAtMs = -1;
+
+  function receivePoseTransfer(msg) {
+    if (laneClosed) return;
+    poseReader.acceptTransfer(msg.buffer);
+    poseTransferArrivals++;
+    // Credit applies only to this replaceable table. The worker keeps stepping
+    // and retains just the newest pending table while delivery is delayed.
+    if (Number.isSafeInteger(msg.sequence)) {
+      const ack = { kind: 'poseTableAck', sequence: msg.sequence };
+      if (poseChannel) poseChannel.port1.postMessage(ack);
+      else channel.post(ack);
+    }
+  }
+  // Coast state for the table feed. The pack stream glides through worker silence via the
+  // snapshot fence; the pose table is latest-wins, so without this a stalled write froze
+  // every table-fed body dead while the fence-fed picture kept gliding (owner bug
+  // 2026-11-21: drawn ship poses 1.4 s stale in the no-freeze gate). Same glide law as the
+  // fence: velocity decays with the shared tau, so silence reads as bodies easing to a
+  // glide — never a hard stop — and fresh writes (age under one interval) apply untouched.
+  let poseTableWriteCount = -1;
+  let poseTableWriteAtMs = -1;
+  function peekPoseWrites() {
+    if (poseShared) return poseReader.peekWrites();
+    return poseTransferArrivals;
+  }
+  // Fresh path stays bit-identical: coasting only begins past one write interval plus a
+  // half-tick of slack, so a healthy table (a write every ~16.7 ms) never extrapolates.
+  const POSE_COAST_START_S = (1 / 60) * 1.5;
+  function poseTableCoastFactor(now) {
+    const writes = peekPoseWrites();
+    if (writes !== poseTableWriteCount) {
+      poseTableWriteCount = writes;
+      poseTableWriteAtMs = now;
+    }
+    if (poseTableWriteAtMs < 0) return 0;
+    const ageS = Math.max(0, now - poseTableWriteAtMs) / 1000;
+    if (ageS <= POSE_COAST_START_S) return 0;
+    // Integral of v0·e^(−t/tau): v0·tau·(1−e^(−age/tau)), age clamped to the same window
+    // the fence extrapolates over. Multiplies each row's velocity once per frame.
+    const e = Math.min(ageS, PRESENTATION_EXTRAPOLATION_S);
+    return EXTRAPOLATION_DECAY_TAU_S * (1 - Math.exp(-e / EXTRAPOLATION_DECAY_TAU_S));
+  }
+  function applyPoseFeedToFacade(snap, coastK = 0) {
+    const rows = snap.rows;
+    const entities = readModel.entities;
+    let touched = 0;
+    for (let i = 0, o = 0; i < snap.count; i++, o += POSE_ROW_STRIDE) {
+      const row = entities.get(rows[o]);
+      if (!row || row.alive === false || !row.pos) continue;
+      const occupant = rows[o + 2];
+      if (occupant > 0 && Number.isSafeInteger(row.occupantGeneration) && row.occupantGeneration !== occupant) continue;
+      let x = rows[o + 3]; const y = rows[o + 4]; let z = rows[o + 5];
+      if (coastK > 0) {
+        x += rows[o + 9] * coastK;
+        z += rows[o + 10] * coastK;
+      }
+      if (!row.prevPos) row.prevPos = { x: row.pos.x, y: row.pos.y, z: row.pos.z };
+      if (row.pos.x !== x || row.pos.y !== y || row.pos.z !== z) {
+        row.prevPos.x = row.pos.x; row.prevPos.y = row.pos.y; row.prevPos.z = row.pos.z;
+        row.pos.x = x; row.pos.y = y; row.pos.z = z;
+      }
+      if (row.rot !== rows[o + 6]) { row.prevRot = row.rot; row.rot = rows[o + 6]; }
+      if (coastK > 0) row.rot += rows[o + 11] * coastK;
+      row.bank = rows[o + 7];
+      row.pitch = rows[o + 8];
+      if (row.vel && typeof row.vel === 'object') { row.vel.x = rows[o + 9]; row.vel.z = rows[o + 10]; }
+      row.angVel = rows[o + 11];
+      touched++;
+    }
+    const player = snap.playerId > 0 ? entities.get(snap.playerId) : null;
+    if (player) {
+      for (const key of POSE_PLAYER_FIELDS) {
+        const value = snap.player[key];
+        if (!Number.isFinite(value)) continue;
+        if (key === 'boostEnergy') { if (player.boost) player.boost.energy = value; }
+        else if (key === 'boostMax') { if (player.boost) player.boost.max = value; }
+        else player[key] = value;
+      }
+    }
+    poseFacadeRows = touched;
+  }
+  // Weapon-VFX projectiles are not journaled bodies, so the pose table does not carry them; they
+  // arrive by reply. Between replies (or while replies lag) each one flies on from its last reply
+  // state along its own velocity at the table's sim time, instead of hanging mid-air.
+  const projectileBases = new Map();
+  function stampProjectileBases(simTime) {
+    const t = Number.isFinite(simTime) ? simTime : 0;
+    for (const [id, row] of readModel.weaponVfxProjectiles) {
+      let b = projectileBases.get(id);
+      if (!b) projectileBases.set(id, b = { x: 0, y: 0, z: 0, t: 0 });
+      b.x = row.pos.x; b.y = row.pos.y; b.z = row.pos.z; b.t = t;
+    }
+    for (const id of projectileBases.keys()) if (!readModel.weaponVfxProjectiles.has(id)) projectileBases.delete(id);
+  }
+  function flyProjectilesTo(simTime) {
+    if (!readModel.weaponVfxProjectiles.size || !Number.isFinite(simTime)) return;
+    for (const [id, row] of readModel.weaponVfxProjectiles) {
+      const b = projectileBases.get(id);
+      if (!b || row.alive === false) continue;
+      const age = Math.min(0.5, Math.max(0, simTime - b.t));
+      row.prevPos.x = row.pos.x; row.prevPos.z = row.pos.z;
+      row.pos.x = b.x + row.vel.x * age;
+      row.pos.z = b.z + row.vel.z * age;
+    }
+  }
+  function readPoseFeed() {
+    poseFeed.advanced = false;
+    if (laneClosed || !ready || laneLegacy) {
+      poseFeed.active = false;
+      setActivePoseFeed(poseFeed);
+      return;
+    }
+    const now = nowMs();
+    const { snapshot, advanced } = poseReader.read(now);
+    poseFeed.snapshot = snapshot;
+    poseFeed.frame++;
+    poseFeed.advanced = advanced;
+    poseFeed.active = snapshot.valid === true && snapshot.lifecycleGeneration === lifecycleGeneration;
+    // Audit B1: a generation mismatch (main bumped its lifecycle, the worker has not stepped with
+    // it yet) puts this frame back on the journal path. Count it so it can never hide.
+    if (snapshot.valid === true && snapshot.lifecycleGeneration !== lifecycleGeneration) {
+      poseGenerationMismatchFrames++;
+      if (state && state.mode === 'flight' && Number(state.timeScale) > 0) poseGenerationMismatchLiveFrames++;
+    }
+    if (poseFeed.active) {
+      poseFeedFrames++;
+      if (advanced) poseFeedLastAdvanceAtMs = now;
+      applyPoseFeedToFacade(snapshot, poseTableCoastFactor(now));
+      flyProjectilesTo(snapshot.simTime);
+      // Ruling: a simulation that cannot step for over a tenth of a second during unpaused flight
+      // is never shown as a silently frozen world — the hold plate covers it (WORLD_HOLD_PLATE_MS
+      // of no table writes while the clock is wanted and nothing else is on screen).
+      const holdMs = poseTableWriteAtMs >= 0 ? now - poseTableWriteAtMs : 0;
+      const screenOpen = !!(state.ui && Array.isArray(state.ui.screenStack) && state.ui.screenStack.length);
+      const wantStep = workerClockRequested === true && state.mode === 'flight' && Number(state.timeScale) > 0
+        && !(state.ui && state.ui.docked === true);
+      setWorldHoldPlate(wantStep && !screenOpen && holdMs > WORLD_HOLD_PLATE_MS);
+      // The table carries the worker's applied-command watermark, so a lagging reply stream
+      // cannot make the command watchdog declare a live worker dead.
+      if (snapshot.appliedCommandSequence > workerClockLastAppliedCommandSequence) {
+        releaseWorkerClockCommand(snapshot.appliedCommandSequence);
+      }
+    }
+    setActivePoseFeed(poseFeed);
+  }
+
+  // ---- dev forced-stall harness (IS_DEV): withhold ACKs, hold replies, densify replies --------
+  const laneForce = { withholdAcksUntilMs: 0, holdRepliesUntilMs: 0, padRows: 0 };
+  const heldReplies = [];
+  let heldReplyTimer = null;
+  function acksWithheld() { return laneForce.withholdAcksUntilMs > nowMs(); }
+  function scheduleHeldReplyRelease() {
+    if (heldReplyTimer !== null) return;
+    const wait = Math.max(0, laneForce.holdRepliesUntilMs - nowMs());
+    heldReplyTimer = setTimeout(() => {
+      heldReplyTimer = null;
+      if (laneForce.holdRepliesUntilMs > nowMs()) { scheduleHeldReplyRelease(); return; }
+      const queued = heldReplies.splice(0);
+      for (const msg of queued) { if (!laneClosed) onChannelMessage(msg); }
+    }, wait + 1);
+  }
+  if (typeof window !== 'undefined' && IS_DEV) {
+    window.__SF_LANE_FORCE__ = (opts = {}) => {
+      if (laneClosed) return false;
+      const now = nowMs();
+      if (Number.isFinite(opts.withholdAcksMs)) laneForce.withholdAcksUntilMs = now + Math.max(0, opts.withholdAcksMs);
+      if (Number.isFinite(opts.holdRepliesMs)) {
+        laneForce.holdRepliesUntilMs = now + Math.max(0, opts.holdRepliesMs);
+        if (heldReplies.length) scheduleHeldReplyRelease();
+      }
+      if (Number.isFinite(opts.padRows)) {
+        laneForce.padRows = Math.max(0, opts.padRows | 0);
+        try { channel.post({ kind: 'laneForce', padRows: laneForce.padRows }); } catch (_) { return false; }
+      }
+      // A/B only: the pre-2026-11-23 rule (every command batch builds the full reply detail).
+      if (typeof opts.detailEveryCommand === 'boolean') {
+        laneForce.detailEveryCommand = opts.detailEveryCommand;
+        try { channel.post({ kind: 'laneForce', detailEveryCommand: opts.detailEveryCommand }); } catch (_) { return false; }
+      }
+      return { ...laneForce, now, legacy: laneLegacy, poseTable: poseShared ? 'shared' : 'transfer' };
+    };
+  }
+
   function failLane(message, site) {
     if (laneError) return;
     laneError = String(message).slice(0, 240);
@@ -714,6 +1449,13 @@ export function createSimLaneRuntime({
   }
 
   channel.onMessage((msg) => { onChannelMessage(msg); });
+  const channelHoldsEvents = typeof channel.setDeferral === 'function' && typeof channel.drainDeferred === 'function';
+  if (channelHoldsEvents) {
+    channel.setDeferral(
+      () => frameOwnsReplyApply(),
+      () => armReplyDrainTimer(REPLY_FRAME_FALLBACK_MS),
+    );
+  }
   if (typeof channel.onError === 'function') {
     channel.onError((error) => {
       failLane(`sim worker error: ${(error && error.message) || error || 'unknown'}`);
@@ -723,6 +1465,16 @@ export function createSimLaneRuntime({
   function onChannelMessage(msg) {
     if (!msg || typeof msg !== 'object') return;
     if (msg.kind === 'boot') return;
+    if (msg.kind === 'poseTable') {
+      receivePoseTransfer(msg);
+      return;
+    }
+    if (msg.kind === 'clockTick' && laneForce.holdRepliesUntilMs > nowMs()) {
+      // Dev forced stall: the main side stops consuming the reliable stream for a while.
+      heldReplies.push(msg);
+      scheduleHeldReplyRelease();
+      return;
+    }
     if (msg.kind === 'laneHeartbeatSample') {
       if (openFreeze?.motionSampleId === msg.motionSampleId) {
         const { kind, ...sample } = msg;
@@ -741,8 +1493,79 @@ export function createSimLaneRuntime({
     // while rAF (and therefore this callback) is blocked. They are coalesced
     // at the worker and carry the command sequence that has been applied.
     if (msg.kind === 'clockTick') {
-      try {
+      // NO-FREEZE step 3: the reliable stream applies in order under a per-frame time budget.
+      replyQueue.push(msg);
+      msg.__laneArrivedAtMs = nowMs();
+      // While frames are arriving the frame applies replies (frameOwnsReplyApply): this task
+      // only enqueues, so a reply never lands as a second block right behind a heavy frame.
+      if (frameOwnsReplyApply()) {
+        replyDeferredToFrame++;
+        armReplyDrainTimer(REPLY_FRAME_FALLBACK_MS);
+        return;
+      }
+      drainClockReplies();
+      return;
+    }
+    const tracked = pending.get(msg.seq);
+    if (!tracked) {
+      // A reply that outlived its pending entry — in flight when close()
+      // cleared the table, or a straggler landing inside the shutdown grace
+      // window — still carries the only copy of the worker's durable storage
+      // writes. Land those before dropping the rest of it.
+      if (laneClosed && Array.isArray(msg.storageOps) && msg.storageOps.length) {
+        try {
+          applyLaneSaveStorageOps(msg.storageOps, laneSaveRelayFallback,
+            laneSaveStorageFailures, acknowledgeLaneSaveStorage);
+        } catch (_) { /* durable relay is best-effort during teardown */ }
+      }
+      return;
+    }
+    pending.delete(msg.seq);
+    try {
+      if (msg.kind === 'ready') {
+        // The worker's boot rehearsal receipt (how long, how many steps), for the lane probes.
+        if (msg.bootRehearsal && typeof window !== 'undefined') window.__SF_BOOT_REHEARSAL__ = msg.bootRehearsal;
+        applyInitReply(msg);
+        ready = true;
+        tracked.resolve?.(msg);
+        startWorkerPump();
+        scheduleFreezeSample();
+      } else if (msg.kind === 'tickDone') {
+        if (inFlight && inFlight.seq === msg.seq) releaseFlight(msg, inFlight);
         applyTickReplyTimed(msg);
+        tracked.resolve?.(msg);
+      } else if (msg.kind === 'done' || msg.kind === 'bye') {
+        if (inFlight && inFlight.seq === msg.seq) releaseFlight(msg, inFlight);
+        // done/bye ride the same storageOps side-channel as every reply kind —
+        // the shutdown reply is the LAST carrier of the worker's durable
+        // writes, which close() now waits a bounded window to land.
+        try {
+          applyLaneSaveStorageOps(msg.storageOps, laneSaveRelayFallback,
+            laneSaveStorageFailures, acknowledgeLaneSaveStorage);
+        } catch (_) { /* a durable-relay fault must not hold teardown */ }
+        tracked.resolve?.(msg);
+        if (msg.kind === 'bye') terminateChannel();
+      } else {
+        tracked.resolve?.(msg);
+      }
+    } catch (error) {
+      tracked.reject?.(error);
+      failLane(`sim worker reply apply failed: ${(error && error.message) || error}`,
+        error && error.stack ? String(error.stack) : null);
+      return;
+    }
+    flushDirectives();
+    // A reply can release a long-running directive while timer dispatch is otherwise quiet. The
+    // wake is disposable and generation-guarded; normal timer cadence remains the steady clock.
+    if (workerPumpRequested && pendingSteps > 0) armWorkerPumpAckWake();
+  }
+
+  function applyClockReply(msg, resume = null, sliceBudgetMs = 0, mirrorBudgetMs = 0) {
+      try {
+        // A parked reply is not applied yet: its ACK, command watermark and directive flush wait
+        // for the slice that finishes it.
+        const parked = applyTickReplyTimed(msg, resume, sliceBudgetMs, mirrorBudgetMs);
+        if (parked) return parked;
         if (Number.isSafeInteger(msg.clockSequence)) {
           workerClockLastReceivedSequence = Math.max(workerClockLastReceivedSequence, msg.clockSequence);
           workerClockAckPending = {
@@ -772,39 +1595,226 @@ export function createSimLaneRuntime({
         failLane(`sim worker clock reply apply failed: ${(error && error.message) || error}`,
           error && error.stack ? String(error.stack) : null);
       }
-      return;
-    }
-    const tracked = pending.get(msg.seq);
-    if (!tracked) return;
-    pending.delete(msg.seq);
-    try {
-      if (msg.kind === 'ready') {
-        applyInitReply(msg);
-        ready = true;
-        tracked.resolve?.(msg);
-        startWorkerPump();
-        scheduleFreezeSample();
-      } else if (msg.kind === 'tickDone') {
-        if (inFlight && inFlight.seq === msg.seq) releaseFlight(msg, inFlight);
-        applyTickReplyTimed(msg);
-        tracked.resolve?.(msg);
-      } else if (msg.kind === 'done' || msg.kind === 'bye') {
-        if (inFlight && inFlight.seq === msg.seq) releaseFlight(msg, inFlight);
-        tracked.resolve?.(msg);
-        if (msg.kind === 'bye') laneClosedComplete = true;
-      } else {
-        tracked.resolve?.(msg);
+      return null;
+  }
+
+  // NO-FREEZE step 3: reliable replies apply in arrival order under a per-frame budget. One reply
+  // always applies per frame (progress is guaranteed); beyond REPLY_APPLY_BUDGET_MS the rest wait
+  // for the next frame instead of blocking it. ACKs follow what was actually applied. When behind,
+  // ambient impact sparks older than REPLY_COSMETIC_STALE_MS are dropped (never gameplay events).
+  const REPLY_APPLY_BUDGET_MS = 6;
+  const REPLY_COSMETIC_STALE_MS = 250;
+  const REPLY_QUEUE_BOUND = 8;
+  const replyQueue = [];
+  let replyBudgetSpentMs = 0;
+  let replyBudgetFrame = -1;
+  let replyDrainTimer = null;
+  let replyQueueMax = 0;
+  let replyCosmeticShed = 0;
+  let replyFrameCounter = 0;
+  let replyBudgetWindowAtMs = -Infinity;
+  // Event-granular budget (frame engineer, 2026-11-22). One reply's events used to replay as one
+  // block however long its listeners took (100-228 ms seen at run start). In live flight the
+  // replay now stops once REPLY_APPLY_BUDGET_MS is spent and the rest of that reply's events run
+  // on the following frames, in order, before any later reply is applied. ?rfx=-replySlice
+  // restores whole-reply application.
+  const REPLY_PARKED_MAX_MS = 400;
+  let parkedReply = null;
+  let replySlicesParked = 0;
+  let replySlicesResumed = 0;
+  let replySliceMaxParkedMs = 0;
+  let replyFramePumpAtMs = -Infinity;
+  function replySliceBudgetMs(parked) {
+    if (!frameCostFixOn('replySlice')) return 0;
+    if (!state || state.mode !== 'flight' || laneClosed) return 0;
+    // Only while presented frames are really arriving: a headless run, a hidden tab or a test
+    // that delivers a reply by hand has no next frame to finish it on, so it applies whole.
+    if (nowMs() - replyFramePumpAtMs > 500) return 0;
+    // Far behind (a long backlog, or this reply has been open too long): finish whole and catch up.
+    // With the hard drain cap on, a backlog drains at the same per-task wall ceiling instead of
+    // disabling slicing — exactly the load the slices exist for.
+    if (replyQueue.length > REPLY_QUEUE_BOUND && !frameCostFixOn('drainCap')) return 0;
+    if (parked && nowMs() - parked.parkedAtMs > REPLY_PARKED_MAX_MS) return 0;
+    return REPLY_APPLY_BUDGET_MS;
+  }
+  // The mirror phase gets its own (smaller) budget so it can suspend mid-phase even for
+  // replies whose event list must replay atomically — lifecycle events keep their ordering
+  // contract because the mirror still completes before the first event replays.
+  function replyMirrorBudgetMs(parked) {
+    if (!frameCostFixOn('mirrorStep')) return 0;
+    if (!state || state.mode !== 'flight' || laneClosed) return 0;
+    if (nowMs() - replyFramePumpAtMs > 500) return 0;
+    // Same backlog rule as the event slice: without the drain cap, deep queues catch up
+    // faster with whole replies; with it the drain is already wall-clock bounded.
+    if (replyQueue.length > REPLY_QUEUE_BOUND && !frameCostFixOn('drainCap')) return 0;
+    if (parked && nowMs() - parked.parkedAtMs > REPLY_PARKED_MAX_MS) return 0;
+    return MIRROR_STEP_BUDGET_MS;
+  }
+  function resumeParkedReply() {
+    const parked = parkedReply;
+    parkedReply = null;
+    replySlicesResumed++;
+    const started = nowMs();
+    parkedReply = applyClockReply(parked.msg, parked, replySliceBudgetMs(parked), replyMirrorBudgetMs(parked));
+    const done = nowMs();
+    replyBudgetSpentMs += Math.max(0.01, done - started);
+    if (!parkedReply && done - parked.parkedAtMs > replySliceMaxParkedMs) replySliceMaxParkedMs = done - parked.parkedAtMs;
+  }
+  // Purely cosmetic fire-and-forget cues — VFX sparks, one-shot sounds and screen
+  // shakes with no sim-visible state and no lifecycle meaning. Once a reply is stale
+  // these are worse replayed late than dropped; presentation:caption stays kept —
+  // it carries story/faction text the player reads, not a flash. ?rfx=-shedCosmetics
+  // keeps them all (the physics:impact shed predates flags).
+  const REPLY_STALE_COSMETIC_EVENTS = new Set([
+    'audio:cue',
+    'presentation:vfxCue',
+    'presentation:cue',
+    'camera:shake',
+  ]);
+  // Latest-wins dedupe for a stale reply: per-entity "something changed — re-read
+  // it" notifications whose newest copy supersedes every earlier one for the same
+  // entity. Only non-lifecycle refresh types are listed, and an event whose entity
+  // resolves to the player's own ship is never deduped — player-targeting and
+  // lifecycle payloads always replay.
+  const REPLY_SUPERSEDED_COSMETIC_EVENTS = new Set([
+    'ship:appearanceChanged',
+    'ship:livingHullChanged',
+    'ship:massChanged',
+    'ship:statsChanged',
+    'ship:cargoCapChanged',
+    'ship:slotsChanged',
+  ]);
+  function shedStaleCosmetics(msg, now) {
+    if (!Array.isArray(msg.events) || !msg.events.length) return;
+    if (now - (msg.__laneArrivedAtMs || now) < REPLY_COSMETIC_STALE_MS) return;
+    const widen = frameCostFixOn('shedCosmetics');
+    // Backward scan: the LAST copy of each (type, entity) key is the freshest;
+    // every earlier copy is superseded and never needs dispatch. Keys resolve the
+    // entity from shipId/id/entityId; a payload that names the player or carries
+    // player-directed fields stays out of the key set entirely.
+    let superseded = null;
+    if (widen) {
+      const playerId = state && state.playerId;
+      const seen = new Set();
+      for (let i = msg.events.length - 1; i >= 0; i--) {
+        const ev = msg.events[i];
+        if (!ev || !REPLY_SUPERSEDED_COSMETIC_EVENTS.has(ev.t)) continue;
+        const p = ev.p;
+        if (p && (p.playerInvolved === true || p.playerId != null)) continue;
+        const id = p && (p.shipId ?? p.id ?? p.entityId);
+        if (id == null || (playerId != null && id === playerId)) continue;
+        const key = ev.t + '|' + id;
+        if (seen.has(key)) (superseded || (superseded = new Set())).add(i);
+        else seen.add(key);
       }
-    } catch (error) {
-      tracked.reject?.(error);
-      failLane(`sim worker reply apply failed: ${(error && error.message) || error}`,
-        error && error.stack ? String(error.stack) : null);
-      return;
     }
-    flushDirectives();
-    // A reply can release a long-running directive while timer dispatch is otherwise quiet. The
-    // wake is disposable and generation-guarded; normal timer cadence remains the steady clock.
-    if (workerPumpRequested && pendingSteps > 0) armWorkerPumpAckWake();
+    const kept = msg.events.filter((ev, i) => {
+      if (!ev) return true;
+      if (superseded && superseded.has(i)) return false;
+      if (ev.t === 'physics:impact') return ev.p?.playerInvolved === true;
+      return !(widen && REPLY_STALE_COSMETIC_EVENTS.has(ev.t));
+    });
+    replyCosmeticShed += msg.events.length - kept.length;
+    msg.events = kept;
+  }
+  function drainClockReplies(frameBoundary = false) {
+    if (frameBoundary) { replyFrameCounter++; }
+    if (replyBudgetFrame !== replyFrameCounter) { replyBudgetFrame = replyFrameCounter; replyBudgetSpentMs = 0; }
+    if (replyQueue.length > replyQueueMax) replyQueueMax = replyQueue.length;
+    // A wall window stands in for a frame boundary between presented frames.
+    const windowNow = nowMs();
+    if (windowNow - replyBudgetWindowAtMs >= 16) { replyBudgetWindowAtMs = windowNow; replyBudgetSpentMs = 0; }
+    let appliedThisCall = 0;
+    // drainCap (frame engineer, 2026-11-28): the queue-depth escape used to drop the
+    // wall-clock budget entirely once the backlog passed REPLY_QUEUE_BOUND, draining
+    // everything in one long task — the 40 ms frames this machinery exists to prevent.
+    // With the cap the budget is hard: a deep backlog drains at ~REPLY_APPLY_BUDGET_MS
+    // per task and converges over a few frames. ?rfx=-drainCap restores the old escape.
+    const drainCapOn = frameCostFixOn('drainCap');
+    if (parkedReply && !laneClosed) {
+      // The open reply's remaining events come first; nothing later applies until it is done.
+      // One slice per frame boundary (or per fresh budget window between frames).
+      if (!frameBoundary && replyBudgetSpentMs >= REPLY_APPLY_BUDGET_MS
+          && (drainCapOn || replyQueue.length <= REPLY_QUEUE_BOUND)) {
+        armReplyDrainTimer();
+        return;
+      }
+      resumeParkedReply();
+      appliedThisCall++;
+    }
+    while (replyQueue.length && !laneClosed && !parkedReply) {
+      // With no backlog the arriving reply applies now (one reply per message task, as before);
+      // a backlog drains only inside the budget, at least one reply per frame.
+      const noBacklog = replyQueue.length === 1 && appliedThisCall === 0;
+      // Bounded (audit B2): past REPLY_QUEUE_BOUND waiting replies the budget yields to catching
+      // up — a long backlog is what leaves destroyed bodies drawn and new ones late. The
+      // drainCap replaces that escape: the same budget, held as a hard wall-clock cap.
+      if (replyBudgetSpentMs >= REPLY_APPLY_BUDGET_MS && !noBacklog
+        && !(frameBoundary && appliedThisCall === 0)
+        && (drainCapOn || replyQueue.length <= REPLY_QUEUE_BOUND)) break;
+      appliedThisCall++;
+      const msg = replyQueue.shift();
+      const started = nowMs();
+      shedStaleCosmetics(msg, started);
+      parkedReply = applyClockReply(msg, null, replySliceBudgetMs(null), replyMirrorBudgetMs(null));
+      replyBudgetSpentMs += Math.max(0.01, nowMs() - started);
+    }
+    if (frameBoundary && state && state.render) state.render.replyApplySpentMs = replyBudgetSpentMs;
+    if (replyQueue.length || parkedReply) armReplyDrainTimer(frameOwnsReplyApply() ? REPLY_FRAME_FALLBACK_MS : 16);
+  }
+  // Replies apply from the frame (frame engineer, 2026-11-22). The referee's most common long
+  // frame was the frame callback followed, in the same frame, by a worker message task applying a
+  // reply; and under load timers go unserved for seconds while frames and messages take every
+  // turn. So in live flight, while frame boundaries keep arriving, the frame boundary is the only
+  // place a reply is applied (one budget, at least one reply a frame); the message task enqueues
+  // and the timer is only the fallback for when frames stop. ?rfx=-replyOnFrame restores
+  // apply-on-arrival.
+  const REPLY_FRAME_OWNS_WITHIN_MS = 350;
+  const REPLY_FRAME_FALLBACK_MS = 120;
+  const REPLY_FRAME_QUEUE_ESCAPE = 24;
+  const REPLY_DECODE_BUDGET_MS = 4;
+  let animationFrameAtMs = -Infinity;
+  let replyDeferredToFrame = 0;
+  let replyFallbackDrains = 0;
+  function frameOwnsReplyApply() {
+    if (laneClosed || !ready || !state || state.mode !== 'flight') return false;
+    // Only a real animation-frame loop owns the queue (presentationRunner stamps each callback): a
+    // headless run or a test that calls advance() by hand still applies a reply as it arrives.
+    if (nowMs() - animationFrameAtMs > REPLY_FRAME_OWNS_WITHIN_MS) return false;
+    // A queue this deep means the frames are not keeping up at all: let any task help.
+    if (replyQueue.length > REPLY_FRAME_QUEUE_ESCAPE) return false;
+    return frameCostFixOn('replyOnFrame');
+  }
+  function armReplyDrainTimer(delayMs = 16) {
+    if (replyDrainTimer !== null || laneClosed) return;
+    // Not presenting (no rAF)? A timer turn is a frame boundary too.
+    replyDrainTimer = setTimeout(() => {
+      replyDrainTimer = null;
+      if (laneClosed) return;
+      const held = channelHoldsEvents ? channel.deferredStats().held : 0;
+      if (frameOwnsReplyApply()) {
+        // Frames are still arriving: they do the applying. Stay armed only while work waits.
+        if (replyQueue.length || parkedReply || held) armReplyDrainTimer(REPLY_FRAME_FALLBACK_MS);
+        return;
+      }
+      if (replyQueue.length || parkedReply || held) replyFallbackDrains++;
+      if (held) channel.drainDeferred();
+      drainClockReplies(true);
+    }, delayMs);
+  }
+  // Called at every frame boundary: stamps the frame pump and serves the lane's wall-clock
+  // sampler from the frame, because its timer can starve for seconds in a busy fight.
+  let freezeSampledAtMs = -Infinity;
+  function serviceFrameBoundary() {
+    const now = nowMs();
+    replyFramePumpAtMs = now;
+    // Messages held undecoded since the last boundary are decoded and dispatched here (replies
+    // only join the queue; the budgeted drain that follows applies them).
+    if (channelHoldsEvents && !laneClosed) channel.drainDeferred(REPLY_DECODE_BUDGET_MS);
+    if (ready && !laneClosed && now - freezeSampledAtMs >= FREEZE_SAMPLE_MS) {
+      freezeSampledAtMs = now;
+      try { freezeSample(); } catch (_) { /* recorder only */ }
+    }
   }
 
   function releaseFlight(msg, flight) {
@@ -915,6 +1925,7 @@ export function createSimLaneRuntime({
   function postWorkerClockAck() {
     if (laneClosed || !ready || workerClockMode !== 'worker-local'
       || (!workerClockAckPending && pendingAckEnd <= 0)) return false;
+    if (acksWithheld()) return false;
     const ack = workerClockAckPending;
     const ackJournalEnd = Math.max(pendingAckEnd, ack?.journalEnd || 0);
     workerClockAckPending = null;
@@ -976,6 +1987,24 @@ export function createSimLaneRuntime({
       pushLaneCommand(envelopeRing, d);
       flushDirectives();
       return rpcPromise;
+    }
+    if (workerClockMode === 'worker-local' && d.kind === 'domEvent') {
+      // NO-FREEZE step 4: input is state, not a queue. Pointer motion is latest-wins (movement
+      // deltas summed) and rides the next presented frame's one batch; a key auto-repeat joins
+      // that batch too. Neither mints a transport post, a raycast or a camera envelope by itself.
+      const type = d.d?.type;
+      if (type === 'mousemove' || type === 'pointermove') {
+        coalescePointerMove(d);
+        scheduleDomEventFlush(true);
+        return true;
+      }
+      // Any other DOM event is an ordered edge: the pending pointer state lands first.
+      flushPendingPointerMoves();
+      if (d.d?.repeat === true) {
+        const repeatQueued = pushLaneCommand(envelopeRing, d);
+        scheduleDomEventFlush(true);
+        return repeatQueued;
+      }
     }
     const queued = pushLaneCommand(envelopeRing, d);
     if (workerClockMode === 'worker-local') {
@@ -1067,6 +2096,7 @@ export function createSimLaneRuntime({
     if (msg.initRebuild?.pack) foldPackIntoReadModel(msg.initRebuild.start, msg.initRebuild.end, true);
     if (Array.isArray(msg.weaponVfxProjectiles)) {
       applyWeaponVfxProjectiles(readModel, msg.weaponVfxProjectiles);
+      stampProjectileBases(msg.simTime);
     }
     applyLaneAuxDelta(msg);
     applyDomainUpdates(msg.domainUpdates);
@@ -1097,7 +2127,72 @@ export function createSimLaneRuntime({
     }
   }
 
-  function applyTickReply(msg) {
+  // A reply whose event replay may pause between events and continue on a later frame: every
+  // event was emitted in live flight and none is a lifecycle boundary whose listeners expect the
+  // whole reply in one task.
+  const REPLY_SLICE_WHOLE_EVENT = /^(sector:|save:|game:|mode:|run:|settings:|world:|session:)/;
+  function replyEventsSliceable(events) {
+    for (let i = 0; i < events.length; i++) {
+      const ev = events[i];
+      if (!ev || typeof ev.t !== 'string') continue;
+      if ((typeof ev.m === 'string' && ev.m !== 'flight') || REPLY_SLICE_WHOLE_EVENT.test(ev.t)) return false;
+    }
+    return true;
+  }
+
+  // Returns null when the reply is fully applied, or a parked record when the reply ran out
+  // of budget: the caller resumes it with applyTickReply(msg, parked, budgets) before any
+  // later reply is touched, so events stay in order and still see exactly their own reply's rows.
+  // Two park points exist: mid-mirror (runMirrorPhase, mirrorBudgetMs > 0) and mid-events
+  // (sliceBudgetMs > 0). A mirror-parked record carries .mirror and index 0 — its resume
+  // finishes the mirror before any event replays.
+  function applyTickReply(msg, resume = null, sliceBudgetMs = 0, mirrorBudgetMs = 0) {
+    let journalLo = -1;
+    let journalHi = -1;
+    let rebuildApplied = false;
+    let phaseStart = 0;
+    let mirrorDone = 0;
+    let reconcileDone = 0;
+    let mirror = resume && resume.mirror ? resume.mirror : null;
+    if (mirror && mirror.done === true) mirror = null;
+    if (mirror || (!resume && mirrorBudgetMs > 0)) {
+      if (!mirror) {
+        mirror = {
+          stage: MIRROR_STAGE.head, cursor: 0,
+          journalLo: -1, journalHi: -1, rebuildApplied: false,
+          mirrorMs: 0, tailMs: 0, phaseStart: 0, mirrorDone: 0, reconcileDone: 0,
+        };
+      }
+      const budget = mirrorBudgetMs > 0 ? mirrorBudgetMs : Number.POSITIVE_INFINITY;
+      const sliceStart = nowMs();
+      const finished = runMirrorPhase(msg, mirror, sliceStart + budget);
+      mirror.mirrorMs += Math.max(0, nowMs() - sliceStart);
+      if (!finished) {
+        replySlicesParked++;
+        return {
+          msg, index: 0, mirror,
+          journalLo: mirror.journalLo, journalHi: mirror.journalHi,
+          parkedAtMs: resume ? resume.parkedAtMs : nowMs(),
+        };
+      }
+      journalLo = mirror.journalLo;
+      journalHi = mirror.journalHi;
+      rebuildApplied = mirror.rebuildApplied === true;
+      phaseStart = mirror.phaseStart;
+      mirrorDone = mirror.mirrorDone;
+      reconcileDone = mirror.reconcileDone;
+      if (workerLastReplyWork) {
+        // Accumulated slice work, not the parked wall span: the fold measure
+        // tracks mirror ms the same way the atomic path's two stamps did.
+        workerLastReplyWork.applyFoldMs = Math.max(0, mirror.mirrorMs - mirror.tailMs);
+        workerLastReplyWork.applyReconcileMs = Math.max(0, mirror.tailMs);
+      }
+      mirror = null; // consumed — an event-phase park below carries no mirror
+    } else if (resume) {
+      journalLo = resume.journalLo;
+      journalHi = resume.journalHi;
+      phaseStart = mirrorDone = reconcileDone = nowMs();
+    } else {
     replyCount++;
     // Keep the worker's own completed-boundary costs beside its liveness counters. Main-thread
     // frame timings cannot distinguish a slow authoritative step from a slow mirror/pack.
@@ -1153,16 +2248,18 @@ export function createSimLaneRuntime({
       }
     }
 
-    let journalLo = -1;
-    let journalHi = -1;
-    let rebuildApplied = false;
-    const phaseStart = nowMs();
+    phaseStart = nowMs();
     if (msg.journalFullRebuild === true && msg.pack) {
       rebuildApplied = journal.applyRebuildPack({ start: msg.journalStart, end: msg.journalEnd, pack: msg.pack });
       journalLo = msg.journalStart; journalHi = msg.journalEnd;
     } else if (msg.pack && msg.pack.count > 0) {
       journal.applyPack(msg.pack);
       journalLo = msg.pack.start; journalHi = msg.pack.end;
+    }
+    if (journalHi > journalLo && typeof window !== 'undefined' && window.__SF_PACK_ARRIVALS__) {
+      const ring = window.__SF_PACK_ARRIVALS__;
+      ring.push([journalLo, journalHi, Math.round(nowMs()), msg.stateTick, msg.clockSequence, msg.__laneArrivedAtMs ? Math.round(msg.__laneArrivedAtMs) : null, msg.completedTickCount || null]);
+      if (ring.length > 4000) ring.splice(0, 500);
     }
 
     if (Array.isArray(msg.spawnInfos) && msg.spawnInfos.length) {
@@ -1176,6 +2273,7 @@ export function createSimLaneRuntime({
     }
     if (Array.isArray(msg.weaponVfxProjectiles)) {
       applyWeaponVfxProjectiles(readModel, msg.weaponVfxProjectiles);
+      stampProjectileBases(msg.simTime);
     }
     if (Array.isArray(msg.entityVitals) && msg.entityVitals.length) {
       applyEntityVitals(readModel, msg.entityVitals, msg.lifecycleGeneration === lifecycleGeneration ? state : null, msg.lifecycleGeneration);
@@ -1183,9 +2281,10 @@ export function createSimLaneRuntime({
     applyLaneAuxDelta(msg);
     applyDomainUpdates(msg.domainUpdates);
     if (msg.timeEffectsSnapshot) applyRemoteTimeEffectsSnapshot(state, 'simulation', msg.timeEffectsSnapshot);
-    const mirrorDone = nowMs();
+    mirrorDone = nowMs();
     reconcileEntities();
-    const reconcileDone = nowMs();
+    reconcileDone = nowMs();
+    }
 
     // Worker-emitted sim-bus events replay onto the main bus with forwarding
     // suppressed — otherwise a forwarded type would echo right back.
@@ -1194,12 +2293,52 @@ export function createSimLaneRuntime({
       // stationHandoffDiagnostics). The per-reply array churn stays off the
       // production hot path unless a dev realm or the explicit
       // window.__SF_DEBUG_LANE__ latch asks for it.
-      if (typeof window !== 'undefined' && (IS_DEV || window.__SF_DEBUG_LANE__ === true)) {
+      if ((!resume || resume.mirror) && typeof window !== 'undefined'
+        && (IS_DEV || window.__SF_DEBUG_LANE__ === true)) {
         const log = window.__SF_LANE_APPLIED || (window.__SF_LANE_APPLIED = []);
         for (const ev of msg.events) { if (ev && typeof ev.t === 'string') log.push(ev.t); }
         if (log.length > 96) log.splice(0, log.length - 96);
       }
-      for (const ev of msg.events) {
+      // One reply can carry the same "changed" notification for one ship dozens of times (run
+      // start: 80 x ship:statsChanged / cargoCapChanged / slotsChanged). Each carries the full
+      // newest value, so only the LAST one per (type, ship) is replayed; nothing else is dropped
+      // or reordered. ?rfx=-replyCoalesce replays every copy.
+      // A mirror-parked resume has no skip set yet — this entry computes it exactly as a fresh
+      // reply would; a parked event resume reuses the private copy it was parked with.
+      let ownSkip = null;
+      const skip = resume && resume.skip !== undefined ? resume.skip
+        : (ownSkip = msg.events.length > 8 && frameCostFixOn('replyCoalesce')
+          ? coalescedEventSkips(msg.events) : null);
+      const sliceStartedAtMs = sliceBudgetMs > 0 ? nowMs() : 0;
+      const sliceFirstIndex = resume ? resume.index : 0;
+      // Spawn-batch window for this replay pass: the worker's entity:spawned
+      // envelopes coalesce into ONE entity:spawnedBatch per pass — the aggregate
+      // fanout behind a sector materialization pays one dispatch, not ~75. A
+      // parked slice closes the window it opened (bounded, no cross-frame lease);
+      // the resume pass opens a fresh one for the remaining tail.
+      const spawnWindowApi = typeof bus.beginSpawnedBatchWindow === 'function'
+        && typeof bus.endSpawnedBatchWindow === 'function';
+      if (spawnWindowApi) bus.beginSpawnedBatchWindow();
+      try {
+      for (let evIndex = sliceFirstIndex; evIndex < msg.events.length; evIndex++) {
+        const ev = msg.events[evIndex];
+        if (skip && skip.has(evIndex)) continue;
+        // Event-granular budget: at least one event has replayed in this slice, the time is spent
+        // and more remain. Park the rest for the next frame instead of blocking this one.
+        if (sliceBudgetMs > 0 && evIndex > sliceFirstIndex
+            && nowMs() - sliceStartedAtMs >= sliceBudgetMs) {
+          if (msg.__laneSliceable === undefined) msg.__laneSliceable = replyEventsSliceable(msg.events);
+          if (msg.__laneSliceable === true) {
+            replySlicesParked++;
+            workerLastReplyWork.applyEventsMs = Math.max(0, nowMs() - reconcileDone);
+            return {
+              msg, index: evIndex, journalLo, journalHi,
+              // The coalesce set is shared scratch: a parked reply keeps its own copy.
+              skip: ownSkip ? new Set(skip) : skip,
+              parkedAtMs: resume ? resume.parkedAtMs : nowMs(),
+            };
+          }
+        }
         if (ev && typeof ev.t === 'string') {
           const eventStartedAtMs = nowMs();
           try {
@@ -1263,9 +2402,17 @@ export function createSimLaneRuntime({
           }
         }
       }
+      } finally {
+        // Balanced on every exit: loop completion, a parked slice, or a throw.
+        // The batch dispatches after this pass's individual deliveries — the
+        // same tail-of-window ordering the step window keeps.
+        if (spawnWindowApi) bus.endSpawnedBatchWindow();
+      }
     }
-    workerLastReplyWork.applyFoldMs = Math.max(0, mirrorDone - phaseStart);
-    workerLastReplyWork.applyReconcileMs = Math.max(0, reconcileDone - mirrorDone);
+    if (!resume) {
+      workerLastReplyWork.applyFoldMs = Math.max(0, mirrorDone - phaseStart);
+      workerLastReplyWork.applyReconcileMs = Math.max(0, reconcileDone - mirrorDone);
+    }
     workerLastReplyWork.applyEventsMs = Math.max(0, nowMs() - reconcileDone);
 
     if (Array.isArray(msg.rpcAcks) && msg.rpcAcks.length) {
@@ -1307,11 +2454,14 @@ export function createSimLaneRuntime({
         steps: bounded(d.steps),
         shedSteps: bounded(d.shedSteps),
         budgetDeferredSteps: bounded(d.budgetDeferredSteps),
-        heartbeatHolds: bounded(d.heartbeatHolds),
-        heartbeatHeld: d.heartbeatHeld === true,
+        detailDirectives: bounded(d.detailDirectives),
+        detailForcedByCommands: bounded(d.detailForcedByCommands),
+        detailSkippedHandOnly: bounded(d.detailSkippedHandOnly),
         heartbeatAgeMs: bounded(d.heartbeatAgeMs),
-        heartbeatHeldMs: bounded(d.heartbeatHeldMs, Number.MAX_SAFE_INTEGER),
-        heartbeatHeldTurns: bounded(d.heartbeatHeldTurns),
+        heartbeatProductionGapMs: bounded(d.heartbeatProductionGapMs, Number.MAX_SAFE_INTEGER),
+        heartbeatProcessingLagMs: bounded(d.heartbeatProcessingLagMs, Number.MAX_SAFE_INTEGER),
+        heartbeatSilences: bounded(d.heartbeatSilences),
+        heartbeatSilenceMs: bounded(d.heartbeatSilenceMs, Number.MAX_SAFE_INTEGER),
         owedTicks: bounded(d.owedTicks, Number.MAX_SAFE_INTEGER),
         perfWindow: laneBoundedPerfWindow(d.perfWindow),
         commands: bounded(d.commands),
@@ -1378,6 +2528,7 @@ export function createSimLaneRuntime({
         rebuildGeneration: msg.journalRebuildGeneration || 0,
       });
     }
+    return null;
   }
 
   function completedRecordCount(record) {
@@ -1482,6 +2633,8 @@ export function createSimLaneRuntime({
   // now coalesce onto a short window: the first event still posts immediately
   // (edge latency preserved) and the trailing burst ships once per window.
   const DOM_EVENT_FLUSH_MIN_MS = 8;
+  // Worker-local: held/pointer state ships with the presented frame; without frames, at this cadence.
+  const DOM_STATE_FALLBACK_MS = 50;
   const DOM_COALESCED_TYPES = new Set(['mousemove', 'pointermove', 'resize', 'touchFrame']);
   // Held-key repeats only matter to the worker as a kbm-liveness stamp (a quiet
   // pad must not steal the helm mid-hold). One repeat per heartbeat window keeps
@@ -1490,7 +2643,17 @@ export function createSimLaneRuntime({
   let domEventFlushTimer = null;
   let lastDomEventFlushAtMs = -Infinity;
   const freezeEpisodes = [];
+  const replyLagEpisodes = [];
+  let coveredHoldSamples = 0;
+  let openReplyLag = null;
   if (typeof window !== 'undefined') window.__SF_FREEZE_LOG__ = freezeEpisodes;
+  // Dev probe harness: block the worker for one turn of `ms` (an authoritative-step spike).
+  if (typeof window !== 'undefined' && IS_DEV) {
+    window.__SF_INJECT_WORKER_STALL__ = (ms) => {
+      if (laneClosed || !ready) return false;
+      try { channel.post({ kind: 'laneInjectStall', ms: Number(ms) }); return true; } catch (_) { return false; }
+    };
+  }
   let motionSampleId = 0;
   // -1 is "no reply applied yet": 0 is a valid early timestamp (page boot, or a
   // mocked clock) and must not read as "never applied".
@@ -1596,16 +2759,20 @@ export function createSimLaneRuntime({
   function appendGamepadFrame(commands) {
     // The reducer retains this physical sample and advances held controls on sim
     // ticks; unchanged rAF samples are not a heartbeat or a new command.
-    const frame = sampleGamepadFrame(!!getGamepadCaptureHandler());
+    const frame = sampleGamepadFrame(!!getGamepadCaptureHandler() || state.ui?.cargoPanelOpen === true);
     const promptDevice = getPromptDevice();
     if (lastGamepadGeneration === lifecycleGeneration && lastGamepadPrompt === promptDevice
         && sameGamepadFrame(lastGamepadFrame, frame)) return;
+    // A sample whose buttons changed is a press: the worker builds the read-model detail for it at
+    // once (wholeSimBrowserWorker localCommandsNeedDetail), as it does for a key press.
+    const edge = gamepadButtonsChanged(lastGamepadGeneration === lifecycleGeneration ? lastGamepadFrame : null, frame);
     pushLaneCommand(envelopeRing, {
       kind: 'domEvent',
       d: {
         type: 'gamepadFrame',
         frame,
         promptDevice,
+        ...(edge ? { edge: true } : null),
       },
     });
     commands.push(...envelopeRing.drain());
@@ -1613,6 +2780,24 @@ export function createSimLaneRuntime({
     lastGamepadGeneration = lifecycleGeneration;
   }
 
+  function gamepadButtonsChanged(a, b) {
+    if (!a || !b || a.pads.length !== b.pads.length) return true;
+    for (let i = 0; i < a.pads.length; i++) {
+      const left = a.pads[i], right = b.pads[i];
+      if (!left || !right) { if (left !== right) return true; continue; }
+      if (left.connected !== right.connected || left.buttons.length !== right.buttons.length) return true;
+      for (let j = 0; j < left.buttons.length; j++) {
+        if (left.buttons[j].pressed !== right.buttons[j].pressed) return true;
+      }
+    }
+    return false;
+  }
+
+  const PAD_COMPARE_DEADZONE = 0.12;
+  function padAxisQuantized(v) {
+    const x = Number(v) || 0;
+    return Math.abs(x) < PAD_COMPARE_DEADZONE ? 0 : Math.round(x * 256) / 256;
+  }
   function sameGamepadFrame(a, b) {
     if (!a || a.captureMode !== b.captureMode || a.pads.length !== b.pads.length) return false;
     for (let i = 0; i < a.pads.length; i++) {
@@ -1621,7 +2806,11 @@ export function createSimLaneRuntime({
       if (left.id !== right.id || left.index !== right.index || left.mapping !== right.mapping
           || left.connected !== right.connected || left.axes.length !== right.axes.length
           || left.buttons.length !== right.buttons.length) return false;
-      for (let j = 0; j < left.axes.length; j++) if (left.axes[j] !== right.axes[j]) return false;
+      // Axis noise inside the stick deadzone is not a change (lane audit C2): a drifting or
+      // phantom pad would otherwise post a command every frame.
+      for (let j = 0; j < left.axes.length; j++) {
+        if (padAxisQuantized(left.axes[j]) !== padAxisQuantized(right.axes[j])) return false;
+      }
       for (let j = 0; j < left.buttons.length; j++) {
         if (left.buttons[j].pressed !== right.buttons[j].pressed
             || left.buttons[j].value !== right.buttons[j].value) return false;
@@ -1716,8 +2905,30 @@ export function createSimLaneRuntime({
     const advancing = workerClockRequested === true
       && state && state.mode === 'flight'
       && Number.isFinite(state.timeScale) && state.timeScale > 0;
-    const gapMs = lastAppliedAtMs >= 0 ? Math.max(0, nowMs() - lastAppliedAtMs) : 0;
-    if (advancing && gapMs > FREEZE_GAP_MS) {
+    const now = nowMs();
+    const replyGapMs = lastAppliedAtMs >= 0 ? Math.max(0, now - lastAppliedAtMs) : 0;
+    // NO-FREEZE: with the shared pose table the picture's freshness is the table's, not the
+    // reply stream's. A lagging reply stream is recorded separately (replyLagEpisodes).
+    let gapMs = replyGapMs;
+    if (!laneLegacy && poseFeedFrames > 0) {
+      const writes = peekPoseWrites();
+      if (writes !== posePeekWrites || posePeekChangedAtMs < 0) { posePeekWrites = writes; posePeekChangedAtMs = now; }
+      gapMs = Math.max(0, now - posePeekChangedAtMs);
+      if (advancing && replyGapMs > FREEZE_GAP_MS) {
+        if (!openReplyLag) {
+          openReplyLag = { openedAtMs: now, gapAtOpenMs: replyGapMs, snapshot: freezeSnapshot() };
+          replyLagEpisodes.push(openReplyLag);
+          if (replyLagEpisodes.length > FREEZE_EPISODE_LIMIT) replyLagEpisodes.shift();
+        }
+      } else if (openReplyLag) {
+        openReplyLag.durationMs = Math.max(0, now - openReplyLag.openedAtMs);
+        openReplyLag = null;
+      }
+    }
+    // A stop the hold plate already covers is a visible state (ruling), not a frozen world; it is
+    // still counted for diagnosis.
+    if (advancing && gapMs > FREEZE_GAP_MS && worldHoldPlateVisible()) coveredHoldSamples++;
+    if (advancing && gapMs > FREEZE_GAP_MS && !worldHoldPlateVisible()) {
       if (!openFreeze) {
         openFreeze = { openedAtMs: nowMs(), gapAtOpenMs: gapMs, snapshot: freezeSnapshot() };
         if (workerClockMode === 'worker-local') {
@@ -1742,15 +2953,21 @@ export function createSimLaneRuntime({
     if (freezeSampler !== null || laneClosed) return;
     freezeSampler = setTimeout(() => {
       freezeSampler = null;
-      freezeSample();
+      const now = nowMs();
+      if (now - freezeSampledAtMs >= FREEZE_SAMPLE_MS * 0.5) {
+        freezeSampledAtMs = now;
+        freezeSample();
+      }
       scheduleFreezeSample();
     }, FREEZE_SAMPLE_MS);
   }
 
-  function applyTickReplyTimed(msg) {
+  function applyTickReplyTimed(msg, resume = null, sliceBudgetMs = 0, mirrorBudgetMs = 0) {
     const started = nowMs();
+    let parked = null;
     try {
-      applyTickReply(msg);
+      parked = applyTickReply(msg, resume, sliceBudgetMs, mirrorBudgetMs);
+      return parked;
     } finally {
       workerApplyMs = Math.max(0, nowMs() - started);
       if (workerApplyMs > workerApplyMaxMs) {
@@ -1802,8 +3019,14 @@ export function createSimLaneRuntime({
     }
   }
 
-  function flushWorkerClockDirectives({ projectCursor = false } = {}) {
+  function flushWorkerClockDirectives({ projectCursor = false, frame = false } = {}) {
     if (laneClosed || !ready || workerClockMode !== 'worker-local') return;
+    if (frame) {
+      lastFrameFlushAtMs = nowMs();
+      flushPendingPointerMoves();
+      // A frame's samples survive an in-flight command: the next flush that can post takes them.
+      frameSamplePending = true;
+    }
     if (projectCursor) cursorProjectionPending = true;
     if (drainingSabReplies) return;
     // A timer tick can publish just before a main command reaches the worker's
@@ -1829,11 +3052,15 @@ export function createSimLaneRuntime({
       // A real DOM input boundary must refresh the worker's projection even
       // when an earlier lifecycle/input reset retained identical coordinates.
       const hasDomInput = commands.some(command => command.t === 'dom');
-      appendGamepadFrame(commands);
+      // A gamepad is polled once per presented frame; an input edge between frames does not
+      // re-sample it (unchanged samples never ship anyway).
+      if (frameSamplePending) appendGamepadFrame(commands);
       appendCursorProjection(commands, hasDomInput);
       cursorProjectionPending = false;
     }
-    const cameraFrame = samplePresentation ? sampleCameraFrame() : null;
+    // The displayed camera is sampled once per presented frame, never per input edge.
+    const cameraFrame = frameSamplePending ? sampleCameraFrame() : null;
+    if (samplePresentation) frameSamplePending = false;
     const hasCameraChange = cameraFrameChanged(cameraFrame);
     const hasJournalAck = pendingAckEnd > 0;
     const hasClockAck = !!workerClockAckPending;
@@ -1852,12 +3079,13 @@ export function createSimLaneRuntime({
     // commandAck row per post): the per-frame presentation flush picks the
     // changed camera up within a frame anyway.
     if (hasCameraChange) appendCameraFrame(commands, cameraFrame || sampleCameraFrame());
-    const ack = workerClockAckPending;
+    const withholding = acksWithheld();
+    const ack = withholding ? null : workerClockAckPending;
     // A worker reply can have advanced its retained journal beyond the last
     // presentation ACK by the time a queued command is ready. Keep the larger
     // cumulative watermark so the worker does not mistake the combined
     // command for a gap and request a full rebuild on every coalesced reply.
-    const ackJournalEnd = Math.max(
+    const ackJournalEnd = withholding ? 0 : Math.max(
       pendingAckEnd,
       Number.isSafeInteger(ack?.journalEnd) ? ack.journalEnd : 0,
     );
@@ -1875,10 +3103,12 @@ export function createSimLaneRuntime({
       timeScale: Number.isFinite(state.timeScale) ? state.timeScale : 0,
       timeEffectsSnapshot: readLocalTimeEffectsSnapshot(state),
     };
-    pendingAckEnd = 0;
+    if (!withholding) {
+      pendingAckEnd = 0;
+      workerClockAckPending = null;
+    }
     postedSteps += Math.max(0, pendingSteps);
     pendingSteps = 0;
-    workerClockAckPending = null;
     workerClockCommandInFlight = true;
     workerClockCommandInFlightSequence = commandSequence;
     workerClockLastCommandScale = msg.timeScale;
@@ -1906,8 +3136,49 @@ export function createSimLaneRuntime({
     workerClockLastAckedSequence = Math.max(workerClockLastAckedSequence, msg.ackClockSequence);
   }
 
-  function scheduleDomEventFlush() {
+  // Latest-wins pointer state (step 4). One row per pointer event type survives to the batch.
+  const pendingPointerMoves = new Map();
+  let pendingPointerSinceMs = -1;
+  function coalescePointerMove(desc) {
+    const type = desc.d.type;
+    const prior = pendingPointerMoves.get(type);
+    if (prior) {
+      const next = { ...desc, d: { ...desc.d } };
+      next.d.movementX = (Number(prior.d.movementX) || 0) + (Number(desc.d.movementX) || 0);
+      next.d.movementY = (Number(prior.d.movementY) || 0) + (Number(desc.d.movementY) || 0);
+      pendingPointerMoves.set(type, next);
+    } else {
+      pendingPointerMoves.set(type, desc);
+      if (pendingPointerSinceMs < 0) pendingPointerSinceMs = nowMs();
+    }
+    coalescedPointerEvents++;
+  }
+  function flushPendingPointerMoves() {
+    if (!pendingPointerMoves.size) return;
+    for (const desc of pendingPointerMoves.values()) pushLaneCommand(envelopeRing, desc);
+    pendingPointerMoves.clear();
+    pendingPointerSinceMs = -1;
+  }
+  let coalescedPointerEvents = 0;
+  let frameSamplePending = false;
+  let lastFrameFlushAtMs = -Infinity;
+
+  function scheduleDomEventFlush(heldState = false) {
     if (laneClosed || !ready) return;
+    if (heldState && workerClockMode === 'worker-local') {
+      // The presented frame flushes held state. This timer is only the fallback for a page that
+      // is not presenting (menus with no rAF): it never fires a second batch inside a frame.
+      if (domEventFlushTimer !== null) return;
+      domEventFlushTimer = setTimeout(() => {
+        domEventFlushTimer = null;
+        if (laneClosed) return;
+        if (nowMs() - lastFrameFlushAtMs < DOM_STATE_FALLBACK_MS) return;
+        flushPendingPointerMoves();
+        lastDomEventFlushAtMs = nowMs();
+        flushDirectives({ projectCursor: true });
+      }, DOM_STATE_FALLBACK_MS);
+      return;
+    }
     const now = nowMs();
     const delay = DOM_EVENT_FLUSH_MIN_MS - (now - lastDomEventFlushAtMs);
     if (delay <= 0) {
@@ -2074,15 +3345,9 @@ export function createSimLaneRuntime({
         if (now - lastKeyRepeatShipAtMs < DOM_REPEAT_HEARTBEAT_MS) return;
         lastKeyRepeatShipAtMs = now;
       }
-      laneDomEvent({
-        type: 'keydown',
-        code: eventCode(e),
-        pressed: true,
-        repeat,
-        blocked: modalInputActive()
-          || isTextEntryTarget(e.target)
-          || isUiCommandTarget(e.target),
-      });
+      const desc = flightKeyDownDescriptor(st, e);
+      if (repeat && desc && typeof desc === 'object') desc.repeat = true;
+      laneDomEvent(desc);
     });
     listen(window, 'keyup', (e) => {
       laneDomEvent({ type: 'keyup', code: eventCode(e), pressed: false });
@@ -2103,11 +3368,7 @@ export function createSimLaneRuntime({
     listen(window, 'pointermove', handlePointerMove, { capture: true });
     const surface = canvas || window;
     listen(surface, 'mousedown', (e) => {
-      const d = pointerDescriptor(e);
-      d.type = 'mousedown';
-      d.offCanvas = !!(canvas && e.target !== canvas);
-      d.button = e.button;
-      laneDomEvent(d);
+      laneDomEvent(flightMouseDownDescriptor(e, canvas, pointerDescriptor(e)));
       if (e.button === 1 && typeof e.preventDefault === 'function') e.preventDefault();
     });
     listen(window, 'mouseup', (e) => laneDomEvent({ type: 'mouseup', button: e.button }), { capture: true });
@@ -2181,9 +3442,7 @@ export function createSimLaneRuntime({
         try {
           let wirePayload = payload;
           if (type === 'game:load' || type === 'game:save') {
-            // The worker realm has no localStorage of its own — stage this
-            // realm's sf.* keyspace so its save system resolves slots and
-            // recovery against real bytes.
+            // Stage the browser's save and local racing data in the worker.
             const authoritativeFallback = payload && payload.__laneStorageFallback;
             wirePayload = Object.assign({}, payload);
             delete wirePayload.__laneStorageFallback;
@@ -2208,15 +3467,17 @@ export function createSimLaneRuntime({
       }
     };
     b.emit = (type, payload) => {
-      const result = origEmit(type, payload);
+      // Forward BEFORE dispatch: a listener that emits a nested forwarded type inside this
+      // emit would otherwise ship the child to the worker ahead of its parent — inverted
+      // causality on the bus's own ordering. Snapshotting at the emit boundary also keeps
+      // the wire payload free of any mutation a listener makes to the shared object.
       maybeForward(type, payload);
-      return result;
+      return origEmit(type, payload);
     };
     if (origQueue) {
       b.queue = (type, payload) => {
-        const result = origQueue(type, payload);
         maybeForward(type, payload);
-        return result;
+        return origQueue(type, payload);
       };
     }
     return {
@@ -2263,16 +3524,27 @@ export function createSimLaneRuntime({
       advanceResult.stepCap = effectiveStepCap;
       advanceResult.catchupPresentationSkips = Math.max(0, (advanceResult.steps | 0) - 1);
       state.accumulator = advanceResult.accumulator;
+      serviceFrameBoundary();
+      drainClockReplies(true);
       sampleLaneUiFold();
-      flushDirectives({ projectCursor: workerClockMode === 'worker-local' });
+      flushDirectives({ projectCursor: workerClockMode === 'worker-local', frame: true });
+      readPoseFeed();
       return advanceResult;
     },
+    /** presentationRunner: one call per animation-frame callback, presented or not. */
+    noteAnimationFrame() { animationFrameAtMs = nowMs(); },
     heartbeat() {
       if (workerClockMode !== 'worker-local' || laneClosed || !ready) return;
       const episode = openFreeze;
       const sampleId = episode && !episode.sampleRequested ? episode.motionSampleId : null;
-      const appliedAck = episode ? workerClockAppliedAck : null;
-      const beat = { kind: 'laneHeartbeat' };
+      const appliedAck = episode && !acksWithheld() ? workerClockAppliedAck : null;
+      const beat = {
+        kind: 'laneHeartbeat',
+        sentAtMs: heartbeatStampClock
+          ? heartbeatStampClock.timeOriginMs + heartbeatStampClock.nowMs()
+          : wallNowMs(),
+        clockKind: heartbeatStampClock ? 'performance' : heartbeatClockKind(),
+      };
       if (sampleId != null) beat.motionSampleId = sampleId;
       if (appliedAck) {
         // Retry the applied watermark on foreground beats during a stall. A
@@ -2300,11 +3572,21 @@ export function createSimLaneRuntime({
       advanceResult.shedSteps = 0;
       advanceResult.accumulator = Number.isFinite(state.accumulator)
         ? Math.max(0, state.accumulator) : 0;
-      // Worker-local presentation frames do not call advance(), but they still
-      // own the main→worker UI boundary. Keep modal depth and screen-stack
-      // admission in sync before flushing the frame's cursor/clock command.
+      const controlsFirst = workerClockMode === 'worker-local' && workerClockRequested
+        && state.mode === 'flight' && state.timeScale > 0;
+      if (controlsFirst) {
+        // Poll the gamepad and publish the current controls before decoding or
+        // replaying a batch of read-model work. Projection uses the last drawn view.
+        sampleLaneUiFold();
+        flushDirectives({ projectCursor: true, frame: true });
+      }
+      serviceFrameBoundary();
+      drainClockReplies(true);
+      // A reply can change modal depth. Send any resulting fold or ACK now.
       sampleLaneUiFold();
-      flushDirectives({ projectCursor: workerClockMode === 'worker-local' });
+      if (controlsFirst) flushDirectives();
+      else flushDirectives({ projectCursor: workerClockMode === 'worker-local', frame: true });
+      readPoseFeed();
       return advanceResult;
     },
     interpolationAlpha() {
@@ -2489,6 +3771,43 @@ export function createSimLaneRuntime({
         workerSlowEvents: workerSlowEvents.slice(),
         freezeActive: openFreeze != null,
         freezeEpisodes,
+        replyLagEpisodes,
+        coveredHoldSamples,
+        poseTable: {
+          mode: laneLegacy ? 'legacy-off' : (poseShared ? 'shared' : 'transfer'),
+          active: poseFeed.active,
+          frames: poseFeedFrames,
+          rows: poseFeed.snapshot ? poseFeed.snapshot.count : 0,
+          facadeRows: poseFacadeRows,
+          tick: poseFeed.snapshot ? poseFeed.snapshot.tick : null,
+          simTime: poseFeed.snapshot ? poseFeed.snapshot.simTime : null,
+          // The worker's own clock at that write (its performance.now): world speed measured on the
+          // worker, independent of when the main thread looks.
+          workerWallMs: poseFeed.snapshot ? poseFeed.snapshot.wallMs : null,
+          ageMs: poseFeedLastAdvanceAtMs >= 0 ? Math.max(0, nowMs() - poseFeedLastAdvanceAtMs) : null,
+          transferArrivals: poseTransferArrivals,
+          generationMismatchFrames: poseGenerationMismatchFrames,
+          generationMismatchLiveFrames: poseGenerationMismatchLiveFrames,
+          truncatedWrites: poseFeed.snapshot ? poseFeed.snapshot.truncated || 0 : 0,
+          workerReplySequence: poseFeed.snapshot ? poseFeed.snapshot.replySequence : null,
+          workerUnacked: poseFeed.snapshot ? poseFeed.snapshot.unacked : null,
+          workerRetained: poseFeed.snapshot ? poseFeed.snapshot.retained : null,
+          mainReceivedSequence: workerClockLastReceivedSequence,
+          writeErrors: poseFeed.snapshot ? poseFeed.snapshot.writeErrors || 0 : 0,
+          reader: poseReader.getStats(),
+        },
+        heldReplies: heldReplies.length,
+        coalescedPointerEvents,
+        gamepadIds: (() => {
+          try {
+            const pads = typeof navigator !== 'undefined' && navigator.getGamepads ? navigator.getGamepads() : [];
+            return [...pads].filter(Boolean).map((g) => g.id);
+          } catch (_) { return null; }
+        })(),
+        replyQueue: { pending: replyQueue.length, max: replyQueueMax, cosmeticShed: replyCosmeticShed },
+        replyOnFrame: { deferredToFrame: replyDeferredToFrame, fallbackDrains: replyFallbackDrains,
+          heldEvents: channelHoldsEvents ? channel.deferredStats() : null },
+        replySlices: { parked: replySlicesParked, resumed: replySlicesResumed, open: parkedReply != null, maxOpenMs: replySliceMaxParkedMs },
         msSinceLastAppliedReply: lastAppliedAtMs >= 0
           ? Math.max(0, nowMs() - lastAppliedAtMs) : null,
         postedDirectives,
@@ -2531,6 +3850,9 @@ export function createSimLaneRuntime({
   };
 
   // ---- init directive --------------------------------------------------------------
+  let initialSharedStoreKeys = null;
+  try { initialSharedStoreKeys = collectLocalSharedStoreKeys(); }
+  catch (_) { /* This shell may deny access to localStorage. */ }
   const initSeq = nextToken();
   const initPayload = {
     kind: 'init',
@@ -2538,10 +3860,15 @@ export function createSimLaneRuntime({
     generation: lifecycleGeneration,
     profile: 'production',
     clockMode: workerClockMode,
+    // The worker compiles its combat paths in a throwaway fight before the real game (behind boot).
+    bootRehearsal: workerClockMode === 'worker-local',
     timeScale: Number.isFinite(state.timeScale) ? state.timeScale : 0,
     timeEffectsSnapshot: readLocalTimeEffectsSnapshot(state),
     seed: (state.meta && Number.isSafeInteger(state.meta.seed) ? state.meta.seed : 1) >>> 0,
     settings: canonicalClone(state.settings || {}),
+    // Seed the worker's boot reconciliation from the browser's durable storage.
+    initialSharedStoreKeys,
+    initialRacingStorage: collectLaneRacingStorage(),
     domainMirroring,
     bridgeAll: true,
     shipInputSnapshots: snapshotObserver !== null,
@@ -2562,12 +3889,18 @@ export function createSimLaneRuntime({
     // E1 stall harness: the worker blocks its event loop for these ms values in cycle
     // (one per local-clock tick) — the faithful emulation of a heavy authoritative step.
     simStall: Array.isArray(resolved.simStall) ? resolved.simStall : null,
+    // Shared table, or a dedicated transferable latest-state port without shared memory.
+    poseTable: poseShared,
+    ...(poseChannel ? { posePort: poseChannel.port2 } : {}),
+    legacyStopAndWait: laneLegacy,
+    directiveMarks: IS_DEV && (() => { try { return typeof sessionStorage !== 'undefined' && sessionStorage.getItem('sf.directiveMarks') === '1'; } catch (_) { return false; } })(),
     // E2 profiler: `?simProfile=1` asks the worker realm to measure per-system step time and
     // allocation and ride a bounded summary back on the reply (one per simulated second).
     systemProfile: (() => {
       try {
         return typeof globalThis !== 'undefined' && globalThis.location
-          ? new URLSearchParams(globalThis.location.search).get('simProfile') === '1'
+          ? (new URLSearchParams(globalThis.location.search).get('simProfile') === '1'
+            || (IS_DEV && typeof localStorage !== 'undefined' && localStorage.getItem('sf.simProfile') === '1'))
           : false;
       } catch (_) { return false; }
     })(),
@@ -2575,13 +3908,29 @@ export function createSimLaneRuntime({
   const readyPromise = new Promise((resolve, reject) => {
     pending.set(initSeq, { kind: 'init', resolve, reject });
   });
-  channel.post(initPayload);
+  if (poseChannel) channel.post(initPayload, [poseChannel.port2]);
+  else channel.post(initPayload);
   if (initPayload.sabArena) {
     journal.attachSabArena(initPayload.sabArena);
     // Arm the envelope rings on the same arena — the worker binds the same
     // layout after its own init and starts parking on the cmd ring.
     sabEnv = bindSabEnvelopeChannel(initPayload.sabArena);
     if (sabEnv) pumpSabReplies();
+  }
+
+  // Idempotent transport teardown. Replies parked on the SAB ring when the
+  // pump stopped still carry durable storage writes — take the final drain
+  // before the transport goes away.
+  function terminateChannel() {
+    if (channelTerminated) return;
+    channelTerminated = true;
+    if (shutdownByeTimer !== null) {
+      clearTimeout(shutdownByeTimer);
+      shutdownByeTimer = null;
+    }
+    try { drainSabRepliesNow(); } catch (_) { /* ring may be half-armed */ }
+    try { if (typeof channel.terminate === 'function') channel.terminate(); } catch (_) {}
+    laneClosedComplete = true;
   }
 
   function close() {
@@ -2605,6 +3954,24 @@ export function createSimLaneRuntime({
       clearTimeout(freezeSampler);
       freezeSampler = null;
     }
+    if (heldReplyTimer !== null) {
+      clearTimeout(heldReplyTimer);
+      heldReplyTimer = null;
+    }
+    if (replyDrainTimer !== null) {
+      clearTimeout(replyDrainTimer);
+      replyDrainTimer = null;
+    }
+    if (parkedReply) {
+      // A reply left open by the event budget finishes whole on teardown: no event is dropped.
+      const parked = parkedReply;
+      parkedReply = null;
+      try { applyTickReplyTimed(parked.msg, parked, 0); } catch (_) { /* teardown */ }
+    }
+    poseFeed.active = false;
+    poseChannel?.port1.close();
+    setActivePoseFeed(null);
+    try { setWorldHoldPlate(false); } catch (_) { /* teardown */ }
     if (domEventFlushTimer !== null) {
       clearTimeout(domEventFlushTimer);
       domEventFlushTimer = null;
@@ -2639,9 +4006,21 @@ export function createSimLaneRuntime({
       try { tracked.reject(new Error(laneError || 'sim lane closed')); } catch (_) {}
     }
     pendingRpcs.clear();
-    try { postLaneDirective({ kind: 'shutdown', seq: nextToken() }); } catch (_) { /* dead channel */ }
-    try { if (typeof channel.terminate === 'function') channel.terminate(); } catch (_) {}
-    laneClosedComplete = true;
+    // The worker's shutdown branch replies 'bye' carrying drainStorageOps() —
+    // the durable writes settled since the last reply. Track the seq so the
+    // reply lands through the normal onChannelMessage path (which applies the
+    // storageOps), then wait a bounded window before terminating anyway:
+    // terminate() on a real Worker channel would discard that queued reply.
+    const shutdownSeq = nextToken();
+    pending.set(shutdownSeq, { kind: 'shutdown' });
+    try { postLaneDirective({ kind: 'shutdown', seq: shutdownSeq }); }
+    catch (_) { /* dead channel — no bye is coming */ terminateChannel(); return true; }
+    shutdownByeTimer = setTimeout(terminateChannel, SHUTDOWN_BYE_GRACE_MS);
+    // Node-hosted verification lanes must not hold the process open for the
+    // grace window; the browser's numeric timer handle has no unref.
+    if (typeof shutdownByeTimer === 'object' && typeof shutdownByeTimer.unref === 'function') {
+      shutdownByeTimer.unref();
+    }
     return true;
   }
 
@@ -2657,7 +4036,7 @@ export function createSimLaneRuntime({
 
 // The channel contract simLaneMain consumes. A browser Worker is the default;
 // a verification lane (node twin) may inject an adapter with the same surface:
-//   post(msg) / onMessage(cb) / onError(cb) / terminate()
+//   post(msg, transfer?) / onMessage(cb) / onError(cb) / terminate()
 function createBrowserChannel() {
   const worker = new Worker(
     // Retail path resolves workers/wholeSimBrowserWorker.js against the document
@@ -2672,7 +4051,46 @@ function createBrowserChannel() {
   const preBootMessages = [];
   let workerBooted = false;
   let workerTerminated = false;
+  // Frame-owned delivery. A message event's payload is only decoded (structured-clone
+  // deserialised) when .data is first read, and a large reply costs milliseconds to decode. While
+  // the lane says the frame owns reply apply, the message task keeps the event undecoded and
+  // returns; the frame boundary decodes and dispatches the held events in arrival order.
+  let deferGate = null;
+  let onDeferred = null;
+  const deferredEvents = [];
+  let deferredHead = 0;
+  let deferredTotal = 0;
+  const drainDeferred = (budgetMs = Infinity) => {
+    if (deferredHead >= deferredEvents.length) return 0;
+    const started = performance.now();
+    let ran = 0;
+    while (deferredHead < deferredEvents.length) {
+      const event = deferredEvents[deferredHead];
+      deferredEvents[deferredHead++] = null;
+      ran++;
+      dispatchWorkerEvent(event);
+      // At least one a call; a deep queue ignores the budget so held messages cannot pile up.
+      if (performance.now() - started >= budgetMs && deferredEvents.length - deferredHead <= 8) break;
+    }
+    if (deferredHead >= deferredEvents.length) { deferredEvents.length = 0; deferredHead = 0; }
+    return ran;
+  };
   worker.onmessage = (event) => {
+    if (workerBooted && deferGate) {
+      let hold = false;
+      try { hold = deferGate() === true; } catch (_) { hold = false; }
+      if (hold) {
+        deferredEvents.push(event);
+        deferredTotal++;
+        if (onDeferred) { try { onDeferred(); } catch (_) { /* wake is best-effort */ } }
+        return;
+      }
+      // The frame no longer owns delivery: everything held goes first, in order.
+      if (deferredHead < deferredEvents.length) drainDeferred();
+    }
+    dispatchWorkerEvent(event);
+  };
+  function dispatchWorkerEvent(event) {
     const msg = event && event.data;
     // The worker posts `boot` only after its onmessage handler is installed.
     // Hold the first init (and a possible close-before-ready shutdown) until
@@ -2681,8 +4099,8 @@ function createBrowserChannel() {
     // unchanged; the caller's existing startup deadline still bounds this wait.
     if (msg?.kind === 'boot' && !workerBooted) {
       workerBooted = true;
-      for (const queued of preBootMessages.splice(0)) {
-        try { worker.postMessage(queued); }
+      for (const { msg: queued, transfer } of preBootMessages.splice(0)) {
+        try { worker.postMessage(queued, transfer); }
         catch (error) {
           for (const h of errorHandlers) {
             try { h(error); } catch (_) {}
@@ -2694,7 +4112,7 @@ function createBrowserChannel() {
     for (const h of messageHandlers) {
       try { h(msg); } catch (_) { /* handler faults are caller bugs */ }
     }
-  };
+  }
   worker.onerror = (event) => {
     const error = (event && (event.error || event.message)) || 'worker error';
     for (const h of errorHandlers) {
@@ -2711,17 +4129,24 @@ function createBrowserChannel() {
     }
   };
   return {
-    post(msg) {
+    post(msg, transfer = []) {
       if (workerTerminated) throw new Error('sim worker channel is terminated');
-      if (workerBooted) { worker.postMessage(msg); return; }
+      if (workerBooted) { worker.postMessage(msg, transfer); return; }
       // Before ready, current callers can queue only init plus a close-triggered
       // shutdown. Keep this seam bounded and fail through the existing caller
       // error path if that invariant ever changes.
       if (preBootMessages.length >= 2) throw new Error('sim worker pre-boot message queue is full');
-      preBootMessages.push(msg);
+      preBootMessages.push({ msg, transfer });
     },
     onMessage(cb) { messageHandlers.push(cb); },
     onError(cb) { errorHandlers.push(cb); },
+    /** gate(): true while the frame owns delivery. wake(): called when an event is held. */
+    setDeferral(gate, wake) {
+      deferGate = typeof gate === 'function' ? gate : null;
+      onDeferred = typeof wake === 'function' ? wake : null;
+    },
+    drainDeferred,
+    deferredStats() { return { held: deferredEvents.length - deferredHead, total: deferredTotal }; },
     terminate() {
       workerTerminated = true;
       preBootMessages.length = 0;

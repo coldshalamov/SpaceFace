@@ -9,7 +9,10 @@ import { input } from '../src/systems/input.js';
 import { insertDressingRow } from '../src/world/dressingTable.js';
 import { currentSolidDressingRows, physicalObstacleRadius, queryNearbyPhysicalObstacles } from '../src/core/physicalObstacleQuery.js';
 import { resolveCollisionProxyManifest } from '../src/data/collisionProxyManifests.js';
+import { VX_FREE_DRIVE_STRUCTURES } from '../src/data/vxFreeDriveRing.js';
+import { segmentHitsProxy } from '../src/combat/lineOfSight.js';
 import { markPhysicsBodyNativeFailure, clearPhysicsBodyNativeFailure } from '../src/core/physicsAuthority.js';
+import { stampSolidDressing } from '../src/world/solidDressing.js';
 
 const fixture=JSON.parse(fs.readFileSync(new URL('./fixtures/forge-approach-dressing.json',import.meta.url)));
 const continued=JSON.parse(fs.readFileSync(new URL('./fixtures/forge-continue-793.json',import.meta.url)));
@@ -43,6 +46,56 @@ test('the real Forge course sees cold solid dressing omitted from the core spati
  assert.equal(h.state.spatialHash.queryRadius(hopper.pos.x,hopper.pos.z,100,[]).includes(hopper),false);
  assert.equal(h.read().avoiding,true,'the Ore Hopper must be in the physical obstacle set');
  assert.ok(Math.abs(h.autopilot._avoidanceSide)===1);
+});
+
+test('the Helios approach avoids a truss tip ahead even when its center is aft', () => {
+  const player = { id: 1, type: 'ship', radius: 14, pos: { x: 783, z: 458 }, vel: { x: 0, z: 0 } };
+  const station = {
+    id: 2, type: 'station', alive: true, collides: true, radius: 42, pos: { x: 1280, z: -420 }, rot: 0,
+    data: {
+      stationId: 'station_helios', dockRadius: 90, collisionProxy: 'helios_trade_hub',
+      corridorBearingDeg: Math.atan2(420, -1280) * 180 / Math.PI,
+    },
+  };
+  const entityList = [player, station];
+  const state = {
+    mode: 'flight', playerId: player.id, world: { currentSectorId: 'sector_helios' }, entityList,
+    entities: new Map(entityList.map(entity => [entity.id, entity])),
+  };
+  const rib = VX_FREE_DRIVE_STRUCTURES.find(structure => structure.id === 'vx_ring_rib_3');
+  const data = { worldDressing: true, worldOneOff: true, placeId: rib.placeId, vxFreeDriveId: rib.id };
+  stampSolidDressing(data, { radius: rib.radius });
+  const truss = insertDressingRow(state, {
+    homeSectorId: state.world.currentSectorId,
+    pos: { ...rib.localPos }, rot: rib.rot, radius: rib.radius, collides: true,
+    physicsBody: { dynamic: false, material: 'prop' }, data,
+  });
+  const autopilot = { active: true, targetEntityId: station.id };
+  const read = () => {
+    const target = resolveAutopilotTarget(state, autopilot);
+    const dx = target.x - player.pos.x;
+    const dz = target.z - player.pos.z;
+    const distance = Math.hypot(dx, dz);
+    const course = { x: dx / distance, z: dz / distance };
+    const projection = (truss.pos.x - player.pos.x) * course.x + (truss.pos.z - player.pos.z) * course.z;
+    const pointAt = offset => ({ x: player.pos.x + offset * course.x, z: player.pos.z + offset * course.z });
+    const guidance = computeAutopilotGuidance(state, player, target, distance, 20, autopilot);
+    return { target, course, projection, pointAt, guidance };
+  };
+
+  const near = read();
+  assert.equal(near.target.dockingStage, 'corridor-mouth');
+  assert.ok(near.projection < 0, 'the approach has already passed the truss center');
+  assert.equal(segmentHitsProxy(truss, near.pointAt(-0.1), near.pointAt(0.1)), false);
+  assert.equal(segmentHitsProxy(truss, player.pos, near.pointAt(25)), true, 'the measured truss still crosses the course ahead');
+  assert.equal(near.guidance.avoiding, true);
+  assert.ok(near.guidance.x * near.course.z - near.guidance.z * near.course.x > 0, 'steer away from the truss');
+
+  player.pos = { x: 798, z: 401 };
+  const clear = read();
+  assert.ok(clear.projection < -(player.radius + physicalObstacleRadius(truss)));
+  assert.equal(clear.guidance.avoiding, false, 'the entirely aft truss cannot bend the course');
+  assert.equal(autopilot.targetEntityId, station.id);
 });
 
 for(const kind of ['noncolliding','scripted','visual','ghost'])test(`${kind} FX remains outside autopilot obstacle guidance`,()=>{

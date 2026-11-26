@@ -87,6 +87,7 @@ export function routeProgress(waypoints, traveledWu) {
 }
 
 export const sweeperRoutePlant = {
+  modes: ['swarm'],
   name: 'plants213',
 
   init(ctx) {

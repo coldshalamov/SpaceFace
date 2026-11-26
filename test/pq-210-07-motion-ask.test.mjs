@@ -144,12 +144,14 @@ function installMiniDom() {
   };
 }
 
-test('PQ-210.07: the OS hint asks once and never silently strips combat feel', () => {
+test('PQ-210.07 as revised by 08_INTERFACE §2: the OS hint never asks, and never silently strips combat feel', () => {
   const state = createGameState(21007);
   assert.equal(state.settings.accessibility.motionPreference, 'full');
   assert.equal(state.settings.accessibility.motionAsked, false);
-  assert.equal(shouldAskMotionPreference(state.settings, true), true);
-  assert.equal(firstBootScreenId(state.settings, true), FIRST_BOOT_MOTION_ASK_ID);
+  // No first-boot question (ledger A2): the title is the first screen; the choice is in Settings > Access.
+  assert.equal(shouldAskMotionPreference(state.settings, true), false);
+  assert.equal(firstBootScreenId(state.settings, true), 'mainMenu');
+  assert.notEqual(firstBootScreenId(state.settings, true), FIRST_BOOT_MOTION_ASK_ID);
   assert.equal(shouldAskMotionPreference(state.settings, false), false);
   assert.equal(firstBootScreenId(state.settings, false), 'mainMenu');
 

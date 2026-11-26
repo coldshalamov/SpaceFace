@@ -40,12 +40,13 @@ test('live kill producers pay every gun and player-owned collision the same immu
     h.bus.emit('run:waveCleared', { wave: 1 }); assert.equal(h.state.run.credits, 50);
   } finally { h.close(); }
 });
-test('room kills earn cash but no personal score; high class pay is independent of level', () => {
+test('room kills earn cash but no personal score; a boss pays like a boss, independent of level', () => {
   const h = boot();
   try {
     h.kill({ playerOwned: false }); h.kill({ threatClass: 'boss' });
     assert.equal(h.state.run.score, 2000);
-    h.bus.emit('run:waveCleared', { wave: 1 }); assert.equal(h.state.run.credits, 210);
+    // Release list 2026-11-19: "Bosses pay a real reward" — the boss class pays x5 in Swarm (200 -> 1000).
+    h.bus.emit('run:waveCleared', { wave: 1 }); assert.equal(h.state.run.credits, 1010);
   } finally { h.close(); }
 });
 test('one physical pickup, destroyed pickup and missing spawn all settle the same entitlement exactly once', () => {

@@ -428,6 +428,7 @@ function fakeDocument() {
         setProperty(name, value) { this[name] = value; },
       },
       appendChild(child) { child.parentNode = this; this.children.push(child); return child; },
+      append(...kids) { for (const k of kids) this.appendChild(k); },
       removeChild(child) { this.children = this.children.filter((e) => e !== child); child.parentNode = null; },
       setAttribute(name, value) {
         this.attributes[name] = String(value);
@@ -531,8 +532,10 @@ test('the commit and snag mirrors paint world-anchored marks on the HUD', () => 
     assert.ok(snagMark, 'the snag mark must be mounted');
     assert.equal(threatMark.style.display, 'block',
       'a live commit mirror paints the CUT mark');
-    assert.equal(snagMark.style.display, 'block',
-      'a live snag mirror paints the SNAGGED mark');
+    // c4f6627ba9 ("quieter flight glass"): the SNAGGED mark reads as telemetry words, so on the
+    // flight glass it stands down while its mirror stays live — the CUT warning still paints.
+    assert.equal(snagMark.style.display, 'none',
+      'a live snag mirror stays off the quiet flight glass');
     assert.ok(/translate3d/.test(threatMark.style.transform),
       'the mark is positioned at the projected bite point');
     assert.ok(/320/.test(threatMark.style.transform) && /210/.test(threatMark.style.transform),
@@ -549,9 +552,8 @@ test('the commit and snag mirrors paint world-anchored marks on the HUD', () => 
 
     state.player.tether.snag = { obstacleId: 7, kind: 'span', x: 60, z: 90 };
     hud.update(1 / 60, state);
-    assert.equal(snagMark.style.display, 'block', 'a moved snag repaints');
-    assert.ok(/360/.test(snagMark.style.transform) && /290/.test(snagMark.style.transform),
-      'the snag mark tracks the foul point');
+    assert.equal(snagMark.style.display, 'none',
+      'a moved snag still stands down on the quiet glass — the mirror lives in state, not on the HUD');
     hud.destroy();
   } finally {
     MASSLINE2_FLAGS.enabled = previousEnabled;

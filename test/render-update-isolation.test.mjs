@@ -99,6 +99,26 @@ test('docked presentation skips the world pass and still paints HUD', () => {
   assert.deepEqual(ctx.calls, ['feel', 'ui']);
 });
 
+test('the title film gives the compositor the frame until dismissal', () => {
+  const ctx = phase();
+  ctx.state.mode = 'menu';
+  let cinematic = true;
+  ctx.ui.isTitleCinematicActive = () => cinematic;
+  const frame = { worldSubmitted: null };
+  ctx.render.drawPreparedFrame = () => { ctx.calls.push('draw'); return true; };
+  const paint = () => runRenderUpdatePhase({ ...ctx, frameDt: 1 / 60, presentationFrame: frame });
+
+  assert.equal(paint(), false);
+  assert.equal(frame.worldSubmitted, false);
+  assert.deepEqual(ctx.calls, ['feel', 'ui']);
+
+  cinematic = false;
+  ctx.calls.length = 0;
+  assert.equal(paint(), true);
+  assert.equal(frame.worldSubmitted, true);
+  assert.deepEqual(ctx.calls, ['prepare', 'vfx', 'draw', 'feel', 'ui']);
+});
+
 test('map, station, and pause menus freeze 3D submit without tearing the scene down', () => {
   for (const screen of ['galaxyMap', 'localmap', 'station', 'pause']) {
     const ctx = phase();

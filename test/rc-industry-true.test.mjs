@@ -147,7 +147,7 @@ test('multiple manual drones describe one shared ceiling, while depot sales pres
     assert.equal(throughput.cappedPerMin, null);
     const owned = renderDrones(screenFor(h.state)).find((c) => c.className === 'au-card');
     assert.match(owned.innerHTML, /Depot sales/);
-    assert.match(owned.innerHTML, /987 cr for 11u/);
+    assert.match(owned.innerHTML, /987 cr for 11 units/);
     assert.deepEqual(h.g.operation.lastSale, before);
   } finally { h.dispose(); }
 });

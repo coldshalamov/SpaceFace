@@ -10,6 +10,7 @@ import {
   DirectorPhase,
   NORMALIZED_SENSOR_FRAME_FLAG,
   NORMALIZED_THRUSTER_REQUEST_FLAG,
+  hashUnit,
   normalizeSensorFrame,
   stableId,
   wrapAngle,
@@ -27,6 +28,7 @@ import { resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
 import { hasActiveSpatialHash } from '../core/spatialQuery.js';
 import { queryCombatTableEntities, COMBAT_TABLE_FLAGS } from '../core/combatTable.js';
 import { massline2Flag } from '../data/featureFlags.js';
+import { simCoreFlag } from '../core/simCoreFlags.js';
 import { cloakHidesEntityFrom, cloakRuntimeFor, cloakTimeS } from './cloak.js';
 import { modelTruthPlanarRadius } from '../data/modelTruth.js';
 import { tableSimAuthorityWuFromState } from '../render/tabletopPolicy.js';
@@ -38,6 +40,7 @@ import { RECORD_KIND, stableRecordId } from '../world/worldRecords.js';
 import { ATTACHMENT_DEFS } from '../data/combatDefs.js';
 import { automaticMasslineBreakAllowed } from '../combat/attachments.js';
 import { isRecovering, isTumbling } from '../combat/tumbleStatus.js';
+import { playerFixFor } from '../ai/playerAwareness.js';
 import { turretPhaseEdges as turretPhaseEdgesFor, turretLossCount } from '../combat/turretSubsystems.js';
 import {
   ensureActivityClassified,
@@ -61,6 +64,7 @@ const AI_SPATIAL_MIN_COLLIDABLES = 96;
 // INF-029: reported-track grade for a dispatched offender with a dispatch snapshot. Credible
 // (above the doctrine 0.55 engagement floor) but never certain: the sighting is old.
 const REPORTED_TRACK_CONFIDENCE = 0.6;
+const PILOT_FIX_SCRATCH = {};
 const LAW_JOB_RESPONSE_HOLDER = 'lawSecurity';
 const CERES_LAW_JOB_SLOTS_BY_ID = new Map(CERES_ACTIVITY_POCKETS.flatMap((pocket) => (
   pocket.actorSlots
@@ -632,6 +636,8 @@ export const aiPorts = {
       // Explicit passive navigation is also used by civilian vignette choreography.
       // It needs collision-aware movement, not a faction combat doctrine or fire authority.
       if (!ai || (ai.passive && ai.allowPassiveManeuver !== true)) continue;
+      // Pack-brain hulls think in one shared pass (src/ai/pack/packBrain.js), not in the stack.
+      if (ai.packBrain === true) continue;
       // The activity owner view already excludes far S2/S3/S4 actors until their wake. Keep all
       // S0/S1 members in the roster so a near cadence skip does not make a squad disappear; the
       // tactical stack applies the deterministic near cadence (`entityNeedsAiThink`) at its
@@ -804,7 +810,8 @@ export const aiPorts = {
   _recentEventsFor(entity, tick, freeze = Object.freeze) {
     if (this._recentEventCacheTick !== tick) {
       this._recentEventCacheTick = tick;
-      this._recentEventsByTarget = recentEventIndexFor(this.state, tick);
+      if (this._aiSensorCaches === undefined) this._aiSensorCaches = simCoreFlag('aiSensorCaches');
+      this._recentEventsByTarget = recentEventIndexFor(this.state, tick, this._aiSensorCaches);
     }
     const list = this._recentEventsByTarget.get(entity && entity.id) || EMPTY_ATTACHMENTS;
     if (freeze === identity) return list;
@@ -1109,11 +1116,14 @@ function sensorSelf(state, entity, capabilities = capabilitiesFor(state, entity)
     ? cacheOwner._subsystemFractionsFor(entity, runtime)
     : freeze(subsystemFractions(runtime));
   const activity = effectiveActivityForAI(ai);
-  const bands = operationalBandsFor(state, entity, runtime, attachmentIndex);
+  const tethered = attachmentsFor(attachmentIndex, entity.id).length > 0;
+  const disabled = isDisabled(runtime, entity);
+  const bands = writeOperationalBands({}, state, entity, tethered, disabled);
   const ramAuthorized = explicitRamAuthorization(entity, ai, activity, bands)
     || acePassAuthorization(state, entity, ai, activity);
   const specialistKind = isSwarmSpecialistRun(state) && entity.data?.runCohort === 'survival'
     ? swarmSpecialistKind(entity.data?.lootTableId || entity.data?.enemyTypeId) : null;
+  const bodyDodgeTier = bodyDodgeTierFor(entity, bands);
   const self = {
     id: entity.id,
     team: entity.team == null ? null : entity.team,
@@ -1125,28 +1135,31 @@ function sensorSelf(state, entity, capabilities = capabilitiesFor(state, entity)
     hullFraction: fraction(entity.hull, entity.hullMax, 1),
     moraleImmune: ai.moraleImmune === true,
     arenaPursuit: entity.data?.runCohort === 'survival' && ai.forcePlayerTarget === true,
-    // design/overhaul/03_COMBAT.md §9: fodder exists to be thrown. A Swarm hull whose character-sheet tier
-    // (src/data/swarmCharacter.js) is 'fodder' never dodges a thrown body; every other pilot keeps its dodge.
-    bodyDodge: !(entity.data?.runCohort === 'survival'
-      && swarmCharacterFor(entity.data?.enemyTypeId || entity.data?.lootTableId)?.tier === 'fodder'),
+    // design/overhaul/03_COMBAT.md §9: the thrown-body table is a per-hull tier, not one boolean.
+    // The sheet's dodgeTier wins (it reconciles the five rows where the materialisation band and
+    // the design table disagree); hulls with no sheet row fall back to their operational mass band.
+    bodyDodgeTier,
+    // Legacy compatibility for the planner's ship-collision pass-around: fodder takes the throw
+    // it exists for, and heavy/capital hulls are terrain.
+    bodyDodge: bodyDodgeTier !== 'fodder' && bodyDodgeTier !== 'heavy' && bodyDodgeTier !== 'capital',
     swarmSpecialistKind: specialistKind,
     swarmWardTargetId: specialistKind === 'warden' ? swarmWardCandidateId(state, entity) : null,
     energyFraction: fraction(entity.cap, entity.capMax, 1),
     heatFraction: clamp(finite(runtime && runtime.heat, 0) / heatMax, 0, 1),
-    disabled: isDisabled(runtime, entity),
+    disabled,
     // INF-021: the helm reads decontrol off the same frame as everything else, so a yanked
     // ship relents instead of thrusting through its own tumble.
     tumbling: isTumbling(state, entity),
     // INF-027: post-tumble stabilization reads off the same frame, so tactics can tell a
     // recovering helm (disrupted thrust, silent guns) from a fully re-engaged one.
     recovering: isRecovering(state, entity),
-    tethered: attachmentsFor(attachmentIndex, entity.id).length > 0,
+    tethered,
     capabilities,
     subsystemFractions: subsystemFractionView,
     activity,
     roe: normalizeRoe(ai.roe, ai.passive ? 'hold_fire' : 'weapons_free'),
     combatDoctrineId: normalizeCombatDoctrineId(ai.combatDoctrineId),
-    factionBehavior: normalizeFactionBehaviorProfile(ai.factionPresenceDoctrine),
+    factionBehavior: fleetFactionBehavior(state, entity, ai),
     // SF-050: the committed-corridor telegraph must forecast with the speed the battery actually
     // shoots — a doctrine committed at a nominal bolt speed would release a volley visibly off
     // the line the pilot was shown on railgun-fast mounts.
@@ -1486,16 +1499,37 @@ function entityContacts(state, self, range, confidenceScale, helpers = null, att
   // still breaks the lock; weapon range and the final firing authority stay unchanged.
   const pilot = self.data?.runCohort === 'survival' && self.data?.ai?.forcePlayerTarget
     ? getEntity(state, state.playerId) : null;
-  if (pilot?.alive && !out.some(c => c.id === pilot.id) && !cloakHidesPlayerFrom(state, self, pilot)) {
-    const hostile = isHostileForAI(state, self, pilot);
-    {
+  // One rule with the pack brain (src/ai/playerAwareness.js): the shared awareness fix decides
+  // whether this hull still sees a cloaked pilot (reaction window, reveals, the Swarm timeout).
+  // Seen: the live track, replacing a fade ghost if the gate left one. Not seen: a reported track
+  // at the last known position — the hull flies there and searches; fire still needs a sighting.
+  if (pilot?.alive) {
+    const fix = playerFixFor(state, self, PILOT_FIX_SCRATCH);
+    let existing = -1;
+    for (let i = 0; i < out.length; i++) if (out[i] && out[i].id === pilot.id) { existing = i; break; }
+    if (fix.seen && (existing < 0 || out[existing].visible === false)) {
+      const hostile = isHostileForAI(state, self, pilot);
       const base = buildContactBase(state, pilot, combatRuntimeFor(state, pilot.id),
         attachmentIndex, 'ship', freeze, cacheOwner);
       const threat = threatFor(state, self, pilot, hostile);
+      const at = existing < 0 ? out.length : existing;
       if (records) {
-        out.push(fillSensorContact(ensureSensorContactRecord(records, out.length), base, 1, threat, hostile));
+        out[at] = fillSensorContact(ensureSensorContactRecord(records, at), base, 1, threat, hostile);
       } else {
-        out.push({ ...base, confidence: 1, threat, hostile });
+        out[at] = { ...base, confidence: 1, threat, hostile };
+      }
+    } else if (!fix.seen && existing < 0) {
+      const reported = { ...pilot, pos: { x: fix.x, z: fix.z }, vel: { x: 0, z: 0 } };
+      const hostile = isHostileForAI(state, self, pilot);
+      const base = buildContactBase(state, reported, combatRuntimeFor(state, pilot.id),
+        attachmentIndex, 'ship', freeze, cacheOwner);
+      const threat = threatFor(state, self, reported, hostile);
+      if (records) {
+        const rec = fillSensorContact(ensureSensorContactRecord(records, out.length), base, REPORTED_TRACK_CONFIDENCE, threat, hostile);
+        rec.visible = false;
+        out.push(rec);
+      } else {
+        out.push({ ...base, visible: false, confidence: REPORTED_TRACK_CONFIDENCE, threat, hostile });
       }
     }
   }
@@ -1641,7 +1675,7 @@ function buildContactBase(state, other, runtime, attachmentIndex, kind, freeze, 
   const tags = cacheOwner && typeof cacheOwner._tagsFor === 'function'
     ? cacheOwner._tagsFor(other, runtime)
     : tagsFor(other, runtime, freeze);
-  return {
+  const contact = {
     id: other.id,
     kind,
     team: other.team == null ? null : other.team,
@@ -1663,9 +1697,10 @@ function buildContactBase(state, other, runtime, attachmentIndex, kind, freeze, 
     objectiveValue: objectiveValueFor(other),
     fortifyTarget: other.data?.swarmFortify?.schemaVersion === 1,
     massClass: Math.max(1, Math.round(Math.log2(positive(other.mass, 1) + 1))),
-    ...operationalBandsFor(state, other, runtime, attachmentIndex, { tethered, disabled }),
-    tags,
   };
+  writeOperationalBands(contact, state, other, tethered, disabled);
+  contact.tags = tags;
+  return contact;
 }
 
 function attachmentContacts(state, self, range, confidenceScale, activeAttachments = null, freeze = Object.freeze, outScratch = null) {
@@ -1736,12 +1771,58 @@ function tetherTags(ownedBySelf, attachment, owner, target) {
   return slack >= 6 ? Object.freeze([...tags, 'slack']) : tags;
 }
 
-function recentEventIndexFor(state, tick) {
+// aiSensorCaches: the combat trace keeps up to 4096 events, and the recent-event index only wants
+// the last RECENT_EVENT_TICKS. Events are appended in tick order, so the newest-first walk may stop
+// at the first event older than the window, but only while that order is proven: every event is
+// checked once, as it arrives, for an integer seq and a non-decreasing integer tick. Any event that
+// breaks the order (or a trace rebuilt under the same array) drops that array back to the full walk.
+const TRACE_TICK_ORDER = new WeakMap();
+
+function traceTickOrdered(events) {
+  let rec = TRACE_TICK_ORDER.get(events);
+  if (!rec) {
+    rec = { lastSeq: -Infinity, lastTick: -Infinity, ordered: true };
+    TRACE_TICK_ORDER.set(events, rec);
+  }
+  if (!rec.ordered) return false;
+  const last = events.length ? events[events.length - 1] : null;
+  if (!last) {
+    if (events.length === 0) { rec.lastSeq = -Infinity; rec.lastTick = -Infinity; return true; }
+    rec.ordered = false;
+    return false;
+  }
+  if (!Number.isInteger(last.seq) || last.seq < rec.lastSeq) {
+    // The array was refilled from an earlier sequence: re-prove it from the start.
+    rec.lastSeq = -Infinity;
+    rec.lastTick = -Infinity;
+  }
+  let start = events.length;
+  while (start > 0) {
+    const event = events[start - 1];
+    if (event && Number.isInteger(event.seq) && event.seq <= rec.lastSeq) break;
+    start--;
+  }
+  for (let index = start; index < events.length; index++) {
+    const event = events[index];
+    if (!event || !Number.isInteger(event.seq) || !Number.isInteger(event.tick)
+      || event.seq <= rec.lastSeq || event.tick < rec.lastTick) {
+      rec.ordered = false;
+      return false;
+    }
+    rec.lastSeq = event.seq;
+    rec.lastTick = event.tick;
+  }
+  return true;
+}
+
+function recentEventIndexFor(state, tick, earlyExit = false) {
   const events = state.combat && state.combat.trace && Array.isArray(state.combat.trace.events)
     ? state.combat.trace.events : [];
   const byTarget = new Map();
+  const ordered = earlyExit === true && traceTickOrdered(events);
   for (let index = events.length - 1; index >= 0; index--) {
     const event = events[index];
+    if (ordered && tick - event.tick > RECENT_EVENT_TICKS) break;
     if (!event || event.targetId == null) continue;
     const age = tick - (Number.isInteger(event.tick) ? event.tick : tick);
     if (age < 0 || age > RECENT_EVENT_TICKS) continue;
@@ -1856,6 +1937,19 @@ function nearbyEntities(state, pos, range, helpers = null, scratch = null) {
   const helper = helpers && helpers.queryRadius;
   const out = scratch || [];
   out.length = 0;
+  const index = state && state.entityIndex;
+  const collidables = index && index.__spacefaceEntityIndexV1 && Array.isArray(index.collidables)
+    ? index.collidables
+    : null;
+  const scanSmallIndex = collidables && collidables.length > 0
+    && collidables.length < AI_SPATIAL_MIN_COLLIDABLES && pos;
+  const hash = state && state.spatialHash;
+  const useHash = !scanSmallIndex && hasActiveSpatialHash(hash) && typeof hash.queryRadius === 'function';
+  let spatialCandidates;
+  if (useHash) {
+    nearbyHashScratch.length = 0;
+    spatialCandidates = hash.queryRadius(pos.x, pos.z, range, nearbyHashScratch);
+  }
   const tableHits = queryCombatTableEntities(
     state,
     pos && pos.x,
@@ -1863,6 +1957,7 @@ function nearbyEntities(state, pos, range, helpers = null, scratch = null) {
     range,
     nearbyCombatScratch,
     COMBAT_TABLE_FLAGS.SHIP | COMBAT_TABLE_FLAGS.PROJECTILE | COMBAT_TABLE_FLAGS.WRECK,
+    spatialCandidates,
   );
   const seen = nearbySeen;
   seen.clear();
@@ -1872,11 +1967,7 @@ function nearbyEntities(state, pos, range, helpers = null, scratch = null) {
     seen.add(entity.id);
     out.push(entity);
   }
-  const index = state && state.entityIndex;
-  const collidables = index && index.__spacefaceEntityIndexV1 && Array.isArray(index.collidables)
-    ? index.collidables
-    : null;
-  if (collidables && collidables.length > 0 && collidables.length < AI_SPATIAL_MIN_COLLIDABLES && pos) {
+  if (scanSmallIndex) {
     for (let i = 0; i < collidables.length; i++) {
       const entity = collidables[i];
       if (!entity || seen.has(entity.id) || entity.alive === false || !entity.pos) continue;
@@ -1888,9 +1979,7 @@ function nearbyEntities(state, pos, range, helpers = null, scratch = null) {
     }
     return out;
   }
-  if (hasActiveSpatialHash(state && state.spatialHash) && typeof (state.spatialHash.queryRadius) === 'function') {
-    nearbyHashScratch.length = 0;
-    state.spatialHash.queryRadius(pos.x, pos.z, range, nearbyHashScratch);
+  if (useHash) {
     for (let i = 0; i < nearbyHashScratch.length; i++) {
       const entity = nearbyHashScratch[i];
       if (!entity || seen.has(entity.id)) continue;
@@ -2044,23 +2133,66 @@ function profileSignature(profile) {
     : '';
 }
 
-function operationalBandsFor(state, entity, runtime, attachmentIndex, facts = null) {
+function writeOperationalBands(out, state, entity, tethered, disabled) {
   const mass = operationalMassFor(state, entity);
   const maxSpeed = positive(entity && entity.maxSpeed, positive(entity && entity.flightModel && entity.flightModel.maxSpeed, 0));
   const turnRate = positive(entity && entity.turnRate, positive(entity && entity.flightModel && entity.flightModel.maxYawRate, 0));
   const cargoMass = cargoMassFor(state, entity);
-  const tethered = facts && typeof facts.tethered === 'boolean'
-    ? facts.tethered
-    : attachmentsFor(attachmentIndex, entity && entity.id).length > 0;
-  const disabled = facts && typeof facts.disabled === 'boolean'
-    ? facts.disabled
-    : isDisabled(runtime, entity);
-  return {
-    operationalMassBand: mass < 40 ? 'light' : mass < 140 ? 'medium' : mass < 700 ? 'heavy' : 'capital',
-    mobilityBand: maxSpeed >= 135 || turnRate >= 2 ? 'high' : (maxSpeed > 0 && maxSpeed < 80) || (turnRate > 0 && turnRate < 0.8) ? 'low' : 'medium',
-    cargoBand: cargoMass < 1 ? 'empty' : cargoMass < 10 ? 'light' : cargoMass < 40 ? 'valuable' : 'rich',
-    tetherabilityBand: tethered ? 'poor' : disabled ? 'excellent' : mass >= 700 ? 'fair' : mass >= 140 ? 'good' : 'excellent',
-  };
+  out.operationalMassBand = mass < 40 ? 'light' : mass < 140 ? 'medium' : mass < 700 ? 'heavy' : 'capital';
+  out.mobilityBand = maxSpeed >= 135 || turnRate >= 2 ? 'high' : (maxSpeed > 0 && maxSpeed < 80) || (turnRate > 0 && turnRate < 0.8) ? 'low' : 'medium';
+  out.cargoBand = cargoMass < 1 ? 'empty' : cargoMass < 10 ? 'light' : cargoMass < 40 ? 'valuable' : 'rich';
+  out.tetherabilityBand = tethered ? 'poor' : disabled ? 'excellent' : mass >= 700 ? 'fair' : mass >= 140 ? 'good' : 'excellent';
+  return out;
+}
+
+// design/overhaul/03_COMBAT.md §9 — the thrown-body tier table. The character sheet names the
+// design's combat tier separately from its materialisation band (see src/data/swarmCharacter.js);
+// hulls with no roster row keep the operational mass band. Adventure and Swarm share this rule.
+const BODY_DODGE_TIERS = new Set(['fodder', 'light', 'medium', 'heavy', 'capital']);
+
+function bodyDodgeTierFor(entity, bands) {
+  const enemyId = entity && entity.data && (entity.data.enemyTypeId || entity.data.lootTableId);
+  const sheetTier = swarmCharacterFor(enemyId)?.dodgeTier;
+  if (BODY_DODGE_TIERS.has(sheetTier)) return sheetTier;
+  const band = bands && bands.operationalMassBand;
+  return BODY_DODGE_TIERS.has(band) ? band : 'medium';
+}
+
+// design/overhaul/03_COMBAT.md §9 / receipt item 7 — pack_pursuit's authored ring. The doctrine
+// computes the same ring in packOrbitRangeFor, but the faction standoff profile overwrites it at
+// snapshot time. Resolving the faction band to the ring here means the hull actually holds the
+// authored 78-150 WU press instead of the faction's sampled standoff. Deterministic: seed + id.
+const PACK_ORBIT_RANGE_WU = 130;
+const PACK_ORBIT_RING_OFFSETS = Object.freeze([-0.4, -0.1, 0.15]);
+const PACK_ORBIT_RING_JITTER = 0.08;
+const PACK_RING_PROFILES = new WeakMap();
+
+function fleetFactionBehavior(state, entity, ai) {
+  const profile = normalizeFactionBehaviorProfile(ai && ai.factionPresenceDoctrine);
+  if (!profile) return null;
+  if (normalizeCombatDoctrineId(ai && ai.combatDoctrineId) !== CombatDoctrineId.PACK_PURSUIT) return profile;
+  const preferredRange = packOrbitRingFor(state, entity, ai);
+  if (preferredRange === profile.preferredRange) return profile;
+  // One resolved profile per entity while its faction profile and ring band hold: the sensor
+  // frame is rebuilt every tick, and a fresh frozen object per hull per tick is pure garbage.
+  const cached = entity ? PACK_RING_PROFILES.get(entity) : null;
+  if (cached && cached.profile === profile && cached.range === preferredRange) return cached.value;
+  const value = normalizeFactionBehaviorProfile({ ...profile, preferredRange });
+  if (entity) PACK_RING_PROFILES.set(entity, { profile, range: preferredRange, value });
+  return value;
+}
+
+function packOrbitRingFor(state, entity, ai) {
+  const seed = Number(state && state.meta && state.meta.seed) || 1;
+  const entityId = entity ? entity.id : 'anonymous';
+  if (ai && ai.swarmLastStand === true) {
+    return PACK_ORBIT_RANGE_WU * (1 + PACK_ORBIT_RING_OFFSETS[0]);
+  }
+  const ring = Math.min(PACK_ORBIT_RING_OFFSETS.length - 1,
+    Math.floor(hashUnit(seed, entityId, 'pack_orbit_ring') * PACK_ORBIT_RING_OFFSETS.length));
+  const jitter = hashUnit(seed, entityId, 'pack_orbit_jitter') - 0.5;
+  return PACK_ORBIT_RANGE_WU
+    * (1 + PACK_ORBIT_RING_OFFSETS[ring] + jitter * PACK_ORBIT_RING_JITTER);
 }
 
 function operationalMassFor(state, entity) {

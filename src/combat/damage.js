@@ -30,6 +30,11 @@ import { swarmFortifyDevice, SWARM_FORTIFY_SCHEMA_VERSION } from '../data/swarmF
 import { swarmPilotHasActed } from '../systems/swarmSafety.js';
 import { crossfireDisciplineFor } from '../ai/temperament.js';
 import { ironKrakenCoreDamageMultiplier } from './ironKraken.js';
+import { pilotHas } from '../data/pilotTree.js';
+import { resolveGovernedCombatSpeed } from '../core/flight/propulsionCatalog.js';
+// PORT-PRO-FIVE TOWJAW: the active fight's bridge redirects shots into its real armor
+// plates and exposed mechanisms; every unrelated hit passes through unchanged.
+import { interceptTowjawDamage } from '../features/towjaw/damageBridge.js';
 
 /**
  * Linked shield pylons (packet 06): a pylon endpoint is a destructible body, so hostile fire reaches
@@ -54,6 +59,28 @@ function isSwarmFortifyStructure(target) {
     && swarmFortifyDevice(data.deviceId)
     && Number.isInteger(data.runToken) && data.runToken > 0
     && Number.isInteger(data.ordinal) && data.ordinal > 0);
+}
+
+// The `{ actorId, ...origin }` merge for an environmental body's heat add, without the mint:
+// addEnvironmentHeat deep-copies the origin into any queued reaction row and never retains the
+// caller's object, so this scratch can be rewritten per call. Written keys are tracked so a
+// field the next origin lacks cannot leak in from the previous hit.
+const _envHeatOriginScratch = {};
+const _envHeatOriginKeys = [];
+function mergedEnvHeatOrigin(actorId, origin) {
+  const s = _envHeatOriginScratch, keys = _envHeatOriginKeys;
+  for (let i = 0; i < keys.length; i++) delete s[keys[i]];
+  keys.length = 0;
+  s.actorId = actorId;
+  keys.push('actorId');
+  if (origin && typeof origin === 'object') {
+    for (const key in origin) {
+      if (!Object.hasOwn(origin, key)) continue;
+      s[key] = origin[key];
+      if (key !== 'actorId') keys.push(key);
+    }
+  }
+  return s;
 }
 
 /**
@@ -165,6 +192,7 @@ export function createDamageRouter(context, statusService, options = {}) {
   const ROUTE_SCRATCH = [{}, {}, {}, {}, {}, {}];
 
   function routeDamage(input) {
+    input = interceptTowjawDamage(state, input);
     const attacker = entity(input && input.attackerId);
     const aimed = entity(input && input.targetId);
     const screen = wardScreenTarget(state, attacker, aimed, input && input.origin);
@@ -196,8 +224,12 @@ export function createDamageRouter(context, statusService, options = {}) {
           const remainder = routeDamage({ ...input, packet: scaled(1 - share),
             origin: { ...origin, swarmWardRedirected: true } });
           if (link.linkEnergy <= 0) breakSwarmGuard(screen, state.tick | 0);
-          return { ...remainder, swarmGuardRedirected: guard?.totalApplied || 0,
-            warderId: screen.id, wardedId: aimed.id };
+          // Same fields/order as `{ ...remainder, ... }` — remainder is this call's fresh
+          // result literal, so stamping it in place mints nothing.
+          remainder.swarmGuardRedirected = guard?.totalApplied || 0;
+          remainder.warderId = screen.id;
+          remainder.wardedId = aimed.id;
+          return remainder;
         }
         // A zero-damage packet cannot bypass the finite guard pool or carry conditions for free.
       } else input = { ...input, targetId: screen.id, wardFromId: aimed && aimed.id };
@@ -250,18 +282,31 @@ export function createDamageRouter(context, statusService, options = {}) {
     // The opening cohort stays a live physical problem until this wave's first pilot act.
     // Gun holds alone cannot stop idle hulls from dying to terrain contacts or room blasts.
     if (target.data?.runCohort === 'survival' && !swarmPilotHasActed(state)) {
-      return { ...rejected('swarm_waiting_for_input', input, packet), impulseApplied: impulseResult.applied };
+      const rejectedResult = rejected('swarm_waiting_for_input', input, packet);
+      rejectedResult.impulseApplied = impulseResult.applied;
+      return rejectedResult;
     }
-    if (isEnvironmentalBody(target)) addEnvironmentHeat(state, target, packet.heat + (packet.channels.thermal || 0) + (packet.channels.plasma || 0), { actorId: input && input.attackerId, ...origin });
+    if (isEnvironmentalBody(target)) addEnvironmentHeat(state, target, packet.heat + (packet.channels.thermal || 0) + (packet.channels.plasma || 0), mergedEnvHeatOrigin(input && input.attackerId, origin));
     if (!packet.flags.allowAnyTarget && !verbAcceptsType('damage', target.type) && !isCeresWorkfleetHardware(target) && !isPhysicalMissionBody(target) && !isShieldPylonEndpoint(target) && !isSwarmFortifyStructure(target)) {
-      const marks = packet.statuses.filter(status => status.id === GRAVITY_MARK_STATUS_ID);
-      if (marks.length) {
-        const runtime = ensureCombatant(state, target, catalog);
-        for (const status of marks) statusService.schedule(target, runtime, status, { attackerId: input && input.attackerId });
+      // Same forward order the .filter() + forEach gave — statuses are post-normalize
+      // objects, so the match test needs no array of its own.
+      const statuses = packet.statuses;
+      let marksRuntime = null;
+      let markedTarget = false;
+      for (let i = 0; i < statuses.length; i++) {
+        const status = statuses[i];
+        if (status.id !== GRAVITY_MARK_STATUS_ID) continue;
+        if (!marksRuntime) marksRuntime = ensureCombatant(state, target, catalog);
+        statusService.schedule(target, marksRuntime, status, { attackerId: input && input.attackerId });
+        markedTarget = true;
+      }
+      if (markedTarget) {
         const marked = state.combat.markedEnvironment || (state.combat.markedEnvironment = []);
         if (!marked.includes(target.id)) marked.push(target.id);
       }
-      return { ...rejected('target_not_damageable', input, packet), impulseApplied: impulseResult.applied };
+      const rejectedResult = rejected('target_not_damageable', input, packet);
+      rejectedResult.impulseApplied = impulseResult.applied;
+      return rejectedResult;
     }
     // PQ-011: 'massSeed' joins the damageable deployed-device family (mine parity) — the anchor
     // is shootable in every phase by ordinary hostile fire; own-team fire stays gated by the
@@ -293,6 +338,45 @@ export function createDamageRouter(context, statusService, options = {}) {
     const before = snapshotVitals(target, runtime);
     const model = catalog.damageModel;
     const isPlayerTarget = playerIsDamageTarget(state, target);
+    // OVH-01c1 — Juggernaut take-side gates. Decided BEFORE any shield, armour, subsystem or
+    // hull routing: Ram Plate and Juggernaut mean the contact pays nothing on ANY layer (the
+    // review found a shielded/armoured player still stripped at full damage). One multiplier
+    // folded in beside ramTaken below; it is 1 for every non-player, non-contact packet, so a
+    // run without the nodes is bit-identical and NPC hulls never read it.
+    const srcKind = packet && packet.source && packet.source.kind;
+    const pilotTaken = target.id === state.playerId
+      ? pilotCollisionTakenScale(state, target, packet, origin, srcKind)
+      : 1;
+    if (pilotTaken === 0) {
+      // Nothing reaches a layer, no heat or status either, and lastDamageT is not stamped —
+      // shield regen and Thick Skin's quiet timer keep running. The physical impulse above
+      // still lands: a ram is a push first and damage second.
+      return {
+        ok: true,
+        suppressed: 'pilot_contact_immune',
+        attackerId: input && input.attackerId == null ? null : input.attackerId,
+        targetId: target.id,
+        rawTotal,
+        totalApplied: 0,
+        shieldDamage: 0,
+        armorDamage: 0,
+        hullDamage: 0,
+        hullByChannel: emptyChannels(model.channelOrder),
+        subsystemId: null,
+        subsystemDamage: 0,
+        subsystemResult: null,
+        directionalArc: directional.arc,
+        directionalFactor: directional.factor,
+        ...(coreFactor === 1 ? null : { ironKrakenCoreFactor: coreFactor }),
+        heatApplied: 0,
+        shieldBroke: false,
+        dominantLayer: null,
+        before,
+        after: snapshotVitals(target, runtime),
+        impulseApplied: impulseResult.applied,
+        packet,
+      };
+    }
     // QoL overhaul: As long as the player's shield is up, hull HP is 100% protected (no cheap bypass or penetration bleed-through)
     const penetration = (shieldOnly || (isPlayerTarget && (target.shield || 0) > 0)) ? 0 : clamp01(packet.penetration);
     // Shield bypass (EMP/disable verb, spec §9): a fraction of the damage couples through the
@@ -372,20 +456,41 @@ export function createDamageRouter(context, statusService, options = {}) {
     // ram-taken stamp pay at the ledger's rate. The stamp lives on the player's mutable
     // swarmMods bag (the derived descriptor is frozen); read where the general
     // reduction reads — one clamp, no second packet path.
-    const srcKind = packet && packet.source && packet.source.kind;
     const collisionFamily = (origin && origin.kind === 'collision')
       || (typeof srcKind === 'string' && (srcKind.startsWith('collision') || srcKind === 'ram_plate'));
     const ramTaken = collisionFamily && !structural
       ? clamp(Number(target.data && target.data.swarmMods && target.data.swarmMods.ramDamageTakenMult) || 1, 0, 1)
       : 1;
+    // OVH-01c3 — the Gunner dealt-side gate, folded in beside ramTaken: 1 for
+    // every non-player attack and every shielded or non-weapon hit, so a run
+    // without the node is bit-identical and NPC fire never reads it.
+    const pilotDealt = input && input.attackerId === state.playerId
+      ? pilotGunHullScale(state, target, origin)
+      : 1;
     let hullDamage = 0;
     const hullByChannel = emptyChannels(model.channelOrder);
     for (const channel of model.channelOrder) {
-      const applied = (hullInput[channel] || 0) * positiveMultiplier(model.hullMultipliers[channel]) * damageReduction * ramTaken;
+      const applied = (hullInput[channel] || 0) * positiveMultiplier(model.hullMultipliers[channel]) * damageReduction * ramTaken * pilotTaken * pilotDealt;
       hullByChannel[channel] = applied;
       hullDamage += applied;
     }
     hullDamage = Math.min(Math.max(0, target.hull || 0), hullDamage);
+    // OVH-01c3 gunner_execution — a hull already under 20 % dies to the player's
+    // next hull-reaching WEAPON hit on a combat hull. Routing the full remainder through the
+    // ordinary hullDamage write keeps the kill on the same lethal path (burst, credit);
+    // a packet that never reaches the hull cannot spend the node. Never the player's own hull
+    // (Hot Core tap, self-splash) and never a non-ship target: those are not the node's shot.
+    if (hullDamage > 0
+      && input && input.attackerId === state.playerId
+      && target.id !== state.playerId
+      && origin && origin.kind === 'weapon'
+      && (target.type === 'ship' || target.type === 'drone')
+      && pilotHas(state, 'gunner_execution')) {
+      const hullMax = Number(target.hullMax) || 0;
+      if (hullMax > 0 && (target.hull || 0) / hullMax < 0.2) {
+        hullDamage = Math.max(0, target.hull || 0);
+      }
+    }
     target.hull = Math.max(0, (target.hull || 0) - hullDamage);
     target.lastDamageT = Number.isFinite(state.simTime) ? state.simTime : (state.tick || 0) / 60;
     // PIC-31: a hull carried into the damaged band by this hit starts venting where it was
@@ -508,6 +613,10 @@ export function createDamageRouter(context, statusService, options = {}) {
       if (bus.setPayloadSnapshot) bus.setPayloadSnapshot('combat:damage', snapshotDamagePayload);
       if (input && input.wardFromId != null) {
         const hit = packet.hit;
+        // Fresh literal, not a pooled record: shield-effect subscribers legitimately retain
+        // this receipt past the emit (swarm-warden-custody collects one per shot), and the
+        // event is rare enough that pooling buys nothing. hit.pos/normal/approach are
+        // fresh-per-packet normalized children — copied out so the receipt is self-contained.
         const warded = {
           escortId: target.id,
           targetId: input.wardFromId,
@@ -532,7 +641,9 @@ export function createDamageRouter(context, statusService, options = {}) {
       dp.type = dominantChannel(packet.channels, model.channelOrder);
       dp.damageType = empHit ? 'emp' : null;
       dp.emp = empHit;
-      dp.channels = { ...packet.channels };
+      // packet.channels is already fresh-per-packet — the same object appendCombatTrace
+      // holds by reference — so the pooled record shares it rather than re-copying per emit.
+      dp.channels = packet.channels;
       dp.shieldDamage = shieldDamage;
       dp.armorDamage = armorDamage;
       dp.hullDamage = hullDamage;
@@ -546,7 +657,16 @@ export function createDamageRouter(context, statusService, options = {}) {
       dp.brokeShield = shieldBroke;
       dp.shieldAbsorbed = shieldDamage > 0;
       dp.isPlayer = target.id === state.playerId;
-      dp.pos = packet.hit && packet.hit.pos || { x: target.pos.x, z: target.pos.z };
+      // hit.pos is fresh-per-packet and shared as-is; the no-contact fallback writes the
+      // pooled scratch child instead of minting {x,z} per hit.
+      const hitPos = packet.hit && packet.hit.pos;
+      if (hitPos) dp.pos = hitPos;
+      else {
+        const sp = dp._posScratch;
+        sp.x = target.pos.x;
+        sp.z = target.pos.z;
+        dp.pos = sp;
+      }
       dp.approach = packet.hit && packet.hit.approach || null;
       dp.normal = packet.hit && packet.hit.normal || null;
       dp.factionId = target.factionId || null;
@@ -555,6 +675,11 @@ export function createDamageRouter(context, statusService, options = {}) {
       dp.subsystemId = subsystemId;
       dp.origin = origin;
       dp.weaponId = weaponId;
+      const collisionPresentation = packet && packet.source && packet.source.collisionPresentation;
+      dp.impactorId = collisionPresentation && collisionPresentation.otherId != null
+        ? collisionPresentation.otherId : null;
+      dp.impactorGeneration = collisionPresentation && collisionPresentation.otherGeneration != null
+        ? collisionPresentation.otherGeneration : null;
       try {
         bus.emit('combat:damage', dp);
       } finally {
@@ -738,14 +863,18 @@ const DIRECTIONAL_NEUTRAL = Object.freeze({ factor: 1, arc: null });
 // Per-hit 'combat:damage' record — refilled every accepted packet. Listeners consume it
 // synchronously within the emit; the deferred presentation lane snapshots top-level fields at
 // _emitCue entry. Every field must be rewritten on each use or removed; nested sub-objects
-// (channels, before, after, pos, approach, normal, origin) are never pooled.
-// Deferred presentation tails queue this pooled record past the emit — the shallow clone
-// below freezes every field they can read (nested refs are fresh-per-packet per above).
+// (channels, before, after, pos, approach, normal, origin) are fresh-per-packet or
+// externally owned — never pooled. The one exception is _posScratch, the pooled fallback
+// for hits with no contact point.
+// Deferred presentation tails queue this pooled record past the emit — the clone below
+// freezes every field they can read (nested refs are fresh-per-packet per above), with the
+// scratch child copied out so a queued tail sees this emit's pose, not the next refill's.
 function snapshotDamagePayload(p) {
-  return { ...p };
+  const pos = p.pos === p._posScratch ? { x: p.pos.x, z: p.pos.z } : p.pos;
+  return { ...p, pos };
 }
 function createDamageEmitPayload() {
-  return {
+  const payload = {
     targetId: null, attackerId: null, amount: 0, rawTotal: 0, applied: 0, type: null,
     damageType: null, emp: false, channels: null,
     shieldDamage: 0, armorDamage: 0, hullDamage: 0, subsystemDamage: 0,
@@ -755,7 +884,13 @@ function createDamageEmitPayload() {
     pos: null, approach: null, normal: null,
     factionId: null, factionLawful: false, targetHostileToPlayer: false,
     subsystemId: null, origin: null, weaponId: null,
+    impactorId: null, impactorGeneration: null,
   };
+  // Non-enumerable so the pooled scratch never shows up in listener key scans,
+  // snapshotDamagePayload spreads, or any serialized copy of the emitted record.
+  Object.defineProperty(payload, '_posScratch',
+    { value: { x: 0, z: 0 }, writable: true, enumerable: false, configurable: true });
+  return payload;
 }
 // A combat:damage listener can synchronously route another hit (volatileExposure ruptures a pod a
 // thermal hit just pushed past its threshold). One shared record let that nested emit rewrite the
@@ -892,10 +1027,13 @@ function wakeStatusAttachedLoop(state) {
 export function normalizeDamagePacket(packet = {}, channelOrder = ['kinetic', 'thermal', 'ion', 'plasma', 'phase']) {
   const channels = emptyChannels(channelOrder);
   for (const channel of channelOrder) channels[channel] = finiteNonNegative(packet.channels && packet.channels[channel]);
+  // pen + bypass > 1 would drive the shield-routed share negative: the shield gains hp and the
+  // packet delivers more than its raw total. Cap penetration so the sum stays within [0,1].
+  const shieldBypass = clamp01(Number(packet.shieldBypass) || 0);
   return {
     schemaVersion: 1,
     channels,
-    penetration: clamp01(Number(packet.penetration) || 0),
+    penetration: Math.min(clamp01(Number(packet.penetration) || 0), 1 - shieldBypass),
     impulse: normalizeImpulse(packet.impulse),
     tumbleTorque: finiteNonNegative(packet.tumbleTorque),
     heat: finiteNonNegative(packet.heat),
@@ -904,7 +1042,7 @@ export function normalizeDamagePacket(packet = {}, channelOrder = ['kinetic', 't
       .map((status) => ({ id: status.id, stacks: Math.max(1, Math.floor(status.stacks || 1)), durationTicks: integerOrUndefined(status.durationTicks) })) : [],
     hit: normalizeHit(packet.hit),
     subsystemShare: packet.subsystemShare == null ? null : clamp01(Number(packet.subsystemShare) || 0),
-    shieldBypass: clamp01(Number(packet.shieldBypass) || 0),
+    shieldBypass,
     flags: packet.flags && typeof packet.flags === 'object' ? { ...packet.flags } : {},
     source: packet.source && typeof packet.source === 'object' ? { ...packet.source } : null,
     // Present only on continuous (per-tick) packets, so every other packet keeps its shape.
@@ -1034,13 +1172,15 @@ function normalizeImpulse(impulse) {
 function normalizeHit(hit) {
   if (!hit || typeof hit !== 'object') return null;
   const out = {};
-  if (hit.pos) out.pos = { x: Number(hit.pos.x) || 0, z: Number(hit.pos.z) || 0 };
+  // A set-flag answers what Object.keys(out).length did, without the key array per hit.
+  let any = false;
+  if (hit.pos) { out.pos = { x: Number(hit.pos.x) || 0, z: Number(hit.pos.z) || 0 }; any = true; }
   const approach = normalizeHitDirection(hit.approach);
   const normal = normalizeHitDirection(hit.normal);
-  if (approach) out.approach = approach;
-  if (normal) out.normal = normal;
-  if (typeof hit.subsystemId === 'string') out.subsystemId = hit.subsystemId;
-  return Object.keys(out).length ? out : null;
+  if (approach) { out.approach = approach; any = true; }
+  if (normal) { out.normal = normal; any = true; }
+  if (typeof hit.subsystemId === 'string') { out.subsystemId = hit.subsystemId; any = true; }
+  return any ? out : null;
 }
 
 function normalizeHitDirection(value) {
@@ -1108,6 +1248,81 @@ function playerDockProtected(state, target) {
   if (!state || !target || target.id !== state.playerId) return false;
   if (target.flags && target.flags.docked) return true;
   return !!(state.ui && state.ui.docked);
+}
+
+// OVH-01c1 — the physical-contact family for the Juggernaut take-side nodes. Ordinary
+// 'collision' packets plus the run's own contact routes: room-solid slams, crusher jaws,
+// and the brood's body-slam ids. Acid pools, beams and strain blasts share the
+// 'swarm_brood' origin but are not contact damage and stay outside.
+const PILOT_BROOD_SLAM_IDS = new Set(['brood_charger', 'machine_formation', 'brood_tendril']);
+
+/**
+ * The player's collision-damage multiplier under Juggernaut picks. 1 always for non-contact
+ * packets and when the run holds neither node, so an unpicked run is bit-identical.
+ *   juggernaut_ram_plate — bow contacts (within ±60° of the nose) pay nothing below 60 %
+ *     of the governed cruise speed.
+ *   juggernaut_juggernaut — above cruise speed, collision damage taken is zero.
+ */
+function pilotCollisionTakenScale(state, player, packet, origin, srcKind) {
+  const kind = origin && origin.kind;
+  const contact = kind === 'collision' || kind === 'arena_slam' || kind === 'crusher_jaws'
+    || (typeof srcKind === 'string' && (srcKind.startsWith('collision') || srcKind === 'ram_plate'))
+    || (kind === 'swarm_brood' && PILOT_BROOD_SLAM_IDS.has(origin.id));
+  if (!contact) return 1;
+  const cruise = resolveGovernedCombatSpeed(player, state, 0);
+  if (!(cruise > 0)) return 1;
+  const speed = Math.hypot(Number(player.vel && player.vel.x) || 0, Number(player.vel && player.vel.z) || 0);
+  if (pilotHas(state, 'juggernaut_juggernaut') && speed > cruise) return 0;
+  if (pilotHas(state, 'juggernaut_ram_plate') && speed < 0.6 * cruise) {
+    // The contact's direction on the hull: the packet's approach axis first (the direction
+    // the blow travelled), then hit pos relative to the hull centre.
+    const hit = packet && packet.hit;
+    let dx = null;
+    let dz = null;
+    if (hit && hit.approach && (Number.isFinite(hit.approach.x) || Number.isFinite(hit.approach.z))) {
+      dx = Number(hit.approach.x) || 0;
+      dz = Number(hit.approach.z) || 0;
+    } else if (hit && hit.pos && player.pos) {
+      dx = (Number(hit.pos.x) || 0) - (Number(player.pos.x) || 0);
+      dz = (Number(hit.pos.z) || 0) - (Number(player.pos.z) || 0);
+    }
+    if (dx != null) {
+      const rot = Number(player.rot) || 0;
+      const fx = Math.cos(rot);
+      const fz = Math.sin(rot);
+      const along = dx * fx + dz * fz;
+      const lateral = dx * -fz + dz * fx;
+      // |lateral| <= along * tan(60°) with along > 0 ⇔ the contact lands within ±60° of the nose.
+      if (along > 0 && Math.abs(lateral) <= along * Math.tan(Math.PI / 3) + 1e-9) return 0;
+    }
+  }
+  return 1;
+}
+
+// OVH-01c3 — the Gunner dealt-side gate.
+//
+// gunner_hollow_point — "Shots tear unshielded hulls 50 % faster." Read after
+// this packet's own shield absorption, so the shot that strips the last point
+// of shield already counts the hull it exposes; a hull still holding shield
+// (penetrating channels notwithstanding) and every non-weapon origin keep the
+// authored damage. Player fire only — the caller gates on attackerId.
+function pilotGunHullScale(state, target, origin) {
+  if (!origin || origin.kind !== 'weapon') return 1;
+  const ambush = pilotAmbushScale(state);
+  if (!pilotHas(state, 'gunner_hollow_point')) return ambush;
+  if ((Number(target && target.shield) || 0) > 0) return ambush;
+  return 1.5 * ambush;
+}
+
+// ghost_ambush — the first volley out of the dark hits three times as hard. The window is the
+// cloak owner's stamp (cloak.js _onPlayerFire), read here so the damage writer stays the one
+// place hull damage is scaled.
+function pilotAmbushScale(state) {
+  const rt = state && state.massline2 && state.massline2.cloak;
+  const until = rt && rt.ambushUntil;
+  if (!Number.isFinite(until)) return 1;
+  const now = Number.isFinite(state.simTime) ? state.simTime : (state.tick || 0) / 60;
+  return now <= until && pilotHas(state, 'ghost_ambush') ? 3 : 1;
 }
 
 function clamp01(value) {

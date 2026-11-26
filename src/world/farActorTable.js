@@ -1081,14 +1081,26 @@ export function promoteFarActor(state, id, helpers, expectedIdentity = null) {
   return ent;
 }
 
+const MAX_FAR_TRAVEL_SPEED_WU = 600;
+const FAR_RADII_DECAY_WU_PER_TICK = 12;
+const MAX_FAR_SHELVE_PER_TICK = 6;
+const MAX_FAR_PROMOTE_PER_TICK = 4;
+
 function tableRadii(state, player) {
   const reach = physicsReachWuFromState(state, player);
-  const decodeR = authoredPrefetchRadius(tableTravelSpeed(state));
-  const enter = Math.max(reach + NEAR_ENTER_PAD_WU, decodeR);
-  const exit = Math.max(
+  const rawSpeed = Math.min(MAX_FAR_TRAVEL_SPEED_WU, tableTravelSpeed(state));
+  const decodeR = authoredPrefetchRadius(rawSpeed);
+  let enter = Math.max(reach + NEAR_ENTER_PAD_WU, decodeR);
+  let exit = Math.max(
     reach + NEAR_EXIT_PAD_WU,
     decodeR + (NEAR_EXIT_PAD_WU - NEAR_ENTER_PAD_WU),
   );
+  const table = state && state.world && state.world.farActors;
+  if (table && Number.isFinite(table._smoothedEnter) && table._smoothedEnter > enter) {
+    enter = Math.max(enter, table._smoothedEnter - FAR_RADII_DECAY_WU_PER_TICK);
+  }
+  exit = Math.max(exit, enter + (NEAR_EXIT_PAD_WU - NEAR_ENTER_PAD_WU));
+  if (table) table._smoothedEnter = enter;
   return { enter, exit };
 }
 
@@ -1181,6 +1193,7 @@ export function tickFarActors(state, helpers, bus, shouldRetain = null) {
     if (!shouldVirtualizeFarActor(entity, state)) continue;
     virtSeen++;
     if (dist2(entity.pos, player.pos) <= exit2) continue;
+    if (shelved >= MAX_FAR_SHELVE_PER_TICK) continue;
     const rec = insertFarActor(state, entity, simTime, helpers);
     const remove = helpers && typeof helpers.removeEntity === 'function' ? helpers.removeEntity : null;
     if (remove) remove(entity.id, { immediate: true, reason: 'virtualize' });
@@ -1231,6 +1244,7 @@ export function tickFarActors(state, helpers, bus, shouldRetain = null) {
   // Restore ALWAYS when rows may exist — query is cheap when empty; never gate this behind latch.
   const hits = queryFarActors(state, player.pos, radii.enter, tickFarActors._scratch || (tickFarActors._scratch = []));
   for (let i = 0; i < hits.length; i++) {
+    if (restored >= MAX_FAR_PROMOTE_PER_TICK) break;
     const rec = hits[i];
     if (!rec || dist2(rec.pos, player.pos) > enter2) continue;
     const recId = rec.id;

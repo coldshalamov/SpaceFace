@@ -107,6 +107,8 @@ function runChain(seed, verifyRestore = false) {
     pos: { x: hauler.pos.x, z: hauler.pos.z },
     targetHostileToPlayer: false,
   });
+  // The manifest body mints on the deferred spawn lane — drain where the step sweep would.
+  sim.helpers.drainEntitySpawnJobs();
 
   const body = state.entityList.find((entity) => (
     entity && entity.alive !== false && entity.type === 'payload'
@@ -235,6 +237,8 @@ test('only hulls that can spill a manifest body open chains; custody pods close 
         sectorId: SECTOR_ID, pos: { x: victim.pos.x, z: victim.pos.z },
         targetHostileToPlayer: false, ...extra,
       });
+      // Manifest bodies mint on the deferred spawn lane — drain where the step sweep would.
+      sim.helpers.drainEntitySpawnJobs();
     };
     const manifestFor = (manifestId, role) => ({
       manifestId, freighterKey: `${manifestId}:key`, role,

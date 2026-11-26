@@ -6,7 +6,11 @@
 //   illustratedSurface.js : Object.assign(shader.uniforms, LOOK_SURFACE_UNIFORMS)
 //   bloom.js / spaceRenderGraph.js : { ...LOOK_POST_UNIFORMS } in the composite material
 import { Vector3 } from 'three';
-import { DEFAULT_LOOK_MOOD, resolveLookMood } from '../data/lookMoods.js';
+import { DEFAULT_LOOK_MOOD, FOUNDRY_LIGHT, resolveLookMood } from '../data/lookMoods.js';
+
+export function foundryLookProfile(profile) {
+  return { ...profile, look: 'foundry', lighting: FOUNDRY_LIGHT.rig };
+}
 
 const SURFACE_SCALARS = ['albedoGamma', 'albedoSaturation', 'bandMix', 'contour', 'coat',
   'coatRoughness', 'coatEnv', 'coatSun', 'coatEdge', 'rimStrength', 'rimPower', 'rockFill', 'rockFloor', 'rockRim', 'paintCeiling', 'surfaceCeiling', 'sceneEnv'];

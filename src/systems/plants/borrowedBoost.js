@@ -70,6 +70,7 @@ export function isBumping(payload, racerId, playerId, tuning = BORROWED_BOOST_TU
 }
 
 export const borrowedBoostPlant = {
+  modes: ['flight'],
   name: 'plants296',
 
   init(ctx) {

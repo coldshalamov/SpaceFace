@@ -1,3 +1,9 @@
+<!-- HISTORY-2026-11-20 -->
+> **History, not instructions (2026-11-20).** This file no longer assigns, orders or blocks any work.
+> States such as READY, TAKEN, HOLD, PARKED and NEEDS-PACKET mean nothing now. Read it for facts
+> about what was built or planned. The rule and the live board are in the root `AGENTS.md` and
+> `design/overhaul/12_PIPELINE.md`.
+
 # The playbook — how SpaceFace gets finished
 
 Owner, 2026-11-10: "a beautiful, performant, fun and intuitive game with the tools we have … make sure
@@ -23,11 +29,13 @@ to do next. If you are an agent resuming this: read this page, then `QUEUE.md`, 
    Swarm boot → deterministic replay). Red gate: fix or revert the batch before anything else lands.
 5. **Publish.** `git fetch`, merge (never rebase/reset), `npm run gate -- --quick`, push.
 
-**The two rules that stop regressions** (the owner's "it breaks and regresses constantly"):
-- **Nothing lands that has not booted.** The gate, not a unit test, is the bar.
+**Integration rules**
+- Run the stability gate and exercise the affected outcome on the integrated build. Use focused
+  checks to protect system behavior and the public route to verify that players receive it.
 - **No half-finished work lives in the shared folder.** Uncommitted work from a stopped agent breaks
-  everyone's boot and replay. A lead who finds it preserves it on a `parked/<name>` branch (byte-for-
-  byte, pushed), clears it from the folder, and queues a `PARK-` packet to land it properly.
+  everyone's boot and replay. A lead who finds it finishes it and lands it (or, only if it is wrong,
+  removes it and says why). Never park finished work on a branch, a patch file or a HOLD row for a
+  later agent — that is how built fixes sat unused for weeks (owner, 2026-11-19: no holds).
 
 ## 1b. Machine safety (owner, 2026-11-11)
 
@@ -136,3 +144,9 @@ run continuously on Flash.
 Any Devin pane can run the loop on `D` and `S` rows by itself (see `README.md`). Without a lead, do not
 take `L` rows, and do not mark anything `DONE` — leave it `BUILT` for the next lead. Run `npm run gate`
 before any push; if red, stop and leave a note at the top of `QUEUE.md`.
+
+## 5. Whole-game production workflows
+
+The scope, production workflows, and acceptance checklist live in the
+[whole-game completion program](../../../build_map.md#whole-game-completion-program).
+Use the fleet queue for current assignments.

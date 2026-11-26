@@ -61,6 +61,7 @@ export function isContainerClear(containerPos, beaconPos, clearRangeWu) {
 }
 
 export const stalledStringPlant = {
+  modes: ['flight'],
   name: 'plants220',
 
   init(ctx) {

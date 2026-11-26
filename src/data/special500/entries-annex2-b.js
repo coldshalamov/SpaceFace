@@ -575,7 +575,7 @@ export const ENTRIES_ANNEX2_B = [
     channel: 'commsLog',
     payload: {
       from: 'Lane surfers',
-      text: 'The old riders pay the massline a tithe — one degree of burn, burned deliberately off the line, owed to the wave for carrying you. It buys nothing; it is just manners. But the riders insist the line runs colder for the ones who skip it. Nobody has checked. Nobody will.',
+      text: 'The old riders pay the line a tithe — one degree of burn, burned deliberately off the line, owed to the wave for carrying you. It buys nothing; it is just manners. But the riders insist the line runs colder for the ones who skip it. Nobody has checked. Nobody will.',
     },
   },
 

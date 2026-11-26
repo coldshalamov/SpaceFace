@@ -141,10 +141,12 @@ summary = summarizeAutomationOperations(overCapState);
 assert(Math.round(summary.capOveragePerMin) > 0, 'summary should expose over-cap production separately from headroom');
 const capLoad = describeAutomationCapLoad(summary);
 assert.equal(capLoad.state, 'over-cap', 'over-cap automation should get a distinct cap load state');
-assert.match(capLoad.detail, /over cap; overflow dropped/, 'cap load detail should explain that hard-cap overflow is dropped');
+// the cap consequence is now split by what is lost: worker excess goes unpaid, facility output is
+// retained (this fixture is drones-only, so the payout is the loss)
+assert.match(capLoad.detail, /over cap; excess payout unpaid/, 'cap load detail should name the hard-cap consequence');
 next = automationNextAction(overCapState);
 assert.equal(next.title, 'Raise automation ceiling', 'over-cap automation should recommend cap progression before more assets');
-assert.match(next.body, /overflow is dropped/i, 'over-cap recommendation should explain lost passive output');
+assert.match(next.body, /excess payout unpaid/i, 'over-cap recommendation should explain lost passive output');
 assert.match(next.meta, /over cap/, 'over-cap recommendation meta should name the overage');
 
 const traderReadyState = {
@@ -232,7 +234,9 @@ assert.match(src, /data-act="\$\{escapeHtml\(action\)\}"/, 'operations board CTA
 assert.match(src, /data-kind="\$\{escapeHtml\(next\.kind\)\}"/, 'direct automation CTA should carry the intent kind when needed');
 assert.match(src, /summarizeAutomationOperations/, 'automation panel should expose a pure summary helper for tests');
 assert.match(src, /describeAutomationCapLoad/, 'automation panel should centralize passive-cap load copy');
-assert.match(src, /overflow dropped/, 'over-cap UI should explain the hard cap consequence');
+// the panel names the cap consequence by what is lost (worker excess unpaid / facility retained),
+// not the old blanket "overflow dropped"
+assert.match(src, /excess payout unpaid/, 'over-cap UI should explain the hard cap consequence');
 assert.match(src, /describeAutomationPurchase/, 'automation panel should centralize purchase guidance');
 assert.match(src, /aria-label="\$\{escapeHtml\(purchase\.title\)\}"/, 'automation purchase buttons should expose guidance to assistive tech');
 assert.match(src, /route heat/, 'trader cards should surface route heat management');

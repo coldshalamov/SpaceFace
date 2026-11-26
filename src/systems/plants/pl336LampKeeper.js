@@ -58,6 +58,7 @@ export function lampShouldLight(helpedDays, hullKey, day, distWu, tuning = LAMP_
 }
 
 export const pl336LampKeeper = {
+  modes: ['flight'],
   name: 'plantsPl336',
 
   init(ctx) {

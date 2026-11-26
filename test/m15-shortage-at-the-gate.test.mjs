@@ -9,6 +9,7 @@ import { cargo, addCargo, removeCargo } from '../src/systems/cargo.js';
 import { isShortageGateRepair } from '../src/data/economyContractTemplates.js';
 import { SECTORS } from '../src/data/sectors.js';
 import { missionDossierSummary } from '../src/ui/station/screens/contracts.js';
+import { economyLiveEvents, marketContextFor, marketMidAt } from '../src/economy/marketModel.js';
 
 const PART = 'cmdty_comp_hullplate';
 const DEST = 'station_forge';
@@ -50,7 +51,10 @@ function dock(h, stationId) {
 function shortage(h, over = {}) {
   const market = h.econ.ensureMarket(DEST);
   h.econ.applyStockPressure(DEST, PART, 'buy', market[PART].stock - 1);
-  return h.econ.injectEvent({ type: 'shortage', stationId: DEST, commodityId: PART, duration: 900, ...over });
+  // The buy dent above already models the dry counter; the event supplies the
+  // price/news signal — skipStartDent keeps the shortage from stripping twice.
+  return h.econ.injectEvent({ type: 'shortage', stationId: DEST, commodityId: PART,
+    duration: 900, skipStartDent: true, ...over });
 }
 
 function offer(h) {
@@ -104,9 +108,9 @@ test('M15 seed 4242: a posted industrial shortage boards an offer, exposes prere
     assert.equal(row.preloadedCargo, false);
     assert.equal(row.collateral_cr, 0);
     assert.match(row.brief, /Ceres Refinery.*salvage-capable beam/);
-    assert.match(row.brief, /claimed.*2.8u cargo room.*permission to dock/);
+    assert.match(row.brief, /claimed.*2\.8 units of cargo room.*permission to dock/);
     assert.match(row.brief, /public gate route stays open.*Decline.*abort/i);
-    assert.match(missionDossierSummary(row), /salvage-capable beam.*Helios Station's outfitter.*2.8u cargo room/,
+    assert.match(missionDossierSummary(row), /salvage-capable beam.*Helios Station's outfitter.*2\.8 units of cargo room/,
       'the actual pre-accept dossier projection exposes both acquisition routes and their prerequisites');
     dock(h, SUPPLIER); // leave the offer without accepting or moving cargo
     assert.equal(h.state.player.credits, credits);
@@ -130,7 +134,11 @@ test('M15 seed 4242: buying the component restores real stock, pays once, and th
     buy(h);
     assert.ok(h.state.player.credits < startCredits, 'the replacement has an actual acquisition cost');
     const beforePay = h.state.player.credits;
-    const beforePrice = h.state.economy.markets[DEST][PART].lastBuy;
+    // The shortage-era ask: the closed form evaluated while the shortage is live
+    // (the drained shelf gates a real quote, so read the pure mid).
+    const beforePrice = marketMidAt(
+      marketContextFor(h.state, DEST, PART, h.state.economy.markets[DEST][PART]),
+      h.state.simTime);
     dock(h, DEST);
     assert.equal(h.state.player.credits, beforePay + mission.reward_cr);
     assert.equal(h.state.player.cargo.items[PART] || 0, 0);
@@ -144,12 +152,18 @@ test('M15 seed 4242: buying the component restores real stock, pays once, and th
       h.state.simTime += 5;
       h.econ.econTick(5, h.state);
     }
-    assert.ok(h.state.economy.markets[DEST][PART].lastBuy < beforePrice,
-      'the normal economy tick applies the finite correction to the real listing');
+    const corrected = marketMidAt(
+      marketContextFor(h.state, DEST, PART, h.state.economy.markets[DEST][PART]),
+      h.state.simTime);
+    assert.ok(corrected < beforePrice,
+      'the finite correction drops the post-shortage ask on the real listing');
     h.state.simTime += 5;
     h.econ.ageEvents(h.state);
-    assert.equal(h.state.economy.econEvents.some((e) => e.id === correction.id), false);
-    assert.equal(h.state.economy.markets[DEST][PART].eventMods.some((m) => m.eventId === correction.id), false);
+    // Closed-form rule: dead rows linger for aftermath readability — expiry means
+    // the window closed and the event left the live set, not deletion.
+    const dead = h.state.economy.econEvents.find((e) => e.id === correction.id);
+    assert.ok(!dead || dead.tEnd <= h.state.simTime, 'the correction window has closed');
+    assert.equal(economyLiveEvents(h.state).some((e) => e.id === correction.id), false);
   } finally { h.sim.dispose(); }
 });
 
@@ -235,7 +249,9 @@ test('M15 seed 4242: repair before acceptance or an already stocked counter reti
   try {
     shortage(h);
     const row = offer(h);
-    h.state.economy.markets[DEST][PART].stock = 50;
+    // Model "the counter already restocked" through the honest writer — a sell dent,
+    // not a poke at the derived stock mirror.
+    h.econ.applyStockPressure(DEST, PART, 'sell', 49);
     const credits = h.state.player.credits;
     h.bus.emit('ui:acceptMission', { missionId: row.id });
     assert.equal(h.state.missions.active.length, 0);

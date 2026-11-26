@@ -147,13 +147,13 @@ test('star math: clear+no death is two stars, the chain target buys the third', 
   assert.ok(swarmZoneChainTarget(3) > swarmZoneChainTarget(0));
 });
 
-test('checkpoints: zone index to start wave, purse sized to a real mid-build', () => {
+test('checkpoints: zone index to start wave, and no purse (every run starts at zero)', () => {
   assert.equal(swarmCheckpointStartWave(0), 1);
   assert.equal(swarmCheckpointStartWave(1), 11);
   assert.equal(swarmCheckpointStartWave(2), 21);
   assert.equal(swarmCheckpointPurseFor(0), 0);
-  assert.ok(swarmCheckpointPurseFor(1) > 0);
-  assert.ok(swarmCheckpointPurseFor(2) > swarmCheckpointPurseFor(1));
+  assert.equal(swarmCheckpointPurseFor(1), 0, 'Director 2026-11-20: checkpoint starts also begin at 0 Scrap (every run starts at zero).');
+  assert.equal(swarmCheckpointPurseFor(2), 0);
 });
 
 test('zones cleared counts a zone only when its boss wave fell inside the clear span', () => {
@@ -444,9 +444,7 @@ test('the door, end to end: a checkpoint pick enters Round 11 with the purse alr
 
   const awards = h.emitted.filter((e) => e.event === 'run:awardRequested');
   const checkpointAward = awards.find((a) => a.payload.reason === 'swarm:checkpoint:w11');
-  assert.ok(checkpointAward, 'the checkpoint purse lands through the wallet seam');
-  assert.equal(checkpointAward.payload.credits, swarmCheckpointPurseFor(1));
-  assert.ok(checkpointAward.payload.credits > 0, 'a mid-build needs real money, not a round-one wallet');
+  assert.equal(checkpointAward, undefined, 'Director 2026-11-20: checkpoint starts also begin at 0 Scrap (every run starts at zero).');
 
   // A fresh ladder run (Round 1) asks for no checkpoint purse.
   resetMeta();

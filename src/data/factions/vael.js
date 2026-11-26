@@ -43,7 +43,7 @@ export const VAEL_LIEN = Object.freeze({
   payoffPerTonne: 40,         // credits per clamped tonne to settle the addendum
   cutLooseRepLoss: -12,       // cutting the clamp free is legal, and they remember it
   transferLogTemplate: 'LIEN TRANSFERRED: {name} NOW OWES THE VAEL.',
-  clampLine: 'Voluntary. Standard terms.',
+  clampLine: "Nobody's forcing you. Terms are standard.",
   telegraphLine: 'Page nine.',
   payoffLine: 'Addendum settled. The Vael invoice your punctuality.',
 });
@@ -70,7 +70,7 @@ export const VAEL_HULL_SCRIPT = Object.freeze({
 });
 
 export const VAEL_BARKS = Object.freeze({
-  terms: 'Voluntary. Standard terms.',
+  terms: "Nobody's forcing you. Terms are standard.",
   pageNine: 'Page nine.',
   reach: 'The addendum reaches farther than the job does.',
   transferred: 'The debt found a new name. Paperwork follows.',

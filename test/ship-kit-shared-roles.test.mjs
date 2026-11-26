@@ -4,6 +4,10 @@ import test from 'node:test';
 import { resolve as resolveLibraryMaterial, _resetForTest } from '../src/render/materialLibrary.js';
 import { SHARED_MATERIAL_ROLE } from '../src/render/sharedMaterialRoles.js';
 import { buildKestrelHero } from '../src/render/ships/kestrelHero.js';
+import { buildMeridianTrader } from '../src/render/ships/meridianTrader.js';
+import { buildDriftBarge } from '../src/render/ships/driftBarge.js';
+import { buildReaverPirate } from '../src/render/ships/reaverPirate.js';
+import { buildVaelSniper } from '../src/render/ships/vaelSniper.js';
 import { machineryMaterial, pbrHullMaterial, standardMaterial } from '../src/render/ships/shipKit.js';
 import { ILLUSTRATED_SURFACE_KEY } from '../src/render/illustratedSurface.js';
 
@@ -142,4 +146,64 @@ test('procedural faction hulls inherit the illustrated surface light language', 
       && entry.material.transparent !== true);
   assert.equal(heroHull.material.userData.spacefaceIllustratedSurface, ILLUSTRATED_SURFACE_KEY,
     'the Kestrel hero hull must join the illustrated surface family too');
+});
+
+test('Meridian cargo cap and nav lights follow their own damage roles', () => {
+  const root = buildMeridianTrader({ radius: 16 });
+  const cargo = root.getObjectByName('Meridian_Container_P1');
+  const cap = root.getObjectByName('Meridian_Container_Cap_P1');
+  const left = root.getObjectByName('Meridian_NavLight_Port');
+  const right = root.getObjectByName('Meridian_NavLight_Starboard');
+  assert.equal(cap.parent, cargo);
+  assert.notEqual(left.material, right.material);
+  assert.notEqual(left.material, cap.material);
+  const accentIntensity = cap.material.emissiveIntensity;
+  root.userData.updateDamageState({ hull: 10, hullMax: 100 }, 1);
+  assert.equal(cargo.visible, false);
+  assert.equal(cap.material.emissiveIntensity, accentIntensity);
+  root.userData.updateDamageState({ hull: 100, hullMax: 100 }, 2);
+  assert.equal(cargo.visible, true);
+});
+
+test('Drift deck grime sits above the cargo deck', () => {
+  const root = buildDriftBarge({ radius: 16 });
+  const stain = root.getObjectByName('Drift_Ore_Stain');
+  assert.ok(stain, 'ore stain remains a separate decal');
+  assert.ok(stain.position.y > 1.7 + 0.4 / 2, 'the decal is above the top of the deck plate');
+});
+
+test('Vael hull stations progress from aft to nose without folding back', () => {
+  const root = buildVaelSniper({ radius: 16 });
+  const positions = root.getObjectByName('Vael_Pressure_Hull').geometry.getAttribute('position');
+  const stations = Array.from({ length: 6 }, (_, i) => positions.getX(i * 6));
+  assert.ok(stations.every((x, i) => i === 0 || x > stations[i - 1]), `stations: ${stations}`);
+});
+
+test('Reaver damage changes its nav light without dimming drive accents', () => {
+  const root = buildReaverPirate({ radius: 16 });
+  const nav = root.getObjectByName('Reaver_Nav_Strobe');
+  let accent;
+  root.traverse((part) => { if (part.material?.name === 'Reaver_TagGlow') accent = part.material; });
+  assert.ok(accent);
+  assert.notEqual(nav.material, accent);
+  const intensity = accent.emissiveIntensity;
+  root.userData.updateDamageState({ hull: 30, hullMax: 100 }, 1);
+  assert.equal(accent.emissiveIntensity, intensity);
+  assert.ok(nav.material.emissiveIntensity < intensity);
+});
+
+test('Kestrel tier-three plume follows speed and the pod sheds as one assembly', () => {
+  const root = buildKestrelHero({ radius: 14, data: { visualTier: 3 } });
+  const plume = root.getObjectByName('Kestrel_Drive_Glow');
+  const pod = root.getObjectByName('Kestrel_Utility_Pod_Starboard');
+  const band = root.getObjectByName('Kestrel_Utility_Pod_Band');
+  assert.equal(pod.parent, band.parent);
+  root.userData.updateDriveState({ vel: { x: 0, z: 0 } });
+  assert.equal(plume.material.opacity, 0);
+  root.userData.updateDriveState({ vel: { x: 135, z: 0 } });
+  assert.equal(plume.material.opacity, 0.74);
+  root.userData.updateDamageState({ hull: 10, hullMax: 100 }, 1);
+  assert.equal(pod.parent.visible, false);
+  root.userData.updateDamageState({ hull: 100, hullMax: 100 }, 2);
+  assert.equal(pod.parent.visible, true);
 });

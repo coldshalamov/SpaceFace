@@ -30,6 +30,31 @@ const HYSTERESIS_PX = 25;
 // Applies only when the caller passes a clock; the first resolve commits at once.
 export const LOD_DWELL_S = 1.5;
 
+// Whole-ship separate-file bands, in projected bounding-sphere DIAMETER css px. These are not the
+// prop bands above: whole-ship families swap a live GLB, so the numbers are sized against the
+// measured top-down distribution — ordinary fighters project ~390-600 px at the default camera
+// and ~180-220 px at the manual zoom-out limit (the legacy 96/32 bands sat below every hull and
+// demotion could never engage). Demote boundaries sit just above the zoomed-out fighter band so
+// a crowd surveyed from afar drops a tier while the default camera never crosses one. LOD1 keeps
+// silhouette and materials, so under ~240 px (~27% of a 900 px-high viewport) the sibling swap is
+// sub-perceptible; under ~110 px the bare hull is the same speck either way — a size ships only
+// reach while riding speed zoom. Promote boundaries must clear the measured px jitter: a surveyed
+// crowd swings ~173-345 px under zoom + speed + orbit, and a promote edge inside that envelope
+// republishes lod0 on a single spike frame, which kills every in-flight demotion before its paced
+// sibling can commit. 400 px keeps jitter in the dead band; a ship parked inside a dead band holds
+// its presented tier instead of oscillating.
+export const SHIP_LOD_THRESHOLDS = Object.freeze({
+  LOD1_BELOW: 240,   // lod0 -> lod1 under this projected diameter
+  LOD0_ABOVE: 400,   // lod1/lod2 -> lod0 above it
+  LOD2_BELOW: 110,   // -> lod2 under it
+  LOD2_ABOVE: 190,   // lod2 -> lod1 above it
+});
+
+// Ship-specific dwell: a demotion must hold its new band ~0.5 s before the swap is presented.
+// Promotions to lod0 skip it deliberately — a ship coming close gets its detail back at once and
+// the controller still only commits after the resident root is ready.
+export const SHIP_LOD_DWELL_S = 0.5;
+
 // The band is also at least this fraction of the threshold, so a 45 px boundary gets a real band and
 // screen-size noise (a camera breathing its zoom, a hull turning edge-on) cannot cross it.
 const HYSTERESIS_RATIO = 0.2;
@@ -67,6 +92,22 @@ export function projectedShipDiameterPx(pos, radius, camera, viewport) {
   return r * height * Math.max(vertical, horizontal) / (depth * (depth - r));
 }
 
+// The sphere the ship tier selector projects. The bands above are written in on-screen pixels of
+// the hull ("under ~240 px the sibling swap is sub-perceptible; under ~110 px the bare hull is the
+// same speck"), but the selector used to be fed the ship's cull envelope, or twice its radius,
+// whichever was larger. Measured in the Foundry at fight distance (2026-11-22, referee census, the
+// drawn meshes' boxes projected through the live camera): a wasp 53 x 27 px on screen was reported
+// as 159 px and held its 21-draw, 9,900-triangle body; bastions 208-241 px across were reported as
+// 505-571 px. The reading was 2.4 to 3 times the hull, so no band engaged where its own reasoning
+// said it should. The selector is now fed the hull: its radius times this overhang. With 1.6 the
+// reading is still on the generous side (after: wasps about 50 px long read 106-127 px; the drawn
+// box a bastion fills is about 1.6 times its collision diameter). ?rfx=-shipTier restores the old feed.
+export const SHIP_LOD_HULL_OVERHANG = 1.6;
+export function shipLodSphereRadius(entityRadius, fallbackRadius) {
+  const r = Number(entityRadius);
+  return r > 0 ? r * SHIP_LOD_HULL_OVERHANG : Number(fallbackRadius) || 0;
+}
+
 // Kept on the stable boundary rather than individual sibling roots.
 export function createShipLodState(initialLevel = 'lod0') {
   let level = initialLevel === 'lod1' || initialLevel === 'lod2' ? initialLevel : 'lod0';
@@ -77,14 +118,21 @@ export function createShipLodState(initialLevel = 'lod0') {
     resolve(px, nowS, protectedBody = false) {
       if (protectedBody || !Number.isFinite(px)) { level = 'lod0'; pending = null; return level; }
       let next = level;
-      if (level === 'lod0' && px < 96) next = px < 32 ? 'lod2' : 'lod1';
-      else if (level === 'lod1') next = px > 128 ? 'lod0' : px < 32 ? 'lod2' : level;
-      else if (level === 'lod2') next = px > 128 ? 'lod0' : px > 56 ? 'lod1' : level;
+      if (level === 'lod0') {
+        if (px < SHIP_LOD_THRESHOLDS.LOD2_BELOW) next = 'lod2';
+        else if (px < SHIP_LOD_THRESHOLDS.LOD1_BELOW) next = 'lod1';
+      } else if (level === 'lod1') {
+        if (px > SHIP_LOD_THRESHOLDS.LOD0_ABOVE) next = 'lod0';
+        else if (px < SHIP_LOD_THRESHOLDS.LOD2_BELOW) next = 'lod2';
+      } else { // lod2
+        if (px > SHIP_LOD_THRESHOLDS.LOD0_ABOVE) next = 'lod0';
+        else if (px > SHIP_LOD_THRESHOLDS.LOD2_ABOVE) next = 'lod1';
+      }
       if (next === level) { pending = null; return level; }
       // Close promotions are urgent; distant changes dwell and are rate limited.
       if (next === 'lod0') { level = next; pending = null; return level; }
       if (pending !== next) { pending = next; since = nowS; return level; }
-      if (!Number.isFinite(nowS) || nowS - since < LOD_DWELL_S) return level;
+      if (!Number.isFinite(nowS) || nowS - since < SHIP_LOD_DWELL_S) return level;
       while (swaps.length && nowS - swaps[0] >= LOD_SWAP_WINDOW_S) swaps.shift();
       if (swaps.length >= LOD_SWAP_CAP) return level;
       swaps.push(nowS); level = next; pending = null; return level;

@@ -490,6 +490,45 @@ export function warmAsteroidInstanceVariants(pool, resources, requiredByVariant)
 }
 
 /**
+ * Adoptable-leaf census feeding warmAsteroidInstanceKeys: walk each root for its body leaf
+ * (root.userData.asteroidInstanceBody) and stamped detail children — the same leaves
+ * registerAsteroidBaseLeaf would adopt — and return one warm resource per unique
+ * (geometry, material) pair. Prepared authored roots and held live builds carry decoded
+ * asteroid leaves outside asteroidPoolWarmResources' procedural table; pre-publishing a
+ * chunk per pair keeps the first live registration from minting an instanced program
+ * inside the fight (the +28 s keyed-bucket link).
+ */
+export function collectAsteroidInstancePoolLeafResources(roots) {
+  const resources = [];
+  const seen = new Set();
+  const push = (leaf) => {
+    const geometry = leaf && leaf.geometry;
+    const material = leaf && leaf.material;
+    // Mirrors adoptPoolLeaf's poolable gate: no multi-material or transparent leaves.
+    if (!geometry || !material || Array.isArray(material) || material.transparent) return;
+    const key = `${geometry.uuid}|${material.uuid}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    resources.push({
+      key, geometry, material,
+      castShadow: leaf.castShadow,
+      receiveShadow: leaf.receiveShadow,
+    });
+  };
+  for (const root of Array.isArray(roots) ? roots : [roots]) {
+    if (!root) continue;
+    push(root.userData && root.userData.asteroidInstanceBody);
+    if (typeof root.traverse === 'function') {
+      root.traverse((child) => {
+        const ud = child && child.userData;
+        if (ud && ud.asteroidInstanceDetail === true) push(child);
+      });
+    }
+  }
+  return resources;
+}
+
+/**
  * Keyed-bucket counterpart of warmAsteroidInstanceVariants: publish one InstancedMesh per
  * shared (geometry, material) pair a non-common body or stamped detail child can register
  * with — valuable-ore bodies, optic cell skins, veins, crystal shards and prism inclusions —

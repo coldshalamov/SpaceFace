@@ -6,6 +6,7 @@
 // adapter or a live effect), and bodies those generators produce in play (environmentMaterials
 // crystal-fracture shards). The only hand-placed entities are the player ship, the
 // tool/effect entities a case deploys, and one deployed vector mine — per the packet contract.
+import { rockKickSpeed } from '../src/data/gunFamilies.js';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
@@ -249,12 +250,15 @@ test('crucible route: cone, repulsor, and well move generated debris the authore
     const cdir = unitTo(player.pos, nearest.pos);
     const coneStart = { x: nearest.pos.x, z: nearest.pos.z };
     const coneDrift = (nearest.vel?.x || 0) * cdir.x + (nearest.vel?.z || 0) * cdir.z;
+    // R17 / 03 §4: the first press scoops, the second fires the pack along the nose.
     state.input.actions.toggleClearingCone = true;
-    for (let i = 0; i < 90; i++) sim.step(DT);
+    for (let i = 0; i < 45; i++) sim.step(DT);
+    state.input.actions.toggleClearingCone = true; // the launch press — real edge, real teardown
+    for (let i = 0; i < 45; i++) sim.step(DT);
     const coneDisp = (nearest.pos.x - coneStart.x) * cdir.x + (nearest.pos.z - coneStart.z) * cdir.z - coneDrift * 90 * DT;
     assert.ok(coneDisp >= nearest.radius,
-      `cone displaces the nearest generated rock by at least its radius (got ${coneDisp.toFixed(2)} of ${nearest.radius.toFixed(2)})`);
-    state.input.actions.toggleClearingCone = true; // toggle back off — real edge, real teardown
+      `the Plow's launch drives the nearest generated rock out by at least its radius (got ${coneDisp.toFixed(2)} of ${nearest.radius.toFixed(2)})`);
+    assert.equal(state.fields.coneActive, false, 'the launch press closes the Plow');
     sim.step(DT);
 
     // Repulsor — dropped at the ship inside a generated cluster: every covered rock gets a
@@ -384,7 +388,9 @@ test('crucible route: a concussion round out-throws a pulse round on comparable 
     const pulse = WEAPONS.find(w => w.id === 'wpn_pulse_laser_s');
     const concussion = WEAPONS.find(w => w.id === 'wpn_concussion_cannon_m');
     const expectedPulse = pulse.impulsePerHit / resolvePhysicsBodySpec(best.a).mass;
-    const expectedConc = concussion.environmentImpulsePerHit / resolvePhysicsBodySpec(best.b).mass;
+    // Ruling 2026-11-20: a kick gun pushes a rock by its size class (rockKickSpeed), not by a fixed
+    // momentum — "free to blast at asteroids to knock them into enemies".
+    const expectedConc = rockKickSpeed(concussion, Number(best.b.radius));
     assert.ok(Math.abs(dvPulse - expectedPulse) < Math.max(1e-5, expectedPulse * 0.3),
       `the generated rock receives pulse momentum / mass (${dvPulse} versus ${expectedPulse})`);
     assert.ok(Math.abs(dvConc - expectedConc) < Math.max(1e-5, expectedConc * 0.3),

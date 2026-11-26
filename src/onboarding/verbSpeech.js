@@ -11,7 +11,7 @@
 // Pure data + resolvers. No DOM, no Three.js, no wall clock — device and bindings are read
 // from the live state/binding maps so a rebind re-speaks nothing yet is never stale.
 
-import { resolveActionLabel } from '../systems/input.js';
+import { MOUSE_ACTION_LABELS, resolveActionLabel } from '../systems/input.js';
 import {
   GAMEPAD_VERB_ALIASES,
   gamepadButtonLabels,
@@ -134,11 +134,11 @@ export function shelfHostileChargeReady(state, isHostile) {
  *   gamepad → gamepadButtonLabels over the resolved (possibly remapped) pad map, with
  *             GAMEPAD_VERB_ALIASES so keyboard-verb names reach their pad route
  *             (tether→massline, reel→lineControl). A verb with no pad route falls back
- *             to the keyboard label rather than print nothing at a pad player.
+ *             to the keyboard label unless the caller supplies a device-specific gesture.
  *   touch   → '' — the overlay only ships fire/mine/boost buttons; naming a key a
  *             touch player cannot press is the same lie as naming a dead binding.
  */
-export function verbBindingLabel(state, action, device) {
+export function verbBindingLabel(state, action, device, { keyboardFallback = true } = {}) {
   const dev = device || state?.input?.promptDevice || getPromptDevice();
   if (dev === 'touch') return '';
   if (dev === 'gamepad') {
@@ -146,8 +146,26 @@ export function verbBindingLabel(state, action, device) {
     const map = resolveGamepadBindings(state && state.settings);
     const labels = gamepadButtonLabels(padAction, map, { glyphSet: gamepadGlyphSetFor(state) });
     if (labels.length && labels[0]) return labels[0];
+    if (!keyboardFallback) return '';
   }
   return resolveActionLabel(state, action);
+}
+
+/**
+ * The Line's taught key: keyboard and mouse together on kbm ('F / RMB', or a rebound
+ * 'Q / RMB'), the pad glyph on a gamepad, nothing on touch. Help, the loading card, the
+ * opening line and the tracker all name this same form so one verb never wears two labels.
+ */
+export function taughtLatchKey(state, device) {
+  const dev = device || state?.input?.promptDevice || getPromptDevice();
+  if (dev === 'touch') return '';
+  if (dev === 'gamepad') {
+    return verbBindingLabel(state, 'tether', 'gamepad', { keyboardFallback: false }) || '';
+  }
+  const kb = resolveActionLabel(state, 'tether') || '';
+  const mouse = MOUSE_ACTION_LABELS.tether;
+  if (kb && mouse && kb !== mouse) return `${kb} / ${mouse}`;
+  return kb || mouse || '';
 }
 
 /** settings.controls.gamepad.glyphSet — 'xb' | 'ds' | 'fh'; 'xb' when unset. */

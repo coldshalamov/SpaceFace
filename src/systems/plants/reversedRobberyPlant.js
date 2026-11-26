@@ -75,6 +75,7 @@ export function gateAt(candidates, pos, radiusWu, tuning = REVERSED_ROBBERY_TUNI
 }
 
 export const reversedRobberyPlant = {
+  modes: ['swarm'],
   name: 'plants188',
 
   init(ctx) {

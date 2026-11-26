@@ -176,7 +176,9 @@ test('detonator_run telegraphs a fuse, then commits to one straight run', () => 
   assert.equal(r.phase, 'fuse_cue');
 
   // After the cue: committed terminal approach — nose on target, still no action id.
-  r = runtime.update({ tick: 34, entityId: 2, doctrineId: CombatDoctrineId.DETONATOR_RUN, perception: dartPerception(90), directive });
+  // CW-TELLS: the fuse beat is the doctrine's tell clock (now the 0.6 s floor), so the commit
+  // boundary is the cue tick plus the floor.
+  r = runtime.update({ tick: 2 + DOCTRINE_TELEGRAPH_TICKS, entityId: 2, doctrineId: CombatDoctrineId.DETONATOR_RUN, perception: dartPerception(90), directive });
   assert.equal(r.phase, 'commit');
   assert.equal(r.allowedActionId, null);
   assert.equal(r.maneuverKind, ManeuverKind.INTERCEPT);
@@ -189,10 +191,11 @@ test('a missed run egresses, reforms, and re-announces the next pass', () => {
   // Commit, then fly PAST the target: heading +x with the target now astern (x decreasing).
   runtime.update({ tick: 0, entityId: 2, doctrineId: CombatDoctrineId.DETONATOR_RUN, perception: dartPerception(800), directive });
   runtime.update({ tick: 2, entityId: 2, doctrineId: CombatDoctrineId.DETONATOR_RUN, perception: dartPerception(220), directive });
-  runtime.update({ tick: 34, entityId: 2, doctrineId: CombatDoctrineId.DETONATOR_RUN, perception: dartPerception(90), directive });
+  runtime.update({ tick: 2 + DOCTRINE_TELEGRAPH_TICKS, entityId: 2, doctrineId: CombatDoctrineId.DETONATOR_RUN, perception: dartPerception(90), directive });
   // Overshot: target behind the dart's heading and distance growing again after a close pass.
-  // Commit began ~tick 32 (fuse at tick 2 + 30-tick cue); at tick 44 the run has passed but the
-  // 20-tick commit minimum still holds it on target — the dart commits to its own miss.
+  // Commit began at the fuse tick + the tell floor (2 + DOCTRINE_TELEGRAPH_TICKS); at tick 44 the
+  // run has passed but the 20-tick commit minimum still holds it on target — the dart commits
+  // to its own miss.
   let r = runtime.update({
     tick: 44, entityId: 2, doctrineId: CombatDoctrineId.DETONATOR_RUN,
     perception: dartPerception(-160, 0, { vx: 150, vz: 0 }),

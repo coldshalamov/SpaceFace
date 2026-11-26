@@ -8,6 +8,11 @@
 //   enemyId     — the SWARM_ROSTER id the wave owner fields
 //   debutWave   — the wave it first appears (must match the roster clock)
 //   tier        — 'fodder' | 'light' | 'medium' | 'heavy'; heavy ⇒ mass >= HEAVY_AS_TERRAIN_MASS
+//                 (the materialisation/protection band: hull-only fodder, shield supports)
+//   dodgeTier   — the thrown-body table from design/overhaul/03_COMBAT.md §9. It is deliberately
+//                 its own field: the sheet's materialisation band and the combat tier disagree on
+//                 five authored hulls (Corsair/Reaver light, Zealot/Lancer/Anchor medium), and
+//                 changing `tier` would also move mass, protection, and the fodder feel profile.
 //   silhouette  — the shape key Lane S maps to geometry; two ships may share a silhouette key
 //                 only if their hue differs (the sheet test pins hue+silhouette uniqueness)
 //   scale       — draw-scale multiplier (collision radius is authoritative and never moves)
@@ -28,7 +33,7 @@ export const SWARM_PROTECTION_LAYERS = Object.freeze(['hull', 'armor', 'shield']
 
 export const SWARM_CHARACTER_SHEET = Object.freeze([
   Object.freeze({
-    enemyId: 'wasp_swarmer', name: 'Wasp Swarmer', debutWave: 1, tier: 'fodder',
+    enemyId: 'wasp_swarmer', name: 'Wasp Swarmer', debutWave: 1, tier: 'fodder', dodgeTier: 'fodder',
     silhouette: 'dart_swarm', scale: 1.0, hue: 0xffb42a,
     radius: 12, mass: 16, speed: 120,
     protection: Object.freeze(['hull']),
@@ -36,7 +41,7 @@ export const SWARM_CHARACTER_SHEET = Object.freeze([
     counter: 'Mow it — or catch one on the line and whip it into the pack.',
   }),
   Object.freeze({
-    enemyId: 'reaver_pirate', name: 'Reaver Pirate', debutWave: 2, tier: 'medium',
+    enemyId: 'reaver_pirate', name: 'Reaver Pirate', debutWave: 2, tier: 'medium', dodgeTier: 'light',
     silhouette: 'wedge', scale: 1.15, hue: 0xff3524,
     radius: 18, mass: 60, speed: 110,
     protection: Object.freeze(['hull', 'armor']),
@@ -44,7 +49,7 @@ export const SWARM_CHARACTER_SHEET = Object.freeze([
     counter: 'Kill it first — when it dies its Wasps scatter in panic.',
   }),
   Object.freeze({
-    enemyId: 'choir_zealot', name: 'Choir Zealot', debutWave: 4, tier: 'fodder',
+    enemyId: 'choir_zealot', name: 'Choir Zealot', debutWave: 4, tier: 'fodder', dodgeTier: 'medium',
     silhouette: 'spire', scale: 1.1, hue: 0xff3fd4,
     radius: 12, mass: 17, speed: 95,
     protection: Object.freeze(['hull']),
@@ -52,7 +57,7 @@ export const SWARM_CHARACTER_SHEET = Object.freeze([
     counter: 'Shove it off its ward — then the pack is naked.',
   }),
   Object.freeze({
-    enemyId: 'detonator_dart', name: 'Detonator Dart', debutWave: 5, tier: 'fodder',
+    enemyId: 'detonator_dart', name: 'Detonator Dart', debutWave: 5, tier: 'fodder', dodgeTier: 'fodder',
     silhouette: 'spike', scale: 0.8, hue: 0xfff3e0,
     radius: 8, mass: 16, speed: 170,
     protection: Object.freeze(['hull']),
@@ -60,7 +65,7 @@ export const SWARM_CHARACTER_SHEET = Object.freeze([
     counter: 'Throw it into the pack — it is your bomb.',
   }),
   Object.freeze({
-    enemyId: 'mine_layer_jackal', name: 'Mine-Layer Jackal', debutWave: 6, tier: 'medium',
+    enemyId: 'mine_layer_jackal', name: 'Mine-Layer Jackal', debutWave: 6, tier: 'medium', dodgeTier: 'medium',
     silhouette: 'squat', scale: 1.2, hue: 0xff7c1e,
     radius: 18, mass: 58, speed: 85,
     protection: Object.freeze(['hull', 'armor']),
@@ -68,7 +73,7 @@ export const SWARM_CHARACTER_SHEET = Object.freeze([
     counter: 'Lure the pack through its own mines.',
   }),
   Object.freeze({
-    enemyId: 'lancer_sniper', name: 'Lancer Sniper', debutWave: 8, tier: 'light',
+    enemyId: 'lancer_sniper', name: 'Lancer Sniper', debutWave: 8, tier: 'light', dodgeTier: 'medium',
     silhouette: 'needle', scale: 1.3, hue: 0xff5c33,
     radius: 14, mass: 24, speed: 60,
     protection: Object.freeze(['hull', 'armor']),
@@ -76,7 +81,7 @@ export const SWARM_CHARACTER_SHEET = Object.freeze([
     counter: 'Break line of sight behind a rock — or feed it a rock.',
   }),
   Object.freeze({
-    enemyId: 'warden_escort', name: 'Warden Escort', debutWave: 9, tier: 'medium',
+    enemyId: 'warden_escort', name: 'Warden Escort', debutWave: 9, tier: 'medium', dodgeTier: 'medium',
     silhouette: 'bulwark', scale: 1.35, hue: 0xffa53a,
     radius: 21, mass: 96, speed: 65,
     protection: Object.freeze(['hull', 'shield']),
@@ -84,7 +89,7 @@ export const SWARM_CHARACTER_SHEET = Object.freeze([
     counter: 'Kill the warden — the link drops.',
   }),
   Object.freeze({
-    enemyId: 'corsair_raider', name: 'Corsair Raider', debutWave: 10, tier: 'medium',
+    enemyId: 'corsair_raider', name: 'Corsair Raider', debutWave: 10, tier: 'medium', dodgeTier: 'light',
     silhouette: 'blade', scale: 1.1, hue: 0xd61f2c,
     radius: 18, mass: 36, speed: 130,
     protection: Object.freeze(['hull', 'armor']),
@@ -92,7 +97,7 @@ export const SWARM_CHARACTER_SHEET = Object.freeze([
     counter: 'Sidestep — it hits whatever is behind you.',
   }),
   Object.freeze({
-    enemyId: 'quiet_ghost', name: 'Quiet Ghost', debutWave: 12, tier: 'light',
+    enemyId: 'quiet_ghost', name: 'Quiet Ghost', debutWave: 12, tier: 'light', dodgeTier: 'light',
     silhouette: 'shimmer', scale: 1.0, hue: 0xcfd8e8,
     radius: 13, mass: 22, speed: 105,
     protection: Object.freeze(['hull', 'armor']),
@@ -100,7 +105,7 @@ export const SWARM_CHARACTER_SHEET = Object.freeze([
     counter: 'Fields reveal it — hold it in the well.',
   }),
   Object.freeze({
-    enemyId: 'customs_cutter', name: 'Customs Cutter', debutWave: 13, tier: 'medium',
+    enemyId: 'customs_cutter', name: 'Customs Cutter', debutWave: 13, tier: 'medium', dodgeTier: 'medium',
     silhouette: 'box', scale: 1.2, hue: 0xffcf9e,
     radius: 18, mass: 62, speed: 90,
     protection: Object.freeze(['hull', 'armor']),
@@ -108,7 +113,7 @@ export const SWARM_CHARACTER_SHEET = Object.freeze([
     counter: 'Leave the ring — two seconds of dead powers is the whole trick.',
   }),
   Object.freeze({
-    enemyId: 'pd_screen_escort', name: 'Point-Defense Screen', debutWave: 14, tier: 'medium',
+    enemyId: 'pd_screen_escort', name: 'Point-Defense Screen', debutWave: 14, tier: 'medium', dodgeTier: 'medium',
     silhouette: 'pod', scale: 1.25, hue: 0xe8590c,
     radius: 20, mass: 75, speed: 55,
     protection: Object.freeze(['hull', 'shield']),
@@ -116,7 +121,7 @@ export const SWARM_CHARACTER_SHEET = Object.freeze([
     counter: 'Kill it before you bomb — it shoots down what you throw.',
   }),
   Object.freeze({
-    enemyId: 'patrol_lawman', name: 'Patrol Lawman', debutWave: 15, tier: 'medium',
+    enemyId: 'patrol_lawman', name: 'Patrol Lawman', debutWave: 15, tier: 'medium', dodgeTier: 'medium',
     silhouette: 'plate', scale: 1.2, hue: 0xc9714a,
     radius: 18, mass: 140, speed: 95,
     protection: Object.freeze(['hull', 'armor']),
@@ -124,7 +129,7 @@ export const SWARM_CHARACTER_SHEET = Object.freeze([
     counter: 'Too plated to throw easily — wear it down, or crush it.',
   }),
   Object.freeze({
-    enemyId: 'tether_control_raider', name: 'Tether-Control Raider', debutWave: 16, tier: 'medium',
+    enemyId: 'tether_control_raider', name: 'Tether-Control Raider', debutWave: 16, tier: 'medium', dodgeTier: 'medium',
     silhouette: 'hook', scale: 1.15, hue: 0xb8433f,
     radius: 18, mass: 78, speed: 100,
     protection: Object.freeze(['hull', 'armor']),
@@ -132,7 +137,7 @@ export const SWARM_CHARACTER_SHEET = Object.freeze([
     counter: 'Boost to cut the rope — or tow it into its own hazard.',
   }),
   Object.freeze({
-    enemyId: 'bruiser_brawler', name: 'Bruiser Brawler', debutWave: 18, tier: 'heavy',
+    enemyId: 'bruiser_brawler', name: 'Bruiser Brawler', debutWave: 18, tier: 'heavy', dodgeTier: 'heavy',
     silhouette: 'wall', scale: 1.6, hue: 0x8f1d22,
     radius: 34, mass: 160, speed: 75,
     protection: Object.freeze(['hull', 'armor']),
@@ -140,7 +145,7 @@ export const SWARM_CHARACTER_SHEET = Object.freeze([
     counter: 'A moving wall — throw things into it, bait it into crushers.',
   }),
   Object.freeze({
-    enemyId: 'field_anchor_controller', name: 'Anchor Controller', debutWave: 22, tier: 'heavy',
+    enemyId: 'field_anchor_controller', name: 'Anchor Controller', debutWave: 22, tier: 'heavy', dodgeTier: 'medium',
     silhouette: 'ring', scale: 1.5, hue: 0x8a2b4e,
     radius: 32, mass: 420, speed: 70,
     protection: Object.freeze(['hull', 'armor']),

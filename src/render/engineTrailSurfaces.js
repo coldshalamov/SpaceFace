@@ -234,6 +234,53 @@ export function createRibbonTrailMaterial(color) {
   });
 }
 
+const BATCHED_RIBBON_TRAIL_VERT = /* glsl */`
+  attribute vec2 aTrailUv;
+  attribute vec3 aTrailNormal;
+  attribute vec3 aTrailColor;
+  attribute vec2 aTrailShade;
+  varying vec2 vTrailUv;
+  varying vec3 vTrailNormal;
+  varying vec3 vTrailView;
+  varying vec3 vTrailColor;
+  varying float vTrailOpacity;
+  varying float vTrailRadiance;
+  void main() {
+    vTrailUv = aTrailUv;
+    vTrailColor = aTrailColor;
+    vTrailOpacity = aTrailShade.x;
+    vTrailRadiance = aTrailShade.y;
+    vec4 world = modelMatrix * vec4(position, 1.0);
+    vTrailNormal = normalize(mat3(modelMatrix) * aTrailNormal);
+    vTrailView = cameraPosition - world.xyz;
+    gl_Position = projectionMatrix * viewMatrix * world;
+  }
+`;
+
+// The fleet batch links the SAME fragment body as the solo ribbon — the three per-owner
+// uniforms (color/opacity/radiance) become per-vertex varyings so one draw shades every live
+// wake. The #define aliases keep the authored body byte-identical: any ribbon shading change
+// lands in both paths automatically instead of forking the GLSL.
+const BATCHED_RIBBON_TRAIL_FRAG = RIBBON_TRAIL_FRAG
+  .replace('uniform vec3 uColor;', 'varying vec3 vTrailColor;\n  #define uColor vTrailColor')
+  .replace('uniform float uOpacity;', 'varying float vTrailOpacity;\n  #define uOpacity vTrailOpacity')
+  .replace('uniform float uRadiance;', 'varying float vTrailRadiance;\n  #define uRadiance vTrailRadiance');
+
+export function createBatchedRibbonTrailMaterial() {
+  return new THREE.ShaderMaterial({
+    uniforms: {
+      uTrailScroll: { value: 0 },
+      uTrailTime: { value: 0 },
+    },
+    vertexShader: BATCHED_RIBBON_TRAIL_VERT,
+    fragmentShader: BATCHED_RIBBON_TRAIL_FRAG,
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    side: THREE.DoubleSide,
+  });
+}
+
 const TRAIL_STREAK_VERT = /* glsl */`
   varying vec2 vTrailUv;
   void main() {
@@ -454,50 +501,33 @@ export function isProceduralTrailMaterial(mat) {
     && mat.fragmentShader.includes('trailSampleProcedural'));
 }
 
-/** Tapering ribbon trail for medium/large ships. */
-export function createRibbonTrail(scene, color, nSeg, baseWidth) {
-  nSeg = nSeg || 30;
-  baseWidth = baseWidth || 5;
-  const verts = nSeg * 2;
-  const pos = new Float32Array(verts * 3);
-  const uvs = new Float32Array(verts * 2);
-  const normals = new Float32Array(verts * 3);
-  const geo = new THREE.BufferGeometry();
-  const posAttr = new THREE.BufferAttribute(pos, 3);
-  posAttr.usage = THREE.DynamicDrawUsage;
-  geo.setAttribute('position', posAttr);
-  const uvAttr = new THREE.BufferAttribute(uvs, 2);
-  uvAttr.usage = THREE.DynamicDrawUsage;
-  geo.setAttribute('aTrailUv', uvAttr);
-  const normalAttr = new THREE.BufferAttribute(normals, 3);
-  normalAttr.usage = THREE.DynamicDrawUsage;
-  geo.setAttribute('aTrailNormal', normalAttr);
-  // Three clears updateRanges after each upload. Keep one owner-held range object per attribute and
-  // reattach it, avoiding addUpdateRange()'s per-frame object allocation on the hot path.
-  const posUpdateRange = { start: 0, count: 0 };
-  const uvUpdateRange = { start: 0, count: 0 };
-  const normalUpdateRange = { start: 0, count: 0 };
-  const markAttributeRange = (attribute, range, count) => {
-    range.start = 0;
-    range.count = count;
-    attribute.updateRanges.length = 1;
-    attribute.updateRanges[0] = range;
-    attribute.needsUpdate = true;
+/**
+ * One ribbon lane's CPU state — bounded equal-spacing history plus the taper strip writer.
+ *
+ * The sink owns WHERE this lane renders: createRibbonTrail gives it a private
+ * geometry + material (one mesh, solo program), createRibbonTrailBatch gives it one vertex
+ * slice of the shared fleet buffer (one mesh + program for the whole cohort). Lane code is
+ * identical either way; the sink hides geometry ownership behind these seams:
+ *
+ *   markAttribute(kind, firstVert, vertCount) — dirty a vertex range (component maths is the sink's)
+ *   applyPresentation(opacity, scroll, time, radiance) → effective opacity after clamp
+ *   setDrawnPairs(livePairs, previousPairs) — publish how many strip pairs are real geometry
+ *   setVisible(want) → effective visibility after the compile latch
+ *   isDrawn() — is this lane's strip actually presented right now
+ *
+ * All storage is fixed at construction/acquire; follow()/rebuild()/syncHead() allocate nothing.
+ */
+function createRibbonLane(sink) {
+  const nSeg = Math.max(2, Math.floor(sink.nSeg || 30));
+  const pos = sink.pos;
+  const uvs = sink.uvs;
+  const normals = sink.normals;
+  const vertBase = sink.vertBase | 0;
+  let baseWidth = Number.isFinite(sink.baseWidth) && sink.baseWidth > 0 ? sink.baseWidth : 5;
+
+  const markPairs = (kind, firstPair, pairCount) => {
+    sink.markAttribute(kind, vertBase + firstPair * 2, pairCount * 2);
   };
-  const idx = [];
-  for (let i = 0; i < nSeg - 1; i++) {
-    const b = i * 2;
-    idx.push(b, b + 1, b + 2, b + 1, b + 3, b + 2);
-  }
-  geo.setIndex(idx);
-  const mat = createRibbonTrailMaterial(color);
-  const mesh = new THREE.Mesh(geo, mat);
-  mesh.name = 'SF_RibbonTrail';
-  mesh.frustumCulled = false;
-  mesh.renderOrder = 4;
-  mesh.visible = false;
-  geo.setDrawRange(0, 0);
-  scene.add(mesh);
 
   // The ring owns committed history only. The current nozzle pose is separate, so it can follow the
   // rendered socket every display frame without consuming history capacity or leaving a one-cadence
@@ -524,21 +554,6 @@ export function createRibbonTrail(scene, color, nSeg, baseWidth) {
   // cancelled by any new sample. While set, rebuild() fades the committed wake by age
   // alone and releases it once fully aged; positions are never touched.
   let retireAt = -1;
-
-  const applyPresentation = (opacity, scroll, time, radiance) => {
-    if (opacity != null) {
-      mat.uniforms.uOpacity.value = Number.isFinite(opacity)
-        ? Math.max(0, Math.min(1, opacity))
-        : 0;
-    }
-    if (scroll != null) mat.uniforms.uTrailScroll.value = Number.isFinite(scroll) ? scroll : 0;
-    if (time != null) mat.uniforms.uTrailTime.value = Number.isFinite(time) ? time : 0;
-    if (radiance != null) {
-      mat.uniforms.uRadiance.value = Number.isFinite(radiance)
-        ? Math.max(0, Math.min(3.2, radiance))
-        : 0;
-    }
-  };
 
   /**
    * Catmull-Rom sample of the ribbon centerline. Equal-spacing history alone still reads as
@@ -622,7 +637,7 @@ export function createRibbonTrail(scene, color, nSeg, baseWidth) {
     }
     const rise = bank * w * RIBBON_BANK_RISE;
 
-    const vi = i * 2;
+    const vi = vertBase + i * 2;
     pos[vi * 3] = px + ox;
     pos[vi * 3 + 1] = 0.4 + rise;
     pos[vi * 3 + 2] = pz + oz;
@@ -674,10 +689,10 @@ export function createRibbonTrail(scene, color, nSeg, baseWidth) {
     liveRot = committedRot = rot;
     sampleElapsed = 0;
     ownerIdentity = owner ?? null;
+    sink.setDrawnPairs(0, renderedCount);
     renderedCount = 0;
     lastCadenceToken = null;
-    mesh.visible = false;
-    geo.setDrawRange(0, 0);
+    sink.setVisible(false);
   };
 
   const clearHistory = () => {
@@ -687,10 +702,10 @@ export function createRibbonTrail(scene, color, nSeg, baseWidth) {
     sampleElapsed = 0;
     ownerIdentity = null;
     lastUvCount = -1;
+    sink.setDrawnPairs(0, renderedCount);
     renderedCount = 0;
     lastCadenceToken = null;
-    mesh.visible = false;
-    geo.setDrawRange(0, 0);
+    sink.setVisible(false);
   };
 
   return {
@@ -841,15 +856,14 @@ export function createRibbonTrail(scene, color, nSeg, baseWidth) {
      * Only the first vertex pair changes; the next full rebuild incorporates interpolated samples.
      */
     syncHead(opacity, scroll, time, radiance) {
-      applyPresentation(opacity, scroll, time, radiance);
-      if (!hasLive || renderedCount < 2 || !mesh.visible
-        || mat.uniforms.uOpacity.value <= 0.001) return false;
+      const appliedOpacity = sink.applyPresentation(opacity, scroll, time, radiance);
+      if (!hasLive || renderedCount < 2 || !sink.isDrawn() || appliedOpacity <= 0.001) return false;
       centers[0] = liveX;
       centers[1] = liveZ;
       centers[2] = liveRot;
       writeCenterPair(0, renderedCount);
-      markAttributeRange(posAttr, posUpdateRange, 6);
-      markAttributeRange(normalAttr, normalUpdateRange, 6);
+      markPairs('position', 0, 1);
+      markPairs('aTrailNormal', 0, 1);
       headSyncCount++;
       return true;
     },
@@ -867,18 +881,16 @@ export function createRibbonTrail(scene, color, nSeg, baseWidth) {
         const remaining = 1 - age / RIBBON_RETIRE_FADE_S;
         if (!(remaining > 0)) {
           clearHistory();
-          renderedCount = 0;
-          mesh.visible = false;
           return;
         }
         opacity = (opacity == null ? 1 : opacity) * remaining;
       }
-      applyPresentation(opacity, scroll, time, radiance);
+      const appliedOpacity = sink.applyPresentation(opacity, scroll, time, radiance);
       const count = hasLive ? Math.min(nSeg, historyCount + 1) : 0;
-      if (count < 2 || mat.uniforms.uOpacity.value <= 0.001) {
+      if (count < 2 || appliedOpacity <= 0.001) {
+        sink.setDrawnPairs(0, renderedCount);
         renderedCount = 0;
-        mesh.visible = false;
-        geo.setDrawRange(0, 0);
+        sink.setVisible(false);
         return;
       }
 
@@ -896,7 +908,7 @@ export function createRibbonTrail(scene, color, nSeg, baseWidth) {
       for (let i = 0; i < count; i++) {
         const t = i / Math.max(1, count - 1);
         writeCenterPair(i, count);
-        const vi = i * 2;
+        const vi = vertBase + i * 2;
         if (updateUvs) {
           uvs[vi * 2] = t;
           uvs[vi * 2 + 1] = 0.0;
@@ -904,27 +916,20 @@ export function createRibbonTrail(scene, color, nSeg, baseWidth) {
           uvs[(vi + 1) * 2 + 1] = 1.0;
         }
       }
-      markAttributeRange(posAttr, posUpdateRange, count * 6);
-      markAttributeRange(normalAttr, normalUpdateRange, count * 6);
+      markPairs('position', 0, count);
+      markPairs('aTrailNormal', 0, count);
       if (updateUvs) {
-        markAttributeRange(uvAttr, uvUpdateRange, count * 4);
+        markPairs('aTrailUv', 0, count);
         lastUvCount = count;
       }
-      geo.setDrawRange(0, (count - 1) * 6);
+      sink.setDrawnPairs(count, renderedCount);
       renderedCount = count;
-      // Compile latch (same userData.pipelinesPending contract entity meshes use): a
-      // lazily-created trail queues its program link after-present, and the first thrust
-      // draw before it settles links inside bloomScene (1.7 s Intel brick). Geometry is
-      // already built, so reveal on the first rebuild after the latch clears. An
-      // sfAdmittedOnce trail already has a linked program — a re-admission latch on it
-      // must not blank the live trail mid-flight (same exemption the submit gate uses).
-      mesh.visible = mesh.userData.pipelinesPending === true
-        && mesh.userData.sfAdmittedOnce !== true ? false : true;
+      sink.setVisible(true);
       fullRebuildCount++;
     },
-    getMaterial() { return mat; },
+    getMaterial() { return sink.getMaterial(); },
     /** Owner-root accessor for measurement isolation (do not mutate topology). */
-    getMesh() { return mesh; },
+    getMesh() { return sink.getMesh(); },
     inspect() {
       return {
         capacity: nSeg,
@@ -938,6 +943,7 @@ export function createRibbonTrail(scene, color, nSeg, baseWidth) {
         fullRebuildCount,
         headSyncCount,
         retired: retireAt >= 0,
+        slot: sink.slotIndex,
       };
     },
     clear() { clearHistory(); retireAt = -1; },
@@ -952,8 +958,377 @@ export function createRibbonTrail(scene, color, nSeg, baseWidth) {
       retireAt = Number.isFinite(nowS) ? nowS : 0;
       return true;
     },
-    dispose() { scene.remove(mesh); geo.dispose(); mat.dispose(); },
+    /**
+     * Batch seam — re-arm a recycled slot for a new owner without allocating a lane.
+     * Equivalent to a fresh trail's state: empty history, cleared draw, reset counters.
+     */
+    _reset(nextBaseWidth) {
+      clearHistory();
+      retireAt = -1;
+      fullRebuildCount = 0;
+      headSyncCount = 0;
+      if (Number.isFinite(nextBaseWidth) && nextBaseWidth > 0) baseWidth = nextBaseWidth;
+    },
+    dispose() { sink.dispose(); },
   };
+}
+
+/** Tapering ribbon trail for medium/large ships — a dedicated mesh per owner. */
+export function createRibbonTrail(scene, color, nSeg, baseWidth) {
+  nSeg = nSeg || 30;
+  baseWidth = baseWidth || 5;
+  const verts = nSeg * 2;
+  const pos = new Float32Array(verts * 3);
+  const uvs = new Float32Array(verts * 2);
+  const normals = new Float32Array(verts * 3);
+  const geo = new THREE.BufferGeometry();
+  const posAttr = new THREE.BufferAttribute(pos, 3);
+  posAttr.usage = THREE.DynamicDrawUsage;
+  geo.setAttribute('position', posAttr);
+  const uvAttr = new THREE.BufferAttribute(uvs, 2);
+  uvAttr.usage = THREE.DynamicDrawUsage;
+  geo.setAttribute('aTrailUv', uvAttr);
+  const normalAttr = new THREE.BufferAttribute(normals, 3);
+  normalAttr.usage = THREE.DynamicDrawUsage;
+  geo.setAttribute('aTrailNormal', normalAttr);
+  // Three clears updateRanges after each upload. Keep one owner-held range object per attribute and
+  // reattach it, avoiding addUpdateRange()'s per-frame object allocation on the hot path.
+  const posUpdateRange = { start: 0, count: 0 };
+  const uvUpdateRange = { start: 0, count: 0 };
+  const normalUpdateRange = { start: 0, count: 0 };
+  const idx = [];
+  for (let i = 0; i < nSeg - 1; i++) {
+    const b = i * 2;
+    idx.push(b, b + 1, b + 2, b + 1, b + 3, b + 2);
+  }
+  geo.setIndex(idx);
+  const mat = createRibbonTrailMaterial(color);
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.name = 'SF_RibbonTrail';
+  mesh.frustumCulled = false;
+  mesh.renderOrder = 4;
+  mesh.visible = false;
+  geo.setDrawRange(0, 0);
+  scene.add(mesh);
+
+  return createRibbonLane({
+    nSeg,
+    baseWidth,
+    pos,
+    uvs,
+    normals,
+    vertBase: 0,
+    markAttribute(kind, firstVert, vertCount) {
+      let attribute = null;
+      let record = null;
+      let itemSize = 0;
+      if (kind === 'position') { attribute = posAttr; record = posUpdateRange; itemSize = 3; }
+      else if (kind === 'aTrailNormal') { attribute = normalAttr; record = normalUpdateRange; itemSize = 3; }
+      else if (kind === 'aTrailUv') { attribute = uvAttr; record = uvUpdateRange; itemSize = 2; }
+      else return;
+      record.start = firstVert * itemSize;
+      record.count = vertCount * itemSize;
+      attribute.updateRanges.length = 1;
+      attribute.updateRanges[0] = record;
+      attribute.needsUpdate = true;
+    },
+    applyPresentation(opacity, scroll, time, radiance) {
+      if (opacity != null) {
+        mat.uniforms.uOpacity.value = Number.isFinite(opacity)
+          ? Math.max(0, Math.min(1, opacity))
+          : 0;
+      }
+      if (scroll != null) mat.uniforms.uTrailScroll.value = Number.isFinite(scroll) ? scroll : 0;
+      if (time != null) mat.uniforms.uTrailTime.value = Number.isFinite(time) ? time : 0;
+      if (radiance != null) {
+        mat.uniforms.uRadiance.value = Number.isFinite(radiance)
+          ? Math.max(0, Math.min(3.2, radiance))
+          : 0;
+      }
+      return mat.uniforms.uOpacity.value;
+    },
+    setDrawnPairs(count) {
+      geo.setDrawRange(0, count > 1 ? (count - 1) * 6 : 0);
+    },
+    setVisible(want) {
+      // Compile latch (same userData.pipelinesPending contract entity meshes use): a
+      // lazily-created trail queues its program link after-present, and the first thrust
+      // draw before it settles links inside bloomScene (1.7 s Intel brick). Geometry is
+      // already built, so reveal on the first rebuild after the latch clears. An
+      // sfAdmittedOnce trail already has a linked program — a re-admission latch on it
+      // must not blank the live trail mid-flight (same exemption the submit gate uses).
+      mesh.visible = mesh.userData.pipelinesPending === true
+        && mesh.userData.sfAdmittedOnce !== true ? false : !!want;
+      return mesh.visible;
+    },
+    isDrawn() { return mesh.visible; },
+    getMesh() { return mesh; },
+    getMaterial() { return mat; },
+    dispose() { scene.remove(mesh); geo.dispose(); mat.dispose(); },
+  });
+}
+
+/**
+ * Fleet ribbon batch — every NPC wake lane shares ONE BufferGeometry + ONE ShaderMaterial,
+ * so a full cohort costs one mesh and one draw call instead of one mesh per ship.
+ *
+ * Each lane is the shared createRibbonLane core writing its own vertex slice of the pooled
+ * arrays; acquire()/dispose() are slot checkouts, never allocations. Dirty uploads publish the
+ * min/max component span per attribute through persistent updateRanges records (the same
+ * no-allocation contract the solo trail's range records use — a record still attached is an
+ * unconsumed publication, so a new mark widens it rather than dropping the older half).
+ *
+ * Tail hiding without a per-lane drawRange: a lane that shrinks or hides collapses its stale
+ * pairs onto its last live pair, so every unused quad is zero-area. The single index buffer
+ * therefore spans all slots at all times; dead lanes cost degenerate triangles only.
+ */
+export function createRibbonTrailBatch(scene, options = {}) {
+  const capacity = Math.max(1, Math.floor(options.capacity || 1));
+  const nSeg = Math.max(2, Math.floor(options.nSeg || 24));
+  const vertsPerLane = nSeg * 2;
+  const totalVerts = capacity * vertsPerLane;
+  const pos = new Float32Array(totalVerts * 3);
+  const uvs = new Float32Array(totalVerts * 2);
+  const normals = new Float32Array(totalVerts * 3);
+  const shade = new Float32Array(totalVerts * 2);
+  const colors = new Float32Array(totalVerts * 3);
+  const geo = new THREE.BufferGeometry();
+  const posAttr = new THREE.BufferAttribute(pos, 3);
+  posAttr.usage = THREE.DynamicDrawUsage;
+  geo.setAttribute('position', posAttr);
+  const uvAttr = new THREE.BufferAttribute(uvs, 2);
+  uvAttr.usage = THREE.DynamicDrawUsage;
+  geo.setAttribute('aTrailUv', uvAttr);
+  const normalAttr = new THREE.BufferAttribute(normals, 3);
+  normalAttr.usage = THREE.DynamicDrawUsage;
+  geo.setAttribute('aTrailNormal', normalAttr);
+  const shadeAttr = new THREE.BufferAttribute(shade, 2);
+  shadeAttr.usage = THREE.DynamicDrawUsage;
+  geo.setAttribute('aTrailShade', shadeAttr);
+  const colorAttr = new THREE.BufferAttribute(colors, 3);
+  colorAttr.usage = THREE.DynamicDrawUsage;
+  geo.setAttribute('aTrailColor', colorAttr);
+  const IndexArray = totalVerts > 65535 ? Uint32Array : Uint16Array;
+  const idx = new IndexArray(capacity * (nSeg - 1) * 6);
+  let indexCursor = 0;
+  for (let s = 0; s < capacity; s++) {
+    const sb = s * vertsPerLane;
+    for (let i = 0; i < nSeg - 1; i++) {
+      const b = sb + i * 2;
+      idx[indexCursor++] = b;
+      idx[indexCursor++] = b + 1;
+      idx[indexCursor++] = b + 2;
+      idx[indexCursor++] = b + 1;
+      idx[indexCursor++] = b + 3;
+      idx[indexCursor++] = b + 2;
+    }
+  }
+  geo.setIndex(new THREE.BufferAttribute(idx, 1));
+
+  const mat = createBatchedRibbonTrailMaterial();
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.name = 'SF_RibbonTrailBatch';
+  mesh.frustumCulled = false;
+  mesh.renderOrder = 4;
+  mesh.visible = false;
+  scene.add(mesh);
+
+  // One persistent range record per tracked attribute — never allocated per frame. A still-
+  // attached record is an unconsumed publication, so a new mark widens it instead of dropping
+  // the older dirty half of the span.
+  const mark = (attribute, record, startComponent, countComponent) => {
+    if (attribute.updateRanges.length === 1 && attribute.updateRanges[0] === record
+      && record.count > 0) {
+      const end = Math.max(record.start + record.count, startComponent + countComponent);
+      record.start = Math.min(record.start, startComponent);
+      record.count = end - record.start;
+    } else {
+      record.start = startComponent;
+      record.count = countComponent;
+      attribute.updateRanges.length = 1;
+      attribute.updateRanges[0] = record;
+    }
+    attribute.needsUpdate = true;
+  };
+  const posRange = { start: 0, count: 0 };
+  const uvRange = { start: 0, count: 0 };
+  const normalRange = { start: 0, count: 0 };
+  const shadeRange = { start: 0, count: 0 };
+  const colorRange = { start: 0, count: 0 };
+  const markAttribute = (kind, firstVert, vertCount) => {
+    if (kind === 'position') mark(posAttr, posRange, firstVert * 3, vertCount * 3);
+    else if (kind === 'aTrailNormal') mark(normalAttr, normalRange, firstVert * 3, vertCount * 3);
+    else if (kind === 'aTrailUv') mark(uvAttr, uvRange, firstVert * 2, vertCount * 2);
+    else if (kind === 'aTrailShade') mark(shadeAttr, shadeRange, firstVert * 2, vertCount * 2);
+    else if (kind === 'aTrailColor') mark(colorAttr, colorRange, firstVert * 3, vertCount * 3);
+  };
+
+  // Same userData.pipelinesPending / sfAdmittedOnce latch contract the solo trail honors.
+  const revealBlocked = () => mesh.userData.pipelinesPending === true
+    && mesh.userData.sfAdmittedOnce !== true;
+  let liveWantCount = 0;
+  const refreshMeshVisible = () => {
+    mesh.visible = liveWantCount > 0 && !revealBlocked();
+  };
+
+  const slots = [];
+  const freeSlots = [];
+  const colorScratch = new THREE.Color();
+
+  const batch = {
+    mesh,
+    material: mat,
+    capacity,
+    nSeg,
+    vertsPerLane,
+    liveCount: 0,
+    /**
+     * Check out one ribbon lane. Returns the shared lane API (follow/rebuild/syncHead/
+     * retire/clear/reproject/claimCadence/inspect/getMesh/getMaterial/dispose — the
+     * createRibbonTrail contract) or null when every slot is occupied.
+     */
+    acquire(colorCss, baseWidth) {
+      if (!freeSlots.length) return null;
+      const index = freeSlots.pop();
+      const slot = slots[index];
+      slot.occupied = true;
+      batch.liveCount++;
+      const c = colorScratch.set(colorCss || '#7fe0ff');
+      const cb = slot.vertBase * 3;
+      for (let v = 0; v < vertsPerLane; v++) {
+        colors[cb + v * 3] = c.r;
+        colors[cb + v * 3 + 1] = c.g;
+        colors[cb + v * 3 + 2] = c.b;
+      }
+      markAttribute('aTrailColor', slot.vertBase, vertsPerLane);
+      slot.opacity = 0.62;
+      slot.radiance = 1.85;
+      slot.api._reset(baseWidth);
+      return slot.api;
+    },
+    inspect() {
+      return {
+        capacity,
+        nSeg,
+        vertsPerLane,
+        liveCount: batch.liveCount,
+        visibleLanes: liveWantCount,
+      };
+    },
+    dispose() {
+      for (const slot of slots) {
+        if (!slot.occupied) continue;
+        slot.occupied = false;
+        try { slot.api.clear(); } catch (_) { /* collapse is best-effort at teardown */ }
+      }
+      slots.length = 0;
+      freeSlots.length = 0;
+      liveWantCount = 0;
+      batch.liveCount = 0;
+      mesh.visible = false;
+      scene.remove(mesh);
+      geo.dispose();
+      mat.dispose();
+    },
+  };
+
+  const releaseSlot = (slot) => {
+    if (!slot || !slot.occupied) return;
+    slot.occupied = false;
+    batch.liveCount--;
+    try { slot.api.clear(); } catch (_) { /* collapsing stale pairs is best-effort */ }
+    if (slot.wantsVisible) {
+      slot.wantsVisible = false;
+      liveWantCount--;
+    }
+    freeSlots.push(slot.index);
+    refreshMeshVisible();
+  };
+
+  for (let s = 0; s < capacity; s++) {
+    const slot = {
+      index: s,
+      vertBase: s * vertsPerLane,
+      occupied: false,
+      wantsVisible: false,
+      opacity: 0.62,
+      radiance: 1.85,
+      api: null,
+    };
+    slot.api = createRibbonLane({
+      nSeg,
+      baseWidth: 1,
+      pos,
+      uvs,
+      normals,
+      vertBase: slot.vertBase,
+      markAttribute,
+      applyPresentation(opacity, scroll, time, radiance) {
+        // Scroll/time are frame-global: every lane publishes the same values to the shared
+        // material, so last-writer-wins is exact. Opacity/radiance are per-owner, carried to
+        // the shader as a packed per-vertex vec2 (constant across the strip → interpolation
+        // reproduces the solo uniform's value at every fragment).
+        if (scroll != null) mat.uniforms.uTrailScroll.value = Number.isFinite(scroll) ? scroll : 0;
+        if (time != null) mat.uniforms.uTrailTime.value = Number.isFinite(time) ? time : 0;
+        if (opacity != null) {
+          slot.opacity = Number.isFinite(opacity) ? Math.max(0, Math.min(1, opacity)) : 0;
+        }
+        if (radiance != null) {
+          slot.radiance = Number.isFinite(radiance) ? Math.max(0, Math.min(3.2, radiance)) : 0;
+        }
+        const sb = slot.vertBase * 2;
+        for (let v = 0; v < vertsPerLane; v++) {
+          shade[sb + v * 2] = slot.opacity;
+          shade[sb + v * 2 + 1] = slot.radiance;
+        }
+        markAttribute('aTrailShade', slot.vertBase, vertsPerLane);
+        return slot.opacity;
+      },
+      setDrawnPairs(count) {
+        // One index buffer spans every slot at all times, so a lane cannot hide its tail with a
+        // drawRange. Every pair beyond the live strip is collapsed onto the last live pair —
+        // dead quads become zero-area and emit no fragments, and the boundary quad can never
+        // bridge a live strip into stale vertex space. Positions are all a degenerate quad
+        // needs, so normals/uvs in the tail are left untouched (never rasterized). Steady
+        // state is free: once the wake fills to nSeg there is no tail and nothing is marked.
+        const c = Math.max(0, Math.min(nSeg, count | 0));
+        if (c >= nSeg) return;
+        const src = c > 0 ? c - 1 : 0;
+        const sv = (slot.vertBase + src * 2) * 3;
+        for (let p = c; p < nSeg; p++) {
+          const dv = (slot.vertBase + p * 2) * 3;
+          pos[dv] = pos[sv];
+          pos[dv + 1] = pos[sv + 1];
+          pos[dv + 2] = pos[sv + 2];
+          pos[dv + 3] = pos[sv + 3];
+          pos[dv + 4] = pos[sv + 4];
+          pos[dv + 5] = pos[sv + 5];
+        }
+        markAttribute('position', slot.vertBase + c * 2, (nSeg - c) * 2);
+      },
+      setVisible(want) {
+        const w = !!want;
+        if (w !== slot.wantsVisible) {
+          slot.wantsVisible = w;
+          liveWantCount += w ? 1 : -1;
+        }
+        refreshMeshVisible();
+        return w && !revealBlocked();
+      },
+      isDrawn() {
+        return slot.wantsVisible && !revealBlocked();
+      },
+      getMesh() { return mesh; },
+      getMaterial() { return mat; },
+      dispose() { releaseSlot(slot); },
+      slotIndex: s,
+    });
+    slots.push(slot);
+  }
+  // Pop order: lowest slot index first, so lanes pack densely at the front of the buffer.
+  for (let s = capacity - 1; s >= 0; s--) freeSlots.push(s);
+
+  return batch;
 }
 
 export function createPrecompileTrailSurfaces() {
@@ -967,6 +1342,18 @@ export function createPrecompileTrailSurfaces() {
   const ribbon = ribbonOwner.getMesh();
   ribbon.removeFromParent();
   ribbon.name = 'SF_Precompile_RibbonTrail';
+  // The batched fleet program is a DIFFERENT shader (per-vertex tint/shade attributes), so it
+  // links its own program and needs its own staged exemplar — otherwise the first live NPC
+  // cohort mint links inside the bloom pass.
+  const batchStaging = new THREE.Group();
+  const ribbonBatch = createRibbonTrailBatch(batchStaging, { capacity: 2, nSeg: 30 });
+  const batchLane = ribbonBatch.acquire('#7fe0ff', 5);
+  batchLane.push(-3, 0, 0);
+  batchLane.push(3, 0, 0);
+  batchLane.rebuild(0.5, 0.17, 0.8);
+  const batchedRibbon = ribbonBatch.mesh;
+  batchedRibbon.removeFromParent();
+  batchedRibbon.name = 'SF_Precompile_RibbonTrailBatch';
   const streakPool = createTrailStreakPool(1);
   updateTrailStreakInstance(streakPool, 0, {
     x: 0, y: 0.4, z: 0, vx: 1, vz: 0,
@@ -976,5 +1363,5 @@ export function createPrecompileTrailSurfaces() {
   commitTrailStreakInstances(streakPool, 1, { scroll: 0.17, time: 0.8 });
   const streak = streakPool.mesh;
   streak.name = 'SF_Precompile_TrailStreak';
-  return { ribbon, streak };
+  return { ribbon, streak, ribbonBatch: batchedRibbon };
 }

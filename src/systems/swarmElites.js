@@ -52,9 +52,10 @@ import { findDivePull, livePullsOf } from './swarmDiveSeek.js';
 import { createRewardDeathLedger, runOwnsReward } from '../combat/rewardEligibility.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
 import { addSwarmHullMaxBonus, maintainSwarmPlayerMods, swarmRamDealtScale } from './playerModifiers.js';
-import { validateRunState } from '../core/runState.js';
+import { validateRunStateForTick } from '../core/runState.js';
 import { isSwarmRuleset } from './survivalSwarm.js';
 import { makeEnemySpawnSpec } from './combat.js';
+import { findClearSpawnPoint } from './spawnClearance.js';
 import { CREDIT_CHIP_KIND } from '../data/killRewards.js';
 import { runHasPerk } from '../data/swarmPerks.js';
 import {
@@ -135,7 +136,7 @@ function liveSwarmRun(state) {
   if (run.kind !== 'survival') return null;
   if (run.phase === 'inactive' || run.phase === 'ended') return null;
   if (!isSwarmRuleset(run.ruleset)) return null;
-  if (!validateRunState(run).ok) return null;
+  if (!validateRunStateForTick(run, state.tick).ok) return null;
   return run;
 }
 
@@ -830,6 +831,7 @@ export const swarmElites = {
     const wave = Number.isInteger(victim.data && victim.data.runWave)
       ? victim.data.runWave : (Number.isInteger(run.wave) ? run.wave : 0);
     let admitted = 0;
+    const reserved = [];
     for (let i = 0; i < granted; i++) {
       const angle = (i === 0 ? 0.6 : -0.6);
       const pos = {
@@ -838,6 +840,17 @@ export const swarmElites = {
       };
       const spec = makeEnemySpawnSpec(SWARM_SPLITTER_ENEMY, 1, pos);
       if (!spec) continue;
+      // R11: brood born inside a dying hull — the shared contract seats each child clear
+      // of the corpse, the arena, and the siblings already admitted this split.
+      const seat = findClearSpawnPoint(this.state, {
+        x: pos.x, z: pos.z,
+        radius: Number.isFinite(spec.radius) ? spec.radius : 10,
+        vel: spec.vel || null,
+        reserved,
+      });
+      if (!seat) continue;
+      spec.pos.x = seat.x;
+      spec.pos.z = seat.z;
       spec.data = spec.data || {};
       spec.data.ai = spec.data.ai || {};
       spec.data.ai.spawnContext = 'encounter';
@@ -858,6 +871,10 @@ export const swarmElites = {
         continue;
       }
       admitted += 1;
+      reserved.push({
+        alive: true, pos: { x: seat.x, z: seat.z },
+        radius: Number.isFinite(spec.radius) ? spec.radius : 10, vel: { x: 0, z: 0 },
+      });
     }
     if (admitted < granted && budget && typeof budget.releaseSome === 'function') {
       budget.releaseSome(SWARM_ELITE_OWNER, granted - admitted);
@@ -911,9 +928,10 @@ export const swarmElites = {
 
   _onImpact(payload) {
     // Cheap gates first: the crowd's impact fanout is almost entirely NPC↔NPC contacts,
-    // and liveSwarmRun pays a full validateRunState + runPerkIds array build per emit.
-    // Every gate below is a pure read, so testing player involvement before the run
-    // admits nothing the old order rejected (and rejects nothing it admitted).
+    // and liveSwarmRun pays a tick-memoized validateRunStateForTick + runPerkIds array
+    // build per emit. Every gate below is a pure read, so testing player involvement
+    // before the run admits nothing the old order rejected (and rejects nothing it
+    // admitted).
     if (!payload || payload.playerInvolved !== true) return;
     const playerId = this.state.playerId;
     if (playerId == null) return;

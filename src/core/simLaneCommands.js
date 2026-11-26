@@ -13,12 +13,14 @@
 
 import { bindSelection } from '../combat/targetIdentity.js';
 import { occupantGenerationOf } from './entity.js';
+import { createTimeEffects, LAB_SPEED_MAX } from './timeEffects.js';
 import { stableEntityKey } from '../data/interactionDescriptorCatalog.js';
 import { describeComponent } from '../systems/interactionDescriptors.js';
 
 let _sink = null;
 let _tokenSeq = 0;
 const pendingTargetWrites = new WeakMap();
+const LANE_TIME_SCALE_SOURCE = 'lane:time-scale';
 
 // A quiet refresh must not replace an explicit choice while the worker's
 // already-ordered input fold is still on its way back to this facade.
@@ -214,8 +216,14 @@ export function laneClearNavWaypoint(state) {
 // ---------------------------------------------------------------------------
 export const LANE_SETTINGS_WRITERS = {
   timeScale: (state, value) => {
-    const v = Number(value);
-    if (Number.isFinite(v) && v >= 0) state.timeScale = v;
+    const scale = Number(value);
+    if (!Number.isFinite(scale) || scale < 0 || scale > LAB_SPEED_MAX) return;
+
+    // Preserve the compatibility command while letting loading, pause and slowdown compose.
+    const effects = createTimeEffects(state);
+    if (scale === 1) effects.clear(LANE_TIME_SCALE_SOURCE);
+    else if (scale < 1) effects.set(LANE_TIME_SCALE_SOURCE, { scale });
+    else effects.set(LANE_TIME_SCALE_SOURCE, { labSpeed: scale });
   },
   'settings.gameplay.difficulty': (state, value) => {
     if (!state.settings || typeof state.settings !== 'object') return;

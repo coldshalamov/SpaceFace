@@ -30,6 +30,8 @@ import { WEAPONS } from '../../data/weapons.js';
 import { BODY_MODULES } from '../../data/claimableBodies.js';
 import { escapeMarkup as escapeHtml } from '../views/identity.js';
 import { entitySpanHtml } from '../entityResolver.js';
+import { hullPosterUrl } from '../hullPosters.js';
+import { itemThumbHtml, injectItemThumbnailStyles } from '../icons/itemThumbnails.js';
 import { el, settle, cue } from '../kit/index.js';
 import { wrapCanvasLines } from '../../localization/layout.js';
 import { injectDeckplate, dpIcon } from '../deckplate/index.js';
@@ -91,18 +93,21 @@ function nodeGlyphName(node) {
   if ((u.modules || []).some((m) => /^wpn_/.test(m))) return 'weapon';
   return 'module';
 }
-/** An unlock's picture on its ledger line: the hull's lit silhouette when one was rendered, else its kind's glyph. */
-const HULL_JIG = new Set(['ship_wasp', 'ship_hornet', 'ship_kestrel', 'ship_pelican']);
+/** An unlock's picture on its ledger line: the hull's lit silhouette when rendered, or its studio thumbnail. */
 function unlockArtHtml(ref) {
   const [kind, id] = String(ref).split(':');
-  if (kind === 'hull' && HULL_JIG.has(id)) {
-    let url = `/assets/ui/renders/hulls/${id}.holo.webp`;
-    try { url = new URL(`../../../assets/ui/renders/hulls/${id}.holo.webp`, import.meta.url).href; } catch (_) { /* the root path */ }
-    return `<img class="con-row__img" src="${url}" alt="" draggable="false" decoding="async">`;
+  if (kind === 'hull') {
+    const holo = hullPosterUrl(id, 'holo');
+    if (holo) return `<img class="con-row__img" src="${holo}" alt="" draggable="false" decoding="async">`;
+    return itemThumbHtml({ id, kind: 'hull' }, { size: 'sm', showCrest: false, className: 'con-row__thumb' });
   }
+  const thumb = itemThumbHtml(
+    { id, kind: kind === 'weapon' ? 'weapon' : undefined },
+    { size: 'sm', showCrest: true, className: 'con-row__thumb' }
+  );
+  if (thumb) return thumb;
   let icon = 'module';
-  if (kind === 'hull') icon = 'hull';
-  else if (/^wpn_/.test(id)) icon = 'weapon';
+  if (/^wpn_/.test(id)) icon = 'weapon';
   else if (/shield|aegis|deflect|chaff|decoy/.test(id)) icon = 'shield';
   else if (/mining|pulverizer/.test(id)) icon = 'mining';
   else if (/engine|afterburner|jump|swing_drive|warp/.test(id)) icon = 'engine';
@@ -236,6 +241,7 @@ export const techTreeScreen = {
   mount(rootEl, ctx) {
 
     injectDeckplate();
+    if (typeof document !== 'undefined') injectItemThumbnailStyles(document);
     this._markCssReady = deferScreenCssReady(rootEl, injectConstellationScreens());
     injectTechTreeScreens();
     this._ctx = ctx;
@@ -268,7 +274,7 @@ export const techTreeScreen = {
     curveBtn.type = 'button';
     curveBtn.setAttribute('aria-expanded', 'false');
     curveBtn.setAttribute('aria-controls', 'sf-curve-ladder');
-    curveBtn.appendChild(el('span', 'con-curve__key', 'A verb every hour'));
+    curveBtn.appendChild(el('span', 'con-curve__key', 'Next unlocks'));
     const curveFull = hourVerbCurveLine();
     // Each rung is its own nowrap span on a one-line wrapping row, so a narrow head drops whole
     // rungs instead of cutting one mid-word with an ellipsis (tech-treeLayouts.js).
@@ -283,7 +289,7 @@ export const techTreeScreen = {
     curveBtn.appendChild(curveRungs);
     const curveFly = el('ul', 'con-rows con-curve__fly');
     curveFly.id = 'sf-curve-ladder';
-    curveFly.setAttribute('aria-label', 'Verbs by research hour');
+    curveFly.setAttribute('aria-label', 'Unlocks by research hour');
     curveFly.hidden = true;
     for (const row of HOUR_VERB_CURVE) {
       const li = el('li', 'con-row');
@@ -306,7 +312,7 @@ export const techTreeScreen = {
     const corner = el('div', 'k-corner con-corner');
     corner.setAttribute('aria-label', 'Research resources');
     const crEl = reading(corner, 'Credits', 'data-cr');
-    const rpEl = reading(corner, 'Research points', 'data-rp');
+    const rpEl = reading(corner, 'Research', 'data-rp');
     const countEl = reading(corner, 'Unlocked', 'data-count');
     setText(countEl, '0/' + TECH_NODES.length);
     rootEl.appendChild(corner);
@@ -419,11 +425,13 @@ export const techTreeScreen = {
     });
 
     // Web fonts land after first paint: measure the names again in the real face.
+    // The FontFaceSet outlives this screen — keep a ref so dispose() can drop it.
     if (typeof document !== 'undefined' && document.fonts && document.fonts.addEventListener) {
-      document.fonts.addEventListener('loadingdone', () => {
+      this._fontLoadHandler = this._fontLoadHandler || (() => {
         if (!this._root || !this._root.isConnected || !this._sky) return;
         this._sky.relayout({ fonts: true });
       });
+      document.fonts.addEventListener('loadingdone', this._fontLoadHandler);
     }
   },
 
@@ -460,7 +468,13 @@ export const techTreeScreen = {
 
   onHide() { cue('close'); this._curveReset && this._curveReset(); /* cached DOM retained */ },
 
-  dispose() { if (this._rungsObserver) { this._rungsObserver.disconnect(); this._rungsObserver = null; } },
+  dispose() {
+    if (this._rungsObserver) { this._rungsObserver.disconnect(); this._rungsObserver = null; }
+    if (this._fontLoadHandler && typeof document !== 'undefined' && document.fonts) {
+      document.fonts.removeEventListener('loadingdone', this._fontLoadHandler);
+      this._fontLoadHandler = null;
+    }
+  },
 
   /**
    * Sky names the open pacing ladder stands over yield (the screen's .is-curve-covered state,
@@ -800,7 +814,7 @@ export const techTreeScreen = {
         ? `<p class="con-dossier__cost con-dossier__paid" aria-label="Cost">Paid ${escapeHtml(fmtCr(cost.credits || 0))} cr${cost.rp ? ' · ' + escapeHtml(Math.round(cost.rp).toLocaleString()) + ' RP' : ''}</p>`
         : `<dl class="con-dossier__cost" aria-label="Cost">
         ${costCellHtml('Credits', Math.round(cost.credits || 0), Math.round(player.credits || 0), fmtCr)}
-        ${costCellHtml('Research points', Math.round(cost.rp || 0), Math.round(player.researchPoints || 0), (v) => v.toLocaleString())}
+        ${costCellHtml('Research', Math.round(cost.rp || 0), Math.round(player.researchPoints || 0), (v) => v.toLocaleString())}
       </dl>`}
       ${readiness.state === 'locked' ? requiresHtml : ''}
       ${verbLine ? `<p class="con-sentence con-dossier__verb">${escapeHtml(verbLine)}</p>` : ''}

@@ -281,7 +281,7 @@ const runtimeState = {
   render: { scene: runtimeScene },
 };
 const system = Object.create(vfx);
-system.init({ state: runtimeState, bus: { on() { return () => {}; } }, helpers: {} });
+system.init({ state: runtimeState, bus: { on() { return () => {}; }, emit() {} }, helpers: {} });
 
 const trailShip = {
   id: 2,
@@ -306,7 +306,7 @@ const bookkeepingState = {
 const bookkeepingSystem = Object.create(vfx);
 bookkeepingSystem.init({
   state: bookkeepingState,
-  bus: { on() { return () => {}; } },
+  bus: { on() { return () => {}; }, emit() {} },
   helpers: {},
 });
 const trailDiagIdentity = bookkeepingSystem._trailBudgetDiag;
@@ -351,7 +351,7 @@ const repackScene = new THREE.Scene();
 const repackSystem = Object.create(vfx);
 repackSystem.init({
   state: { ...runtimeState, render: { scene: repackScene } },
-  bus: { on() { return () => {}; } },
+  bus: { on() { return () => {}; }, emit() {} },
   helpers: {},
 });
 repackSystem._spawnProjectileTrailStreak(10, 0, 20, 1, 0.2, 4, 0.5, '#ff0000', 1, 0);
@@ -406,7 +406,7 @@ const cullState = {
   content: {},
 };
 const cullSystem = Object.create(vfx);
-cullSystem.init({ state: cullState, bus: { on() { return () => {}; } }, helpers: {} });
+cullSystem.init({ state: cullState, bus: { on() { return () => {}; }, emit() {} }, helpers: {} });
 cullSystem._markProjectileCacheDirty();
 for (let f = 0; f < 4; f++) cullSystem.update(1 / 60);
 const cullBolts = cullSystem._weaponPresenter && cullSystem._weaponPresenter.bolts;

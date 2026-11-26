@@ -10,6 +10,7 @@ import { MAIN_TO_SIM_BUS_EVENTS } from '../src/core/mainToSimEventSurface.js';
 import { automationScreen, describeOutpostOperation } from '../src/ui/screens/automationPanel.js';
 import { fakeDom } from './helpers/fake-dom.mjs';
 import { forEachDressingRow } from '../src/world/dressingTable.js';
+import { appendDent, shelfUnitsAt } from '../src/economy/marketModel.js';
 
 const SECTOR = 'sector_helios_prime';
 const FUEL = 'cmdty_fuel_cells';
@@ -114,7 +115,12 @@ test('receiving demand limits a sale, retains the remainder and refuses a repeat
   const h = boot(), o = storedOutput(h, 10);
   const market = h.econ.ensureMarket(o.saleStationId)[FUEL];
   const target = h.econ.quoteAutomationIntake(o.saleStationId, FUEL, 10, { outpost: o }).intakeTarget;
-  market.stock = target - 2;
+  // The dented-shelf model derives stock from eq + residual dents and intakeTarget from eq,
+  // so rest the shelf two units below the target with a dent rather than moving eq.
+  const eq = market.eq ?? market.equilibrium;
+  market.dents = [];
+  appendDent(market, FUEL, h.state.simTime || 0, (target - 2) - eq);
+  market.stock = shelfUnitsAt(market, FUEL, h.state.simTime || 0);
   const before = h.state.player.credits;
   const first = h.inst._sellOutpost(o);
   assert.equal(first.ok, true);
@@ -192,18 +198,19 @@ test('input transfer protects mission cargo, limits each recipe bin and cannot m
   assert.equal(outpostInputUsed(o), 399);
 });
 
-test('manual collection respects hold volume and input recovery preserves uncollected stock', () => {
+test('manual collection respects hold slots and input recovery preserves uncollected stock', () => {
   const h = boot(), o = storedOutput(h, 5);
-  const volume = COMMODITIES.find(row => row.id === FUEL).volPerU;
-  h.state.player.cargo.capVolume = volume * 2;
+  // Slot law (CARGO-BUILD-1): one slot with two units of headroom takes exactly 2 fuel cells.
+  h.state.player.cargo.slotCount = 1;
+  h.state.player.cargo.slots = [{ commodityId: FUEL, qty: 18 }];
   assert.equal(h.inst.collectOutpost(o.id), true);
-  assert.equal(h.state.player.cargo.items[FUEL], 2);
+  assert.equal(h.state.player.cargo.items[FUEL], 20);
   assert.equal(o.storage, 3);
   assert.equal(h.inst.collectOutpost(o.id), false);
   o.inputStock[INPUTS[0]] = 3;
   assert.equal(h.inst.recoverOutpostInputs(o.id), false);
   assert.equal(o.inputStock[INPUTS[0]], 3);
-  h.state.player.cargo.capVolume = 100;
+  h.state.player.cargo.slotCount = 2;      // a second open slot takes the recovered units
   assert.equal(h.inst.recoverOutpostInputs(o.id), true);
   assert.equal(o.inputStock[INPUTS[0]], 0);
 });

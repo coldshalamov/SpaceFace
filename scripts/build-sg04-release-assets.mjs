@@ -21,6 +21,7 @@ import { deduplicateExactEmbeddedTextures } from './lib/deduplicateExactEmbedded
 import { EXACT_ANATOMY_PART_IDS, shadingRepair } from './lib/glbShadingRepair.mjs';
 import { applyReleaseColorTextureProfile, hasReleaseColorTextureProfile } from './lib/releaseColorTextureProfiles.mjs';
 import { applyReleaseCockpitRecessedTextureProfiles } from './lib/releaseCockpitRecessedTextureProfiles.mjs';
+import { downsampleRgbaRgba } from './build-place-release-assets.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const PART_MANIFEST = resolve(ROOT, 'assets/ships/parts/parts_manifest.json');
@@ -124,6 +125,22 @@ const WHOLE_SHIP_FILES = [
 // (albedo/emissive ETC1S+sRGB, ORM ETC1S+linear, normals UASTC). sg04 skips them entirely;
 // their last published files and manifest entries are carried forward untouched below.
 const PLACE_OWNED_CATEGORIES = new Set(['places', 'works']);
+// Texture edge budget per SG-04 asset: the longest edge its maps may ship at.
+// TEXTURE-DOWNSIZE (2026-11-20 asset-cost audit): the evidence/cargo pods cover ~70 px of glass
+// at the closest normal gameplay framing (chase-close 58 WU) while shipping 1024 px texture
+// sets. The budget is the smallest power-of-two edge at least twice that framing, so the camera
+// can still resolve every texel the body can show; anything not listed keeps its authored
+// resolution. The edge rides inside the ktx2 options so the shared encode cache can never serve
+// one budget's output to another.
+const SG04_TEXTURE_EDGE_BUDGET = Object.freeze({
+  pod_47a_evidence_spindle: 512,
+  pod_cargo_container: 512,
+});
+
+/** Longest edge this asset's maps may ship at, or 0 for "leave authored". */
+function sg04TextureEdgeBudget(assetId) {
+  return Number(SG04_TEXTURE_EDGE_BUDGET[assetId]) || 0;
+}
 const manifestPartFiles = new Set((partManifest.parts || []).map((part) => part.file));
 // A part's lodFamily siblings (lod1/lod2/…) are independent release files the distance selector
 // loads on demand. They are not top-level part rows, so without this expansion a manifest part can
@@ -242,13 +259,17 @@ for (let index = 0; index < assets.length; index++) {
     const sourceAlreadyKtx2 = sourceInspection.metrics.textureCount > 0
       && sourceInspection.metrics.ktx2TextureCount === sourceInspection.metrics.textureCount;
     if (sourceInspection.metrics.textureCount > 0 && !sourceAlreadyKtx2) {
-      asset.textureProfiles = await applyReleaseColorTextureProfile(document, asset.id, decodeImage);
-      const recessedProfiles = await applyReleaseCockpitRecessedTextureProfiles(document, asset.id, decodeImage);
+      // Right-size this asset's maps before they are encoded. 0 leaves the authored resolution.
+      const textureEdgeBudget = sg04TextureEdgeBudget(asset.id);
+      const decodeForAsset = (buffer) => decodeImage(buffer, textureEdgeBudget);
+      asset.textureProfiles = await applyReleaseColorTextureProfile(document, asset.id, decodeForAsset);
+      const recessedProfiles = await applyReleaseCockpitRecessedTextureProfiles(document, asset.id, decodeForAsset);
       if (recessedProfiles) asset.textureProfiles = { ...asset.textureProfiles, ...recessedProfiles };
       transforms.push(
         ktx2({
           slots: /^(baseColorTexture|emissiveTexture)$/,
-          imageDecoder: decodeImage,
+          imageDecoder: decodeForAsset,
+          textureEdgeBudget,
           isUASTC: true,
           uastcLDRQualityLevel: 2,
           generateMipmap: true,
@@ -258,7 +279,8 @@ for (let index = 0; index < assets.length; index++) {
         }),
         ktx2({
           slots: /^(normalTexture|clearcoatNormalTexture)$/,
-          imageDecoder: decodeImage,
+          imageDecoder: decodeForAsset,
+          textureEdgeBudget,
           isUASTC: true,
           uastcLDRQualityLevel: 2,
           generateMipmap: true,
@@ -269,7 +291,8 @@ for (let index = 0; index < assets.length; index++) {
         }),
         ktx2({
           slots: /^(occlusionTexture|metallicRoughnessTexture|roughnessTexture|metalnessTexture|clearcoatTexture|clearcoatRoughnessTexture|anisotropyTexture|transmissionTexture)$/,
-          imageDecoder: decodeImage,
+          imageDecoder: decodeForAsset,
+          textureEdgeBudget,
           isUASTC: true,
           uastcLDRQualityLevel: 2,
           generateMipmap: true,
@@ -645,16 +668,16 @@ function decodePng(buffer) {
   };
 }
 
-function decodeImage(buffer) {
+function decodeImage(buffer, maxEdge = 0) {
   try {
-    return decodePng(buffer);
+    return downsampleRgbaRgba(decodePng(buffer), maxEdge);
   } catch {
     const decoded = JPEG.decode(Buffer.from(buffer), { useTArray: true });
-    return {
+    return downsampleRgbaRgba({
       width: decoded.width,
       height: decoded.height,
       data: new Uint8Array(decoded.data.buffer, decoded.data.byteOffset, decoded.data.byteLength),
-    };
+    }, maxEdge);
   }
 }
 

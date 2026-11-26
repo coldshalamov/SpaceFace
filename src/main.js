@@ -11,6 +11,7 @@ import { startLoop } from './core/loop.js';
 import { createPresentationJournal } from './core/presentationJournal.js';
 import { entityIsJournaled } from './world/presentationSources.js';
 import { configureRacingCorridorSession } from './world/racingCorridor.js';
+import { SWARM_RULESET } from './data/swarmMode.js';
 import { createPresentationRuntimeCloser } from './core/presentationRunner.js';
 import { canonicalStringify } from './core/simSnapshot.js';
 import { installLiveClipDirector } from './ui/clipCaptureRuntime.js';
@@ -46,7 +47,8 @@ import { registerToastAction } from './ui/toastAction.js';
 import { installSlowFrameOffer, SLOW_OFFER_ACTION_ID } from './render/slowFrameOffer.js';
 import { createRuntimeFailurePresenter, describeBootFailure } from './ui/runtimeFailurePresenter.js';
 import { installGlobalErrorBoundary, attachErrorBoundary, recordRuntimeError } from './core/errorBoundary.js';
-import { authoredCriticalVisualReadiness, isAuthoredPartLibraryUsable } from './render/partsLibrary.js';
+import { authoredCriticalVisualReadiness, describeAuthoredUpgradeQueue, isAuthoredPartLibraryUsable } from './render/partsLibrary.js';
+import { bootMark, bootMarkOnce } from './core/bootTimeline.js';
 import { requiresRuckusWarmForNewGame, warmRuckusModel } from './render/characters/ruckusModel.js';
 import {
   settleRequiredPackageAdmission,
@@ -90,6 +92,7 @@ function debugRuntimeEnabled() {
 let diagnosticsState = null;
 
 async function boot() {
+  bootMark('main-boot-begin');
   installGlobalErrorBoundary();
   try {
     const modelTruthCensusUrl = runtimeAssetUrl('src/data/modelTruthCensus.json', import.meta.url);
@@ -104,6 +107,7 @@ async function boot() {
     contractPromise.catch(() => {});
     // Synchronous model measurements and localized copy are available before any system starts.
     await runtimeDataReady;
+    bootMark('runtime-data');
     const seed = (Date.now() & 0x7fffffff) >>> 0;
     const state = createGameState(seed);
     diagnosticsState = state;
@@ -111,10 +115,12 @@ async function boot() {
     // profile first so their boot resources match the player's settings on the very first frame.
     // This is read-only and therefore leaves the raw profile byte-identical.
     bootstrapProfileSettingsBeforeRegistry(state);
+    bootMark('state-created');
     // English source copy needs no inventory. A saved language/URL choice is prepared before
     // registry initialization can mount its first interactive localized screen.
     await ensureLocaleReady(state.settings?.locale || startupLocale);
     setGameLocale(state.settings?.locale || startupLocale);
+    bootMark('locale-ready', state.settings?.locale || startupLocale);
     // Phase 2: seed gameplay feature MAPS from the explicit production runtime profile (not
     // typeof window). createRegistry also re-applies from state.settings.gameplay.runtimeProfile.
     if (!state.settings.gameplay) state.settings.gameplay = {};
@@ -127,7 +133,8 @@ async function boot() {
     // Arm the error boundary here, not via window.SF (stripped from retail bundles). Its line reaches
     // the player through the presentation-only receipt route, never a bus `toast` that sim listeners hear.
     attachErrorBoundary({ getState: () => state });
-    installGameStartRecovery(bus);
+    let retryPreparedOpeningRoom = null;
+    installGameStartRecovery(bus, { retryPreparedRun: () => retryPreparedOpeningRoom?.() === true });
     // PQ-160.01: rated moments mark clip windows on the live bus so Pause → Clips lists them.
     // Production entity:killed has no tick; stamp sim tick + world seed onto the receipt.
     installLiveClipDirector(bus, {
@@ -161,6 +168,7 @@ async function boot() {
     // sim-owned systems when the whole sim lives in the worker.
     const simLaneFlags = resolveSimLaneFlags();
     for (const w of simLaneFlags.warnings) console.warn(`[simLane] ${w}`);
+    bootMark('registry-eval-start', simLaneFlags.lane);
     const ctx = {
       state,
       bus,
@@ -200,11 +208,17 @@ async function boot() {
       // failure restore the in-process bindings and continue on the main lane.
       // The registry is rebuilt so the sim-owned systems it skipped under the
       // worker lane init normally here.
+      //
+      // A worker that DIES rejects readyPromise at once (onerror -> failLane), so this window
+      // only ever fires on a live worker that is still loading. 45 s was too short on a busy
+      // laptop: boot fell back to the in-process sim, which runs the whole world on the render
+      // thread (measured 9 fps, world at half speed) with nothing on screen saying why. Waiting
+      // longer for the worker is always the better trade; the window only bounds a silent spawn.
       try {
         await Promise.race([
           simLaneRuntime.readyPromise,
           new Promise((_, reject) => setTimeout(
-            () => reject(new Error('sim worker init timed out')), 45_000)),
+            () => reject(new Error('sim worker init timed out')), SIM_WORKER_INIT_WINDOW_MS)),
         ]);
       } catch (error) {
         try { simLaneRuntime.close?.(); } catch (_) { /* dead lane */ }
@@ -225,6 +239,7 @@ async function boot() {
       registry = await createFullRegistry();
       ctx.registry = registry;
     }
+    bootMark('sim-worker-ready', ctx.simLane);
     // The render publisher binds ctx.presentationJournal at renderer init —
     // under the lane it must read the transport journal, not the in-process
     // one (which the worker's journal replaces wholesale).
@@ -240,6 +255,7 @@ async function boot() {
         });
       },
     });
+    bootMark('registry-init-done', `${bootInitMetrics?.initialized?.length ?? '?'} systems`);
     // The shell's normal close waits for the existing exit-save owner and queued mirrors.
     window.spacefaceShell?.onPrepareQuit?.(async () => {
       const owner = ctx.registry?.get?.('save');
@@ -321,6 +337,7 @@ async function boot() {
       return true;
     };
     helpers.beginLoadedGameTransition = () => {
+      retryPreparedOpeningRoom = null;
       // Reserve the load token BEFORE any reentrant lifecycle event. bus.emit is synchronous, so a
       // listener on game:loadingProgress that starts a new-game transition would otherwise take the
       // generation first and the save restore would proceed under a token it no longer owns.
@@ -353,6 +370,7 @@ async function boot() {
     let loopController = null;
     const closeRuntime = createPresentationRuntimeCloser({
       stopPresentation() {
+        retryPreparedOpeningRoom = null;
         state.render?.cancelOpeningPresentationHold?.();
         // Retire async Launch/Continue and GPU admissions before any teardown can settle their
         // gates. A late success must not publish flight into a runtime whose loop is stopped.
@@ -390,12 +408,15 @@ async function boot() {
     // on the bus; this is deliberately independent of the environment drain.
     ctx.achievements = installAchievements({ bus, state, telemetry });
     let eventTrace;
-    SF_DEBUG_ONLY: if (SF_DEBUG) eventTrace = createDeterministicEventTrace(bus, state);
+    SF_DEBUG_ONLY: if (SF_DEBUG && typeof location !== 'undefined' && /[?&]trace=1(?:&|$)/.test(location.search || '')) {
+      eventTrace = createDeterministicEventTrace(bus, state);
+    }
     // Apply accessibility settings (colorblind palette, motion/flash, UI scale) on boot + on change/load.
     applyAccessibility(state.settings);
     bus.on('settings:changed', () => applyAccessibility(state.settings));
     bus.on('save:loaded', () => applyAccessibility(state.settings));
     bus.on('save:restoring', () => configureRacingCorridorSession(state, false));
+    bus.on('game:started', () => bootMark('game-started'));
     // Worker lane: the sim realm's save.load restores state off-thread, so the
     // restore generator's own helpers.finalizeLoadedGame call never fires
     // there. The bridged save:loaded is the same signal — drive the identical
@@ -426,11 +447,26 @@ async function boot() {
     // gameState default). The world is created on New Game (game:new) and restored on Continue
     // (the save system handles game:load and emits save:loaded).
     bus.on('game:new', (opts) => {
-      const startNewGameTransition = () => {
+      retryPreparedOpeningRoom = null;
+      bootMark('new-game-pressed');
+      const startNewGameTransition = (preparedOpeningRoom = null) => {
         const transitionToken = runTransitionGuard.begin('new-game');
         if (state.render) state.render.admissionRunGeneration = transitionToken.generation;
         startNewGame(
           state, helpers, bus, registry, runTransitionGuard, transitionToken, opts || {},
+          {
+            loadingPresenter, preparedOpeningRoom,
+            workerIsUsable: () => !!laneCommandSink() && simLaneRuntime?.runner.isClosed() === false,
+            onOpeningRoomFailure(readPreparedRoom) {
+              retryPreparedOpeningRoom = () => {
+                retryPreparedOpeningRoom = null;
+                const room = runTransitionGuard.isCurrent(transitionToken) && readPreparedRoom();
+                if (!room) return false;
+                startNewGameTransition(room);
+                return true;
+              };
+            },
+          },
         ).catch((error) => {
           if (!runTransitionGuard.isCurrent(transitionToken)) return;
           console.error('[SpaceFace] new game startup failed', error);
@@ -448,6 +484,7 @@ async function boot() {
     });
 
     bus.on('game:exitToMenu', () => {
+      retryPreparedOpeningRoom = null;
       state.render?.cancelOpeningPresentationHold?.();
       // Returning to the menu also owns outstanding readiness work. Without a new generation,
       // an old Launch/Continue can settle afterward and put the player straight back in flight.
@@ -479,11 +516,12 @@ async function boot() {
       // recently — the runner's accepted presents are exactly that evidence,
       // while its suspended/restoring window correctly stops stamping. The same present also
       // feeds the slow-frame offer its per-callback frame time.
-      onPresented() { lastPaintAt = nowMs(); slowFrameOffer.onPresented(); },
+      onPresented() { lastPaintAt = nowMs(); slowFrameOffer.onPresented(); noteFlightFrameMarks(state); },
       onSimulationFailure: recoverRuntimeFailure,
       onPresentationFailure: recoverRuntimeFailure,
     });
     ctx.simStep = () => loopController.stepOnce();
+    bootMark('loop-started');
     const loopDebug = {
       getDiagnostics: () => loopController.getDiagnostics(),
       getPresentationFrame: () => loopController.getPresentationFrame?.(),
@@ -506,7 +544,108 @@ async function boot() {
     bus.emit('game:loadingProgress', { id: 'boot-menu', progress: .96, ceiling: .997,
       label: 'Opening the command deck', detail: 'All systems online' });
     await nextPaint();
+    bootMark('title-paint');
     loadingPresenter.hide();
+    bootMark('title-visible');
+    // The first screen root actually on the page is the player's real "title usable"
+    // point — the shell can lift a beat before uiRoot pushes it, so poll the DOM.
+    markTitleInteractiveWhenScreenMounts();
+
+    // Title-dwell warm (LOAD-TIME-1): the opening sector cook pays a first-use
+    // program compile for every pipeline the first scene draws (~460 ms each on
+    // hardware GL; a full CPU shader build under SwiftShader, which is what the
+    // headless probe and low-end machines actually run). A large share of that
+    // set is sector-independent — authored canopy/opaque variants, rock PBR,
+    // weapon + beam, and the VFX salvo families. Compile that global set during
+    // menu dwell, off-scene, paced per pipeline family; the keepalive root
+    // retains the programs so the cook's exact-scene compile hits the program
+    // cache instead of re-linking under the loading veil. Never awaited and
+    // never gates anything; the task-queue yield between bursts keeps input and
+    // menu paint live on software GL, where a link is a synchronous CPU stretch.
+    // A mid-warm New Game press does not strand the work: the queue finishes
+    // alongside the cook and both write the same program cache, so remaining
+    // bursts are still useful admission rather than duplication.
+    if (state.render?.renderer && state.render.scene && state.render.camera) {
+      const warmOwner = state.render;
+      const MAX_WARM_UNIT_MATERIALS = 4;
+      const titlePipelineWarm = async () => {
+        if (state.mode !== 'menu' || state.render !== warmOwner) return;
+        // Hold compile CPU until the title is actually usable — the first
+        // bursts must not contend with the screen-mount frames that define
+        // 'title-interactive' (measured: warm boot regresses ~1 s without this).
+        for (let i = 0; i < 300; i++) {
+          if (window.__SF_BOOT_TIMELINE__?.marks?.some((m) => m.name === 'title-interactive')) break;
+          if (state.mode !== 'menu' || state.render !== warmOwner) return;
+          await new Promise((resolve) => setTimeout(resolve, 150));
+        }
+        let precompile, compileModule;
+        try {
+          [precompile, compileModule] = await Promise.all([
+            import('./render/precompile.js'),
+            import('./render/compilePipelinesSafely.js'),
+          ]);
+        } catch (error) { console.warn('[boot] title pipeline warm failed', error); return; }
+        if (!precompile || !compileModule || state.mode !== 'menu' || state.render !== warmOwner) return;
+        const { renderer, scene, camera } = warmOwner;
+        const compileSafely = compileModule.compileScenePipelinesSafely;
+        // Host contract: preparePipelines(subject) compiles every pipeline under
+        // that subject. Split it into small units — a subtree of a few programs,
+        // or one material-owning node — so software-GL bursts stay bounded and a
+        // menu task always gets a slot between them.
+        const unitsFor = (subject) => {
+          const units = [];
+          const push = (node) => {
+            let materials = 0;
+            node.traverse((o) => { if (o.material) materials++; });
+            if (!materials) return;
+            if (materials <= MAX_WARM_UNIT_MATERIALS || node.material) {
+              units.push({ node, materials });
+              return;
+            }
+            for (const child of node.children) push(child);
+          };
+          // A material-owning subject compiles its whole subtree as one unit —
+          // compileAsync always covers descendants, so queuing children beside
+          // it would link the same programs twice.
+          if (subject.material) return [{ node: subject, materials: Infinity }];
+          for (const child of subject.children) push(child);
+          // Densest families first: the authored canopy/opaque/rock cohorts are
+          // exactly what the cook's required-first-picture links, so they get
+          // the earliest dwell share; thinner families follow.
+          return units.sort((a, b) => b.materials - a.materials);
+        };
+        const preparePipelines = async (subject) => {
+          for (const unit of unitsFor(subject)) {
+            // A New Game press stops the queue cold: the warm must not burn CPU
+            // inside the cook's gate — measured +7-11 s on the swarm armory leg
+            // when it ran through. retainWarmupOnEarlyExit keeps the programs
+            // already linked, so progress is surrendered, not wasted.
+            if (state.mode !== 'menu' || state.render !== warmOwner) {
+              const err = new Error('title dwell ended'); err.name = 'AbortError'; throw err;
+            }
+            await compileSafely(renderer, unit.node, camera, scene);
+            await new Promise((resolve) => setTimeout(resolve, 0));
+          }
+        };
+        bootMark('title-pipeline-warm-start');
+        return precompile.precompileGlobalPipelines(renderer, scene, camera, {
+          incremental: true,
+          preparePipelines,
+          retainWarmupOnEarlyExit: true,
+        }).then((result) => {
+          bootMark('title-pipeline-warm-done',
+            result && (result.reason || `${result.programs ?? '?'} programs`));
+        }).catch((error) => {
+          if (error && error.name === 'AbortError') bootMark('title-pipeline-warm-done', 'aborted');
+          else console.warn('[boot] title pipeline warm failed', error);
+        });
+      };
+      void titlePipelineWarm();
+      // A player who dives into a route and returns still earns the warm: every
+      // menu re-entry re-offers it — the module dedupes a compiled set and a
+      // rejected run clears its cache entry, so re-kicks are free.
+      bus.on('mode:changed', ({ mode } = {}) => { if (mode === 'menu') void titlePipelineWarm(); });
+    }
 
     // expose for debugging and the dev observe loop (dev/browser only — stripped from packaged builds)
     SF_DEBUG_ONLY: if (SF_DEBUG) {
@@ -684,19 +823,24 @@ async function boot() {
       const devSwarmQuery = new URLSearchParams(location.search);
       const { swarmStartAtRound, swarmArcadeSeedFor } = await import('./data/swarmLadder.js');
       const {
-        crucibleSetupFor, requestCrucibleRun, crucibleArenaIdForName, freshSeed,
+        crucibleSetupFor, crucibleHullSetupFor, requestCrucibleRun, crucibleArenaIdForName, freshSeed,
         CRUCIBLE_DEFAULT_STARTER_ID, CRUCIBLE_ARENA_ID,
       } = await import('./ui/crucibleLaunch.js');
       const { SWARM_RULESET } = await import('./data/swarmMode.js');
       const start = swarmStartAtRound(devSwarmQuery.get('swarmRound'));
       const arenaId = crucibleArenaIdForName(devSwarmQuery.get('swarmArena')) || CRUCIBLE_ARENA_ID;
-      const setup = crucibleSetupFor({
-        starterId: CRUCIBLE_DEFAULT_STARTER_ID,
+      // `?swarmHull=<ship id>` flies that hull (bare, armory kit) so a probe can reproduce a
+      // report made in a specific ship; absent, the default starter flies.
+      const devSwarmHull = devSwarmQuery.get('swarmHull');
+      const devSwarmArgs = {
         seed: swarmArcadeSeedFor(arenaId) || freshSeed(),
         arenaId,
         ruleset: SWARM_RULESET,
         startWave: start.startWave,
-      });
+      };
+      const setup = devSwarmHull
+        ? crucibleHullSetupFor({ hullId: devSwarmHull, ...devSwarmArgs })
+        : crucibleSetupFor({ starterId: CRUCIBLE_DEFAULT_STARTER_ID, ...devSwarmArgs });
       if (!setup.ok) {
         console.error('[SpaceFace] dev swarm route: setup invalid',
           (setup.issues || []).map((issue) => `${issue.path}: ${issue.message}`).join('; '));
@@ -743,14 +887,31 @@ async function boot() {
   }
 }
 
+// How long boot waits for a live-but-slow sim worker before the in-process fallback (see boot()).
+const SIM_WORKER_INIT_WINDOW_MS = 180_000;
+
 // Start a fresh game from the main menu: clear any prior world, build the new one, enter flight.
-async function startNewGame(state, helpers, bus, registry, runTransitionGuard, transitionToken, opts) {
+async function startNewGame(state, helpers, bus, registry, runTransitionGuard, transitionToken, opts, {
+  loadingPresenter, preparedOpeningRoom, workerIsUsable, onOpeningRoomFailure,
+}) {
   // The dynamic authority's bring-up (Rapier WASM compile + world construction) is pure CPU
   // work with no dependency on authored assets or the GPU cook. Kicked at scenePrepared it
   // overlaps the whole readiness chain instead of sitting as a serial stage at the end;
   // waitForPhysics below still gates flight on the same promise.
   let physicsPrep = null;
   let newGamePlus = null;
+  let acceptedOpeningRoom = preparedOpeningRoom;
+  let roomAdmitted = false;
+  const isCurrent = () => runTransitionGuard.isCurrent(transitionToken);
+  const liveOpeningRoom = () => {
+    const room = acceptedOpeningRoom;
+    const player = state.entities.get(state.playerId);
+    const run = state.run;
+    return !roomAdmitted && room && workerIsUsable() && player?.alive && player.id === room.playerId
+      && player.occupantGeneration === room.occupantGeneration && state.simTime === room.simTime
+      && run?.kind === 'survival' && run.ruleset === SWARM_RULESET && run.phase === 'draft'
+      && run.seed === room.seed && run.wave === room.wave ? room : null;
+  };
   return runNewGameStartTransition({
     guard: runTransitionGuard,
     token: transitionToken,
@@ -758,6 +919,18 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
       // The veil goes up before the roster clear: a populated sector's entity:destroyed fan-out
       // is a multi-hundred-ms stretch, and it must not brick on the previous screen.
       enterLoadingMode(state, bus);
+      if (preparedOpeningRoom) {
+        // A graphics Retry gets a new admission generation over the same fitted player.
+        // Await the queued loading mode on its owning lane before invoking any room gates.
+        physicsPrep = laneRpc('physicsPrep');
+        await physicsPrep;
+        if (!isCurrent()) return;
+        if (!liveOpeningRoom() || state.mode !== 'loading') {
+          throw new GameStartReadinessError('OPENING_ROOM_UNAVAILABLE', 'preparing-run',
+            'The prepared Swarm room no longer has its original flight authority.');
+        }
+        return;
+      }
       newGamePlus = await resolveNewGamePlusOverlay(registry, opts);
       // Adventure keeps the authored Ceres actor ready for hard and continuous sector entry.
       // A standalone Crucible run cannot enter Ceres and does not request RU-7's four payloads.
@@ -770,12 +943,33 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
           opts: opts || {},
           newGamePlus: newGamePlus || null,
         });
-        const bootResult = await physicsPrep;
-        if (!bootResult || bootResult.aborted) return;
+        const bootResult = (await physicsPrep)?.result;
+        if (!bootResult || bootResult.aborted || !isCurrent()) return;
         // state.ui is main-owned — the boot's reset ran against the worker's
         // copy, so replay the same ui write here or the menu screens pinned on
         // screenStack would hold shouldFreezeFlightSubmit open forever.
         resetRunUiState(state);
+        const run = state.run;
+        const prepared = bootResult.crucible;
+        const startWave = Number.isInteger(run?.telemetry?.startWave) ? run.telemetry.startWave : 1;
+        const draft = state.survivalDraftPublic;
+        const player = state.entities.get(state.playerId);
+        const hull = state.player.ownedShips?.[state.player.activeShipIndex];
+        if (prepared?.ok && prepared.phase === 'draft' && hull?.defId === prepared.hullId
+            && player?.alive && player.id === prepared.playerId
+            && run?.kind === 'survival' && run.ruleset === SWARM_RULESET && run.phase === 'draft'
+            && run.wave === startWave - 1 && Number.isFinite(run.credits)
+            && draft?.wave === run.wave && draft.offers?.length) {
+          const accepted = await loadingPresenter.reviewOpeningArmory({ wave: run.wave, isCurrent });
+          if (!isCurrent()) return;
+          if (!accepted) {
+            throw new GameStartReadinessError('OPENING_ARMORY_UNAVAILABLE', 'preparing-run',
+              'The opening Swarm Armory could not finish reviewing equipment.');
+          }
+          const fittedPlayer = state.entities.get(state.playerId);
+          acceptedOpeningRoom = { playerId: fittedPlayer?.id, occupantGeneration: fittedPlayer?.occupantGeneration,
+            simTime: state.simTime, seed: run.seed, wave: run.wave };
+        }
         return;
       }
       const bootResult = await runNewGameSimBoot({
@@ -787,9 +981,13 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
       });
       if (!bootResult || bootResult.aborted) return;
     },
-    discardRun: () => discardPreparedNewGameScene(
-      state, bus, runTransitionGuard, transitionToken,
-    ),
+    discardRun() {
+      if (liveOpeningRoom()) {
+        onOpeningRoomFailure(liveOpeningRoom);
+        return true;
+      }
+      return discardPreparedNewGameScene(state, bus, runTransitionGuard, transitionToken);
+    },
     waitForLibrary: () => withLoadingGatePulse(
       bus, runTransitionGuard, transitionToken, 'new-game',
       'authored-library', 0.25, 'Loading the ships',
@@ -868,13 +1066,19 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
     ),
     readPackageAdmission: () => (state.render && state.render.requiredPackageAdmission) || null,
     awaitSettledPackageAdmission: () => settleRequiredPackageAdmission(state),
-    reportProgress: (stage) => bus.emit('game:loadingProgress', {
-      ...stage,
-      detail: loadingDetailForStage(stage),
-      transition: 'new-game',
-    }),
+    reportProgress: (stage) => {
+      bootMark(`stage:${stage && stage.id || 'unknown'}`, stage && stage.label);
+      if (stage && stage.id === 'authored-library') bootMark('world-built');
+      bus.emit('game:loadingProgress', {
+        ...stage,
+        detail: loadingDetailForStage(stage),
+        transition: 'new-game',
+        ...(preparedOpeningRoom ? { destination: 'Crucible' } : {}),
+      });
+    },
     yieldForPresentation: nextPaintSliced,
     enterFlight() {
+      roomAdmitted = true;
       enterFlightMode(state, bus, { runTransitionGuard, transitionToken });
       if (!runTransitionGuard.isCurrent(transitionToken)) return;
       // Worker lane: the receipt is generated inside the worker — the newGameBoot
@@ -979,14 +1183,15 @@ function withLoadingGatePulse(bus, runTransitionGuard, transitionToken, transiti
     bus, runTransitionGuard, transitionToken, transition, id, progress, label,
     () => detailOf(nowMs() - startedMs),
   );
+  const done = () => { stop(); bootMark(`gate:${id}`, `${Math.round(nowMs() - startedMs)}ms`); };
   let result;
   try {
     result = gate();
   } catch (error) {
-    stop();
+    done();
     throw error;
   }
-  return Promise.resolve(result).finally(stop);
+  return Promise.resolve(result).finally(done);
 }
 
 async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payload = {}) {
@@ -1021,8 +1226,20 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
   }
   try {
     const restoredSettings = state.settings;
-    await ensureLocaleReady(restoredSettings?.locale || startupLocale);
+    let localeTimer;
+    let localeReady;
+    try {
+      localeReady = await Promise.race([
+        ensureLocaleReady(restoredSettings?.locale || startupLocale),
+        new Promise(resolve => { localeTimer = setTimeout(() => resolve(false), openingGateBudgetMs()); }),
+      ]);
+    } finally {
+      clearTimeout(localeTimer);
+    }
     if (!runTransitionGuard.isCurrent(transitionToken) || state.settings !== restoredSettings) return { stale: true };
+    if (localeReady === false) {
+      throw new GameStartReadinessError('LOCALE_UNAVAILABLE', 'language', 'The language catalog did not finish loading.');
+    }
     applyAccessibility(restoredSettings);
     bus.emit('game:loadingProgress', {
       id: 'authored-library',
@@ -1267,6 +1484,8 @@ function enterFlightMode(state, bus, options = {}) {
   timeEffects.clear('runtime:boot-menu');
   timeEffects.clear('runtime:loading');
   timeEffects.clear('runtime:start-failed');
+  bootMark('flight-entered');
+  armFlightFrameMarks();
   if (previousMode !== 'flight') bus.emit('mode:changed', { mode: 'flight', previousMode });
 }
 
@@ -1373,6 +1592,68 @@ async function waitForInitialAuthoredVisuals(state, timeoutMs = 20000, isCurrent
 
 function authoredVisualReadiness(state) {
   return authoredCriticalVisualReadiness(state);
+}
+
+// Boot-timeline frame witnesses. Armed at every flight entry: the first presented frame
+// after it is "first frame of flight", the first presented frame where the player's
+// authored hull has swapped in is "real ship on screen", and the first frame with an
+// empty authored-upgrade queue is the drain the packet's audit pinned (~22 s of held
+// model upgrades after first paint).
+let flightFrameMarkPending = false;
+let shipFrameMarkPending = false;
+let upgradeDrainMarkPending = false;
+
+function armFlightFrameMarks() {
+  flightFrameMarkPending = true;
+  shipFrameMarkPending = true;
+  upgradeDrainMarkPending = true;
+}
+
+function noteFlightFrameMarks(state) {
+  if (!flightFrameMarkPending && !shipFrameMarkPending && !upgradeDrainMarkPending) return;
+  if (!state || state.mode !== 'flight') return;
+  if (flightFrameMarkPending) {
+    flightFrameMarkPending = false;
+    bootMark('first-flight-frame');
+  }
+  if (shipFrameMarkPending) {
+    const player = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId) : null;
+    const assetState = player?.mesh?.userData?.authoredAssetState;
+    if (assetState === 'authored' || assetState === 'authored-with-cleanup-error') {
+      shipFrameMarkPending = false;
+      bootMark('first-ship-frame');
+    }
+  }
+  if (upgradeDrainMarkPending) {
+    const queue = describeAuthoredUpgradeQueue(state.render?.scene);
+    if (queue.present && queue.pending === 0 && queue.inFlight === 0 && queue.compiling === 0) {
+      upgradeDrainMarkPending = false;
+      bootMark('upgrade-queue-drained');
+    }
+  }
+}
+
+// The overlay hides before uiRoot's first screen necessarily paints — "title interactive"
+// is the frame a [data-screen] root is actually visible. Poll on presented frames until
+// it mounts (bounded: a wedged uiRoot leaves the mark absent, which the probe reports).
+function markTitleInteractiveWhenScreenMounts() {
+  const mounted = () => {
+    for (const root of document.querySelectorAll('[data-screen]')) {
+      if (typeof root.checkVisibility === 'function') {
+        try { if (root.checkVisibility({ checkVisibilityCSS: true })) return true; continue; } catch { /* older host */ }
+      }
+      if (root.offsetParent) return true;
+    }
+    return false;
+  };
+  if (mounted()) { bootMarkOnce('title-interactive'); return; }
+  let tries = 0;
+  const poll = () => {
+    if (mounted()) { bootMarkOnce('title-interactive'); return; }
+    if (++tries < 7200) requestAnimationFrame(poll); // ~2 min at 60 fps, then give up
+  };
+  requestAnimationFrame(poll);
 }
 
 function loadingDetailForStage(stageOrId) {

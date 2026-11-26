@@ -4,10 +4,14 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { createBus } from '../src/core/eventBus.js';
+import { makeEntity } from '../src/core/entity.js';
 import { mulberry32, hash32 } from '../src/core/rng.js';
+import { createSg02DynamicBodyOwner } from '../src/core/sg02DynamicBodyOwner.js';
+import { masslineImpacts } from '../src/systems/masslineImpacts.js';
 import { onboarding, BEATS } from '../src/systems/onboarding.js';
 import { authorizeAIEngagement, isOnboardingRaidWingAuthorized } from '../src/ai/engagementAuthority.js';
 import { stepEgressExits } from '../src/ai/egressExit.js';
+import { targetDisplayName } from '../src/ui/targetPanel.js';
 
 let nextId = 500;
 function rig({ clinic = false } = {}) {
@@ -81,6 +85,7 @@ test('X-02 a normal stage spawns one wing on hold_fire; a clinic stage spawns no
   assert.equal(wing.data.ai.squadId, 'claim_jumper_wing');
   const raider = h.entities.get(raid.ids.raider);
   assert.equal(raider.data.ai.squadId, 'claim_jumper_wing', 'wingmate stamp is shared');
+  assert.equal(targetDisplayName(makeEntity(raider)), 'Claim Jumper', 'the live entity retains the authored name');
   assert.equal(wing.hullMax, 60);
   assert.equal(wing.data.weapons.length, 1);
   const pulse = wing.data.weapons[0];
@@ -93,6 +98,197 @@ test('X-02 a normal stage spawns one wing on hold_fire; a clinic stage spawns no
   const craid = stage(c);
   assert.equal(craid.ids.wing == null, true, 'the clinic keeps its unarmed tableau');
 });
+
+test('the Raid waypoint guides the held Raider and resets after a simple cut', () => {
+  const h = rig();
+  const raid = stage(h);
+  const raider = h.entities.get(raid.ids.raider);
+  const rock = h.entities.get(raid.ids.throwRock);
+  h.state.nav = {};
+  const updateWaypoint = () => h.ob._setObjectiveWaypoint(false);
+
+  updateWaypoint();
+  assert.deepEqual(h.state.nav.waypoint.pos, raider.pos);
+  assert.match(h.state.nav.waypoint.reason, /^Latch the raider/);
+
+  h.state.player.tether = { active: true, targetId: raider.id, restLength: 36.8 };
+  h.bus.emit('tether:latched', { targetId: raider.id });
+  updateWaypoint();
+  assert.deepEqual(h.state.nav.waypoint.pos, rock.pos);
+  assert.match(h.state.nav.waypoint.reason, /Hold F.*let out the line/);
+  h.state.player.tether.restLength = 100;
+  updateWaypoint();
+  assert.match(h.state.nav.waypoint.reason, /Thrust.*past one side of the rock.*Aim at it as the Raider swings/);
+  raider.vel = { x: 60, z: 0 };
+  updateWaypoint();
+  assert.match(h.state.nav.waypoint.reason, /lit throw cue.*\(RMB\)/);
+  h.state.input.promptDevice = 'touch';
+  updateWaypoint();
+  assert.match(h.state.nav.waypoint.reason, /lit throw cue.*\(Flick\)/);
+  h.state.input.promptDevice = 'gamepad';
+  updateWaypoint();
+  assert.match(h.state.nav.waypoint.reason, /lit throw cue.*\(LT\)/);
+
+  const originalRockPos = rock.pos;
+  rock.pos = { x: raider.pos.x + 5100, z: raider.pos.z };
+  updateWaypoint();
+  assert.deepEqual(h.state.nav.waypoint.pos, rock.pos);
+  assert.equal(h.state.nav.waypoint.reason, 'Tow back to the rock, or release and fly away.');
+  assert.equal(h.state.player.tether.targetId, raider.id);
+  assert.equal(h.state.onboarding.beatDoneAt.raid, undefined);
+  rock.pos = originalRockPos;
+
+  h.state.player.tether = { active: true, targetId: rock.id };
+  updateWaypoint();
+  assert.deepEqual(h.state.nav.waypoint.pos, raider.pos);
+  assert.equal(h.state.nav.waypoint.reason, 'Release the current line. Latch the raider.');
+
+  h.state.player.tether = { active: false };
+  h.bus.emit('tether:released', { targetId: raider.id });
+  updateWaypoint();
+  assert.deepEqual(h.state.nav.waypoint.pos, raider.pos);
+  assert.match(h.state.nav.waypoint.reason, /^Latch the raider/);
+  assert.equal(h.state.onboarding.beatDoneAt.raid, undefined);
+
+  h.bus.emit('tether:whipImpact', { targetId: raider.id, victimId: rock.id, rating: 'solid' });
+  updateWaypoint();
+  assert.equal(h.state.nav.waypoint, null, 'the completed lesson leaves no stale latch cue');
+});
+
+test('a directed Raider throw keeps the same marked rock in view until the predicted contact', () => {
+  const h = rig();
+  const raid = stage(h);
+  const raider = h.entities.get(raid.ids.raider);
+  const rock = h.entities.get(raid.ids.throwRock);
+  raider.occupantGeneration = 10;
+  rock.occupantGeneration = 12;
+  raid.throwRockGeneration = 12;
+  h.state.nav = {};
+  h.state.simTime = 1.2;
+  const lastThrow = { time: 1, payloadId: raider.id, payloadGeneration: 10,
+    aimTargetId: rock.id, aimTargetGeneration: 12, prediction: { onSolution: true, timeOfFlight: 1 } };
+  h.state.massline2 = { throw: { lastThrow } };
+  const update = () => {
+    h.ob._setObjectiveWaypoint(false);
+    return h.state.nav.waypoint;
+  };
+
+  assert.equal(update().presentationEntityId, rock.id);
+  assert.match(update().reason, /Watch the marked rock/);
+  lastThrow.aimTargetGeneration = 13;
+  assert.match(update().reason, /^Latch the raider/);
+  lastThrow.aimTargetGeneration = 12;
+  lastThrow.prediction.onSolution = false;
+  assert.match(update().reason, /^Latch the raider/);
+  lastThrow.prediction.onSolution = true;
+  h.state.simTime = 2.1;
+  assert.match(update().reason, /^Latch the raider/);
+});
+
+test('the staged and rebuilt Raid target stays at its mark after real contact', async (t) => {
+  const h = rig();
+  const raid = stage(h);
+  const freshRock = h.entities.get(raid.ids.throwRock);
+  h.ob.helpers.removeEntity(freshRock.id);
+  h.ob._resolveRaidDone();
+  const rebuiltRock = h.entities.get(raid.ids.throwRock);
+  assert.ok(rebuiltRock && rebuiltRock.id !== freshRock.id, 'a missing mark is rebuilt as one new body');
+
+  for (const [path, spec] of [['staged', freshRock], ['rebuilt', rebuiltRock]]) {
+    const rock = makeEntity({ ...spec, alive: true });
+    const mark = { x: rock.pos.x, z: rock.pos.z };
+    const traffic = makeEntity({ id: 100, type: 'asteroid', radius: 10, mass: 1000,
+      pos: { x: mark.x - 100, z: mark.z + 48 }, vel: { x: 110, z: 0 } });
+    const owner = await createSg02DynamicBodyOwner({ captureContactImpacts: true, publishTelemetry: false });
+    t.after(() => owner.dispose());
+    owner.syncFromEntities([rock, traffic]);
+    const contacts = [];
+    for (let tick = 1; tick <= 60; tick++) {
+      owner.step(1 / 60, tick);
+      contacts.push(...owner.drainContactImpacts());
+    }
+    assert.ok(contacts.some(({ aId, bId }) => (aId === rock.id && bId === traffic.id)
+      || (aId === traffic.id && bId === rock.id)), `${path} target catches an off-center pass with a solid Rapier collider`);
+    assert.deepEqual({ x: rock.pos.x, z: rock.pos.z }, mark, `${path} target holds its mark`);
+  }
+});
+
+test('flying clear of the Raid with the line off advances the job without awarding a throw', () => {
+  const h = rig();
+  const raid = stage(h);
+  const player = h.entities.get(h.state.playerId);
+  const raider = h.entities.get(raid.ids.raider);
+  const rock = h.entities.get(raid.ids.throwRock);
+  const wing = h.entities.get(raid.ids.wing);
+  const milestones = [];
+  h.bus.on('firsthour:milestone', (milestone) => milestones.push(milestone));
+  const bearing = Math.atan2(rock.pos.z - raider.pos.z, rock.pos.x - raider.pos.x);
+  const direction = { x: -Math.cos(bearing), z: -Math.sin(bearing) };
+  const flyAway = (distance, speed) => {
+    player.pos = { x: raider.pos.x + direction.x * distance, z: raider.pos.z + direction.z * distance };
+    player.vel = { x: direction.x * speed, z: direction.z * speed };
+    h.ob._resolveRaidDone();
+  };
+  h.state.nav = {};
+  h.state.simTime = 30;
+  h.ob._setObjectiveWaypoint(false);
+  assert.match(h.state.nav.waypoint.reason, /fly away/i);
+  flyAway(450, 80);
+  flyAway(780, -80);
+  h.state.player.tether = { active: true, targetId: raider.id };
+  flyAway(780, 80);
+  assert.equal(h.state.onboarding.beatDoneAt.raid, undefined, 'close, inbound, or towing keeps the encounter active');
+
+  h.state.player.tether = { active: false };
+  flyAway(780, 80);
+  assert.equal(h.state.onboarding.beatDoneAt.raid, 30);
+  assert.equal(h.state.onboarding.beatDoneAt.claimed, 30, 'there is no new haul when the pilot leaves the fight');
+  assert.equal(h.state.onboarding.claimed, undefined);
+  assert.deepEqual(milestones.map((milestone) => milestone.milestone), ['raidWithdrawn']);
+  assert.equal(wing.data.ai.activity.kind, 'disengage');
+  assert.equal(wing.data.ai.roe, 'hold_fire');
+  assert.equal(raider.alive, true);
+  h.ob._resolveRaidDone();
+  assert.equal(milestones.length, 1);
+
+  h.state.simTime = 36;
+  h.ob._tryAdvanceBeat();
+  assert.equal(BEATS[h.state.onboarding.currentBeat].key, 'seam');
+});
+
+for (const slung of [false, true]) {
+  test(`only a physical ${slung ? 'released' : 'held'} Raider impact completes the lesson`, () => {
+    const h = rig();
+    const raid = stage(h);
+    const player = h.entities.get(h.state.playerId);
+    const raider = h.entities.get(raid.ids.raider);
+    const rock = h.entities.get(raid.ids.throwRock);
+    const impacts = { ...masslineImpacts };
+    impacts.init({ state: h.state, bus: h.bus });
+    const receipts = [];
+    const milestones = [];
+    h.bus.on('tether:whipImpact', (receipt) => receipts.push(receipt));
+    h.bus.on('firsthour:milestone', (milestone) => milestones.push(milestone));
+    h.state.player.tether = { active: true, targetId: raider.id };
+    const contactRadius = (raider.physicsBody?.radius ?? raider.radius) + rock.physicsBody.radius;
+    player.vel = { x: 60, z: 0 };
+    raider.vel = { x: 60, z: 0 };
+    raider.pos = { x: rock.pos.x - contactRadius - 12, z: rock.pos.z };
+    impacts.update(1 / 60, h.state);
+    h.ob._resolveRaidDone();
+    assert.equal(receipts.length, 0);
+    assert.equal(h.state.onboarding.beatDoneAt.raid, undefined, 'passing close at speed is still a miss');
+
+    if (slung) h.state.player.tether = { active: false };
+    raider.pos.x = rock.pos.x - contactRadius;
+    h.state.simTime += 1 / 60;
+    impacts.update(1 / 60, h.state);
+    assert.ok(receipts.some((receipt) => receipt.targetId === raider.id
+      && receipt.victimId === rock.id && receipt.rating === 'solid' && receipt.slung === slung));
+    assert.equal(h.state.onboarding.beatDoneAt.raid, h.state.simTime);
+    assert.deepEqual(milestones.map((milestone) => milestone.cause), [slung ? 'throwImpact' : 'towSlam']);
+  });
+}
 
 test('X-02 the bridge: before the latch the wing is denied; after it the player at (0,0) is legal', () => {
   const h = rig();

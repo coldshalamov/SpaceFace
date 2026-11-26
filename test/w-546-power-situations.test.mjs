@@ -9,7 +9,7 @@ import {
   POWER_SITUATION_TTL_S, POWER_SITUATION_WINDOW_S,
 } from '../src/onboarding/powerSituations.js';
 
-function harness({ flownBefore = false, startedAt = 0 } = {}) {
+function harness({ flownBefore = false, startedAt = 0, dockDoneAt = startedAt } = {}) {
   const spawned = [];
   const removed = [];
   const milestones = [];
@@ -18,7 +18,7 @@ function harness({ flownBefore = false, startedAt = 0 } = {}) {
     simTime: startedAt,
     entities: new Map(),
     playerId: 'p1',
-    onboarding: { active: true, finished: false, startedAt, pace: { flownBefore } },
+    onboarding: { active: true, finished: false, startedAt, beatDoneAt: { dock: dockDoneAt }, pace: { flownBefore } },
     input: { actions: {} },
   };
   state.entities.set('p1', { id: 'p1', pos: { x: 0, z: 0 }, rot: 0 });
@@ -46,13 +46,14 @@ function harness({ flownBefore = false, startedAt = 0 } = {}) {
   return { state, sys, spawned, removed, milestones };
 }
 
-test('w-546: the first situation lands after the stick drills, and using the power resolves it', () => {
-  const h = harness();
+test('w-546: the first situation lands after the first dock, and using the power resolves it', () => {
+  const dockDoneAt = 910;
+  const h = harness({ dockDoneAt });
   const { state, sys } = h;
-  state.simTime = POWER_SITUATION_FIRST_S - 1;
+  state.simTime = dockDoneAt + POWER_SITUATION_FIRST_S - 1;
   sys._tickPowerSituations(state);
   assert.equal(h.spawned.length, 0, 'nothing placed before the first window');
-  state.simTime = POWER_SITUATION_FIRST_S + 1;
+  state.simTime = dockDoneAt + POWER_SITUATION_FIRST_S + 1;
   sys._tickPowerSituations(state);
   assert.ok(h.spawned.length > 0, 'first setup placed');
   const power = state.onboarding.powerSit.active.power;
@@ -61,6 +62,15 @@ test('w-546: the first situation lands after the stick drills, and using the pow
   assert.equal(state.onboarding.powerSit.active, null);
   assert.equal(state.onboarding.powerSit.doneAt[power], state.simTime);
   assert.ok(h.milestones.some((m) => m.id === 'powerSituation' && m.used === true));
+
+  // The next drill teaches Shove's actual press behavior.
+  state.simTime += POWER_SITUATION_GAP_S + 1;
+  sys._tickPowerSituations(state);
+  assert.equal(state.onboarding.powerSit.active.power, 'shove');
+  assert.match(POWER_SITUATIONS.find((spec) => spec.power === 'shove').line, /Tap Shove/);
+  state.input.actions.shove = { held: true, pressed: true };
+  sys._tickPowerSituations(state);
+  assert.ok(h.milestones.some((m) => m.power === 'shove' && m.used === true));
 });
 
 test('w-546: an ignored setup expires on TTL and the ladder resumes after the voice gap', () => {

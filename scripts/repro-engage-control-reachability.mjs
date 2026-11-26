@@ -118,7 +118,6 @@ try {
   page = await context.newPage();
   page.setDefaultTimeout(30_000);
   await page.goto(server.baseUrl, { waitUntil: 'domcontentloaded', timeout: 60_000 });
-  await page.bringToFront();
   await bootToAuthoredFlight({ page, outputDir: null, log });
 
   await page.keyboard.press('KeyN');

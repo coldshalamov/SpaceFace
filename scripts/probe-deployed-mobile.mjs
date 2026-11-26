@@ -20,7 +20,9 @@ import {
 //   public route to pause, rebuild, resume the simulation, and keep touch controls (D188 renderer recovery).
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
-import { chromium, webkit, devices } from 'playwright';
+import { chromium as rawChromium, webkit, devices } from 'playwright';
+import { quietChromium } from './lib/quietLaunch.mjs';
+const chromium = quietChromium(rawChromium);
 
 const url = new URL(process.env.MOBILE_PROBE_URL || 'https://spaceface-play-demo.vercel.app/');
 if (!['https:', 'http:'].includes(url.protocol)) throw new Error('HTTP(S) deployment URL required');

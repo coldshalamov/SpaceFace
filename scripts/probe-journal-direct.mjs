@@ -1,5 +1,7 @@
 // Probe the lane journal surface directly: hasRange/visitRange/writeSequence.
-import { chromium } from 'playwright';
+import { chromium as rawChromium } from 'playwright';
+import { quietChromium } from './lib/quietLaunch.mjs';
+const chromium = quietChromium(rawChromium);
 const { spawn } = await import('node:child_process');
 const { get } = await import('node:http');
 const PORT = 8461;

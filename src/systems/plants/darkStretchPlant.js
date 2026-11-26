@@ -56,6 +56,7 @@ export function isEscorting(distWu, tuning = DARK_STRETCH_TUNING) {
 }
 
 export const darkStretchPlant = {
+  modes: ['flight'],
   name: 'plants132',
 
   init(ctx) {

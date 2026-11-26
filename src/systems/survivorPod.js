@@ -43,6 +43,7 @@ import { playerWreckMarker } from './aftermathWrecks.js';
 import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { fenceForStation } from '../data/fences.js';
 import { localizeText } from '../localization/sourceText.js';
+import { SWARM_RULESET } from '../data/swarmMode.js';
 
 const MISSION_ID = 'wm_survivor_pod';
 const CONCORD_FACTION_ID = 'faction_scn';
@@ -339,6 +340,14 @@ function normalizePromotedRecord(raw) {
  */
 export function causalSurvivorPodsGatedOut(state) {
   if (!state) return true;
+  // A Swarm run lives in its own arena (OVH-04, 04_SWARM §6.1): the rescue economy — mayday hail,
+  // tow voice, station bubble, salvage fee — is Adventure's, and an arena has nowhere to deliver.
+  if (state.world && state.world.swarmArenaOnly) return true;
+  // The live run is the authority even while `world.swarmArenaOnly` is being written at arena
+  // entry: 'Mayday, mayday — Wasp going down, pod away' over a Swarm fight was that race
+  // (DEMO-SWARM-UX-2).
+  const run = state.run;
+  if (run && run.kind === 'survival' && run.ruleset === SWARM_RULESET) return true;
   const scenario = state.scenario;
   if (scenario && scenario.active) return true;
   if (scenario && typeof scenario.scenarioId === 'string' && scenario.scenarioId) return true;

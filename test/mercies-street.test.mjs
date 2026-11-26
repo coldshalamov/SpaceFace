@@ -590,7 +590,7 @@ test('PL-278 grind: knocking the coin bowl all shift demands once — one deny p
 
 // ---------- PL-279 The borrowed ladder ----------
 
-test('PL-279 positive: borrow, need a hand and get one shove, return by the bell', () => {
+test('PL-279 positive: borrow, need a hand and hear the pier hand call, return by the bell', () => {
   const h = harnessFor(borrowedLadderPlant, BORROWED_LADDER_TUNING, { simTime: 75 });
   advanceWith(h, 1);
   const hook = ownedOf(h, 'plantsPl279Hook')[0];
@@ -606,7 +606,8 @@ test('PL-279 positive: borrow, need a hand and get one shove, return by the bell
   player.hull = 40;
   advanceWith(h, 1);
   assert.equal(eventsOf(h.bus, 'plants:pl279:hand').length, 1, 'the ladder is there when you need a hand');
-  assert.ok(Math.hypot(player.vel.x, player.vel.z) > 1, 'a real shove toward the pier');
+  assert.equal(Math.hypot(player.vel.x, player.vel.z), 0,
+    'R23: the hand calls the bearing — it never shoves the hull (no invisible force)');
   player.hull = 100;
 
   teleportPlayer(h, point.x + 10, point.z);
@@ -912,9 +913,10 @@ test('PL-285 positive: tow the skiffer in and the pool marks you covered \u2014 
   advanceWith(h, 1);
   const tug = ownedOf(h, 'plantsPl285Tug')[0];
   assert.ok(tug, 'someone comes out for you');
-  advanceWith(h, 20, 0.5); // the tug closes and shoves
+  advanceWith(h, 20, 0.5); // the tug closes and calls the tow in
   assert.equal(eventsOf(h.bus, 'plants:pl285:rescue').length, 1, 'towed in, prepaid');
-  assert.ok(Math.hypot(player.vel.x, player.vel.z) > 1, 'a real line\u2019s pull');
+  assert.equal(Math.hypot(player.vel.x, player.vel.z), 0,
+    'R23: the prepaid tow arrives and speaks — it never shoves the hull (no invisible force)');
   h.bus.emit('entity:killed', { id: 'p1' });
   assert.equal(eventsOf(h.bus, 'plants:pl285:rescueDue').length, 1,
     'the death/respawn owner receives the prepaid-tow receipt');

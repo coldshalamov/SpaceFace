@@ -102,7 +102,6 @@ try {
   page.setDefaultNavigationTimeout(60_000);
 
   const navigationResponse = await page.goto(ownedServer.baseUrl, { waitUntil: 'domcontentloaded', timeout: 60_000 });
-  await page.bringToFront();
   assert(navigationResponse, 'canonical root navigation must return an HTTP response');
   const redirectChain = navigationRedirectChain(navigationResponse);
   navigationUrlChecks = [

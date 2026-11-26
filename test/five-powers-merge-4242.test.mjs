@@ -45,9 +45,9 @@ test('the five powers keep 1-5 and the digits are their only seats in every sche
     assert.deepEqual(resolveActionCodes(st, 'pin'), ['Digit3'], `${scheme} pin`);
     assert.equal(resolveActionCodes(st, 'bomb')[0], 'Digit4', `${scheme} bomb seat`);
     assert.deepEqual(resolveActionCodes(st, 'rig'), ['Digit5'], `${scheme} rig`);
-    // G18-02: the Line left the keyboard (RMB in every door); the letter aliases moved to
-    // the one context wheel — the digits are the ONLY power seats.
-    assert.deepEqual(resolveActionCodes(st, 'tether'), [], `${scheme} line has no keyboard seat`);
+    // R17: the Line is RMB and F — one button, one grammar (tap latch, tap throw, hold reel).
+    // The letter aliases moved to the one context wheel — the digits are the ONLY power seats.
+    assert.deepEqual(resolveActionCodes(st, 'tether'), ['KeyF'], `${scheme}: R17 "F and right mouse button are the same button"`);
     assert.deepEqual(resolveActionCodes(st, 'cycleBomb'), [], `${scheme} ordnance cycle is a wheel slice`);
     assert.deepEqual(resolveActionCodes(st, 'contextWheel'), ['KeyQ'], `${scheme} the wheel is held on Q`);
   }
@@ -82,17 +82,20 @@ test('old names resolve to the power keys; saved custom codes under old names ca
   assert.equal(savedCodesForPower(null, 'pull'), undefined);
   // Two old verbs merged into one power keep both custom keys; an old verb the player explicitly
   // unbound leaves the power unbound unless another merged verb still carries a custom key.
-  assert.deepEqual(resolveActionCodes(settingsFor('pilot', { deployRepulsor: ['KeyV'], chargeDetonate: ['KeyB'] }), 'shove'), ['KeyV', 'KeyB']);
-  assert.deepEqual(resolveActionCodes(settingsFor('pilot', { chargeDetonate: [] }), 'shove'), []);
-  assert.deepEqual(resolveActionCodes(settingsFor('pilot', { deployRepulsor: ['KeyV'], chargeDetonate: [] }), 'shove'), ['KeyV']);
-  // Pad: defaults and an old remap. G18-02: bumpers pull/shove, d-pad pin/bomb, B rigs,
-  // hold-Y owns the wheel the old power chords used to ride.
-  assert.deepEqual([...GAMEPAD_DEFAULT_BINDINGS.shove], ['r1']);
-  assert.deepEqual([...GAMEPAD_DEFAULT_BINDINGS.bomb], ['dRight']);
-  assert.deepEqual([...GAMEPAD_DEFAULT_BINDINGS.pull], ['l1']);
-  assert.deepEqual([...GAMEPAD_DEFAULT_BINDINGS.pin], ['dDown']);
-  assert.deepEqual([...GAMEPAD_DEFAULT_BINDINGS.rig], ['cancel']);
-  assert.deepEqual([...GAMEPAD_DEFAULT_BINDINGS.contextWheel], ['alt']);
+  // R17: detonation moved from Shove to the second press of Bomb, so the old Detonate key follows it.
+  assert.deepEqual(resolveActionCodes(settingsFor('pilot', { chargeThrow: ['KeyT'], chargeDetonate: ['KeyB'] }), 'bomb'), ['KeyT', 'KeyB']);
+  assert.deepEqual(resolveActionCodes(settingsFor('pilot', { chargeDetonate: [] }), 'bomb'), []);
+  assert.deepEqual(resolveActionCodes(settingsFor('pilot', { deployRepulsor: ['KeyV'], chargeDetonate: ['KeyB'] }), 'shove'), ['KeyV'],
+    'R17: Shove no longer inherits the Detonate key');
+  // Pad: defaults and an old remap. CONTROLLER-1: the fight three sit under the right
+  // thumb (A shove, Y pull, B bomb), the anchor and the plow ride the hold-LB layer,
+  // and hold-D-pad-down owns the wheel the old power chords used to ride.
+  assert.deepEqual([...GAMEPAD_DEFAULT_BINDINGS.shove], ['accept']);
+  assert.deepEqual([...GAMEPAD_DEFAULT_BINDINGS.pull], ['alt']);
+  assert.deepEqual([...GAMEPAD_DEFAULT_BINDINGS.bomb], ['cancel']);
+  assert.deepEqual([...GAMEPAD_DEFAULT_BINDINGS.pin], ['l1+action']);
+  assert.deepEqual([...GAMEPAD_DEFAULT_BINDINGS.rig], ['l1+alt']);
+  assert.deepEqual([...GAMEPAD_DEFAULT_BINDINGS.contextWheel], ['dDown']);
   for (const legacy of Object.keys(POWER_VERB_ALIASES)) assert.equal(GAMEPAD_DEFAULT_BINDINGS[legacy], undefined, `${legacy} has no pad seat of its own`);
   // An older remap can already own the new pylon default; introducing equipment cannot steal it.
   const pad = resolveGamepadBindings({ controls: { gamepad: { bindings: { deployWell: ['r1+dLeft'] } } } });
@@ -100,14 +103,12 @@ test('old names resolve to the power keys; saved custom codes under old names ca
   assert.deepEqual(pad.deployShieldPylon, [], 'the new action stays honestly unbound instead of changing an existing remap');
 });
 
-test('RIG picks the cone in open space and the scoop inside a planet band; an open rig folds first', () => {
+test('RIG is the Plow everywhere: no silent flip to the scoop inside a planet band (R17)', () => {
   assert.equal(resolveRigTarget({}), 'cone');
   const band = { planet: { active: true, player: { regionRank: PLANET_REGION_RANK.skim, collectorOn: false } } };
-  assert.equal(resolveRigTarget(band), 'skim');
-  const approach = { planet: { active: true, player: { regionRank: PLANET_REGION_RANK.sling, collectorOn: false } } };
-  assert.equal(resolveRigTarget(approach), 'cone', 'outside the skim band the scoop would harvest nothing');
-  assert.equal(resolveRigTarget({ ...band, fields: { coneActive: true } }), 'cone', 'an open cone folds before the scoop opens');
-  assert.equal(resolveRigTarget({ planet: { active: true, player: { regionRank: 0, collectorOn: true } } }), 'skim', 'an open scoop closes');
+  assert.equal(resolveRigTarget(band), 'cone', 'R17: "Power 5 is the Plow, always"');
+  assert.equal(resolveRigTarget({ planet: { active: true, player: { regionRank: 0, collectorOn: true } } }), 'cone',
+    'R17: a running scoop does not change what 5 means');
 });
 
 test('BOMB throws the sticky charge whenever one is aboard, unless the cycle chose a drift bomb', () => {
@@ -144,7 +145,7 @@ test('real key codes drive exactly the internal flags each power owns', () => {
   };
   const on = (a) => FLAGS.filter((f) => a[f] === true).sort();
   assert.deepEqual(on(press('Digit1')), ['deployWell']);
-  assert.deepEqual(on(press('Digit2')), ['chargeDetonate', 'deployRepulsor']);
+  assert.deepEqual(on(press('Digit2')), ['deployRepulsor'], 'R17: Shove no longer detonates anything by key rule');
   // G18-02: the old letter aliases are gone — only the digit seats fire a power.
   assert.deepEqual(on(press('KeyR')), [], 'the old Shove letter is a wheel seat now, not a key');
   assert.deepEqual(on(press('Digit3')), ['deployMassSeed']);
@@ -157,7 +158,12 @@ test('real key codes drive exactly the internal flags each power owns', () => {
   assert.deepEqual(on(press('KeyY')), [], 'the old bomb letter is free — Digit4 owns BOMB alone');
   assert.deepEqual(on(press('Digit5')), ['toggleClearingCone']);
   state.planet = { active: true, player: { regionRank: PLANET_REGION_RANK.skim, collectorOn: false } };
-  assert.deepEqual(on(press('Digit5')), ['toggleSkimCollector']);
+  assert.deepEqual(on(press('Digit5')), ['toggleClearingCone'], 'R17: 5 is the Plow inside a planet band too');
+  // R17: "pressing 4 again detonates the armed charge(s)" — the second press blows what the first threw.
+  const charge = sim.spawn({ type: 'charge', pos: { x: 40, z: 0 }, vel: { x: 0, z: 0 }, radius: 4, mass: 1,
+    data: { ownerId: state.playerId, armed: true } });
+  assert.deepEqual(on(press('Digit4')), ['chargeDetonate'], 'R17: with a charge armed out there, 4 detonates it');
+  charge.alive = false;
   assert.deepEqual(on(press('Comma')), [], 'the ordnance cycle is a wheel tap, not the comma key');
   assert.deepEqual(on(press('Digit6')), [], 'the old Repulsor digit is free');
   assert.deepEqual(on(press('Digit9')), [], 'the old bomb digit is free');
@@ -232,7 +238,7 @@ test('the rail shows one socket per power, read from the real owners', () => {
   assert.deepEqual([1, 2, 3, 4, 5, 6].map((i) => labels[i]), ['1', '2', '3', '4', '5', 'Space']);
   const groups = buildOrdnanceGroups({ pull: ['Digit1'], shove: ['Digit2'], pin: ['Digit3'], bomb: ['Digit4'], rig: ['Digit5'], tether: ['Space'] });
   assert.deepEqual(groups.filter((g) => g.power).map((g) => `${g.name} ${g.slots.map((s) => s.key).join(' ')}`),
-    ['Pull 1', 'Shove 2', 'Pin 3', 'Bomb 4', 'Rig 5', 'Line Space', 'Gyre —', 'Cloak —'],
+    ['Pull 1', 'Shove 2', 'Pin 3', 'Bomb 4', 'Plow 5', 'Line Space', 'Gyre —', 'Cloak —'],
     'each power prints by name with its key; the Gyre and the cloak ride after the Line, unbound here so no phantom key');
   const state = {
     simTime: 10, playerId: 1, mode: 'flight', entities: new Map([[1, { id: 1, alive: true, data: {} }]]), entityList: [],
@@ -246,8 +252,8 @@ test('the rail shows one socket per power, read from the real owners', () => {
   assert.equal(rail[POWER_SLOT.bomb].charge, true, 'BOMB shows the sticky charge it will throw');
   const chose = readRailModel({ ...state, bombs: { ...state.bombs, bombChosen: true } }, 10)[POWER_SLOT.bomb];
   assert.equal(chose.charge, undefined, 'after the cycle chose a drift bomb, BOMB shows the bay');
-  assert.match(rail[POWER_SLOT.bomb].name, /Charge ×2/);
-  assert.match(rail[POWER_SLOT.rig].why, /clearing cone/i);
+  assert.match(rail[POWER_SLOT.bomb].name, /Bomb ×2/);
+  assert.equal(rail[POWER_SLOT.rig].name, 'Plow');
   assert.equal(rail[POWER_SLOT.line].state, 'ready');
 });
 
@@ -307,7 +313,7 @@ test('resetting or rebinding a power row clears the keys saved under its old nam
   assert.deepEqual(resolveActionCodes(state, 'bomb'), ['KeyB']);
   host._commitPadBind(ctx, 'pull', null);
   assert.equal(state.settings.controls.gamepad.bindings, null, 'the pad reset clears the old Well remap');
-  assert.deepEqual(resolveGamepadBindings(state.settings).pull, ['l1']);
+  assert.deepEqual(resolveGamepadBindings(state.settings).pull, ['alt']);
 });
 
 test('the field power roster points each verb at the rail socket of the power that fires it', async () => {

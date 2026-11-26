@@ -8,7 +8,9 @@ import assert from 'node:assert/strict';
 
 import { world } from '../src/systems/world.js';
 import { createBus } from '../src/core/eventBus.js';
+import { FIRST_TRADE_CONTRACT_SOURCE } from '../src/data/economyContractTemplates.js';
 import { zoneAt, zonesForSector } from '../src/data/sectorZones.js';
+import { buildSystemModel, systemZoneTarget } from '../src/ui/galaxyMap.js';
 
 const SECTOR = 'sector_helios_prime';
 
@@ -89,4 +91,34 @@ test('a different zone speaks its own sentence, keyed by its own id', () => {
   enterAt(other.center.x, other.center.z);
   assert.equal(toasts.filter((t) => t.text === other.reason).length, 1,
     'each zone gets its own first-visit sentence');
+});
+
+test('the timed first freight keeps zone entry but defers optional flavor until a later visit', () => {
+  const { state, toasts, zoneEntered, enterAt } = makeHarness();
+  state.missions = { active: [{ source: FIRST_TRADE_CONTRACT_SOURCE, status: 'active', deadline_s: 200 }] };
+  enterAt(cx, cz);
+  assert.equal(zoneEntered[0].reason, zone.reason);
+  assert.ok(toasts.some((t) => t.text === zone.name));
+  assert.ok(!toasts.some((t) => t.text === zone.reason));
+
+  const system = buildSystemModel(state, SECTOR);
+  const chartZone = system.zones.find((row) => row.id === zone.id);
+  assert.equal(systemZoneTarget(chartZone, SECTOR).chartNote, zone.reason);
+
+  state.simTime = 200;
+  enterAt(far.x, far.z);
+  enterAt(cx, cz);
+  assert.equal(toasts.filter((t) => t.text === zone.reason).length, 1, 'deferral does not consume the first-visit line');
+});
+
+test('a named danger still publishes its warning while first freight is timed', () => {
+  const { state, toasts, zoneEntered, enterAt } = makeHarness();
+  const sectorId = 'sector_ceres_belt';
+  const hazard = zonesForSector(sectorId).find((row) => row.id === 'zone_ceres_ambush');
+  state.world.currentSectorId = sectorId;
+  state.missions = { active: [{ source: FIRST_TRADE_CONTRACT_SOURCE, status: 'active', deadline_s: 200 }] };
+  enterAt(hazard.center.x, hazard.center.z);
+  assert.equal(zoneEntered[0].zoneId, hazard.id);
+  assert.ok(toasts.some((t) => t.text === hazard.name && t.kind === 'danger'));
+  assert.ok(toasts.some((t) => t.text === hazard.reason));
 });

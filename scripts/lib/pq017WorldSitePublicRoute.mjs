@@ -10128,7 +10128,6 @@ async function settleAtWorldRecord(page, worldRecordId, within, maxSpeed, timeou
     : engageSelectedTargetAutopilot(page, Math.max(1, deadline - Date.now()));
   try {
     await releaseFlightKeys(page);
-    await page.bringToFront().catch(() => {});
     let autopilot = autopilotEnabled
       ? await engageAutopilot()
       : { engaged: false, reason: 'short-tethered-delivery' };
@@ -10336,7 +10335,6 @@ async function reedgePq017ManualThrust(page, { startTick, startSpeed }) {
   if (neutral.tick <= startTick || Math.abs(neutral.moveZ) > 0.08) {
     return { received: false, accelerated: false, reason: 'neutral-tick-not-observed', neutral };
   }
-  await page.bringToFront().catch(() => {});
   await page.keyboard.down('KeyW');
   await page.waitForFunction(({ neutralTick, baselineSpeed }) => {
     const state = window.SF?.state;
@@ -10462,7 +10460,6 @@ async function observePq017AutopilotEngagement(page) {
 }
 
 async function pressSelectedTargetAutopilot(page, selected, timeoutMs) {
-  await page.bringToFront().catch(() => {});
   const canvas = page.locator('#gl-canvas');
   await canvas.waitFor({ state: 'visible', timeout: 10_000 });
   const box = await canvas.boundingBox();

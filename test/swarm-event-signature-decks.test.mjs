@@ -122,7 +122,7 @@ test('existing decks are unchanged — untouched tables and the four older signa
   const swing = SWARM_EVENT_BY_ID.well_swing;
   assert.equal(swing.kind, 'pulse');
   assert.equal(swing.field.bearing, 'across');
-  assert.equal(swing.telegraph, 'WELL SWING — a pull is walking the room');
+  assert.equal(swing.telegraph, 'WELL SWING — a pull is walking the room. Keep moving.'); // Swarm words demo pass
   const gust = SWARM_EVENT_BY_ID.sling_gust;
   assert.equal(gust.kind, 'surge');
   assert.equal(gust.factor, 1.8);

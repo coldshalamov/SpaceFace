@@ -29,6 +29,18 @@ const ACTION_KEYS = Object.freeze([
   'siteBeam',
   'aimedMine',
   'contextWheel',
+  // OVH-01c2 conjurer_deep_cast — the measured hold beside each one-shot power action, in
+  // integer sim ticks (0 = tap). Numbers, not booleans; commandValue passes finite numbers
+  // through, so the recorded command carries the depth into replays and the worker lane.
+  'deployWellHoldTicks',
+  'deployRepulsorHoldTicks',
+  'deployMassSeedHoldTicks',
+  'chargeThrowHoldTicks',
+  // The one-shot actions the two bomb hold fields deepen must ride the same record.
+  'dropBomb',
+  'swarmBombThrow',
+  'swarmBombThrowHoldTicks',
+  'dropBombHoldTicks',
 ]);
 
 const MASSLINE_KEYS = Object.freeze([

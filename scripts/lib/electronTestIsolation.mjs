@@ -3,6 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 
 import launchProtocol from './electronLaunchProtocol.cjs';
+import { quietElectronEnv } from './quietLaunch.mjs';
 
 const {
   electronEvidenceProfileRoot,
@@ -37,6 +38,8 @@ export function buildIsolatedElectronEnv({
     SPACEFACE_ELECTRON_TEST_MODE: ELECTRON_ISOLATED_EVIDENCE_MODE,
     SPACEFACE_ELECTRON_TEST_PORT: String(parsedPort),
     SPACEFACE_ELECTRON_TEST_USER_DATA: profile.resolved,
+    // inactive, unthrottled window; SPACEFACE_TEST_VISIBLE=1 opts out
+    ...quietElectronEnv(baseEnv),
   };
   delete env.ELECTRON_RUN_AS_NODE;
   delete env.ELECTRON_NO_ASAR;

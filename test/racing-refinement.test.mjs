@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { RACE_LEVELS, courseForLevel, racingOfferFor, raceGateGlobals } from '../src/data/raceLevels.js';
 import { advanceCircuit, gateApproach, planeCrossFraction, circuitProgress, circuitPacePoint } from '../src/systems/racingGeometry.js';
 import { planeGateCross, raceObjectiveUnits, resetPoseLocal, readRaceTape, racingAssistIntents, raceRecordKey,
-  readRaceRecords, rememberRaceRecord, resolveSteeringView, racingRigOf } from '../src/systems/racingSteer.js';
+  readRaceRecords, rememberRaceRecord, resolveSteeringView, racingRigOf, preferredSteeringView } from '../src/systems/racingSteer.js';
 import { createRacingCameraBlend, stepRacingCameraBlend } from '../src/render/racingCameraBlend.js';
 import { setSteeringView, toggleSteeringView } from '../src/ui/racingControls.js';
 import { armRacingContract, stageRacingLaunch, noteRacingNewGame, takeRacingLaunch } from '../src/ui/racingLaunch.js';
@@ -126,7 +126,9 @@ test('mission phase camera loans release without rewriting the preferred view',(
 test('the shared setting writer creates missing settings bags and emits the changed value',()=>{
   const state={},events=[];setSteeringView(state,{emit:(...args)=>events.push(args)},'racing');
   assert.equal(state.settings.gameplay.steeringView,'racing');assert.equal(events[0][1].value,'racing');
-  assert.equal(racingRigOf({gameplay:{racingDistance:null}}).distance,58);
+  assert.equal(racingRigOf({gameplay:{racingDistance:null}}).distance,80,'an unset rig is the current, higher rig');
+  assert.deepEqual(racingRigOf({gameplay:{racingDistance:58,racingHeight:22,racingLookAhead:36}}),{distance:80,height:42,lookAhead:24},'the first rig\'s exact defaults were never a choice');
+  assert.equal(racingRigOf({gameplay:{racingDistance:58,racingHeight:30,racingLookAhead:36}}).distance,58,'a rig the player tuned is kept');
 });
 
 function launchHarness(){
@@ -173,12 +175,12 @@ test('circuit launch leaves a tethered campaign hull and its mission book untouc
   assert.equal(armRacingContract(h.ctx,'contract_textile_qual',{allowEnterSector:true}).reason,'tether_active');
   assert.equal(h.calls.includes('accept'),false);assert.equal(h.calls.includes('relocate'),false);
 });
-test('recovery requires releasing the Massline instead of teleporting one end of its attachment',()=>{
+test('recovery requires releasing the line instead of teleporting one end of its attachment',()=>{
   const h=missionHarness();h.state.player={tether:{active:true,targetId:9}};
   let moved=0;h.host.registry={get:()=>({relocatePlayerInSector:()=>{moved++;return true;}})};
   missions._resetAuthoredRace.call(h.host);
   assert.equal(moved,0);assert.equal(h.p.resetCount,undefined);
-  assert.ok(h.emitted.some(([name,p])=>name==='toast'&&/Massline/.test(p.text)));
+  assert.ok(h.emitted.some(([name,p])=>name==='toast'&&/Release the line/.test(p.text)));
 });
 const overhead={eyeX:0,eyeY:160,eyeZ:180,lookX:0,lookZ:0};
 const rig={distance:58,height:22,lookAhead:36};
@@ -189,7 +191,7 @@ test('overhead defaults remain bit-exact, and transitions keep the eye outside t
   const m=createRacingCameraBlend();assert.deepEqual(pose(m,1/60,false),overhead);
   const first=pose(m,1/60,true);assert.ok(first.eyeY>22&&first.eyeY<160);
   for(let i=0;i<180;i++){const p=pose(m,1/60,true);assert.ok(Math.hypot(p.eyeX,p.eyeZ)>=57.999);}
-  near(pose(m,1/60,true).eyeX,-58,0.05);
+  near(pose(m,1/60,true).eyeX,-58*1.3,0.05); // at 500 m/s the eye has pulled back by the full 30%
 });
 test('camera easing is frame-rate independent for fixed targets, and yaw crosses the short arc',()=>{
   const results=[30,60,144].map(hz=>{const m=createRacingCameraBlend();let p;for(let i=0;i<hz;i++)p=pose(m,1/hz,true);return p;});
@@ -359,4 +361,20 @@ test('real flight owner holds the grid against raw thrust, yaw, boost and draw-f
   const cmd=consumePhysicsCommand(p);
   assert.ok(cmd);assert.deepEqual(cmd.control.force,{x:0,y:0,z:0});
   assert.equal(Math.abs(cmd.control.torque.y),0);assert.equal(cmd.impulses.length,0);
+});
+test('a pilot who never chose a view gets third person in a race and overhead everywhere else',()=>{
+  assert.equal(preferredSteeringView({}),'auto');
+  assert.equal(preferredSteeringView({gameplay:{steeringView:'overhead'}}),'auto','the old default from the settings screen was never a choice');
+  assert.equal(preferredSteeringView({gameplay:{steeringView:'overhead',steeringViewChosen:true}}),'overhead','a chosen overhead is kept');
+  assert.equal(preferredSteeringView({gameplay:{steeringView:'racing'}}),'racing');
+  const race={status:'active',type:'race',params:{racingContractId:'x'}};
+  const fresh={mode:'flight',settings:{gameplay:{steeringView:'overhead'}},missions:{active:[]}};
+  assert.equal(resolveSteeringView(fresh),'overhead','ordinary flight stays overhead');
+  fresh.missions.active.push(race);
+  assert.equal(resolveSteeringView(fresh),'racing','a race brings the stern camera');
+  assert.equal(toggleSteeringView(fresh,null),true);
+  assert.equal(resolveSteeringView(fresh),'overhead','the view key still wins, and stays won');
+  assert.equal(fresh.settings.gameplay.steeringViewChosen,true);
+  assert.equal(toggleSteeringView(fresh,null),true);
+  assert.equal(resolveSteeringView(fresh),'racing');
 });

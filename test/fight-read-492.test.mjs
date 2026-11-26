@@ -9,32 +9,21 @@ import {
 import { MASSLINE_LINE_COLOR, resolveMasslineWhipGlow } from '../src/render/masslinePresentation.js';
 import { createMasslineReleaseArcPlan } from '../src/render/masslineReleaseArc.js';
 
-test('row 492: the latched body wears the Line colour on its rim', () => {
+test('row 492 under the ring rule: a latched body wears no rim at any strain (no rings around things, owner 2026-11-23)', () => {
+  // The lit cable, its strain glow (below) and the hitch glint name the body on the Line; a
+  // circle round it does not come back when the load rises.
   const tether = { active: true, targetId: 7, load: 0.6 };
   const target = { id: 7, alive: true, pos: { x: 100, z: -40 }, radius: 18 };
-  const plan = resolveMasslineLatchRimPlan(tether, target, tether.load, 0.3, createMasslineLatchRimPlan());
-  assert.equal(plan.visible, true);
-  assert.equal(plan.x, 100);
-  assert.equal(plan.z, -40);
-  assert.ok(plan.radius > 18, 'rim rides just off the hull edge');
-  assert.ok(plan.opacity > 0.5, 'rim is lit, not a whisper');
-  // Line colour: the ONE colour the whole Line family wears — cable neon, swing trace, release
-  // annulus (MASSLINE_LINE_COLOR). Row 492 "The Line you can see": the rim no longer drifts to
-  // its own green; a glance down the rope must match rim to line.
+  for (const [load, whip] of [[0, 0], [0.6, 0.3], [0.9, 0.6]]) {
+    const plan = resolveMasslineLatchRimPlan(tether, target, load, whip, createMasslineLatchRimPlan());
+    assert.equal(plan.visible, false, `no rim at load ${load} (no rings around things, owner 2026-11-23)`);
+  }
+  // The Line family keeps one colour: anything still keyed to the rim constant matches the rope.
   assert.deepEqual(
     { r: MASSLINE_LATCH_RIM_COLOR.r, g: MASSLINE_LATCH_RIM_COLOR.g, b: MASSLINE_LATCH_RIM_COLOR.b },
     { r: MASSLINE_LINE_COLOR.r, g: MASSLINE_LINE_COLOR.g, b: MASSLINE_LINE_COLOR.b },
-    'rim is the Line colour, not its own hue and not a threat red',
+    'the Line colour stays one colour, not its own hue and not a threat red',
   );
-});
-
-test('row 492: rim thickens and brightens as strain rises', () => {
-  const tether = { active: true, targetId: 7 };
-  const target = { alive: true, pos: { x: 0, z: 0 }, radius: 10 };
-  const slack = resolveMasslineLatchRimPlan(tether, target, 0, 0, {});
-  const straining = resolveMasslineLatchRimPlan(tether, target, 0.9, 0.6, {});
-  assert.ok(straining.opacity > slack.opacity, 'strain brightens the rim');
-  assert.ok(straining.bandScale > slack.bandScale, 'strain widens the band');
 });
 
 test('row 492: no latch → no rim; dead or positionless targets get none', () => {

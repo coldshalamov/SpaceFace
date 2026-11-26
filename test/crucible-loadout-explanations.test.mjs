@@ -12,7 +12,7 @@ test('a cached reading still marks its offer after the shelf rebuilds its rows',
   const screen = Object.create(crucibleDraftScreen);
   screen._cards = { querySelectorAll: () => [selected, other] };
   screen._reading = { offerId: offer.id, credits: 0, available: true, armed: true,
-    fitKey: '|', receiptKey: '', generation: undefined };
+    fitKey: '|', quoteKey: 'null', receiptKey: '', generation: undefined, parts: { act: { textContent: '' } } };
   screen._purchaseArmed = true;
   screen._syncRailScale = () => {};
   screen._paintReading({ state: { player: { ownedShips: [] }, run: { credits: 0 } },

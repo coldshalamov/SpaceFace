@@ -76,6 +76,7 @@ export function isServedLast(servedLastUntil, hullKey, now) {
 }
 
 export const pl348SeamKitchen = {
+  modes: ['flight'],
   name: 'plantsPl348',
 
   init(ctx) {

@@ -34,7 +34,7 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
   'pirateDisengage', 'aceMemory', 'barkDirector', 'aiSlot', 'dockingCorridor', 'physics', 'latchNine',
   'aiPorts', 'reactiveMatter', 'orbitalGallery', 'kineticLeague', 'tumbleStates', 'collisionConsequences', 'stuntGrammar', 'aiEncounter', 'actions', 'heroManeuvers', 'flightSlot',
   'cruise', 'weapons', 'countermeasures', 'impulseCharges', 'hullBurst', 'mines', 'bombs', 'emergentPrimitives', 'environmentMaterials', 'massSeed',
-  'uniqueLootAbilities', 'fields', 'gyreSnare', 'shieldPylons', 'environmentalMachinery', 'planetRuntime', 'combat', 'combatOutcome', 'aftermathWrecks', 'dyingHull',
+  'uniqueLootAbilities', 'fields', 'stormChase', 'gyreSnare', 'shieldPylons', 'environmentalMachinery', 'planetRuntime', 'combat', 'combatOutcome', 'aftermathWrecks', 'dyingHull',
   // Packet 09 (Three Capitals): the score system validates helpers.routeCombatDamage /
   // getCombatCapabilities at init, so it initialises after the combat kernel installs them.
   'capitalBossEncounters',
@@ -45,7 +45,7 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
   'fieldDepletion', 'cargo', 'fragileCargo', 'moistureLoss', 'economy', 'automation', 'asteroidSites',
   'industrialDisasters',
   'asteroidFormations', 'wingmen', 'intervention', 'lossLedger', 'provenanceLedger', 'chronicler', 'factionPresence',
-  'spawnBudget', 'world', 'heistFacilities', 'regionalEcology', 'tensionDirector', 'encounterDirector', 'rockCore', 'scissorwake',
+  'spawnBudget', 'world', 'heistFacilities', 'regionalEcology', 'tensionDirector', 'derelictExpedition', 'encounterDirector', 'convoyRaid', 'towjaw', 'kineticCatalysts', 'rockCore', 'scissorwake',
   // Nemesis packet: the arc engine (nemesis) decides and schedules, the encounter host
   // (nemesisEncounter) drains one spawn request per fixed step, and nemesisSignals routes
   // voice/toast receipts — event-only, registered but never ticked.
@@ -73,7 +73,7 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
   // J6: massSeedHud is in UPDATE_ORDER (DOM-guarded HUD) — must also init so helpers bind.
   // miningHud: the mining beam's vent/rich-core/seam instrument — event-mirrored, DOM-guarded,
   // ticks only to place the world-anchored dial (same posture as the sibling HUDs).
-  'massSeedHud', 'fieldHud', 'gyreHud', 'pylonHud', 'planetHud', 'miningHud', 'survivalHud', 'swarmJuiceHud', 'crucibleFocus', 'sectorPostcard', 'dockDenyBanner', 'stationBroadcast',
+  'massSeedHud', 'fieldHud', 'gyreHud', 'pylonHud', 'planetHud', 'miningHud', 'survivalHud', 'swarmJuiceHud', 'crucibleFocus', 'sectorPostcard', 'sectorArrivalPlate', 'dockDenyBanner', 'stationBroadcast',
   'hazardHints', 'noFireAdvisory', 'bulkHaulTag', 'dangerGradient', 'causeLedger', 'customsPrompt',
   // impoundPayPrompt, moralTrapPrompt and wreckChoicePrompt are event-only like customsPrompt —
   // init order matters (bus subscriptions); all are deliberately absent from
@@ -162,7 +162,7 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   // Arena toys intercept shots and update field strengths before fields and physics resolve this tick.
   // gyreSnare shares fields' slot contract: it queues its pull/hold/launch impulses on the physics
   // membrane so this tick's solve applies them (one slot later they'd always be a tick stale).
-  'survivalArena', 'swarmFortify', 'fields', 'gyreSnare', 'shieldPylons', 'planetRuntime', 'morrow', 'vesper', 'bracket', 'ravel', 'solstice', 'rubric', 'ruckus', 'ruud', 'docket', 'industrialDisasters', 'salvageTender', 'physics', 'reactiveMatter', 'latchNine', 'combat',
+  'survivalArena', 'swarmFortify', 'fields', 'stormChase', 'gyreSnare', 'shieldPylons', 'planetRuntime', 'morrow', 'vesper', 'bracket', 'ravel', 'solstice', 'rubric', 'ruckus', 'ruud', 'docket', 'industrialDisasters', 'salvageTender', 'convoyRaid', 'towjaw', 'derelictExpedition', 'kineticCatalysts', 'physics', 'reactiveMatter', 'latchNine', 'combat',
   'combatOutcome', 'aftermathWrecks', 'dyingHull', 'titles', 'wingMorale', 'tetherGameplay', 'surrenderRecovery',
   'shipjack', 'custodyConsequences', 'mercyService', 'wreckCourt', 'masslineTelemetry', 'masslineThreats', 'masslineImpacts',
   'masslineSnares', 'masslineThrow', 'masslineImpactDamage', 'lootShards', 'terrainAnchors', 'jettisonImpulse',
@@ -320,6 +320,11 @@ export const SYSTEM_CAPABILITIES = Object.freeze({
   pylonHud: Object.freeze({ nodeSafe: true, phase: 'sim', capability: 'hud', domGuarded: true }),
   planetHud: Object.freeze({ nodeSafe: true, phase: 'sim', capability: 'hud', domGuarded: true }),
   miningHud: Object.freeze({ nodeSafe: true, phase: 'sim', capability: 'hud', domGuarded: true }),
+  // PLACES-1 (INV-25 item 7): the arrival plate is a main-lane DOM system, not a sim system —
+  // the worker lane is the production default and a DOM card that inits inside the worker never
+  // mounts (workers have no document). Same posture as the HUD bank: main-lane, event-only,
+  // no update slot, no clock; the worker-lane list (nodeSafeOnly) excludes it.
+  sectorArrivalPlate: Object.freeze({ nodeSafe: true, phase: 'sim', capability: 'hud', domGuarded: true }),
   voiceArbiter: Object.freeze({ nodeSafe: true, phase: 'sim', capability: 'voice' }),
   save: Object.freeze({ nodeSafe: true, phase: 'sim', capability: 'persistence' }),
 });
@@ -541,6 +546,65 @@ export function calendarCohortTickMod(id) {
   return calendarCohortIndex(id) * CALENDAR_CLOCK_COHORT_STRIDE + calendarCohortSubPhase(id);
 }
 
+/**
+ * Fixed cadences (ENGINE job 6). A system listed here runs on one tick in every N of the 60 Hz
+ * step, on a phase fixed by its id — never by machine load — and receives the elapsed sim time
+ * since its last run as dt (the calendar stamping). Steering they write (data.intent) is a held
+ * desire that flight applies every tick, so motion stays smooth between runs. Periods divide the
+ * 30-tick calendar period so the pre-partitioned tick queues stay exact. Physics, flight, weapons,
+ * damage and the player's own controls are never listed: they run every tick.
+ */
+export const SYSTEM_CADENCE_TICKS = Object.freeze({
+  // [period ticks, phase]: phases are assigned so no two heavy owners share a tick.
+  npcJobsRuntime: [6, 0],   // 10 Hz: job intents, worksite bookkeeping
+  aiEncounter: [6, 1],      // 10 Hz: encounter director
+  traffic: [6, 2],          // 10 Hz: route intents, convoy bookkeeping
+  combatOutcome: [6, 3],    // 10 Hz: flee/surrender receipts
+  lawSecurity: [6, 4],      // 10 Hz: patrols, witnesses, wanted sweep
+  titles: [15, 5],          // 4 Hz: title/reputation observers
+  // SIM-RATE-TIERS-BREADTH batch A — Adventure ambient + faction owners at 10 Hz.
+  // Phases are load-spread across the six 10 Hz lanes (audit sim-hot-path-events.txt §2
+  // weights), never two heavy owners on one tick. Each received the elapsed-simTime dt
+  // the cadence stamping supplies, so dwell/accumulator work stays exact.
+  // ilexArk, archiveRedaction, vaelLiens, faction_helix, faction_meridian and pitbornCull
+  // were audited back to TABLE: their update issues one-shot physics commands
+  // (queuePhysicsImpulse / aiManeuver.request) for visible bodies — consumed once per
+  // step, so a cadenced owner under-thrusts them 6x (proved by test/ilex-ark.test.mjs).
+  choirResonance: [6, 0],
+  fulfillmentRoutes: [6, 0],
+  vergeCourt: [6, 1],
+  frontierHomesteads: [6, 1],
+  understoryGardens: [6, 2],
+  secondRinse: [6, 3],
+  borrowedSun: [6, 4],
+  massSignature: [6, 5],
+  // SIM-RATE-TIERS-BREADTH batch B — remaining 'only-needs-recent' audit rows that react
+  // to the player inside a fight: 10 Hz keeps hostile/encounter reactions inside 100 ms.
+  wingmen: [6, 0],
+  stationServices: [6, 1],
+  faction_concord: [6, 2],
+  salvageOutfits: [6, 3],
+  pirateParley: [6, 4],
+  faction_drift: [6, 5],
+  // Ledger-speed bookkeeping (Line tonnage/class memory): 4 Hz like titles.
+  lineProgression: [15, 13],
+});
+
+/** Period in ticks for a cadenced system (1 = every tick). */
+export function systemCadenceTicks(id) {
+  const row = SYSTEM_CADENCE_TICKS[clockLookupId(id)];
+  const p = row ? row[0] : 1;
+  return Number.isInteger(p) && p > 1 ? p : 1;
+}
+
+/** The tick phase (0..period-1) a cadenced system runs on, fixed in the table. */
+export function systemCadencePhase(id) {
+  const p = systemCadenceTicks(id);
+  if (p <= 1) return 0;
+  const row = SYSTEM_CADENCE_TICKS[clockLookupId(id)];
+  return ((row[1] | 0) % p + p) % p;
+}
+
 export const NEAR_CLOCK_IDS = Object.freeze([
   'flybyFocus', 'scanner', 'spectrum', 'scanReveal', 'lawSecurity', 'pirateDisguise', 'pirateParley',
   'pirateDisengage', 'aiSlot', 'aiEncounter', 'traffic', 'titles',
@@ -556,6 +620,15 @@ export const NEAR_CLOCK_IDS = Object.freeze([
   // FB-089: observer telemetry republished each active tick — a catch-up extra step would
   // only repaint the same kinematics read, so it does not belong on the table.
   'masslineTelemetry',
+  // SIM-RATE-TIERS-BREADTH — cadenced owners (SYSTEM_CADENCE_TICKS) ride the near clock:
+  // they fire on their fixed phase of primary ticks and skip catch-up extra steps, where
+  // a table entry would re-run their whole pass just to stay recent. The accumulated
+  // elapsed dt lands on their next phase tick.
+  'secondRinse', 'borrowedSun', 'massSignature', 'lineProgression',
+  'wingmen', 'stationServices',
+  'faction_concord', 'faction_drift',
+  'understoryGardens', 'fulfillmentRoutes',
+  'choirResonance', 'vergeCourt', 'frontierHomesteads',
 ]);
 
 /**
@@ -575,7 +648,7 @@ export const TABLE_CLOCK_IDS = Object.freeze([
   // aiPorts flushes (and replays) the AI's maneuvers, planetRuntime queues planet drag/heat/harvest.
   'aiPorts', 'planetRuntime',
   // Flight + physics authorities: single writers of position/velocity.
-  'heroManeuvers', 'flightSlot', 'cruise', 'tumbleStates', 'physics', 'dockingCorridor', 'latchNine', 'scissorwake', 'redKite', 'ilexArk', 'kilnback', 'mothlight', 'palletJack', 'secondRinse',
+  'heroManeuvers', 'flightSlot', 'cruise', 'tumbleStates', 'physics', 'dockingCorridor', 'latchNine', 'scissorwake', 'redKite', 'ilexArk', 'kilnback', 'mothlight', 'palletJack',
   // Nemesis: arc engine cadence + per-fixed-step spawn-request drain.
   'nemesis', 'nemesisEncounter',
   // Capital score publishes orders the tactical slot reads the same tick.
@@ -583,16 +656,17 @@ export const TABLE_CLOCK_IDS = Object.freeze([
   // Combat/contact owners and damage single-writers.
   'collisionConsequences', 'stuntGrammar', 'weapons', 'countermeasures', 'bombs',
   'emergentPrimitives', 'environmentMaterials', 'impulseCharges', 'hullBurst', 'mines', 'massSeed',
-  'uniqueLootAbilities', 'fields', 'gyreSnare', 'shieldPylons', 'environmentalMachinery',
+  'uniqueLootAbilities', 'fields', 'stormChase', 'gyreSnare', 'shieldPylons', 'environmentalMachinery',
   // Anchored set-pieces queue physics impulses every tick.
   'morrow', 'vesper', 'bracket', 'ravel', 'solstice', 'rubric', 'ruckus', 'ruud', 'docket',
+  // PORT-PRO-FIVE expeditions queue real physics impulses on the physics membrane every tick.
+  'convoyRaid', 'towjaw', 'derelictExpedition', 'kineticCatalysts',
   // plants: the PL-101..PL-256 world-reacts bank. Per-tick pass-through (each plant
   // internally gates its scans to ~1 Hz), needed at table cadence for lamp timers,
   // tow latches and the Pit round seams.
   'plants',
   // Combat island: damage/attachment/custody owners at combat cadence.
   'combat', 'dyingHull', 'tetherGameplay', 'surrenderRecovery', 'shipjack', 'custodyConsequences',
-  'lineProgression',
   // rockCore: flail chain constraint must resolve on the 60 Hz step (5-link stability proof).
   'rockCore',
   // Massline physics owners (throws, snares, impact resolution move or damage bodies).
@@ -615,11 +689,10 @@ export const TABLE_CLOCK_IDS = Object.freeze([
   // swarmDrops: effect timers and the turret fire on the 60 Hz step.
   'swarmDrops',
   // Fleet movement owner, world bounds/sector authority, WANTED-heat single writer.
-  'wingmen', 'world', 'borrowedSun', 'heat',
+  'world', 'heat',
   // Chronicler: fact events must land on the tick that creates them (its FB-090 quiet
-  // latch already covers the idle pole). Docked-yard job progression is real per-tick
-  // service work, so the yard stays on the table.
-  'chronicler', 'stationServices',
+  // latch already covers the idle pole).
+  'chronicler',
   // Pro-experience owners — salvageTender publishes this tick's bounded berth force and
   // industrialDisasters queues tether impulses immediately before physics; the yard and
   // workshop observe the settled tick and run their own body work on the 60 Hz step.
@@ -627,12 +700,12 @@ export const TABLE_CLOCK_IDS = Object.freeze([
   // Counterweight Circuit observes the settled post-physics tick like the yard
   // and workshop — attempt legs read committed positions and impact receipts.
   'counterweightCircuit', 'breakwaterSpur', 'cinderglassJob',
-  // §34 faction-signature owners — per-step kinematics (formation lock, coupler snap,
-  // pylon settle, false-flag deviation, sweep-ring read). Calendar would miss the motion.
-  'massSignature', 'faction_concord', 'faction_meridian', 'faction_helix', 'faction_drift',
-  // faction-strange owners — per-step faction work on the same settled tick.
-  'understoryGardens', 'fulfillmentRoutes', 'pitbornCull', 'vaelLiens',
-  'archiveRedaction', 'choirResonance', 'vergeCourt', 'frontierHomesteads',
+  // §34 faction owners audited back from a [6] cadence (SIM-RATE-TIERS-BREADTH): their
+  // update calls queuePhysicsImpulse / aiManeuver.request per step on visible patrol,
+  // courier, collector and convoy bodies — one-shot commands, not held intents — so a
+  // 10 Hz owner under-thrusts them (proved by test/ilex-ark.test.mjs). They stay table
+  // until the steering moves to a held intent like traffic's data.intent.
+  'faction_meridian', 'faction_helix', 'pitbornCull', 'vaelLiens', 'archiveRedaction',
 ]);
 
 const CLOCK_BY_ID = new Map();
@@ -783,7 +856,10 @@ export const SYSTEM_MODE_DECLARATIONS = Object.freeze({
   survivalWave: MODE_SCOPE_SWARM_ONLY,
   survivalRun: MODE_SCOPE_SWARM_ONLY,
   swarmChain: MODE_SCOPE_SWARM_ONLY,
-  killReplay: MODE_SCOPE_SWARM_ONLY,
+  // killReplay owns the Adventure pose tape too (trailer landmarks, one-off dressing, the worker
+  // pose mirror), so it runs wherever a pilot flies — E3's SWARM_ONLY scoping silently stopped
+  // Adventure recording.
+  killReplay: MODE_SCOPE_COMBAT_FLIGHT,
   killcamRecorder: MODE_SCOPE_SWARM_ONLY,
   swarmJuice: MODE_SCOPE_SWARM_ONLY,
   swarmElites: MODE_SCOPE_SWARM_ONLY,
@@ -815,6 +891,7 @@ export const SYSTEM_MODE_DECLARATIONS = Object.freeze({
   uniqueLootAbilities: MODE_SCOPE_COMBAT_FLIGHT,
   fields: MODE_SCOPE_COMBAT_FLIGHT,
   gyreSnare: MODE_SCOPE_COMBAT_FLIGHT,
+  stormChase: MODE_SCOPE_FLIGHT_ONLY,
   shieldPylons: MODE_SCOPE_COMBAT_FLIGHT,
   combat: MODE_SCOPE_COMBAT_FLIGHT,
   combatOutcome: MODE_SCOPE_COMBAT_FLIGHT,
@@ -911,6 +988,11 @@ export const SYSTEM_MODE_DECLARATIONS = Object.freeze({
   docket: MODE_SCOPE_FLIGHT_ONLY,
   industrialDisasters: MODE_SCOPE_FLIGHT_ONLY,
   salvageTender: MODE_SCOPE_FLIGHT_ONLY,
+  // PORT-PRO-FIVE: the authored physical expeditions fly only in Adventure.
+  convoyRaid: MODE_SCOPE_FLIGHT_ONLY,
+  towjaw: MODE_SCOPE_FLIGHT_ONLY,
+  derelictExpedition: MODE_SCOPE_FLIGHT_ONLY,
+  kineticCatalysts: MODE_SCOPE_FLIGHT_ONLY,
   reactiveMatter: MODE_SCOPE_FLIGHT_ONLY,
   tetherGameplay: MODE_SCOPE_COMBAT_FLIGHT,
   surrenderRecovery: MODE_SCOPE_FLIGHT_ONLY,
@@ -929,7 +1011,11 @@ export const SYSTEM_MODE_DECLARATIONS = Object.freeze({
   // §7.1 head behaviors move live bodies on the settled tick; they ride the Line in Swarm too.
   lineHeads: MODE_SCOPE_COMBAT_FLIGHT,
   volatileExposure: MODE_SCOPE_FLIGHT_ONLY,
-  mining: MODE_SCOPE_FLIGHT_ONLY,
+  // mining owns the pickup vacuum as well as the beam: Swarm credit chips are combat loot that
+  // homes on the hull (with the hangar's magnet upgrades and the Magnet drop). Flight-only, the
+  // vacuum never ran in the Pit — chips piled up (53 in a round-6 fight) and the run's money lay
+  // on the floor. The beam itself stays out of Swarm because no Swarm loadout carries one.
+  mining: MODE_SCOPE_COMBAT_FLIGHT,
   fieldDepletion: MODE_SCOPE_FLIGHT_ONLY,
   fragileCargo: MODE_SCOPE_FLIGHT_ONLY,
   moistureLoss: MODE_SCOPE_FLIGHT_ONLY,

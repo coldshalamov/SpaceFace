@@ -11,26 +11,43 @@ import {
 } from '../../data/beltEmpireData.js';
 import { readFrameOrigin } from '../../render/frameCoordinates.js';
 import { resolveActionLabel } from '../../systems/input.js';
+import { counted } from '../../core/numberFormat.js';
 import { laneInputWrite } from '../../core/simLaneCommands.js';
 import { commodityDisplayName } from '../commodityNames.js';
+import { rockName } from '../asteroid/rockNames.js';
+import { rockAssayLine } from '../asteroid/rockAssay.js';
+import { ROCK_GEOLOGY, resolveBoreFamily } from '../../systems/drillFieldModel.js';
 import { renderFieldTacticalCanvas, radarScreenToWorld, TACTICAL_MAP_MODES } from './fieldTacticalCanvas.js';
 import { ARCHITECT_TABS, renderFieldArchitectWorkspace } from './fieldArchitectPanels.js';
 
 export { TACTICAL_MAP_MODES, ARCHITECT_TABS };
 
 const ASTEROID_DEF_BY_ID = new Map(ASTEROIDS.map((a) => [a.id, a]));
+// Why the belt view said no, in a pilot's words.
+const REFUSAL_WORDS = Object.freeze({
+  'already-commissioned': 'This rock is already claimed.',
+  'missing-prereq': 'Unlock the doctrine before it first.',
+  'max-links': 'This rock has all the lines it can hold.',
+  'max-defenses': 'There is no room for another build around this rock.',
+  'no-site': 'Claim the rock first.',
+  'bad-site': 'Pick two different claims.',
+  'wrong-sector': 'Both rocks must be in this sector.',
+  'no-asteroid': 'That rock is gone.',
+});
 const DRILL_MASSLINE_DEF_IDS = new Set(['tether_standard', 'attachment_massline']);
 
+// Each tool says what it is and, under it, what the player gets. Plain words: this bar is the
+// first thing a pilot reads when the belt view opens.
 export const FIELD_TOOLS = Object.freeze([
-  Object.freeze({ id: 'select', key: '0', label: 'Inspect', sub: 'Select rock' }),
-  Object.freeze({ id: 'commission', key: '1', label: 'Auto-Rig', sub: 'Stake & mine' }),
-  Object.freeze({ id: 'link_material', key: '2', label: 'Link Cargo', sub: 'Mindustry line' }),
-  Object.freeze({ id: 'link_power', key: '3', label: 'Link Power', sub: 'Share MW' }),
-  Object.freeze({ id: 'turret', key: '4', label: 'Turret Pylon', sub: 'Belt defense' }),
-  Object.freeze({ id: 'sensor', key: '5', label: 'Sensor Beacon', sub: 'Route relay' }),
-  Object.freeze({ id: 'solar_sail', key: '6', label: 'Solar Sail', sub: '+8 MW orbit' }),
-  Object.freeze({ id: 'drone', key: '7', label: 'Launch Drone', sub: 'Auto harvest' }),
-  Object.freeze({ id: 'open_works', key: '8', label: 'Asteroid Works', sub: 'Interior view' }),
+  Object.freeze({ id: 'select', key: '0', label: 'Look', sub: 'Pick a rock' }),
+  Object.freeze({ id: 'commission', key: '1', label: 'Claim', sub: 'Stake it and start mining' }),
+  Object.freeze({ id: 'link_material', key: '2', label: 'Cargo line', sub: 'Move goods between claims' }),
+  Object.freeze({ id: 'link_power', key: '3', label: 'Power line', sub: 'Share power between claims' }),
+  Object.freeze({ id: 'turret', key: '4', label: 'Turret', sub: 'Guards the claim' }),
+  Object.freeze({ id: 'sensor', key: '5', label: 'Beacon', sub: 'Faster, safer couriers' }),
+  Object.freeze({ id: 'solar_sail', key: '6', label: 'Solar sail', sub: 'Adds 8 MW' }),
+  Object.freeze({ id: 'drone', key: '7', label: 'Drone', sub: 'Mines on its own' }),
+  Object.freeze({ id: 'open_works', key: '8', label: 'Go inside', sub: 'Set the rover down' }),
 ]);
 
 function el(tag, className = '', text = null) {
@@ -118,6 +135,10 @@ export function buildFieldArchitectViewModel({
     selectedAsteroid: ent && ent.alive !== false ? {
       id: ent.id,
       typeId: ent.data?.typeId || 'ast_common_rock',
+      // The rock by the name the rover screen uses, its kind in words, and the strata scan.
+      name: rockName(ent.id),
+      kind: (ROCK_GEOLOGY[resolveBoreFamily(ent.data)] || {}).label || 'Asteroid',
+      assay: rockAssayLine(ent, state, (oreId) => commodityDisplayName(oreId)),
       glyph: ASTEROID_SCAN_GLYPH_BY_TYPE[ent.data?.typeId] || 'Si',
       yieldU: Math.round(Number(ent.data?.yieldU) || 0),
       radius: Math.round(Number(ent.radius) || 8),
@@ -127,6 +148,8 @@ export function buildFieldArchitectViewModel({
     selectedSite: selectedProjection ? {
       siteId: selectedProjection.site.id,
       asteroidId: selectedProjection.site.asteroidId,
+      // The rock's one summary, from the belt network read (the flow ledger lives there).
+      report: (siteById.get(selectedProjection.site.id) || {}).report || null,
       specialization: selectedProjection.specialization || classifySiteSpecialization(selectedProjection.site),
       directive: selectedProjection.directive || null,
       synergies: selectedProjection.synergies || null,
@@ -151,6 +174,45 @@ export function buildFieldArchitectViewModel({
     } : null,
     peerSites,
   };
+}
+
+const FIELD_BUILD_NEAR_WU = 1000;
+export function hasNearbyClaimableOrOwnedBody(st) {
+  if (!st) return false;
+  const player = st.entities && typeof st.entities.get === 'function' ? st.entities.get(st.playerId) : null;
+  const px = Number(player?.pos?.x);
+  const pz = Number(player?.pos?.z);
+  if (!Number.isFinite(px) || !Number.isFinite(pz)) return false;
+  const maxSq = FIELD_BUILD_NEAR_WU * FIELD_BUILD_NEAR_WU;
+  const sectorId = st.world?.currentSectorId;
+  const sitesById = st.sites?.byId;
+  const siteOrder = st.sites?.order;
+  if (sitesById && Array.isArray(siteOrder)) {
+    for (let i = 0; i < siteOrder.length; i++) {
+      const s = sitesById[siteOrder[i]];
+      if (!s || (sectorId && s.sectorId && s.sectorId !== sectorId)) continue;
+      const ast = s.asteroidId != null ? st.entities?.get?.(s.asteroidId) : null;
+      const pos = ast?.pos || s.pos;
+      if (pos && Number.isFinite(pos.x) && Number.isFinite(pos.z)) {
+        const dx = pos.x - px;
+        const dz = pos.z - pz;
+        if (dx * dx + dz * dz <= maxSq) return true;
+      }
+    }
+  }
+  const index = st.entityIndex;
+  const candidates = (index && index.__spacefaceEntityIndexV1 && Array.isArray(index.asteroids))
+    ? index.asteroids
+    : (Array.isArray(st.entityList) ? st.entityList : (st.entities?.values ? st.entities.values() : []));
+  for (const e of candidates) {
+    if (!e || e.alive === false || e.type !== 'asteroid' || !e.pos) continue;
+    if (e.data && e.data.claimable === false) continue;
+    if (Number.isFinite(e.radius) && e.radius < 14) continue;
+    const dx = e.pos.x - px;
+    const dz = e.pos.z - pz;
+    if (dx * dx + dz * dz <= maxSq) return true;
+  }
+  return false;
 }
 
 export function createFieldBuildMode(ctx) {
@@ -208,7 +270,7 @@ export function createFieldBuildMode(ctx) {
   const overlay = el('section', 'fb-root');
   overlay.id = 'field-build-root';
   overlay.hidden = true;
-  overlay.setAttribute('aria-label', 'Field Architect Command Mode');
+  overlay.setAttribute('aria-label', 'Field Build');
 
   const canvas = document.createElement('canvas');
   canvas.id = 'fb-canvas';
@@ -217,18 +279,18 @@ export function createFieldBuildMode(ctx) {
 
   // Top Crest + Map-Mode Bar
   const crest = el('header', 'fb-crest');
-  const crestTitle = el('span', 'fb-crest-title', 'Field Architect');
+  const crestTitle = el('span', 'fb-crest-title', 'Field Build');
   const crestStats = el('div', 'fb-crest-stats');
   const statSites = el('span', 'fb-crest-stat');
   const statPower = el('span', 'fb-crest-stat');
   const statLinks = el('span', 'fb-crest-stat');
   const statDefs = el('span', 'fb-crest-stat');
   crestStats.append(statSites, statPower, statLinks, statDefs);
-  const autoLinkBtn = el('button', 'fb-crest-btn primary', 'Auto-Link [G]');
+  const autoLinkBtn = el('button', 'fb-crest-btn primary', 'Link my claims (G)');
   autoLinkBtn.type = 'button';
-  const centerBtn = el('button', 'fb-crest-btn', 'Center Ship');
+  const centerBtn = el('button', 'fb-crest-btn', 'Find my ship');
   centerBtn.type = 'button';
-  const exitBtn = el('button', 'fb-crest-btn', 'Flight [Shift+B]');
+  const exitBtn = el('button', 'fb-crest-btn', 'Back to flight (Shift+B)');
   exitBtn.type = 'button';
   crest.append(crestTitle, crestStats, autoLinkBtn, centerBtn, exitBtn);
 
@@ -237,7 +299,7 @@ export function createFieldBuildMode(ctx) {
   modeBar.setAttribute('aria-label', 'Tactical Map Overlays & Control Groups');
   const modeButtons = new Map();
   for (const mm of TACTICAL_MAP_MODES) {
-    const b = el('button', `fb-mode-btn ${mm.id === mapMode ? 'active' : ''}`, `${mm.short} · ${mm.label}`);
+    const b = el('button', `fb-mode-btn ${mm.id === mapMode ? 'active' : ''}`, mm.label);
     b.type = 'button';
     b.addEventListener('click', () => setMapMode(mm.id));
     modeBar.appendChild(b);
@@ -262,7 +324,7 @@ export function createFieldBuildMode(ctx) {
     }
     controlGroups[idx] = list;
     syncGroupButtons();
-    announceToast(`Control Group G${idx + 1} bound (${list.length} rock${list.length > 1 ? 's' : ''}).`, 'good');
+    announceToast(`Control Group G${idx + 1} bound (${counted(list.length, 'rock', 'rocks', state)}).`, 'good');
   }
   function panToWorld(wx, wz) {
     const cam = camCtrl();
@@ -315,7 +377,7 @@ export function createFieldBuildMode(ctx) {
 
   // Bottom StarCraft/Mindustry Command Dock
   const dock = el('nav', 'fb-dock');
-  dock.setAttribute('aria-label', 'Field Architect Tools');
+  dock.setAttribute('aria-label', 'Field Build tools');
   const toolButtons = new Map();
   for (const t of FIELD_TOOLS) {
     const btn = el('button', 'fb-tool');
@@ -380,24 +442,41 @@ export function createFieldBuildMode(ctx) {
     Promise.resolve(promiseOrResult).then((res) => {
       if (!res || res.ok === false) {
         const msg = res?.reason === 'materials'
-          ? `Insufficient materials (${Object.entries(res.missing || {}).map(([k, q]) => `${q} ${commodityDisplayName(k)}`).join(', ')})`
+          ? `Need ${Object.entries(res.missing || {}).map(([k, q]) => `${q} ${commodityDisplayName(k)}`).join(', ')}.`
           : (res?.reason === 'insufficient-credits'
             ? `Need ${res.cost || ''} cr to unlock doctrine.`
-            : (res?.reason === 'missing-prereq'
-              ? 'Research prerequisite tier first.'
-              : (res?.reason === 'out-of-range'
-                ? `Out of belt link range (${res.dist} / ${res.maxRange} WU)`
-                : (res?.reason === 'already-commissioned'
-                  ? 'Asteroid already hosts an active rig.'
-                  : `Action unavailable (${res?.reason || 'blocked'}).`))));
+            : (res?.reason === 'out-of-range'
+              ? `Too far apart: ${res.dist} away, ${res.maxRange} at most. A mass relay stretches the reach.`
+              : (REFUSAL_WORDS[res?.reason] || 'That cannot be done here.')));
         announceToast(msg, 'warn');
       } else if (successText) {
-        announceToast(successText, 'good');
+        const text = typeof successText === 'function' ? successText(res) : successText;
+        if (text) announceToast(text, 'good');
       }
       inspectorSig = '';
       crestSig = '';
       renderInspector();
     }).catch(() => {});
+  }
+
+  // What a new line did for the two rocks it joins: the good-neighbours rule, said once, at the
+  // moment the player draws the line.
+  function lineResultText(kind, fromSiteId, toSiteId) {
+    // One sentence: the belt view's notices share the flight glass, which drops prose of two.
+    const what = kind === 'power' ? 'Power line run' : 'Cargo line run';
+    const base = `${what}.`;
+    try {
+      const sys = currentSiteSys();
+      const net = sys && sys.sectorNetworkProjection ? sys.sectorNetworkProjection(state?.world?.currentSectorId || null) : null;
+      const a = net && net.sites.find((s) => s.siteId === fromSiteId);
+      const b = net && net.sites.find((s) => s.siteId === toSiteId);
+      if (!a || !b || !a.report || !b.report) return base;
+      const gain = (node) => Math.round(((node.report.lift && node.report.lift.mult) || 1) * 100 - 100);
+      const ga = gain(a);
+      const gb = gain(b);
+      if (ga <= 0 && gb <= 0) return `${what}, but both rocks do the same work so neither speeds the other up.`;
+      return `${what}: ${rockName(a.asteroidId)} now runs ${ga}% faster and ${rockName(b.asteroidId)} ${gb}% faster.`;
+    } catch (_) { return base; }
   }
 
   function setTool(nextTool) {
@@ -421,8 +500,8 @@ export function createFieldBuildMode(ctx) {
     if (!active) { hintBanner.hidden = true; return; }
     if (activeTool === 'link_material') {
       linkHintText.textContent = linkSourceSiteId
-        ? 'Click destination site to connect Cargo Line · Commodity:'
-        : 'Click source site to start a Cargo Line · Commodity:';
+        ? 'Click the claim the goods go to · Carry:'
+        : 'Click the claim the goods come from · Carry:';
       // Populate commodity filter choices from source site lanes or player catalog
       const sys = currentSiteSys();
       const proj = linkSourceSiteId && sys?.projection ? sys.projection(linkSourceSiteId) : null;
@@ -439,7 +518,7 @@ export function createFieldBuildMode(ctx) {
         linkGoodSel.textContent = '';
         const allOpt = document.createElement('option');
         allOpt.value = '';
-        allOpt.textContent = 'Auto (All Surplus)';
+        allOpt.textContent = 'Whatever is spare';
         linkGoodSel.appendChild(allOpt);
         for (const gid of [...goodSet].sort()) {
           const opt = document.createElement('option');
@@ -502,11 +581,11 @@ export function createFieldBuildMode(ctx) {
     }
     if (toolId === 'commission') {
       if (selectedAsteroidId == null) {
-        announceToast('Click an asteroid in the field first to commission a rig.', 'warn');
+        announceToast('Click a rock first, then claim it.', 'warn');
         setTool('commission');
         return;
       }
-      runSiteOp(sys.commissionFieldAsteroid(selectedAsteroidId, 'extractor'), 'Automated field rig online.');
+      runSiteOp(sys.commissionFieldAsteroid(selectedAsteroidId, 'extractor'), 'Claimed and mining; the rover can dig it a better seat.');
       return;
     }
     if (toolId === 'turret' || toolId === 'sensor' || toolId === 'solar_sail') {
@@ -517,7 +596,7 @@ export function createFieldBuildMode(ctx) {
       }
       const existingSite = sys.siteForAsteroid?.(selectedAsteroidId) || null;
       if (!existingSite) {
-        announceToast('Commission a rig on this asteroid first before anchoring orbital structures.', 'warn');
+        announceToast('Claim this rock first (1). Turrets, beacons and sails are built around a claim.', 'warn');
         return;
       }
       const msg = toolId === 'turret'
@@ -534,7 +613,7 @@ export function createFieldBuildMode(ctx) {
       }
       const existingSite = sys.siteForAsteroid?.(selectedAsteroidId) || null;
       if (!existingSite) {
-        announceToast('Commission a rig on this asteroid first before launching drones.', 'warn');
+        announceToast('Claim this rock first (1). A drone works for a claim.', 'warn');
         return;
       }
       runSiteOp(sys.commissionSiteDrone?.(existingSite.id, 'harvester'), 'Autonomous harvester drone launched.');
@@ -556,6 +635,9 @@ export function createFieldBuildMode(ctx) {
     if (!state.ui) state.ui = {};
     state.ui.fieldBuildActive = active;
     overlay.hidden = !active;
+    // The belt view owns the screen while it is up: the flight instruments and prompts that belong
+    // to flying the ship step out (styles/field-build.css) and return when it closes.
+    if (typeof document !== 'undefined' && document.body) document.body.classList.toggle('sf-field-build', active);
     pillBtn.classList.toggle('on', active);
     const cam = camCtrl();
     if (cam && typeof cam.setFieldBuildMode === 'function') {
@@ -609,7 +691,7 @@ export function createFieldBuildMode(ctx) {
     if (code === 'KeyG') {
       const sys = currentSiteSys();
       if (sys?.autoLinkSectorCluster) {
-        runSiteOp(sys.autoLinkSectorCluster(state?.world?.currentSectorId), 'Sector power and material supply network balanced.');
+        runSiteOp(sys.autoLinkSectorCluster(state?.world?.currentSectorId), 'Lines run between your claims.');
       }
       return true;
     }
@@ -623,7 +705,8 @@ export function createFieldBuildMode(ctx) {
 
   function renderCrest(vm) {
     const totals = vm.network.totals;
-    const sig = `${totals.siteCount}|${totals.totalPowerGenMw}|${totals.totalPowerDrawMw}|${totals.activeLinkCount}|${totals.totalDefenseRating || totals.defenseCount}`;
+    const raidPressure = Math.round(Number(vm.empire?.raidStatus?.pressure) || 0);
+    const sig = `${totals.siteCount}|${totals.totalPowerGenMw}|${totals.totalPowerDrawMw}|${totals.activeLinkCount}|${totals.totalDefenseRating || totals.defenseCount}|${raidPressure}`;
     if (sig === crestSig) return;
     crestSig = sig;
     statSites.textContent = 'Claims';
@@ -632,8 +715,9 @@ export function createFieldBuildMode(ctx) {
     statPower.appendChild(el('strong', '', `${totals.totalPowerGenMw.toFixed(0)}/${totals.totalPowerDrawMw.toFixed(0)}`));
     statLinks.textContent = 'Links';
     statLinks.appendChild(el('strong', '', String(totals.activeLinkCount)));
-    statDefs.textContent = 'Defense';
-    statDefs.appendChild(el('strong', '', String(totals.totalDefenseRating ?? totals.defenseCount)));
+    statDefs.textContent = 'Guard';
+    // Against what raiders test, once there is something for them to test.
+    statDefs.appendChild(el('strong', '', `${totals.totalDefenseRating ?? totals.defenseCount}${raidPressure > 0 ? ` of ${raidPressure}` : ''}`));
   }
 
   function renderInspector() {
@@ -818,8 +902,10 @@ export function createFieldBuildMode(ctx) {
       const targetSite = hit.site;
       if (linkSourceSiteId && targetSite && targetSite.siteId !== linkSourceSiteId) {
         const kind = activeTool === 'link_power' ? 'power' : 'material';
-        runSiteOp(sys.setSiteLink(linkSourceSiteId, targetSite.siteId, kind, kind === 'material' ? (selectedLinkGoodId || null) : null),
-          kind === 'power' ? 'Power relay tether connected.' : 'Material transfer line connected.');
+        const fromId = linkSourceSiteId;
+        const toId = targetSite.siteId;
+        runSiteOp(sys.setSiteLink(fromId, toId, kind, kind === 'material' ? (selectedLinkGoodId || null) : null),
+          () => lineResultText(kind, fromId, toId));
         setTool('select');
       } else if (targetSite) {
         selectedAsteroidId = hit.asteroidId;
@@ -827,7 +913,7 @@ export function createFieldBuildMode(ctx) {
         linkSourceSiteId = targetSite.siteId;
         updateHintBanner();
       } else {
-        announceToast('Target asteroid must be commissioned before linking.', 'warn');
+        announceToast('Claim that rock before running a line to it.', 'warn');
       }
       inspectorSig = '';
       renderInspector();
@@ -933,15 +1019,16 @@ export function createFieldBuildMode(ctx) {
     const inFlight = state?.mode === 'flight' && !state?.ui?.docked;
     if (active && !inFlight) setActive(false);
 
-    // The badge rides the pill in ordinary flight, so it still has to track the sector count —
-    // but touching textContent/hidden every frame was a steady invalidation source even when
-    // nothing changed. Write only when the pill is shown and only when the value differs.
-    // The pill is an ordinary-flight convenience: it steps out of the way of a fight (the target
-    // card, the WANTED banner and the radio all live in its corner) and of a Swarm round.
-    const hudJob = typeof document !== 'undefined' && document.body && document.body.dataset
-      ? document.body.dataset.sfHudJob : '';
-    const busyCorner = !active && (hudJob === 'fight' || hudJob === 'hurt' || isSwarmGlass(state));
-    const pillHidden = !(inFlight && (hudVisible || active)) || busyCorner;
+    // The pill belongs to calm flight only, and only when near a claimable or owned asteroid
+    // (or while Field Build mode is actively open).
+    const ds = typeof document !== 'undefined' && document.body && document.body.dataset
+      ? document.body.dataset : null;
+    const hudAttention = ds ? ds.hudAttention : '';
+    const hudJob = ds ? ds.sfHudJob : '';
+    const calmAllowed = active || (hudAttention ? hudAttention === 'calm'
+      : !(hudJob === 'fight' || hudJob === 'hurt' || isSwarmGlass(state)));
+    const nearSiteOrClaimable = active || hasNearbyClaimableOrOwnedBody(state);
+    const pillHidden = !(inFlight && (hudVisible || active)) || !calmAllowed || !nearSiteOrClaimable;
     if (pillBtn.hidden !== pillHidden) pillBtn.hidden = pillHidden;
     if (!pillHidden) {
       const sys = currentSiteSys();

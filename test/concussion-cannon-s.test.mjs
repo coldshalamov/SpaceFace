@@ -8,7 +8,7 @@
  *    while heavy hulls (mass 150) shrug the shove.
  * 4. Impulse kernel integration: resolveWeaponImpulseForHit extracts magnitude, tumble, and provenance.
  * 5. Presentation resolution: resolves to concussion family and concussion-slug variant.
- * 6. Tech and outfitting integration: unlocks in tech_kinetic_drivers and equips in S slots.
+ * 6. Tech and outfitting integration: a starter gun (no research, R7) that equips in S slots.
  */
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
@@ -63,8 +63,9 @@ test('mass response: throws light hulls, heavy hulls resist', () => {
   assert.ok(waspDeltaV > 30, `Wasp delta-V is ${waspDeltaV.toFixed(1)} WU/s (significant shove)`);
   assert.ok(waspDeltaV > 18, 'Exceeds tumbleDeltaV hitstun threshold');
 
-  // Heavy receives only ~3.47 WU/s
-  assert.ok(heavyDeltaV < 5, `Heavy delta-V is ${heavyDeltaV.toFixed(1)} WU/s (shrugs shove)`);
+  // Heavy receives ~7.3 WU/s — well under the 18 WU/s hitstun threshold: a heavy shrugs it
+  // (R5: "heavies shrug at Hose and Pew and fear thrown bodies, Thump and hazards" — they feel it, no tumble).
+  assert.ok(heavyDeltaV < 18, `Heavy delta-V is ${heavyDeltaV.toFixed(1)} WU/s (shrugs shove)`);
 });
 
 test('resolveWeaponImpulseForHit extracts correct physical impulse record', () => {
@@ -86,10 +87,14 @@ test('presentation family resolves to concussion VFX and audio', () => {
 test('tech and outfitting integration: unlocks and sandbox availability', () => {
   const kineticTech = TECH_NODES.find((t) => t.id === 'tech_kinetic_drivers');
   assert.ok(kineticTech, 'tech_kinetic_drivers exists');
+  // R7: basic guns are never researched. The S cannon is bought with credits from the first
+  // minute, so no research node claims to unlock it.
   assert.ok(
-    kineticTech.unlocks.modules.includes('wpn_concussion_cannon_s'),
-    'wpn_concussion_cannon_s is unlocked by tech_kinetic_drivers',
+    !kineticTech.unlocks.modules.includes('wpn_concussion_cannon_s'),
+    'wpn_concussion_cannon_s is a starter gun, not a Kinetic Drivers unlock',
   );
+  assert.equal(WEAPONS.find((w) => w.id === 'wpn_concussion_cannon_s')?.requiresTech ?? null, null,
+    'and it carries no research gate');
 
   const sandboxLoadout = SANDBOX_PHYSICS_LOADOUTS.find((l) => l.id === 'light_impulse');
   assert.ok(sandboxLoadout, 'light_impulse sandbox loadout exists');

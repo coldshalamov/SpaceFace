@@ -29,6 +29,9 @@ import {
 } from '../../scripts/lib/simWorkerHost.mjs';
 import { nowNs } from '../../scripts/lib/simRealm.mjs';
 import { loadModelTruthCensus } from '../data/modelTruth.js';
+import { rehearseSimWorkload } from '../../scripts/lib/simRehearsal.mjs';
+import { resetCrucibleMetaForTests as resetCrucibleRuntime } from '../systems/survivalRecords.js';
+import { createPoseTableWriter } from './simPoseTable.js';
 import {
   bindSabEnvelopeChannel,
   encodeReplyForSab,
@@ -42,10 +45,48 @@ import {
   SAB_REPLY_SEQ_INDEX,
 } from '../../scripts/lib/simSabEnvelope.mjs';
 
-const { tick, init, finalize, shutdown, drainStorageOps, hasPendingDurable,
-  applyPresentationTimeEffects, effectiveTimeScale } = createSimHost({ onAsyncSaveReady: requestAsyncSaveReply });
+// Shared pose table writer (simPoseTable.js). Bound on a worker-local init; every fixed step
+// publishes the poses latest-wins so the picture never waits on the reply journal or its ACKs.
+let poseWriter = null;
+let posePort = null;
+let poseTransferSequence = 0;
+let poseTransferInFlight = 0;
+function writePoseTable(state, journal) {
+  if (!poseWriter || localClock.stopped) return;
+  poseWriter.write(state, journal, {
+    lifecycleGeneration: localClock.lifecycleGeneration,
+    appliedCommandSequence: localClock.appliedCommandSequence,
+    steps: localClock.stepCount,
+    replySequence: localClock.replySequence,
+    unacked: localClock.unackedSequences.length,
+    // 1 + durable rows when a reply is being retained (not yet published), 0 otherwise.
+    retained: localClock.latestReply ? 1 + (localClock.durableCount | 0) : 0,
+  });
+}
+function postPoseTableTransfer() {
+  if (!poseWriter || poseWriter.shared || localClock.stopped || poseTransferInFlight) return;
+  const buffer = poseWriter.takeTransfer();
+  if (!buffer) return;
+  const sequence = ++poseTransferSequence;
+  (posePort || self).postMessage({ kind: 'poseTable', sequence, buffer }, [buffer]);
+  poseTransferInFlight = sequence;
+}
+
+function releasePoseTableTransfer(msg) {
+  if (msg.kind !== 'poseTableAck' || msg.sequence !== poseTransferInFlight) return;
+  poseTransferInFlight = 0;
+  postPoseTableTransfer();
+}
+
+const { tick, init, finalize, shutdown, drainStorageOps, hasPendingDurable, reclaimLaneStorage,
+  applyPresentationTimeEffects, effectiveTimeScale } = createSimHost({
+  onAsyncSaveReady: requestAsyncSaveReply,
+  onStep: writePoseTable,
+  poseTableOwnsTransforms: () => poseWriter !== null && !localClock.stopped,
+});
 
 let chain = Promise.resolve();
+let rehearsed = false;
 let sabEnv = null;
 
 // The browser production lane can keep authoritative time moving while the
@@ -63,14 +104,30 @@ const LOCAL_MAX_STEPS = 4;
 // Explicit-step directives (tape/replay/verification) carry no budget and
 // always run exactly the steps requested.
 // PERF-02: every directive also pays a fixed tail (command drain, vitals walk,
-// domain diff, journal pack, postMessage, wake turnaround) measured at ~15 ms.
-// A heavy scene's ~28 ms step overshot the old 24 ms budget alone, so each
-// directive paid that tail for a single executed step — ~40% overhead on top
-// of step time. Three-step batches amortize the same tail without touching
-// step semantics; the hitch cap and accumulator bound still govern bursts.
-const LOCAL_WORK_BUDGET_MS = 72;
-const LOCAL_HITCH_CATCHUP_STEPS = 2;
-const LOCAL_MAX_DEBT_SECONDS = 0.25;
+// domain diff, journal pack, postMessage, wake turnaround) measured at ~2 ms
+// since the pose table took poses and vitals off the reply (NO-FREEZE, 2026-11-21).
+// BATCH CAP (owner bug 2026-11-21): a 4-step catch-up batch of today's ~12 ms
+// Swarm steps never reached the old 72 ms budget, so one directive owned the
+// worker for 50-80 ms — poses, replies and heartbeats all queued behind it, the
+// accumulator compounded, and the world diluted to 0.72x while frames kept
+// presenting. 14 ms lets one heavy step (or two light steps) plus its tail fit
+// a directive; the rest stays as bounded accumulator debt for the next timer
+// turn. Step sequence is unchanged — only how steps group into directives — so
+// determinism and the replay golden are untouched. Explicit-step directives
+// (tape/replay/verification) carry no budget and always run exactly.
+const LOCAL_WORK_BUDGET_MS = 14;
+const LOCAL_DETAIL_INTERVAL_MS = 100;
+// ENGINE slice 5 — dilate, do not shed. The world clock owes elapsed × scale × dilation. When the
+// worker cannot keep up, dilation eases down (never faster than LOCAL_DILATION_DOWN_PER_S) so the
+// whole world — sim, and the picture that measures its rate — slows smoothly instead of dropping
+// lumps of time; it eases back to 1 as soon as debt clears. Only a debt beyond the hard cap (a
+// multi-hundred-ms spike) is dropped, as one honest pause.
+const LOCAL_MAX_DEBT_SECONDS = 1.0;
+const LOCAL_DILATION_MIN = 0.5;
+const LOCAL_DILATION_DOWN_PER_S = 0.6;
+const LOCAL_DILATION_UP_PER_S = 0.4;
+const LOCAL_DEBT_HIGH_TICKS = 4;
+const LOCAL_DEBT_LOW_TICKS = 2;
 const LOCAL_DURABLE_LIMIT = 4096;
 // Presentation-trigger rows replay onto the main bus only when a reply is
 // actually published. Rows retained across a long ACK wait are stale by the
@@ -96,26 +153,67 @@ function localCommandEnvelopeStale(env) {
   if (LOCAL_STALE_COMMAND_TYPES.has(env.t)) return true;
   return env.t === 'dom' && env.p && env.p.d && LOCAL_STALE_DOM_TYPES.has(env.p.d.type);
 }
+// FREEZE lane (2026-11-23): the hand's own stream — held-key repeats, mouse and pad motion, the
+// cursor, input folds, camera, viewport, time effects, keepalive — never needs the read-model
+// detail built at once. Before, ANY queued command forced the vitals walk and domain diff, and in
+// flight the moving camera alone queues one every frame, so the 100 ms detail interval never
+// applied while the player was flying: measured 0.36-0.70 detail builds per directive (old) vs
+// 0.18-0.22 (new) in a live Swarm A/B. The detail is shadow/diff based, so deferring it to the
+// next interval loses nothing. Commands whose answer the screen reads back (rpc, settings, bus,
+// mode, spawn, nav, ui...) and fresh presses still build it at once.
+// A fresh press or release (not an OS auto-repeat) still answers at once, so the HUD reacts to the
+// press itself on the next reply; held keys, mouse motion and the per-frame samples do not.
+const LOCAL_HAND_COMMAND_TYPES = new Set(['dom', 'input', 'camera', 'viewport', 'timeEffects', 'keepalive']);
+// Every device's presses count, not only keyboard and mouse: a touch throw, a context-wheel verb,
+// the drill screen's calls and ticks (its mirror contract is one tick stale), focus loss and a
+// cancelled gesture answer at once too. The pad and touch surfaces post one sample per changed
+// frame; the sender stamps `edge: true` on a sample whose buttons or touch verbs changed, so a
+// press answers at once while a held stick or finger stays on the 100 ms interval.
+const LOCAL_EDGE_DOM_TYPES = new Set(['keydown', 'keyup', 'mousedown', 'mouseup', 'pointerdown', 'pointerup', 'click',
+  'touchThrow', 'wheelVerb', 'drillCall', 'drillTick', 'blur', 'gestureCancel']);
+const LOCAL_SAMPLE_DOM_TYPES = new Set(['gamepadFrame', 'touchFrame']);
+function localCommandsNeedDetail(commands) {
+  for (let i = 0; i < commands.length; i++) {
+    const env = commands[i];
+    if (!env || typeof env.t !== 'string' || !LOCAL_HAND_COMMAND_TYPES.has(env.t)) return true;
+    if (env.t !== 'dom') continue;
+    const d = env.p && env.p.d;
+    if (!d) continue;
+    if (LOCAL_EDGE_DOM_TYPES.has(d.type) && d.repeat !== true) return true;
+    if (LOCAL_SAMPLE_DOM_TYPES.has(d.type) && d.edge === true) return true;
+  }
+  return false;
+}
 // A publish whose ACK never lands wedges sentAwaitingAck forever: every later
 // tick only deepens the retained reply while presentation freezes at the last
 // applied pose — invisible to the in-flight watchdog because nothing is in
 // flight. Past this age the ACK is treated as lost (the apply died mid-flight
 // or the consumer is hopelessly behind) and the lane re-baselines through the
 // existing full-rebuild path instead of waiting indefinitely.
-const LOCAL_STALE_ACK_MS = 3000;
+// NO-FREEZE (2026-11-21): the reply channel is ordered (postMessage FIFO), so an ACK that is
+// merely late is never a lost range. Past this age the worker frees the outstanding reply
+// credits and keeps publishing incrementally — bookkeeping only, never a rebuild, never a stop.
+// Poses ride the shared pose table, so a slow consumer cannot freeze the picture either way.
+// Measured 2026-11-21 (Electron Swarm): a 250 ms credit release let the worker post 30-67 replies
+// ahead of a busy main thread whose own message queue was holding the ACKs, so spawns/destroys
+// reached the picture seconds late (bodies drawn under an old identity). A late ACK now means
+// "main is behind": the worker keeps merging into one retained reply instead of flooding the
+// queue. Credits are freed only after a genuinely silent main (2 s), still without a rebuild.
+const LOCAL_STALE_ACK_MS = 2000;
+// Dev A/B only (init `legacyStopAndWait`, from localStorage sf.laneLegacy=1): the pre-2026-11-21
+// stop-and-wait rules, kept so the no-freeze gate can show the old freeze on the same build.
+const LEGACY_STALE_ACK_MS = 3000;
 // Outstanding (un-ACKed) publish budget. Stop-and-wait on a single reply means
 // every ACK round-trip beyond one tick merges into an ever-growing retained
 // blob — bigger applies feed back into slower ACKs until the lane collapses
 // into multi-second update cycles. A small window keeps per-tick replies
 // small under mild congestion; the retained merge still bounds deep stalls.
-const LOCAL_MAX_UNACKED = 4;
+// Two in flight: one being applied, one queued. More only deepens main's message backlog.
+const LOCAL_MAX_UNACKED = 2;
 const LOCAL_TIMER_MS = LOCAL_FIXED_DT * 1000;
 const LOCAL_MAX_CONSECUTIVE_TASK_WAKES = 4;
-// Main-thread presentation heartbeat. Every rAF callback posts one; a stall stops the beats.
-// The fence has ~150-300 ms of history, so after that it holds the picture. If the worker kept
-// stepping through the stall, the first frame after it would re-seat seconds ahead — the
-// freeze-then-teleport jump. Hold the clock instead; the world resumes from the held pose.
-const LOCAL_HEARTBEAT_HOLD_MS = 250;
+// Presentation gaps are diagnostics. Clock control messages own deliberate pause and suspension.
+const LOCAL_PRESENTATION_GAP_MS = 1000;
 // PERF-02 lane accounting window. The clockDiagnostics scalars already diff
 // across any two reads; a completed window adds the distribution facts (per-step
 // worker cost, measured wake cadence) that bare counters cannot carry. Samples
@@ -153,11 +251,16 @@ const localClock = {
   sentJournalEnd: 0,
   postedJournalRanges: new Map(),
   lastHeartbeatAtMs: 0,
-  heartbeatHeld: false,
-  heartbeatHolds: 0,
-  heartbeatHoldStartMs: 0,
-  heartbeatHeldMs: 0,
-  heartbeatHeldTurns: 0,
+  // Latest production time stamped by the main thread, in epoch milliseconds.
+  // Unlike lastHeartbeatAtMs (worker message-processing time), this tells a
+  // worker-congested beat batch apart from a main thread that truly stopped
+  // producing frames.
+  lastHeartbeatSentAtMs: 0,
+  lastHeartbeatProductionGapMs: 0,
+  lastHeartbeatProcessingLagMs: 0,
+  // A gap between producer timestamps measures silence independently of message delivery.
+  heartbeatSilences: 0,
+  heartbeatSilenceMs: 0,
   // Ticks the wall clock has owed while active — stepped vs owed is the
   // sim/wall numerator and denominator the lane attributes.
   owedTicks: 0,
@@ -178,11 +281,26 @@ const localClock = {
   timerFires: 0,
   stepCount: 0,
   shedStepCount: 0,
+  // Smoothed world-clock dilation in [LOCAL_DILATION_MIN, 1] (ENGINE slice 5).
+  dilation: 1,
+  // Worker-silence attribution: a timer turn whose wall gap exceeds the previous turn's own work
+  // by > LOCAL_LONG_GAP_MS was not step cost — the event loop was starved (GC, a long message
+  // handler, timer clamping). Bounded ledger of the last few, shipped in clockDiagnostics.
+  lastWorkMs: 0,
+  lastWakeLateMs: 0,
+  lastWakeViaTask: false,
+  longGaps: [],
   budgetDeferredStepCount: 0,
+  // Directives that built the full read-model detail (vitals walk + domain diff), and how many of
+  // those were forced by a command batch rather than the detail interval.
+  detailDirectives: 0,
+  detailForcedByCommands: 0,
+  detailSkippedHandOnly: 0,
   commandCount: 0,
   // E1 stall harness state (?simStall=): cycle of ms values, one consumed per local-clock tick.
   stallCycle: null,
   stallIndex: 0,
+  oneShotStallMs: 0,
   stallApplications: 0,
   stallTotalMs: 0,
   // A slow authoritative tick must not leave one promise per timer turn queued
@@ -196,6 +314,24 @@ const localClock = {
 function localNowMs() {
   return typeof performance !== 'undefined' && typeof performance.now === 'function'
     ? performance.now() : Date.now();
+}
+
+function localHeartbeatClockKind() {
+  return typeof performance !== 'undefined' && typeof performance.now === 'function'
+    && Number.isFinite(performance.timeOrigin) ? 'performance' : 'date';
+}
+
+function localWallNowMs() {
+  return localHeartbeatClockKind() === 'performance'
+    ? performance.timeOrigin + performance.now() : Date.now();
+}
+
+function localHeartbeatAgeMs(nowMsValue, wallNowMsValue) {
+  if (localClock.lastHeartbeatSentAtMs > 0) {
+    return Math.max(0, wallNowMsValue - localClock.lastHeartbeatSentAtMs);
+  }
+  return localClock.lastHeartbeatAtMs > 0
+    ? Math.max(0, nowMsValue - localClock.lastHeartbeatAtMs) : null;
 }
 
 // ---- E1 stall-injection harness (?simStall=) ----------------------------------------
@@ -219,10 +355,18 @@ function stallBlock(ms) {
 }
 
 function runInjectedStall() {
-  const cycle = localClock.stallCycle;
-  if (!cycle || !cycle.length || localClock.stopped) return;
-  const ms = cycle[localClock.stallIndex % cycle.length];
-  localClock.stallIndex++;
+  if (localClock.stopped) return;
+  // One-shot stall requested at runtime by a probe (laneInjectStall); consumed by the next tick.
+  let ms = 0;
+  if (localClock.oneShotStallMs > 0) {
+    ms = localClock.oneShotStallMs;
+    localClock.oneShotStallMs = 0;
+  } else {
+    const cycle = localClock.stallCycle;
+    if (!cycle || !cycle.length) return;
+    ms = cycle[localClock.stallIndex % cycle.length];
+    localClock.stallIndex++;
+  }
   if (!(ms > 0)) return;
   const started = localNowMs();
   stallBlock(ms);
@@ -248,16 +392,54 @@ export function nextLocalClockDeadline(deadlineMs, nowMs, intervalMs = LOCAL_TIM
   return next;
 }
 
+/**
+ * Ease the world-clock dilation from the debt left after this turn. Debt above HIGH means the
+ * worker is not keeping up: slow the world (rate-limited, so it reads as a smooth slowdown).
+ * Debt below LOW: recover toward real time. Between them: hold. Wall-clock policy only — the
+ * fixed 60 Hz step and everything it computes are untouched.
+ */
+const LOCAL_LONG_GAP_MS = 120;
+function noteLocalLongGap(elapsedMs, now) {
+  const idleMs = elapsedMs - (localClock.lastWorkMs || 0);
+  if (!(idleMs > LOCAL_LONG_GAP_MS)) return;
+  if (localClock.longGaps.length >= 8) localClock.longGaps.shift();
+  localClock.longGaps.push({
+    atMs: Math.round(now),
+    gapMs: Math.round(elapsedMs),
+    prevWorkMs: Math.round(localClock.lastWorkMs || 0),
+    wakeLateMs: Math.round(localClock.lastWakeLateMs || 0),
+    viaTask: localClock.lastWakeViaTask === true,
+    heartbeatAgeMs: localHeartbeatAgeMs(now, localWallNowMs()),
+  });
+}
+
+function updateLocalDilation(elapsedMs) {
+  const wallS = Math.min(0.25, localElapsedSeconds(elapsedMs));
+  if (!(wallS > 0)) return;
+  const debtTicks = localClock.accumulator / LOCAL_FIXED_DT;
+  if (debtTicks > LOCAL_DEBT_HIGH_TICKS) {
+    localClock.dilation = Math.max(LOCAL_DILATION_MIN, localClock.dilation - LOCAL_DILATION_DOWN_PER_S * wallS);
+  } else if (debtTicks < LOCAL_DEBT_LOW_TICKS && localClock.dilation < 1) {
+    localClock.dilation = Math.min(1, localClock.dilation + LOCAL_DILATION_UP_PER_S * wallS);
+  }
+}
+
 function localElapsedSeconds(elapsedMs) {
   const seconds = Number.isFinite(elapsedMs) ? Math.max(0, elapsedMs / 1000) : 0;
   return seconds;
 }
 
 function resetLocalClockTiming() {
-  if (localClock.wake?.token) cancelLocalClockWake();
+  if (localClock.wake) cancelLocalClockWake();
+  // Do not count an intentional pause or rate change as a presentation gap.
+  localClock.lastHeartbeatAtMs = 0;
+  localClock.lastHeartbeatSentAtMs = 0;
+  localClock.lastHeartbeatProductionGapMs = 0;
+  localClock.lastHeartbeatProcessingLagMs = 0;
   localClock.consecutiveTaskWakes = 0;
   localClock.anchorMs = localNowMs();
   localClock.deadlineMs = 0;
+  localClock.dilation = 1;
   // A pause/rate/epoch boundary starts a new wall interval. Preserve only the sub-tick phase;
   // old whole-step debt must not execute at a new rate or after a hidden/paused interval.
   localClock.accumulator %= LOCAL_FIXED_DT;
@@ -270,6 +452,8 @@ const LOCAL_DURABLE_KEYS = Object.freeze([
   'events', 'storageOps', 'rpcAcks', 'settingsAcks', 'spawnAcks',
   'commandAcks', 'inputPublishes',
   'spawnInfos', 'warmStubs',
+  // Dev forced-stall harness only (laneForce padRows): inert durable rows main ignores.
+  'probePad',
 ]);
 // These are complete read snapshots, unlike one-shot events and lifecycle receipts. Retaining
 // every intermediate value makes a slow presentation consumer stop an otherwise healthy sim.
@@ -690,9 +874,12 @@ function localAckReplyAction(reply, {
   scale = 0,
   durableCount = 0,
   needsRebuild = false,
+  legacy = false,
 } = {}) {
   if (!reply || !active || !(scale > 0)) return 'schedule';
-  if (needsRebuild || durableCount >= LOCAL_DURABLE_LIMIT) return 'schedule-rebuild';
+  // A dense retained reply is still contiguous and ordered: publish it. Only a real gap or a
+  // bounded-merge overflow needs the rebuild path.
+  if (needsRebuild || (legacy && durableCount >= LOCAL_DURABLE_LIMIT)) return 'schedule-rebuild';
   if (Number.isSafeInteger(reply.journalStart) && reply.journalStart > ackJournalEnd
     && reply.journalStart !== orderedPostedEnd) {
     // The retained window starts past the last applied-watermark ack: the
@@ -730,6 +917,7 @@ async function publishRetainedReplyAfterAck(ackJournalEnd) {
     scale: localClock.scale,
     durableCount: localDurableCount(reply),
     needsRebuild: localClock.needsRebuildOnSend || localReplyNeedsRebuild.has(reply),
+    legacy: localClock.legacy === true,
   });
   if (action !== 'publish') {
     if (reply && action === 'schedule-rebuild') localClock.needsRebuildOnSend = true;
@@ -769,24 +957,40 @@ function localDisarmStaleAckWatchdog() {
 function localRecoverStaleAck(watchdog) {
   if (localClock.ackWatchdog !== watchdog) return;
   localDisarmStaleAckWatchdog();
-  if (localClock.stopped || !localClock.sentAwaitingAck
-    || localClock.unackedSequences[0] !== watchdog.clockSequence) return;
-  // The next tick rebuilds the journal, carrying all retained receipts and
-  // replacing the stale range idempotently even if its apply is still queued.
+  if (localClock.stopped || !localClock.unackedSequences.length) return;
+  if (localClock.unackedSequences[0] !== watchdog.clockSequence) {
+    // The head moved without a re-arm: watch the new head instead of going quiet. A silent
+    // return here left credits held for good.
+    localArmStaleAckWatchdog(localClock.unackedSequences[0]);
+    return;
+  }
+  // Free the credits. The channel is FIFO: every posted range still arrives in order, so the
+  // next publish stays incremental. (A full rebuild here was the old 'blip'.) The SAB envelope
+  // ring, which can genuinely refuse a post, folds instead of parking (publishLocalReply).
   localClock.unackedSequences.length = 0;
   localClock.postedJournalRanges.clear();
   localClock.sentAwaitingAck = false;
-  localClock.needsRebuildOnSend = true;
+  if (localClock.legacy) localClock.needsRebuildOnSend = true;
   localClock.staleAckRecoveries++;
   localSetBackpressure(false);
+  if (localClock.latestReply && (!localClock.active || localClock.scale <= 0)) {
+    // The clock is idle (loading, paused): no tick will come to carry the retained reply, and it
+    // may hold the very RPC ack main is waiting on (a new game's boot). Publish it now, in order.
+    // Measured 2026-11-21: a Swarm "Run it again" sat on "Getting the ship ready" for minutes.
+    chain = chain.then(() => runLocalClockTick(true)).catch((error) => {
+      self.postMessage({ kind: 'error', message: error?.message || String(error), stack: error?.stack || null });
+    });
+    return;
+  }
   scheduleLocalClock();
 }
 
 function localArmStaleAckWatchdog(clockSequence) {
   localDisarmStaleAckWatchdog();
-  const watchdog = { clockSequence, deadlineMs: localNowMs() + LOCAL_STALE_ACK_MS, timer: null };
+  const staleMs = localClock.legacy ? LEGACY_STALE_ACK_MS : LOCAL_STALE_ACK_MS;
+  const watchdog = { clockSequence, deadlineMs: localNowMs() + staleMs, timer: null };
   localClock.ackWatchdog = watchdog;
-  watchdog.timer = setTimeout(() => localRecoverStaleAck(watchdog), LOCAL_STALE_ACK_MS);
+  watchdog.timer = setTimeout(() => localRecoverStaleAck(watchdog), staleMs);
 }
 
 function localJournalRebuildEnvelope() {
@@ -797,7 +1001,21 @@ function localJournalRebuildEnvelope() {
   };
 }
 
+function localReplyRingFull() {
+  if (!sabEnv) return false;
+  const nextCell = sabEnv.reply.cells[sabEnv.reply.nextWrite];
+  return Atomics.load(nextCell.head, SAB_ENV_STATUS) !== 0;
+}
+
 async function publishLocalReply(reply) {
+  // NO-FREEZE: never park the worker on a full SAB reply ring (sabEnvelopePostReply waits up to
+  // 5 s and then throws). Keep the reply retained; the next tick or ACK publishes it.
+  if (localReplyRingFull()) {
+    // Callers hand over either the retained reply itself or a fresh reply with none retained.
+    localClock.latestReply = reply;
+    localClock.replyRingFolds = (localClock.replyRingFolds || 0) + 1;
+    return;
+  }
   localMaterializePack(reply);
   localReplyNeedsRebuild.delete(reply);
   localClock.replySequence++;
@@ -847,23 +1065,12 @@ function localPerfPercentile(samples, p) {
 
 const localPerfRound = (value) => (Number.isFinite(value) ? Math.round(value * 100) / 100 : null);
 
-// Held time is a monotonic read — closed episodes plus the still-open segment —
-// so a window or a probe diff that ends mid-hold still attributes the held time.
-function localHeartbeatHeldMsTotal(now) {
-  return localClock.heartbeatHeldMs
-    + (localClock.heartbeatHeld && localClock.heartbeatHoldStartMs > 0
-      ? Math.max(0, now - localClock.heartbeatHoldStartMs) : 0);
-}
-
-function localPerfMark(now) {
+function localPerfMark() {
   return {
     steps: localClock.stepCount,
     owedTicks: localClock.owedTicks,
     shed: localClock.shedStepCount,
     deferred: localClock.budgetDeferredStepCount,
-    heldMs: localHeartbeatHeldMsTotal(now),
-    holds: localClock.heartbeatHolds,
-    heldTurns: localClock.heartbeatHeldTurns,
     fires: localClock.timerFires,
     directives: localClock.directiveTick,
     backpressureMs: localClock.backpressureTotalMs,
@@ -889,12 +1096,12 @@ function localPerfSample(reply, elapsedMs, timerTurn) {
 function localPerfRotate(now) {
   if (!localPerf.marks) {
     localPerf.windowStartMs = now;
-    localPerf.marks = localPerfMark(now);
+    localPerf.marks = localPerfMark();
     return;
   }
   if (now - localPerf.windowStartMs < LOCAL_PERF_WINDOW_MS) return;
   const start = localPerf.marks;
-  const end = localPerfMark(now);
+  const end = localPerfMark();
   localPerf.lastWindow = {
     index: ++localPerf.windowIndex,
     endedAtMs: Math.round(now),
@@ -905,9 +1112,6 @@ function localPerfRotate(now) {
     owedTicks: localPerfRound(end.owedTicks - start.owedTicks),
     shedSteps: end.shed - start.shed,
     budgetDeferredSteps: end.deferred - start.deferred,
-    heartbeatHeldMs: Math.round(end.heldMs - start.heldMs),
-    heartbeatHolds: end.holds - start.holds,
-    heartbeatHeldTurns: end.heldTurns - start.heldTurns,
     backpressureMs: Math.round(end.backpressureMs - start.backpressureMs),
     staleAckRecoveries: end.staleAckRecoveries - start.staleAckRecoveries,
     samples: localPerf.workMs.length,
@@ -933,27 +1137,11 @@ async function runLocalClockTick(force = false, explicitSteps = 0, publishReply 
   runInjectedStall();
   const now = localNowMs();
   const hasExplicit = Number.isSafeInteger(explicitSteps) && explicitSteps > 0;
-  if (!force && !hasExplicit && localClock.lastHeartbeatAtMs > 0
-    && now - localClock.lastHeartbeatAtMs > LOCAL_HEARTBEAT_HOLD_MS) {
-    // The page cannot present. Do not advance the world into a picture it will later jump
-    // across: drop the stalled wall interval, keep the pose, and wait for the next beat.
-    if (!localClock.heartbeatHeld) {
-      localClock.heartbeatHeld = true;
-      localClock.heartbeatHolds += 1;
-      localClock.heartbeatHoldStartMs = now;
-    }
-    localClock.heartbeatHeldTurns += 1;
-    localClock.anchorMs = now;
-    localClock.accumulator = 0;
-    scheduleLocalClock();
-    return;
-  }
   const elapsedMs = localClock.anchorMs > 0 ? Math.max(0, now - localClock.anchorMs) : 0;
-  if (localClock.backpressured && localClock.sentAwaitingAck && !force) return;
-  // A timer that fires while the presentation side is backpressured must not
-  // discard the wall interval it was unable to consume. Leave anchorMs at the
-  // last completed authoritative call until an ACK releases the guard; that
-  // call then gets one bounded catch-up window and the existing shed policy.
+  // NO-FREEZE: the world's clock never waits for the screen. A dense retained reply or a late
+  // ACK no longer stops stepping; the retained reply keeps merging (bounded below) and poses
+  // reach the picture through the shared pose table.
+  if (localClock.legacy && localClock.backpressured && localClock.sentAwaitingAck && !force) return;
   localClock.anchorMs = now;
 
   let steps = 0;
@@ -962,19 +1150,18 @@ async function runLocalClockTick(force = false, explicitSteps = 0, publishReply 
   if (hasExplicitSteps) {
     steps = Math.min(LOCAL_MAX_STEPS, explicitSteps);
   } else if (localClock.active && localClock.scale > 0) {
+    // Wall owes elapsed × scale; the world clock receives that × dilation (ENGINE slice 5).
     const owedSeconds = localElapsedSeconds(elapsedMs) * localClock.scale;
-    localClock.accumulator += owedSeconds;
+    localClock.accumulator += owedSeconds * localClock.dilation;
     localClock.owedTicks += owedSeconds / LOCAL_FIXED_DT;
-    // Cap carried simulation debt, not the work consumed by this one timer turn. A late wake
-    // must not permanently slow the sim by dropping every tick beyond its small work batch.
+    // Hard cap only: a spike longer than the cap is one honest pause, never a replayed backlog.
     if (localClock.accumulator > LOCAL_MAX_DEBT_SECONDS) {
       shedSteps = Math.max(0, Math.ceil(
         (localClock.accumulator - LOCAL_MAX_DEBT_SECONDS) / LOCAL_FIXED_DT - 1e-9,
       ));
       localClock.accumulator -= shedSteps * LOCAL_FIXED_DT;
     }
-    const hitch = elapsedMs > LOCAL_FIXED_DT * 1000 * 6.5;
-    const cap = hitch ? LOCAL_HITCH_CATCHUP_STEPS : LOCAL_MAX_STEPS;
+    const cap = LOCAL_MAX_STEPS;
     while (localClock.accumulator + 1e-12 >= LOCAL_FIXED_DT && steps < cap) {
       localClock.accumulator -= LOCAL_FIXED_DT;
       steps++;
@@ -997,16 +1184,51 @@ async function runLocalClockTick(force = false, explicitSteps = 0, publishReply 
   const needsReply = force || steps > 0 || commands.length > 0 || ackJournalEnd > 0;
   if (!needsReply) return;
 
+  // NO-FREEZE world speed (allocation): the reliable read-model detail (entity vitals walk and
+  // the domain diff) is the largest per-directive allocator (~180 KB/step measured). Both are
+  // shadow/diff based, so building them at most every LOCAL_DETAIL_INTERVAL_MS defers changes
+  // without losing any; motion and the player's dials ride the pose table every step. Any
+  // directive that carries commands, explicit steps, or runs paused builds them at once.
+  const detailNow = localNowMs();
+  const commandsNeedDetail = commands.length > 0
+    && (localClock.detailEveryCommand === true || localCommandsNeedDetail(commands));
+  const detailDue = detailNow - (localClock.lastDetailAtMs || 0) >= LOCAL_DETAIL_INTERVAL_MS;
+  const replyDetail = force || hasExplicitSteps || commandsNeedDetail || !(localClock.scale > 0) || detailDue;
+  if (replyDetail) {
+    localClock.lastDetailAtMs = detailNow;
+    localClock.detailDirectives += 1;
+    if (commandsNeedDetail && !detailDue && !force && !hasExplicitSteps) localClock.detailForcedByCommands += 1;
+  } else if (commands.length > 0) {
+    // Before 2026-11-23 these hand-only batches built the full detail too.
+    localClock.detailSkippedHandOnly += 1;
+  }
+  const markStart = localClock.directiveMarks ? localNowMs() : 0;
   let reply = await tick({
     kind: 'tick',
     seq: `local-directive-${++localClock.directiveTick}`,
     tick: localClock.directiveTick,
     steps,
     workBudgetMs: hasExplicitSteps ? undefined : LOCAL_WORK_BUDGET_MS,
+    replyDetail,
     commands,
     ackJournalEnd,
     generation: localClock.lifecycleGeneration,
   });
+  // Probe-only (init directiveMarks): one user-timing measure per directive so a DevTools trace can
+  // name the worst steps (and the compile/GC/CPU time inside them). Cleared at once: no buffer.
+  if (localClock.directiveMarks && typeof performance !== 'undefined' && typeof performance.measure === 'function') {
+    try { performance.measure('sf-directive', { start: markStart, end: localNowMs(), detail: { steps } }); performance.clearMeasures('sf-directive'); } catch (_) { /* optional */ }
+  }
+  postPoseTableTransfer();
+  // NO-FREEZE step 4: the per-frame camera/time-effects envelopes are latest-wins state. Their
+  // receipts are read by nobody on the main lane; never let them become durable reply rows.
+  if (Array.isArray(reply.commandAcks) && reply.commandAcks.length) {
+    const kept = reply.commandAcks.filter((ack) => ack && ack.t !== 'camera' && ack.t !== 'timeEffects');
+    reply.commandAcks = kept.length ? kept : undefined;
+  }
+  if (localClock.forcePadRows > 0) {
+    reply.probePad = new Array(localClock.forcePadRows).fill(0);
+  }
   localClock.trimmedJournalEnd = Math.max(localClock.trimmedJournalEnd, ackJournalEnd);
   if (localClock.pendingAckJournalEnd <= localClock.trimmedJournalEnd) localClock.pendingAckJournalEnd = 0;
   // A budget limit is a yield between steps. Restore the part of the reserved
@@ -1020,6 +1242,11 @@ async function runLocalClockTick(force = false, explicitSteps = 0, publishReply 
       localClock.budgetDeferredStepCount += deferred;
     }
   }
+  if (!hasExplicitSteps && localClock.active && localClock.scale > 0) {
+    if (!force) noteLocalLongGap(elapsedMs, now);
+    updateLocalDilation(elapsedMs);
+  }
+  localClock.lastWorkMs = Number.isFinite(reply.workMs) ? reply.workMs : 0;
   localPerfSample(reply, elapsedMs, !force && !hasExplicitSteps);
   refreshLocalClockScale();
   // Only advance the watermark after tick() returns. A thrown authoritative
@@ -1045,7 +1272,12 @@ async function runLocalClockTick(force = false, explicitSteps = 0, publishReply 
     directiveTicks: localClock.directiveTick,
     steps: localClock.stepCount,
     shedSteps: localClock.shedStepCount,
+    dilation: localPerfRound(localClock.dilation),
+    longGaps: localClock.longGaps.slice(),
     budgetDeferredSteps: localClock.budgetDeferredStepCount,
+    detailDirectives: localClock.detailDirectives,
+    detailForcedByCommands: localClock.detailForcedByCommands,
+    detailSkippedHandOnly: localClock.detailSkippedHandOnly,
     commands: localClock.commandCount,
     pendingCommands: localClock.pendingCommands.length,
     appliedCommandSequence: localClock.appliedCommandSequence,
@@ -1057,14 +1289,13 @@ async function runLocalClockTick(force = false, explicitSteps = 0, publishReply 
     staleAckRecoveries: localClock.staleAckRecoveries || 0,
     stallApplications: localClock.stallApplications || 0,
     stallTotalMs: localClock.stallTotalMs || 0,
-    heartbeatHolds: localClock.heartbeatHolds || 0,
-    heartbeatHeld: localClock.heartbeatHeld === true,
-    heartbeatHeldMs: Math.round(localHeartbeatHeldMsTotal(now)),
-    heartbeatHeldTurns: localClock.heartbeatHeldTurns || 0,
+    heartbeatSilences: localClock.heartbeatSilences || 0,
+    heartbeatSilenceMs: Math.round(localClock.heartbeatSilenceMs || 0),
     owedTicks: localPerfRound(localClock.owedTicks),
     perfWindow: localPerf.lastWindow,
-    heartbeatAgeMs: localClock.lastHeartbeatAtMs > 0
-      ? Math.max(0, now - localClock.lastHeartbeatAtMs) : null,
+    heartbeatAgeMs: localHeartbeatAgeMs(now, localWallNowMs()),
+    heartbeatProductionGapMs: localClock.lastHeartbeatProductionGapMs || 0,
+    heartbeatProcessingLagMs: localClock.lastHeartbeatProcessingLagMs || 0,
     backpressured: localClock.backpressured,
     backpressureEpisodes: localClock.backpressureEpisodes,
     backpressureMs: localClock.backpressureTotalMs + (localClock.backpressured
@@ -1094,6 +1325,8 @@ async function runLocalClockTick(force = false, explicitSteps = 0, publishReply 
     // collapsing into a growing blob.
     localClock.latestReply = localMergeReply(localClock.latestReply, reply);
     localRefreshDurablePressure();
+    // Whatever is retained now waits on an ACK: make sure something is watching for a lost one.
+    if (!localClock.ackWatchdog) localArmStaleAckWatchdog(localClock.unackedSequences[0]);
   } else {
     if (localClock.latestReply) {
       localClock.latestReply = localMergeReply(localClock.latestReply, reply);
@@ -1177,7 +1410,8 @@ function postLocalClockWake(wake) {
 
 function scheduleLocalClock() {
   if (!localClock.enabled || localClock.stopped || !localClock.active
-    || localClock.scale <= 0 || localClock.wake !== null || localClock.backpressured) return;
+    || localClock.scale <= 0 || localClock.wake !== null
+    || (localClock.legacy && localClock.backpressured)) return;
   const now = localNowMs();
   // Include authoritative work since the last batch began. If that work itself left a whole
   // tick owed, yield to one new task promptly instead of waiting another fixed interval.
@@ -1186,10 +1420,9 @@ function scheduleLocalClock() {
   const hasWholeDebt = pendingDebt + 1e-12 >= LOCAL_FIXED_DT;
   if (!hasWholeDebt) localClock.deadlineMs = nextLocalClockDeadline(localClock.deadlineMs, now);
   const delayMs = hasWholeDebt ? 0 : Math.max(0, localClock.deadlineMs - now);
-  // A task avoids the nested-timer delay only while whole ticks are already owed and
-  // presentation is responsive. After four tasks, yield a timer turn to other work.
-  const useTask = hasWholeDebt && !localClock.heartbeatHeld && localClock.lastHeartbeatAtMs > 0
-    && now - localClock.lastHeartbeatAtMs <= LOCAL_HEARTBEAT_HOLD_MS
+  // Owed ticks can use a worker task to avoid nested timer delay. The task has a
+  // timer fallback and yields regularly so incoming commands can still run.
+  const useTask = hasWholeDebt
     && localClock.consecutiveTaskWakes < LOCAL_MAX_CONSECUTIVE_TASK_WAKES
     && localClockWakeChannel !== false && typeof MessageChannel === 'function';
   if (useTask && localClock.tickQueued) return;
@@ -1203,6 +1436,8 @@ function scheduleLocalClock() {
     if (localClock.wake !== wake) return;
     cancelLocalClockWake();
     localClock.timerFires++;
+    localClock.lastWakeLateMs = Math.max(0, localNowMs() - wake.dueAtMs);
+    localClock.lastWakeViaTask = !!wake.token;
     if (!isCurrent()) return;
     localClock.consecutiveTaskWakes = wake.token ? localClock.consecutiveTaskWakes + 1 : 0;
     localClock.deadlineMs = nextLocalClockDeadline(localClock.deadlineMs, localNowMs());
@@ -1402,8 +1637,33 @@ async function dispatchDirective(msg) {
       // Simulation publishes authored source strings; locale selection belongs to the main
       // presentation owner. Optional keyed catalogs must not delay this realm's init.
       await loadModelTruthCensus(msg.modelTruthCensusUrl);
+      // Boot rehearsal: before the real game exists, a throwaway Swarm fight runs a few seconds in
+      // its own host so the combat paths are compiled and optimised before the player's first
+      // fight instead of inside it. Once per worker; never on the legacy stop-and-wait lane.
+      let bootRehearsal = null;
+      if (!rehearsed && msg.profile === 'production' && msg.bootRehearsal === true && msg.legacyStopAndWait !== true
+        // A real browser worker only (node fixtures drive this module through a stub self).
+        && typeof WorkerGlobalScope !== 'undefined') {
+        rehearsed = true;
+        bootRehearsal = await rehearseSimWorkload(createSimHost, { scenarioContract: msg.scenarioContract || null });
+        // The rehearsal ran in this realm: give storage and the Crucible record runtime back clean.
+        reclaimLaneStorage();
+        try { resetCrucibleRuntime(); } catch (_) { /* nothing to reset */ }
+      }
       const result = await init(msg);
+      if (bootRehearsal) result.bootRehearsal = bootRehearsal;
       localClock.enabled = msg.clockMode === 'worker-local';
+      localClock.legacy = msg.legacyStopAndWait === true;
+      localClock.directiveMarks = msg.directiveMarks === true;
+      poseWriter = localClock.enabled && !localClock.legacy
+        ? createPoseTableWriter(msg.poseTable || null) : null;
+      poseTransferInFlight = 0;
+      if (poseWriter && !poseWriter.shared && msg.posePort) {
+        posePort = msg.posePort;
+        posePort.onmessage = (event) => {
+          if (event?.data) releasePoseTableTransfer(event.data);
+        };
+      }
       localClock.stopped = false;
       // E1 stall harness (?simStall=): the main lane ships the requested cycle on init.
       localClock.stallCycle = Array.isArray(msg.simStall) && msg.simStall.length
@@ -1423,7 +1683,15 @@ async function dispatchDirective(msg) {
       localClock.sabArena = arena;
       if (arena) {
         sabEnv = bindSabEnvelopeChannel(arena);
-        if (sabEnv) void sabParkLoop();
+        if (sabEnv) {
+          sabParkLoop().catch((error) => {
+            // The post-arm pump owns every queued command; a silent rejection would leave
+            // the lane waiting on a dead reader with only the stall watchdog to notice.
+            try {
+              self.postMessage({ kind: 'error', message: `sabParkLoop failed: ${error?.message || String(error)}`, stack: error?.stack || null });
+            } catch (_) { /* the channel itself may be down */ }
+          });
+        }
       }
     } else if (msg.kind === 'clockControl') {
       await handleLocalClockControl(msg);
@@ -1442,6 +1710,10 @@ async function dispatchDirective(msg) {
     } else if (msg.kind === 'shutdown') {
       localClock.stopped = true;
       localClock.active = false;
+      if (posePort) {
+        posePort.close();
+        posePort = null;
+      }
       localDisarmStaleAckWatchdog();
       cancelLocalClockWake();
       closeLocalClockWakeChannel();
@@ -1532,34 +1804,48 @@ export { localMergeReply, localMaterializePack, localAckReplyAction };
 self.onmessage = (event) => {
   const msg = event && event.data;
   if (!msg || typeof msg !== 'object') return;
-  // Presentation heartbeat: lane bookkeeping only, never parked behind the serial chain. A beat
-  // resumes a held clock from the held pose without charging the stalled wall interval.
+  if (msg.kind === 'poseTableAck') {
+    releasePoseTableTransfer(msg);
+    return;
+  }
+  // Probe harness: one blocked worker turn of `ms` (a heavy authoritative step), on demand.
+  if (msg.kind === 'laneInjectStall') {
+    const ms = Number(msg.ms);
+    if (Number.isFinite(ms) && ms > 0 && ms <= 5000) localClock.oneShotStallMs = ms;
+    return;
+  }
+  // Dev forced-stall harness: make every reply carry N inert durable rows (a dense retained reply).
+  if (msg.kind === 'laneForce') {
+    if (typeof msg.detailEveryCommand === 'boolean') localClock.detailEveryCommand = msg.detailEveryCommand;
+    if (!('padRows' in msg)) return;
+    const rows = Number(msg.padRows);
+    localClock.forcePadRows = Number.isFinite(rows) && rows > 0 ? Math.min(20000, Math.floor(rows)) : 0;
+    return;
+  }
   if (msg.kind === 'laneHeartbeat') {
     const now = localNowMs();
-    const lastBeat = localClock.lastHeartbeatAtMs;
-    const holdDeadline = lastBeat + LOCAL_HEARTBEAT_HOLD_MS;
-    // A throttled worker timer may still be queued when the foreground message arrives.
-    // Check the previous beat before refreshing it so that timer cannot charge the gap.
-    const missedHold = localClock.active && localClock.scale > 0 && lastBeat > 0
-      && now > holdDeadline && localClock.anchorMs <= holdDeadline;
+    const sentAtMs = Number(msg.sentAtMs);
+    const stamped = Number.isFinite(sentAtMs) && sentAtMs > 0
+      && msg.clockKind === localHeartbeatClockKind();
     localClock.lastHeartbeatAtMs = now;
-    if (localClock.heartbeatHeld || missedHold) {
-      if (!localClock.heartbeatHeld) {
-        localClock.heartbeatHolds += 1;
-        localClock.heartbeatHoldStartMs = holdDeadline;
+    if (stamped && sentAtMs > localClock.lastHeartbeatSentAtMs) {
+      const lastSentAt = localClock.lastHeartbeatSentAtMs;
+      const gap = lastSentAt > 0 ? sentAtMs - lastSentAt : 0;
+      localClock.lastHeartbeatSentAtMs = sentAtMs;
+      localClock.lastHeartbeatProductionGapMs = gap;
+      localClock.lastHeartbeatProcessingLagMs = Math.max(0, localWallNowMs() - sentAtMs);
+      if (localClock.active && localClock.scale > 0 && gap > LOCAL_PRESENTATION_GAP_MS) {
+        localClock.heartbeatSilences++;
+        localClock.heartbeatSilenceMs += gap - LOCAL_PRESENTATION_GAP_MS;
       }
-      localClock.heartbeatHeld = false;
-      localClock.heartbeatHeldMs += Math.max(0, now - localClock.heartbeatHoldStartMs);
-      localClock.heartbeatHoldStartMs = 0;
-      localClock.anchorMs = now;
-      localClock.accumulator = 0;
-      if (localClock.wake?.token) cancelLocalClockWake();
-      localClock.consecutiveTaskWakes = 0;
-      scheduleLocalClock();
-    } else if (localClock.wake && now - localClock.wake.dueAtMs >= LOCAL_TIMER_MS) {
-      // A foreground message can still be delivered when Chromium delays the
-      // worker's timer queue. Claim the same overdue wake rather than queue a
-      // second tick. The task/timer becomes obsolete when fire clears it.
+    } else if (!stamped) {
+      localClock.lastHeartbeatSentAtMs = 0;
+      localClock.lastHeartbeatProductionGapMs = 0;
+      localClock.lastHeartbeatProcessingLagMs = 0;
+    }
+    // A heartbeat can prompt an overdue wake, but its absence never gates the
+    // worker's own task/timer path or changes its anchor and accumulated time.
+    if (localClock.wake && now - localClock.wake.dueAtMs >= LOCAL_TIMER_MS) {
       localClock.wake.fire();
     }
     // Apply a valid ACK before checking the deadline. A foreground message can
@@ -1578,7 +1864,6 @@ self.onmessage = (event) => {
         active: localClock.active,
         scale: localClock.scale,
         lifecycleGeneration: localClock.lifecycleGeneration,
-        heartbeatHeld: localClock.heartbeatHeld,
         steps: localClock.stepCount,
         directiveTicks: localClock.directiveTick,
         appliedCommandSequence: localClock.appliedCommandSequence,

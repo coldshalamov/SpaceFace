@@ -8,6 +8,7 @@ import { hash32 } from '../src/core/rng.js';
 import { LIVED_SECTOR_OVERLAYS, livedOverlayFor } from '../src/data/livedSectorOverlays.js';
 import { planEncounters } from '../src/systems/encounterDirector.js';
 import { zonesForSector } from '../src/data/sectorZones.js';
+import { sectorLocalToGlobalForSector } from '../src/data/sectorCoordinates.js';
 import { applyMotion, compileVignette } from '../src/systems/vignetteInterpreter.js';
 import { pickLaneErrand, armLaneErrands, applyLaneErrandIntent, LANE_ERRANDS, laneContractOwns } from '../src/systems/laneErrands.js';
 import {
@@ -15,6 +16,7 @@ import {
   livedScenePlacement,
   livedSceneRequestData,
   pickLivedVignette,
+  tickLivedVignettes,
 } from '../src/systems/livedWorldDirector.js';
 import { advance, createJob } from '../src/systems/npcJobs.js';
 
@@ -35,6 +37,38 @@ const UNPAID_CHOICE_A = new Set([
   'scene_fog_edge_wait',               // fog-edge inspection assist is not paid work
 ]);
 const CHARGED_CHOICE_A = new Set(['scene_fare_dodger_chase']);
+
+test('the ambient scene waits while the pilot tracks Furnace Detail inside its refinery', () => {
+  const sectorId = 'sector_ceres_belt';
+  const ship = { id: 1, alive: true, type: 'ship', pos: sectorLocalToGlobalForSector({ x: 1740, z: 1810 }, sectorId) };
+  const mission = { id: 'm_4', status: 'active', storyTag: 'campaign47a:b1:infested', destSectorId: sectorId,
+    params: { furnaceWorksiteVersion: 1, furnaceFeedsNeeded: 3 } };
+  const state = {
+    mode: 'flight', simTime: 426, meta: { seed: 4151827082 }, world: { currentSectorId: sectorId },
+    playerId: ship.id, entities: new Map([[ship.id, ship]]), entityList: [ship],
+    missions: { active: [mission] }, ui: { trackedMissionId: mission.id }, encounterDirector: { live: {}, stats: {} },
+  };
+  const requests = [];
+  const director = { requestAuthoredEncounter: (request) => { requests.push(request); return { ok: true }; } };
+  const runtime = { state, registry: new Map([['encounterDirector', director]]) };
+
+  tickLivedVignettes(runtime);
+  assert.deepEqual(requests, [], 'the new unrelated decision does not start during the tracked job');
+  assert.deepEqual(state.encounterDirector.stats, {}, 'waiting does not spend a vignette or start its clock');
+
+  // Ceres' other derelict zone is still open to its normal stories while this job is tracked.
+  ship.pos = sectorLocalToGlobalForSector({ x: -840, z: -1180 }, sectorId);
+  state.simTime += 7;
+  tickLivedVignettes(runtime);
+  assert.equal(requests.length, 1);
+  assert.equal(requests[0].zoneType, 'derelict_field');
+
+  ship.pos = sectorLocalToGlobalForSector({ x: 1740, z: 1810 }, sectorId);
+  state.ui.trackedMissionId = null;
+  state.simTime += 120;
+  tickLivedVignettes(runtime);
+  assert.equal(requests.length, 2, 'the refinery is open to ambient stories when the pilot is not tracking the job');
+});
 
 // This placed scene is not an interpreter graph: real release/contact and sampled
 // bearing settlement are exercised by check:struck-bell. Keep every other ambient

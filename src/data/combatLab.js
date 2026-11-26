@@ -33,7 +33,7 @@ export const COMBAT_LAB_SURFACE = Object.freeze({
     { key: 'starterPackageId', label: 'Starter loadout', schemaField: 'loadout' },
     { key: 'enemyPackageId', label: 'Enemy package', schemaField: 'enemyPackageId' },
     { key: 'arenaId', label: 'Arena', schemaField: 'arenaId' },
-    { key: 'seed', label: 'Seed', schemaField: 'seed' },
+    { key: 'seed', label: 'Run seed', schemaField: 'seed' },
     { key: 'wave', label: 'Starting wave', schemaField: 'wave' },
   ]),
   rollLabel: 'Roll',

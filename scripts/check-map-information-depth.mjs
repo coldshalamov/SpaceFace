@@ -414,7 +414,7 @@ function mountWith(state, { busEvents = [] } = {}) {
   };
   galaxyMapScreen._camera = null;
   galaxyMapScreen._selectedTarget = null;
-  galaxyMapScreen._activeTab = 'overview';
+  galaxyMapScreen._activeTab = 'place';
   galaxyMapScreen._tabButtons = [];
   galaxyMapScreen._bookmarks = [];
   galaxyMapScreen._localIntel = null;
@@ -631,10 +631,15 @@ function mountWith(state, { busEvents = [] } = {}) {
   const sections = root.querySelectorAll('[data-rail-sec]');
   assert.ok(sections.length >= 5, 'the rail must carry the brief\'s sections');
   const open = sections.filter((s) => s.hasAttribute('open'));
-  assert.equal(open.length, 1,
-    `exactly one rail section may be open by default (found ${open.length}) — more is the density paradox`);
-  assert.equal(open[0].getAttribute('data-rail-sec'), 'lenses',
-    'the open one must be the primary tool, not a reference legend');
+  // MAPS-2: the four lens chips are the rail's always-visible layer tool; the disclosure sections
+  // start closed or at most one is open (more is the density paradox).
+  assert.ok(open.length <= 1,
+    `at most one rail section may be open by default (found ${open.length}) — more is the density paradox`);
+  assert.equal(root.querySelectorAll('.gm-lens-chip').length, 4, 'the four lens chips sit in the rail');
+  if (open[0]) {
+    assert.equal(open[0].getAttribute('data-rail-sec'), 'lenses',
+      'an open one must be the primary tool, not a reference legend');
+  }
   for (const s of sections) {
     assert.equal(s.tagName, 'DETAILS',
       'sections must be native disclosure elements — keyboard and screen-reader support for free');
@@ -653,7 +658,7 @@ function mountWith(state, { busEvents = [] } = {}) {
   assert.equal(tabs.length, MAP_INSPECTOR_TAB_IDS.length, 'every declared tab must be rendered');
   const selected = tabs.filter((t) => t.getAttribute('aria-selected') === 'true');
   assert.equal(selected.length, 1, 'exactly one tab may be selected');
-  assert.equal(selected[0].getAttribute('data-tab'), 'overview', 'Overview is the default');
+  assert.equal(selected[0].getAttribute('data-tab'), 'place', 'Place is the default (MAPS-2: four tabs and a Log link)');
 
   // 6d. The measurable claim: the no-selection panel is SHORTER than the old always-on dump.
   // The old body rendered Command Status + trade lanes + best-known quotes + a note unconditionally
@@ -788,17 +793,18 @@ function mountWith(state, { busEvents = [] } = {}) {
   const { root } = mountWith(state);
   galaxyMapScreen._setTab('history');
   const panel = root.querySelector('#gm-tabpanel');
-  assert.match(panel.textContent, /select a world site/i,
-    'an empty tab must SAY why it is empty — a blank panel reads as broken and a filled one lies');
+  // History folded into Here (three tabs): asking for it with nothing selected opens Here, which
+  // is never blank — it says where you are.
+  assert.match(panel.textContent, /you are here/i,
+    'asking for History with no site selected must land on a filled Here, never a blank panel');
 
-  // The tab must remain reachable so a screen-reader user can hear the reason.
-  const historyTab = root.querySelector('#gm-tab-history');
-  assert.equal(historyTab.getAttribute('aria-disabled'), 'true',
-    'unavailable must be announced, via aria-disabled rather than by removal');
+  // 08_INTERFACE §8 (2026-11-23): three tabs — Here, Route, Jobs. History and charted sites live
+  // in Here; asking for History opens Here, which stays reachable.
+  const historyTab = root.querySelector('#gm-tab-place');
+  assert.equal(historyTab.getAttribute('aria-selected'), 'true', 'History lands on Here');
   assert.ok(historyTab.getAttribute('title'), 'the reason must travel on the control for pointer users');
-  assert.notEqual(historyTab.disabled, true,
-    'an aria-disabled tab must stay focusable, or the explanation is unreachable by keyboard');
-  ok('without a World Site selection History is announced, focusable, and states its reason');
+  assert.notEqual(historyTab.disabled, true, 'Here must stay focusable');
+  ok('without a World Site selection Here stays reachable');
 }
 
 {
@@ -817,7 +823,7 @@ function mountWith(state, { busEvents = [] } = {}) {
   const selectedAvailability = resolveInspectorTabAvailability(state, galaxyMapScreen._selectedTarget);
   assert.equal(selectedAvailability.history.available, true);
   galaxyMapScreen._setTab('history');
-  const historyTab = root.querySelector('#gm-tab-history');
+  const historyTab = root.querySelector('#gm-tab-place');
   assert.equal(historyTab.getAttribute('aria-selected'), 'true');
   assert.equal(historyTab.getAttribute('aria-disabled'), 'false');
   const panel = root.querySelector('#gm-tabpanel');

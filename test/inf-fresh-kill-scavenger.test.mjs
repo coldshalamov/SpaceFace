@@ -221,9 +221,11 @@ test('a killed fresh scavenger is never replaced — the budget was spent once',
     const scav = listWreckFieldInhabitants(h.state)[0];
     assert.equal(scav.data.wreckEcologyRole, 'scavenger');
 
-    // Kill the contest before the wreck-day: the slot stays gone.
+    // Kill the contest before the wreck-day: the slot stays gone. The real bus delivers a
+    // direct entity:destroyed as a one-receipt entity:destroyedBatch — emit it the same way.
     scav.alive = false;
     h.bus.emit('entity:destroyed', { id: scav.id });
+    h.bus.emit('entity:destroyedBatch', { receipts: [{ id: scav.id }], count: 1 });
     h.state.simTime = 40;
     aftermathWrecks.update(1 / 60, h.state);
     assert.deepEqual(rolesOf(h), [], 'no instant respawn');

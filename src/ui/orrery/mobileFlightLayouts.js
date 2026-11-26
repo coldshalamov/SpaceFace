@@ -127,10 +127,8 @@ ${FLIGHT}:not([data-sf-mobile-wheel="1"]) body:not(.ui-modal-open) #hud > .sf-ra
     pointer-events:none!important;
   }
   ${FLIGHT} #hud .sf-mission-tracker .sf-mt-dial { display:none!important; }
-  /* MOB-07: a live Swarm round on a phone. The round panel is ONE line under the vitals strip,
-     "R01 · 15/15 · 0" (round, hostiles left, score); tapping it opens the full panel (arena, phase,
-     credits, level, XP). A boss bar and the cause-of-death line stay up beside it; the chain figure
-     already lives in the centre column below. */
+  /* The compact round line opens the full panel when tapped. Boss, death and active
+     Foundry guidance stay visible without expansion. */
   ${FLIGHT} #hud > .sf-leftcontext > .sf-crun { gap:4px; }
   ${FLIGHT} .sf-crun__brief {
     display:block; box-sizing:border-box; width:100%; margin:0; padding:5px 8px; text-align:left;
@@ -142,7 +140,7 @@ ${FLIGHT}:not([data-sf-mobile-wheel="1"]) body:not(.ui-modal-open) #hud > .sf-ra
   ${FLIGHT} .sf-crun:not(.is-open) > :is(.sf-crun__label,.sf-crun__row,.sf-crun__hero,.sf-crun__intro,.sf-crun__chain,.sf-crun__threat:not(.sf-crun__boss),.sf-crun__track--xp,.sf-crun__earn,.sf-crun__mods) { display:none!important; }
   ${FLIGHT} .sf-crun.is-open > :not(.sf-crun__brief) { padding-inline:8px; background:var(--dp-glass-flight,rgb(5 7 10 / .88)); }
   ${FLIGHT} .sf-crun.is-open > .sf-crun__row--figs { padding-block:4px; }
-  ${FLIGHT} .sf-crun__boss, ${FLIGHT} .sf-crun__death { padding:2px 8px; background:var(--dp-glass-flight,rgb(5 7 10 / .88)); border-radius:4px; }
+  ${FLIGHT} :is(.sf-crun__boss,.sf-crun__death,.sf-crun__guidance) { padding:2px 8px; background:var(--dp-glass-flight,rgb(5 7 10 / .88)); border-radius:4px; }
   /* The centre column keeps to ONE lane, clear of the vitals, the round line and the radar:
      callouts, the boss bar (with the move's word folded in) and the round slam. The chain is
      just its number inside the round line (survivalHud brief), so the hero panel is hidden. */
@@ -152,7 +150,7 @@ ${FLIGHT}:not([data-sf-mobile-wheel="1"]) body:not(.ui-modal-open) #hud > .sf-ra
   }
   ${FLIGHT} .sf-sj__hero { display:none; }
   ${FLIGHT} .sf-sj__herofig { font-size:34px; }
-  ${FLIGHT} .sf-sj__herotier { font-size:11px; letter-spacing:.14em; max-width:100%; }
+  ${FLIGHT} .sf-sj__herotier { font-size:12px; letter-spacing:.06em; max-width:100%; }
   ${FLIGHT} .sf-sj__call { font-size:clamp(15px,4.6vw,22px); letter-spacing:.1em; text-align:center; }
   ${FLIGHT} .sf-sj__slamtitle { font-size:clamp(24px,8vw,40px); letter-spacing:.1em; text-align:left; }
   ${FLIGHT} .sf-sj__slamsub { text-align:left; }

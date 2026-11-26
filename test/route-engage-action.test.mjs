@@ -28,6 +28,8 @@ import {
   emitGalaxyMapPrimaryAction,
 } from '../src/ui/galaxyMap.js';
 import { ROUTE_EXECUTOR_SCHEMA, ROUTE_EXECUTOR_STATUS, summarizeExecutor } from '../src/systems/routeFollower.js';
+import { computeDiscoveredRoute } from '../src/systems/routePlanner.js';
+import { world } from '../src/systems/world.js';
 
 const MAP_SOURCE = readFileSync(new URL('../src/ui/galaxyMap.js', import.meta.url), 'utf8');
 // Mounted control markup lives in the extracted navigation frame, not galaxyMap.js.
@@ -86,7 +88,7 @@ test('no destination: engage is visible, disabled, and SAYS WHAT TO DO NEXT', ()
   assert.equal(a.visible, true, 'the control must not vanish — a hidden action teaches nothing');
   assert.equal(a.enabled, false);
   assert.equal(a.event, null, 'a disabled action must carry no event, so it cannot fire');
-  assert.match(a.reason, /click a destination/i);
+  assert.match(a.reason, /plot a route to a distant sector/i);
 });
 
 test('a known contract destination turns the dead control into the PLOT itself', () => {
@@ -135,6 +137,58 @@ test('a plotted route offers engage, and reports how many legs', () => {
 test('one leg is not pluralised', () => {
   const a = resolveRouteEngageAction({ nav: { route: makeRealRoute(1) } });
   assert.match(a.reason, /1 leg\b/);
+});
+
+test('the Ceres drive route reports its empty tank and leaves the paid Tethys gate available', () => {
+  const ceres = 'sector_ceres_belt', tethys = 'sector_tethys_junction';
+  const state = { world: { currentSectorId: ceres, sectors: {}, discovery: { [tethys]: { discovered: true } } },
+    player: { credits: 6866 }, fuel: { current: 0, max: 100 }, nav: {} };
+  const drive = computeDiscoveredRoute(state, tethys, 'fuel');
+  const gate = computeDiscoveredRoute(state, tethys, 'gate');
+  assert.equal(drive.legs[0].travelVia, 'drive');
+  assert.equal(drive.legs[0].fuel, 36);
+  assert.equal(gate.legs[0].travelVia, 'gate');
+  assert.equal(gate.totalFuel, 0);
+  assert.equal(gate.totalToll, 180);
+  const jumpBus = busSpy();
+  const authority = Object.assign(Object.create(world), {
+    state: { ...state, mode: 'flight', jump: { state: 'IDLE', cooldownT: 0 } }, bus: jumpBus,
+  });
+  authority._onRequestJump({ targetSectorId: tethys, via: 'drive' });
+  assert.deepEqual(jumpBus.events, [{ type: 'jump:chargeAbort',
+    payload: { reason: 'low_fuel', fuelNeeded: 36, fuelHeld: 0 } }]);
+  state.nav.route = drive;
+
+  const blocked = resolveRouteEngageAction(state);
+  const bus = busSpy();
+  assert.equal(blocked.visible, true);
+  assert.equal(blocked.enabled, false);
+  assert.match(blocked.reason, /36 fuel.*0 aboard/i);
+  assert.match(blocked.reason, /refuel.*Gate.*Tethys Junction.*180 cr/i);
+  assert.equal(emitRouteEngageAction(bus, blocked), false);
+  assert.deepEqual(bus.events, []);
+  assert.equal(state.nav.route, drive, 'a readiness read must preserve the chosen route');
+  state.nav.executor = {
+    status: ROUTE_EXECUTOR_STATUS.INTERRUPTED, legIndex: 0,
+    legs: [{ fromSectorId: ceres, toSectorId: tethys, via: 'drive' }],
+  };
+  const resume = resolveRouteEngageAction(state);
+  assert.equal(resume.label, 'Resume Route');
+  assert.equal(resume.enabled, false);
+  assert.equal(emitRouteEngageAction(bus, resume), false);
+  delete state.nav.executor;
+
+  state.nav.route = gate;
+  assert.equal(emitRouteEngageAction(bus, resolveRouteEngageAction(state)), true);
+  assert.deepEqual(bus.events, [{ type: 'nav:engageRoute', payload: {} }]);
+
+  state.nav.route = drive;
+  state.fuel.current = 36;
+  assert.equal(resolveRouteEngageAction(state).enabled, true, 'a refueled drive can depart at the exact threshold');
+  state.fuel.current = 31;
+  state.playerId = 1;
+  state.entities = new Map([[1, { data: { derived: { jumpDriveTier: 'jump_t2' } } }]]);
+  assert.equal(resolveRouteEngageAction(state).enabled, true, 'the live drive refit lowers the cost without replotting');
 });
 
 test('while transiting, the control becomes the way OUT so a pilot is never trapped', () => {

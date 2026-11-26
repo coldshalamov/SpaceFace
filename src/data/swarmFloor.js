@@ -23,6 +23,33 @@
 // centreline so a passing string never sweeps a label.
 
 export const SWARM_FLOOR_PAD_KIND = 'swarm_floor_pad';
+export const SWARM_FLOOR_INTERACT_REACH = 112;
+export const SWARM_FLOOR_ARM_S = 4;
+export const SWARM_FLOOR_ARM_REQUEST = 'swarm:floorPadArmRequested';
+
+export function swarmFloorPadQuote(entity) {
+  const offer = entity?.data?.swarmFloorPad;
+  if (!entity || entity.alive === false || entity.data?.kind !== SWARM_FLOOR_PAD_KIND
+    || !offer?.padId || offer.moving || !Number.isFinite(offer.price)) return null;
+  return { entityId: entity.id, generation: entity.occupantGeneration ?? null,
+    price: offer.price, label: offer.label, fit: offer.fitPreview ?? null };
+}
+
+export function nearestSwarmFloorPad(state) {
+  const run = state?.run;
+  if (run?.kind !== 'survival' || run.ruleset !== 'swarm' || run.phase !== 'active' || !swarmFloorPlanFor(run.arenaId)) return null;
+  const pilot = state.entities?.get(state.playerId);
+  if (!pilot?.pos || pilot.alive === false) return null;
+  let nearest = null;
+  let best = SWARM_FLOOR_INTERACT_REACH ** 2;
+  for (const entity of state.entities.values()) {
+    if (!entity?.pos || entity.alive === false || entity.data?.kind !== SWARM_FLOOR_PAD_KIND) continue;
+    const distance = (entity.pos.x - pilot.pos.x) ** 2 + (entity.pos.z - pilot.pos.z) ** 2;
+    if (distance > best || (distance === best && nearest && entity.id >= nearest.id)) continue;
+    if (swarmFloorPadQuote(entity)) { nearest = entity; best = distance; }
+  }
+  return nearest;
+}
 
 export const SWARM_FLOOR_WALL_GUN_PRICE = 500;
 export const SWARM_FLOOR_CRATE_PRICE = 950;

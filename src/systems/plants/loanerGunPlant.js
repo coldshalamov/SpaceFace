@@ -58,6 +58,7 @@ export function loanVerdict({ taken = false, settled = false, defaulted = false 
 }
 
 export const loanerGunPlant = {
+  modes: ['swarm'],
   name: 'plants324',
 
   init(ctx) {

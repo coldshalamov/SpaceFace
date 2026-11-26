@@ -22,6 +22,8 @@
 // Reads only: state.massline2.*, state.player.tether, entities, helpers.worldToScreen. Writes
 // nothing but its own DOM. Runs late in UPDATE_ORDER; every update exits immediately when the
 // master flag is off or the DOM is absent (headless-safe by construction).
+import { createSelectorRects } from './hudAvoidRects.js';
+import { frameCostFixOn } from '../render/frameCostSwitches.js';
 import { massline2Flag } from '../data/featureFlags.js';
 import {
   clearHudSignature,
@@ -41,6 +43,7 @@ import { createLineStrainReadout } from './lineStrainReadout.js';
 // only on both sides — the cue never touches release authority.
 import { isLawProtectedBody } from '../law/protectedBodies.js';
 import { isWreckLike } from '../systems/scanner.js';
+import { isThrowArmPayload } from '../systems/masslineThrow.js';
 import { targetDisplayName } from './targetPanel.js';
 import { isMassSeedTetherEligible, massSeedLatchPreview } from '../systems/massSeed.js';
 import { resolveThrowCollateral, resolveThrowOwnRouteRisk } from '../combat/masslineReleaseGeometry.js';
@@ -49,7 +52,7 @@ import { formatSpeed } from './units.js';
 import { isCrackerRunWorkLoad } from './crackerRunGuidance.js';
 import { isSwarmGlass } from './swarmGlass.js';
 import { verbChip } from './controlPrompts.js';
-import { releaseWindowOpen } from './throwCue.js';
+import { releaseWindowOpen, throwActionCue } from './throwCue.js';
 import { lineLessonBody } from '../data/lineProgression.js';
 import { lineRelationWord, lineBodyMassT } from './lineRelation.js';
 import { isAdventureFlight } from './attentionGlass.js';
@@ -99,14 +102,14 @@ export function releaseVerdictCopy(rating, { plain = false } = {}) {
     if (rating.broke === true) return 'BROKE';
     if (rating.severed === true) return 'CUT';
     if (rating.quickThrow === true) return 'QUICK';
-    return VERDICT_GRADE_COPY[rating.classification] || 'RELEASED';
+    return VERDICT_GRADE_COPY[rating.classification] || 'THROWN';
   }
   // A failure snap is not a grade. Ordinary release keeps the crest/swing copy below.
   if (rating.broke === true) return 'LINE BROKE';
   if (rating.severed === true) return 'LINE CUT';
   // THROW-01: a throw on a short swing is a throw, not a messy release.
   if (rating.quickThrow === true) return 'QUICK THROW';
-  const grade = VERDICT_GRADE_COPY[rating.classification] || 'RELEASED';
+  const grade = VERDICT_GRADE_COPY[rating.classification] || 'THROWN';
   // FB-006 — a release that ends a ride grades the ride: how much of the anchor's speed the
   // pilot kept at the cut. The ride cause names the specific lesson before the generic swing.
   if (rating.ride && Number.isFinite(rating.ride.keptFraction)) {
@@ -114,7 +117,7 @@ export function releaseVerdictCopy(rating, { plain = false } = {}) {
   }
   if (rating.releasedAtApex) return `${grade} · AT THE APEX`;
   const cause = rating.classification === 'razor' || rating.classification === 'clean'
-    ? 'CREST RELEASE'
+    ? 'AT THE CREST'
     : VERDICT_CAUSE_COPY[rating.technique] || 'OFF THE SWING';
   return `${grade} · ${cause}`;
 }
@@ -128,11 +131,14 @@ function isQuickThrowVerdict(state, verdict) {
     && Number.isSafeInteger(lastThrow.tick) && Number.isSafeInteger(verdict.observedTick)
     && (verdict.observedTick === lastThrow.tick || verdict.observedTick === lastThrow.tick + 1);
 }
-// The verdict reuses the shared preview pill/mark — every renderer that takes the slot next
-// must clear these classes so a stale grade never leaks onto a denial or acquisition frame.
+// Every renderer reusing this slot clears the previous acquisition or verdict style.
 const VERDICT_GRADE_CLASSES = Object.freeze(['razor', 'clean', 'good', 'messy', 'break']);
-function clearVerdictClasses(dom) {
+function resetPreviewStyles(dom, readyDetonator = false, visorLatch = false) {
   if (!dom) return;
+  setClass(dom.previewEl, 'ml2-ready-detonator', readyDetonator);
+  setClass(dom.previewEl, 'ml2-visor-latch', visorLatch);
+  setClass(dom.previewSvg, 'ml2-latch-leader', visorLatch);
+  setClass(dom.previewMark, 'ml2-visor-latch-pin', visorLatch);
   setClass(dom.previewEl, 'ml2-preview-verdict', false);
   for (const g of VERDICT_GRADE_CLASSES) {
     setClass(dom.previewEl, `ml2-verdict-${g}`, false);
@@ -286,7 +292,7 @@ function rectsOverlap(a, b) {
 }
 
 // The bracket stays on its body; its words can move around the hull and the live HUD.
-export function placeBracketWords(mark, hull, label, viewport, hudObstacles = []) {
+export function placeBracketWords(mark, hull, label, viewport, hudObstacles = [], lifted = false) {
   const w = Math.max(1, Number(label && label.w) || 1);
   const h = Math.max(1, Number(label && label.h) || 1);
   const gap = 16;
@@ -304,6 +310,13 @@ export function placeBracketWords(mark, hull, label, viewport, hudObstacles = []
     { x: mark.x + gap, y: mark.y - h / 2 },
     { x: mark.x - w - gap, y: mark.y - h / 2 },
   ];
+  if (lifted) {
+    const wide = vw >= 1400 && vh >= 680;
+    const reach = wide ? 59 : 37;
+    const y = mark.y - h - (wide ? 77 : 23);
+    if (mark.x + reach + w <= vw - 8) candidates.unshift({ x: mark.x + reach, y });
+    else if (mark.x - reach - w >= 8) candidates.unshift({ x: mark.x - reach - w, y });
+  }
   const extra = Array.isArray(hudObstacles) ? hudObstacles : [];
   const blockers = hull ? [hull, ...extra] : extra;
   const bounds = (box) => ({ x: Number(box?.x ?? box?.left), y: Number(box?.y ?? box?.top),
@@ -354,30 +367,76 @@ export function placeBracketWords(mark, hull, label, viewport, hudObstacles = []
 
 const EMPTY_FLIGHT_OBSTACLES = Object.freeze([]);
 const BRACKET_WORD_MEASUREMENTS = new WeakMap();
+const BRACKET_SHARED_SIZES = new Map();
 
-function bracketWordSize(element, text, viewport) {
+function bracketWordSize(element, text, viewport, lifted) {
   const portraitTouch = typeof document !== 'undefined'
     && document.documentElement?.dataset?.sfMobileFlight === '1' && viewport.h > viewport.w;
   const limit = Math.max(94, Math.min(viewport.w - 16, portraitTouch ? 160 : Infinity));
-  const key = `${text}\u0000${limit}\u0000${element?.className || ''}`;
+  const className = element?.className || '';
+  const key = `${text}\u0000${limit}\u0000${className}`;
+  const normKey = `${text.replace(/\d+/g, (m) => '0'.repeat(m.length))}\u0000${limit}\u0000${className}`;
+  const sharedKey = `${className}\u0000${limit}\u0000${normKey}`;
   const previous = element && BRACKET_WORD_MEASUREMENTS.get(element);
-  if (previous?.key === key) return previous.size;
+  if (previous?.lastKey === key) return previous.lastSize;
+  if (previous && previous.limit !== limit) {
+    previous.byNorm?.clear();
+    previous.limit = limit;
+  }
   const estimated = estimateCaptionWidth(text);
   if (element) {
-    if (element.textContent !== text) element.textContent = text;
+    const bindingEnd = lifted ? text.indexOf(' · ') : -1;
+    if (bindingEnd > 0 && (element.textContent !== text || !element.querySelector('kbd'))) {
+      const kbd = document.createElement('kbd');
+      kbd.textContent = text.slice(0, bindingEnd);
+      const separator = document.createElement('span');
+      separator.className = 'ml2-visor-separator';
+      separator.textContent = ' · ';
+      const verb = document.createElement('span');
+      verb.className = 'ml2-visor-verb';
+      verb.textContent = text.slice(bindingEnd + 3);
+      element.replaceChildren(kbd, separator, verb);
+    } else if (bindingEnd <= 0 && element.textContent !== text) element.textContent = text;
     setStyle(element, 'display', 'block');
     setStyle(element, 'boxSizing', 'border-box');
     setStyle(element, 'maxWidth', `${limit}px`);
     setStyle(element, 'whiteSpace', 'normal');
     setStyle(element, 'overflowWrap', 'anywhere');
   }
-  // A new string/orientation is measured once; moving the world mark never forces a DOM read.
-  const rect = element?.getBoundingClientRect?.();
+  const cachedByNorm = previous?.byNorm?.get(normKey) || (element ? BRACKET_SHARED_SIZES.get(sharedKey) : null);
+  if (cachedByNorm) {
+    if (element) {
+      let entry = previous;
+      if (!entry || !entry.byNorm) {
+        entry = { lastKey: key, lastSize: cachedByNorm, limit, byNorm: new Map() };
+      }
+      entry.byNorm.set(normKey, cachedByNorm);
+      entry.lastKey = key;
+      entry.lastSize = cachedByNorm;
+      entry.limit = limit;
+      BRACKET_WORD_MEASUREMENTS.set(element, entry);
+    }
+    return cachedByNorm;
+  }
+  // Estimate dimensions mathematically so target acquisition never forces a synchronous DOM layout read mid-frame.
   const size = {
-    w: rect?.width > 0 ? Math.min(limit, rect.width + 2) : Math.min(limit, estimated),
-    h: rect?.height > 0 ? rect.height + 2 : Math.max(30, Math.ceil(estimated / limit) * 16 + 14),
+    w: Math.min(limit, estimated),
+    h: Math.max(30, Math.ceil(estimated / limit) * 16 + 14),
   };
-  if (element) BRACKET_WORD_MEASUREMENTS.set(element, { key, size });
+  if (element) {
+    let entry = previous;
+    if (!entry || !entry.byNorm) {
+      entry = { lastKey: key, lastSize: size, limit, byNorm: new Map() };
+    }
+    entry.byNorm.set(normKey, size);
+    if (entry.byNorm.size > 64) entry.byNorm.delete(entry.byNorm.keys().next().value);
+    BRACKET_SHARED_SIZES.set(sharedKey, size);
+    if (BRACKET_SHARED_SIZES.size > 128) BRACKET_SHARED_SIZES.delete(BRACKET_SHARED_SIZES.keys().next().value);
+    entry.lastKey = key;
+    entry.lastSize = size;
+    entry.limit = limit;
+    BRACKET_WORD_MEASUREMENTS.set(element, entry);
+  }
   return size;
 }
 
@@ -389,8 +448,9 @@ function playerHullScreenRect(player, w2s) {
   return { x: screen.x - size / 2, y: screen.y - size / 2, w: size, h: size };
 }
 
-function pointUnderHud(x, y, rects) {
+function pointUnderHud(x, y, rects, pad = 16) {
   if (!Array.isArray(rects) && !(rects && typeof rects.length === 'number')) return false;
+  const p = Number.isFinite(pad) ? pad : 0;
   for (let i = 0; i < rects.length; i++) {
     const r = rects[i];
     const left = Number(r?.left ?? r?.x);
@@ -398,14 +458,99 @@ function pointUnderHud(x, y, rects) {
     const w = Number(r?.width ?? r?.w);
     const h = Number(r?.height ?? r?.h);
     if (![left, top, w, h].every(Number.isFinite) || !(w > 0) || !(h > 0)) continue;
-    if (x >= left && x <= left + w && y >= top && y <= top + h) return true;
+    if (x >= left - p && x <= left + w + p && y >= top - p && y <= top + h + p) return true;
   }
   return false;
 }
 
-function placeHudBracketWords(owner, element, text, mark, player, w2s, viewport) {
+// Cached world-prompt elements: the dock alert and the expanded floor-pad quote are re-validated
+// live (isConnected plus the class/attribute the selector asks for) and re-resolved through their
+// stable mounts while absent — the two document queries ran on every line-strain preview tick.
+let alertsHostEl = null;
+let floorpadsHostEl = null;
+let promptDockEl = null;
+let promptPadEl = null;
+// Live class lists on the two mounts (the browser keeps them current): while no dock alert or pad
+// quote is up, the gate reads a length instead of running a selector every preview tick.
+let dockAlertList = null;
+let floorPadList = null;
+
+function firstDockAlert(host) {
+  if (!host) return null;
+  if (typeof host.getElementsByClassName !== 'function') return host.querySelector?.('.sf-alert--dock') || null;
+  if (!dockAlertList) dockAlertList = host.getElementsByClassName('sf-alert--dock');
+  return dockAlertList.length ? dockAlertList[0] : null;
+}
+
+function firstQuotedPad(host) {
+  if (!host) return null;
+  if (typeof host.getElementsByClassName !== 'function') return host.querySelector?.('.sf-fp[data-floor-quote]') || null;
+  if (!floorPadList) floorPadList = host.getElementsByClassName('sf-fp');
+  for (let i = 0; i < floorPadList.length; i += 1) {
+    const pad = floorPadList[i];
+    if (pad.hasAttribute?.('data-floor-quote')) return pad;
+  }
+  return null;
+}
+
+/** Shared world-prompt priority gate (HUD-2 Item 7): Dock > Floor-shop pad > Line latch.
+ *  Never show two world prompts on screen at the same time. */
+function higherWorldPromptActive() {
+  if (typeof document === 'undefined' || typeof document.getElementById !== 'function') return false;
+  if (!(promptDockEl && promptDockEl.isConnected && promptDockEl.classList?.contains('sf-alert--dock'))) {
+    if (!alertsHostEl || !alertsHostEl.isConnected) {
+      alertsHostEl = document.getElementById('alerts') || null;
+      dockAlertList = null;
+    }
+    promptDockEl = firstDockAlert(alertsHostEl);
+  }
+  const dock = promptDockEl;
+  if (dock && !dock.hidden && dock.style?.display !== 'none') return true;
+  if (!(promptPadEl && promptPadEl.isConnected && promptPadEl.hasAttribute?.('data-floor-quote'))) {
+    if (!floorpadsHostEl || !floorpadsHostEl.isConnected) {
+      floorpadsHostEl = document.getElementById('sf-floorpads') || null;
+      floorPadList = null;
+    }
+    promptPadEl = firstQuotedPad(floorpadsHostEl);
+  }
+  const pad = promptPadEl;
+  if (pad && !pad.hidden && pad.style?.display !== 'none' && !pad.classList?.contains?.('sf-fp--far')) {
+    return true;
+  }
+  return false;
+}
+
+const LIVE_HUD_PANEL_SELECTORS = '.orr-hud-cluster, .sf-rightdock, .sf-leftcontext, #sf-prompt-deck, .sf-visor-utility-row';
+
+// One cached snapshot of the live HUD panels (TTL, resize and HUD layout invalidation) per
+// document: the acquisition preview re-places every frame and used to query + measure the panels
+// each time (forced layout inside the frame).
+let liveHudPanelRects = null;
+let liveHudPanelDoc = null;
+function collectLiveHudPanelRects(baseObstacles) {
+  const out = Array.isArray(baseObstacles) ? baseObstacles.slice() : [];
+  if (typeof document === 'undefined' || typeof document.querySelectorAll !== 'function') return out;
+  if (!liveHudPanelRects || liveHudPanelDoc !== document) {
+    liveHudPanelDoc = document;
+    liveHudPanelRects = createSelectorRects(document, LIVE_HUD_PANEL_SELECTORS,
+      { exclude: (el) => el.style?.display === 'none' });
+  }
+  for (const r of liveHudPanelRects.get()) {
+    out.push({ left: r.x, top: r.y, width: r.w, height: r.h });
+  }
+  return out;
+}
+
+function placeHudBracketWords(owner, element, text, mark, player, w2s, viewport,
+  obstacles = owner._flightTextObstacles, lifted = false) {
+  const padded = collectLiveHudPanelRects(obstacles).map((r) => ({
+    x: Number(r?.x ?? r?.left) - 8,
+    y: Number(r?.y ?? r?.top) - 8,
+    w: Number(r?.w ?? r?.width) + 16,
+    h: Number(r?.h ?? r?.height) + 16,
+  }));
   return placeBracketWords(mark, playerHullScreenRect(player, w2s),
-    bracketWordSize(element, text, viewport), viewport, owner._flightTextObstacles);
+    bracketWordSize(element, text, viewport, lifted), viewport, padded, lifted);
 }
 
 // INF-013 — compact relative-mass interpretation for the acquisition readout: which body is
@@ -477,14 +622,10 @@ export function lineBreakInvolvesPlayer(state, payload) {
   return payload.actorId === pid;
 }
 
-// Format only the facts carried by the release event; missing legacy fields are unknown.
-function lineReleaseReceipt(payload) {
-  const parts = [];
-  if (Number.isFinite(payload.tonnageU)) parts.push(`${Math.max(0, Math.round(payload.tonnageU))} t`);
-  if (Number.isFinite(payload.load)) parts.push(`load ${Math.round(clamp01(payload.load) * 100)}%`);
-  const strain = Object.hasOwn(payload, 'receiptStrain') ? payload.receiptStrain : payload.strain;
-  if (Number.isFinite(strain)) parts.push(`strain ${Math.round(clamp01(strain) * 100)}%`);
-  return parts.length ? `Line released: ${parts.join(', ')}` : '';
+// The Line speaks one grammar (director 2026-11-23): the grade pill is the word. Tonnes, load
+// percent and strain percent do not toast.
+function lineReleaseReceipt() {
+  return '';
 }
 
 // INF-014 — line-load warning with hysteresis. Strain is the solver-owned break ratio the
@@ -538,6 +679,9 @@ export const MASSLINE_HUD_CSS = `
 #sf-ml2 .ml2-preview-link { position:absolute; inset:0; width:100%; height:100%; overflow:visible; }
 #sf-ml2 .ml2-preview-line { stroke:rgba(242,185,80,0.6); stroke-width:1.5; stroke-dasharray:4 6;
   vector-effect:non-scaling-stroke; }
+#sf-ml2 .ml2-latch-stem { display:none; fill:none; stroke:#d4ebf3; stroke-width:1.55; }
+#sf-ml2 .ml2-latch-leader .ml2-latch-stem { display:block; }
+#sf-ml2 .ml2-latch-leader .ml2-preview-line { display:none; }
 #sf-ml2 .ml2-preview-link.ml2-snare-preview .ml2-preview-line { stroke:rgba(255,217,140,0.92);
   stroke-width:2.25; stroke-dasharray:10 5 2 5; filter:drop-shadow(0 0 5px rgba(242,185,80,0.72)); }
 #sf-ml2 .ml2-preview-link.ml2-bridle-preview .ml2-preview-line { stroke:rgba(255,181,71,0.9);
@@ -551,15 +695,15 @@ export const MASSLINE_HUD_CSS = `
   color:var(--ml2-p,var(--dp-lamp-hot, #ffd98c)); }
 #sf-ml2 .ml2-preview-mark i { position:absolute; inset:0; border:2px solid currentColor;
   transform:rotate(45deg); box-shadow:0 0 9px currentColor; }
-#sf-ml2 .ml2-preview-mark.ml2-mark-protected i { border-radius:50%; transform:none; }
+#sf-ml2 .ml2-preview-mark.ml2-mark-protected i { border-radius:0; transform:none; border-style:double; }
 #sf-ml2 .ml2-preview-mark.ml2-mark-unavailable { color:var(--dp-ink-dim, #a9a696); }
 #sf-ml2 .ml2-preview-mark.ml2-mark-unavailable i { border-style:dashed; box-shadow:none; }
-/* Phase 4.2 — the latch state is the shape. CAN is an open diamond, range is a broken ring,
-   a denial is a diamond with a cross. The word itself is not painted beside the body. */
+/* Phase 4.2 — the latch state is the shape (no circles — owner 2026-11-23). CAN is an open
+   diamond, range is an open half-diamond chevron, a denial is a diamond with a cross. */
 #sf-ml2 .ml2-preview-mark.ml2-shape-can i { border-style:solid; border-radius:0; transform:rotate(45deg);
   box-shadow:0 0 9px currentColor; background:none; }
-#sf-ml2 .ml2-preview-mark.ml2-shape-range i { border-style:solid; border-radius:50%; transform:none;
-  border-right-color:transparent; box-shadow:none; background:none; }
+#sf-ml2 .ml2-preview-mark.ml2-shape-range i { border-style:dashed; border-radius:0; transform:rotate(45deg);
+  border-right-color:transparent; border-bottom-color:transparent; box-shadow:none; background:none; }
 #sf-ml2 .ml2-preview-mark.ml2-shape-denied i { border-style:solid; border-radius:0; transform:rotate(45deg);
   box-shadow:none;
   background:linear-gradient(currentColor, currentColor) center/2px 70% no-repeat,
@@ -581,6 +725,10 @@ export const MASSLINE_HUD_CSS = `
 #sf-ml2 .ml2-preview.ml2-preview-out-of-range,
 #sf-ml2 .ml2-preview.ml2-preview-invalid { border-style:dashed; color:#ffd08a; }
 #sf-ml2 .ml2-preview.ml2-preview-offscreen { border-style:dashed; }
+#hud #sf-ml2 .ml2-preview.ml2-ready-detonator {
+  color:var(--dp-phos, #dfeeff); font-weight:700; text-shadow:0 1px 4px #02060b, 0 0 5px #02060b;
+  animation:none; opacity:1;
+}
 /* CV-THROW-1 — a release verdict is a result, not a prompt: steady (no attention pulse),
    solid frame. Earned grades take the cadence mint; a messy cut stays warn-amber. */
 #sf-ml2 .ml2-preview.ml2-preview-verdict { border-style:solid; animation:none; }
@@ -618,21 +766,14 @@ export const MASSLINE_HUD_CSS = `
 #sf-ml2 svg.ml2-ink[data-grade="good"] .ml2-ink-flown { stroke:rgba(232,226,212,0.34); }
 #sf-ml2 svg.ml2-ink[data-grade="messy"] .ml2-ink-ahead { stroke:rgba(255,208,138,0.9); stroke-dasharray:2 6; }
 #sf-ml2 svg.ml2-ink[data-grade="messy"] .ml2-ink-flown { stroke:rgba(255,208,138,0.4); }
-#sf-ml2 .ml2-throw { width:26px; height:26px; margin:-13px 0 0 -13px; }
-#sf-ml2 .ml2-throw .ml2-diamond { width:100%; height:100%; transform:rotate(45deg);
-  border:2px solid var(--ml2-c,var(--dp-lamp, #f2b950)); box-shadow:0 0 10px var(--ml2-c,var(--dp-lamp, #f2b950));
-  transition:border-color 80ms linear, box-shadow 80ms linear; }
-#sf-ml2 .ml2-throw.ml2-hot .ml2-diamond { outline:2px solid var(--ml2-c,var(--dp-lamp, #f2b950)); outline-offset:4px; }
-#sf-ml2 .ml2-throw.ml2-hot .ml2-diamond { animation:ml2pulse 0.5s ease-in-out infinite; }
-/* INF-016: a degraded intercept reads as shape, not colour — dashed outline, never hot. */
-#sf-ml2 .ml2-throw.ml2-degraded .ml2-diamond { border-style:dashed; box-shadow:none; }
-#sf-ml2 .ml2-self.ml2-degraded { opacity:0.45; }
-@keyframes ml2pulse { 0%,100% { transform:rotate(45deg) scale(1); } 50% { transform:rotate(45deg) scale(1.3); } }
-#sf-ml2 .ml2-self { width:0; height:0; margin:-7px 0 0 -7px;
-  border-left:7px solid transparent; border-right:7px solid transparent;
-  border-bottom:12px solid var(--ml2-c,var(--dp-lamp, #f2b950)); opacity:0.7; filter:drop-shadow(0 0 6px var(--ml2-c,var(--dp-lamp, #f2b950))); }
-#sf-ml2 .ml2-self .ml2-mark-label { top:17px; }
-#sf-ml2 .ml2-self.ml2-hot { outline:2px solid var(--ml2-c,var(--dp-lamp, #f2b950)); outline-offset:5px; opacity:1; }
+/* The throw and self-sling aims are words only ('RMB · THROW'): no ring, diamond or tick sits on
+   the target. The release ghost path draws where the throw will fly; the tag's colour names the
+   timing. A degraded solution paints nothing at all. */
+#sf-ml2 .ml2-throw, #sf-ml2 .ml2-self { width:0; height:0; }
+#sf-ml2 .ml2-self { opacity:0.8; }
+#sf-ml2 .ml2-self.ml2-hot { opacity:1; }
+/* The open window reads without colour too: the tag itself gains a second frame. */
+#sf-ml2 .ml2-throw.ml2-hot .ml2-mark-label, #sf-ml2 .ml2-self.ml2-hot .ml2-mark-label { outline:1px solid currentColor; outline-offset:2px; }
 /* PB-MASS-A SF-023: the cutter-commit mark sits ON the player's rope at the bite point. A bare
    hot X with no enclosing shape — an X inside a diamond already means "denied", so the bite mark
    must not wear that silhouette. */
@@ -649,13 +790,11 @@ export const MASSLINE_HUD_CSS = `
 #sf-ml2 .ml2-snag-mark i { position:absolute; inset:0; border:2px solid currentColor;
   border-right-style:dashed; box-shadow:0 0 8px currentColor; }
 #sf-ml2 svg.ml2-ring { position:absolute; left:0; top:0; overflow:visible; }
-#sf-ml2 .ml2-ring circle { fill:rgba(242,185,80,0.05); stroke:var(--dp-lamp, #f2b950); stroke-width:1.4;
-  stroke-dasharray:10 7; opacity:0.55; }
-/* VERB-29: the orbit-assist ring centers on the tether anchor — cool informational blue, finely
-   dashed, so it never reads as the amber cloak ring or a second rope. */
+#sf-ml2 .ml2-ring path, #sf-ml2 .ml2-ring circle { fill:none; stroke:var(--dp-lamp, #f2b950); stroke-width:1.4;
+  opacity:0.62; }
+/* VERB-29: the orbit-assist ticks center on the tether anchor (corner brackets, no circle). */
 #sf-ml2 svg.ml2-orbit-ring { position:absolute; left:0; top:0; overflow:visible; }
-#sf-ml2 .ml2-orbit-ring circle { fill:none; stroke:rgba(140,190,235,0.45); stroke-width:1.2;
-  stroke-dasharray:6 10; }
+#sf-ml2 .ml2-orbit-ring path, #sf-ml2 .ml2-orbit-ring circle { fill:none; stroke:rgba(140,190,235,0.52); stroke-width:1.2; }
 #sf-ml2 .ml2-meters { position:absolute; left:50%; bottom:118px; transform:translateX(-50%);
   display:flex; flex-direction:row; flex-wrap:wrap; justify-content:center;
   gap:6px 8px; align-items:center; max-width:min(560px, 60vw); }
@@ -684,12 +823,9 @@ export const MASSLINE_HUD_CSS = `
 }
 #sf-ml2.ml2-reduced-motion .ml2-mark,
 #sf-ml2.ml2-reduced-motion .ml2-preview-mark { transition:none; }
-#sf-ml2.ml2-reduced-motion .ml2-throw.ml2-hot .ml2-diamond { animation:none; }
 #sf-ml2.ml2-reduced-motion .ml2-preview { animation:none; opacity:1; }
-#sf-ml2.ml2-reduced-flash .ml2-throw.ml2-hot .ml2-diamond { animation:none; }
 @media (prefers-reduced-motion: reduce) {
   #sf-ml2 .ml2-mark, #sf-ml2 .ml2-preview-mark { transition:none; }
-  #sf-ml2 .ml2-throw.ml2-hot .ml2-diamond { animation:none; }
   #sf-ml2 .ml2-preview { animation:none; opacity:1; }
 }
 @media (forced-colors: active) {
@@ -700,8 +836,6 @@ export const MASSLINE_HUD_CSS = `
   #sf-ml2 .ml2-preview-mark { color:CanvasText; forced-color-adjust:auto; filter:none; }
   #sf-ml2 .ml2-preview-mark i { border-color:CanvasText; box-shadow:none; }
   #sf-ml2 .ml2-mark { color:CanvasText; forced-color-adjust:auto; filter:none; }
-  #sf-ml2 .ml2-throw .ml2-diamond { border-color:CanvasText; box-shadow:none; outline-color:CanvasText; }
-  #sf-ml2 .ml2-self { border-bottom-color:CanvasText; outline-color:CanvasText; }
   #sf-ml2 .ml2-mark-label { color:CanvasText; background:Canvas; border-color:CanvasText; text-shadow:none; }
 }
 `;
@@ -720,12 +854,11 @@ export function resolveReleaseCue(projection, options = {}) {
     ? offscreenDirection(rawX - viewportWidth / 2, rawY - viewportHeight / 2)
     : 'onscreen';
   const onSolution = !!options.onSolution;
-  const kind = options.kind === 'self' ? 'self-sling' : 'throw';
-  const target = options.targetKind === 'waypoint' ? ' waypoint' : '';
-  const state = onSolution ? 'open' : 'aligning';
-  // A cue pinned to the screen corner for an offscreen target has no room for a word (it clipped
-  // under the edge); the arrow/diamond marks the direction and aria-label keeps the full state.
-  const label = onSolution ? 'RELEASE' : (offscreen ? '' : 'ALIGN');
+  const waypoint = options.targetKind === 'waypoint' ? ' waypoint' : '';
+  const state = onSolution ? 'open' : 'lining-up';
+  // One verb. Timing is the tag's colour and its second frame (ml2-hot), never a second word.
+  // A cue pinned to the screen corner has no room for that verb.
+  const label = offscreen ? '' : 'THROW';
   const offscreenCopy = offscreen ? `, target offscreen ${direction}` : ', target onscreen';
   return {
     visible: true,
@@ -735,7 +868,7 @@ export function resolveReleaseCue(projection, options = {}) {
     direction,
     state,
     label,
-    ariaLabel: `Massline ${kind}${target} release window ${state}${offscreenCopy}`,
+    ariaLabel: `Line throw${waypoint} window ${state}${offscreenCopy}`,
   };
 }
 
@@ -1247,6 +1380,7 @@ export const masslineHud = {
     this.helpers = ctx.helpers;
     this.registry = ctx.registry;
     this._flightTextObstacles = EMPTY_FLIGHT_OBSTACLES;
+    this._dartCaptionObstacles = [];
     this._dom = null;
     this._cadenceReadout = null;
     this._lineLoad = null;
@@ -1423,13 +1557,17 @@ export const masslineHud = {
     else if (this._strainFlip || !this._lineStrainReadout?.root || this._lineStrainReadout.root.hidden) {
       this._lineStrainReadout?.update(state, player, w2s);
     }
-    let obstacles = EMPTY_FLIGHT_OBSTACLES;
-    try { obstacles = this.registry?.get?.('ui')?.hud?.getFlightTextObstacles?.() || obstacles; }
+    let hud, obstacles = EMPTY_FLIGHT_OBSTACLES;
+    try { hud = this.registry?.get?.('ui')?.hud; obstacles = hud?.getFlightTextObstacles?.() || obstacles; }
     catch (_) { /* The optional presentation owner may be rebuilding. */ }
     const layoutChanged = obstacles !== this._flightTextObstacles;
     this._flightTextObstacles = obstacles;
     if (masslineHudInputsUnchanged(state, player)) {
-      if (layoutChanged) this._updateAcquisitionPreview(dom, state, player, w2s);
+      // A ready billboard follows the presented camera even when the sim receipt is quiet.
+      if (layoutChanged || dom.previewEl.classList.contains('ml2-ready-detonator')
+        || dom.previewEl.classList.contains('ml2-visor-latch')) {
+        this._queueAcquisitionPreview(dom, state, player, w2s, hud);
+      }
       return;
     }
     const reducedMotion = !!(state.settings && state.settings.video && state.settings.video.motionReduce)
@@ -1439,7 +1577,7 @@ export const masslineHud = {
     const reducedFlash = !!(state.settings && state.settings.accessibility
       && state.settings.accessibility.flashReduce);
     setClass(dom.root, 'ml2-reduced-flash', reducedFlash);
-    this._updateAcquisitionPreview(dom, state, player, w2s);
+    this._queueAcquisitionPreview(dom, state, player, w2s, hud);
     this._updateThrowMark(dom, ml2.throw, state, w2s);
     this._updateSelfMark(dom, ml2.throw, state, w2s);
     this._updateThreatMark(dom, state, w2s);
@@ -1466,13 +1604,48 @@ export const masslineHud = {
     this._cadenceReadout?.hide();
   },
 
+  // HUD-FRAME-BREADTH: the acquisition preview solve runs on the HUD's budgeted
+  // 'massline-preview' job at 15 Hz where a scheduler is live (?rfx=-hudBreadth keeps the
+  // per-frame solve). Without a live scheduler the call is a straight pass-through.
+  _registerPreviewTask(hud) {
+    try {
+      const tasks = (hud && hud.frameTasks)
+        || this.registry?.get?.('ui')?.hud?.frameTasks;
+      if (!tasks || typeof tasks.register !== 'function') return null;
+      this._previewJobRanAt = -Infinity;
+      return tasks.register('massline-preview', () => {
+        this._previewJobRanAt = (typeof performance !== 'undefined' && performance.now)
+          ? performance.now() : Date.now();
+        if (!frameCostFixOn('hudBreadth') || !this._previewQueued) return;
+        this._previewQueued = false;
+        const a = this._previewArgs;
+        if (a) this._updateAcquisitionPreview(a.dom, a.state, a.player, a.w2s, a.hud);
+      }, { hz: 15 });
+    } catch (_) { return null; }
+  },
+  _queueAcquisitionPreview(dom, state, player, w2s, hud) {
+    const a = this._previewArgs || (this._previewArgs = {});
+    a.dom = dom; a.state = state; a.player = player; a.w2s = w2s; a.hud = hud;
+    const nowMs = (typeof performance !== 'undefined' && performance.now)
+      ? performance.now() : Date.now();
+    a.at = nowMs;
+    const task = this._previewTask !== undefined ? this._previewTask
+      : (this._previewTask = this._registerPreviewTask(hud));
+    if (task && frameCostFixOn('hudBreadth') && nowMs - this._previewJobRanAt < 250) {
+      this._previewQueued = true;
+      return;
+    }
+    this._previewQueued = false;
+    this._updateAcquisitionPreview(dom, state, player, w2s, hud);
+  },
+
   // The pre-latch answer to "what will the Massline grab?" (PHYSICAL_PLAY_GRAMMAR §7.1, rule 2).
   //
   // A MARK sits on the candidate and a caption sits beside it. There is deliberately NO line back
   // to the ship: a dashed player-to-target link reads as a second cable and claims an attachment
   // that does not exist yet — only the real rendered Massline may connect the player to an object.
-  // The mark is what makes the caption world-anchored, so no connector is needed.
-  _updateAcquisitionPreview(dom, state, player, w2s) {
+  // A ready visor caption can have a short mark-to-caption leader. Only the real cable joins bodies.
+  _updateAcquisitionPreview(dom, state, player, w2s, hud) {
     // X3: on a flight glass the bracket says a plain verb at the target ("GRAB", "TOO HEAVY"),
     // never the mass/tonnage register. The number stays on the target dossier.
     const quietTelemetry = isSwarmGlass(state) || isAdventureFlight(state);
@@ -1524,8 +1697,10 @@ export const masslineHud = {
     }
     // OPENING-1b (doc 20 rule 2): holding a throwable, the one world tag says the throw verb (live binding)
     // on the held body, and lights while the rope's release window is open - Adventure, like Swarm.
-    if (tethered && isAdventureFlight(state)) return this._renderHeldThrowCue(dom, state, player, w2s);
-    if (!selected || tethered) return this._hideAcquisitionPreview(dom);
+    if (tethered && isAdventureFlight(state) && massline2Flag('throw') && isThrowArmPayload(state)) {
+      return this._renderHeldThrowCue(dom, state, player, w2s);
+    }
+    if (!selected || tethered || higherWorldPromptActive()) return this._hideAcquisitionPreview(dom);
     const target = state.entities && state.entities.get ? state.entities.get(selected.targetId) : null;
     if (!target || !target.pos) return this._hideAcquisitionPreview(dom);
     // The aim tag names a thing to grab: never the pilot's own hull, nor anything riding on it.
@@ -1545,11 +1720,18 @@ export const masslineHud = {
     const pinned = offscreen ? pinToCueRing(targetScreen.x, targetScreen.y, viewportWidth, viewportHeight) : null;
     const cueX = pinned ? pinned.x : targetScreen.x;
     const cueY = pinned ? pinned.y : targetScreen.y;
-    // World markers stay out of HUD rects: a diamond under the action wheel, the radar or a card
-    // is not on the object any more, it is on the furniture. The mark waits for the cursor to
-    // leave (the aria state is simply not announced while hidden).
-    if (!offscreen && pointUnderHud(cueX, cueY, this._flightTextObstacles)) return this._hideAcquisitionPreview(dom);
+    // World markers stay out of HUD rects (including the power bar and vitals, padded for the
+    // 24px diamond so neither the mark nor the chip ever paints over a power tile).
+    // A latch candidate off the screen paints nothing: a diamond pinned in empty sky read as a
+    // stray marker (owner, 2026-11-23). The objective arrow already points at what the route wants.
+    if (offscreen) return this._hideAcquisitionPreview(dom);
+    const liveObstacles = collectLiveHudPanelRects(this._flightTextObstacles);
+    if (pointUnderHud(cueX, cueY, liveObstacles, 18)) return this._hideAcquisitionPreview(dom);
     const ready = selected.status === 'ready';
+    const readyDetonator = ready && target.alive === true && target.data?.lootTableId === 'detonator_dart'
+      && selected.occupantGeneration != null && selected.occupantGeneration === target.occupantGeneration
+      && Number.isFinite(receipt.validUntil) && state.simTime <= receipt.validUntil
+      && state.run?.wave === 5 && state.run.phase === 'active' && isSwarmGlass(state);
     const read = resolveMasslineBracketRead(selected.status, selected.reason);
     const seedPreview = target.type === 'massSeed' ? massSeedLatchPreview(target) : null;
     if (seedPreview) {
@@ -1558,24 +1740,32 @@ export const masslineHud = {
     }
     const seedText = masslineSeedPreviewText(seedPreview);
     // F4: a latchable body with mass answers the swing question on the same caption line.
-    // The same body mass the hover tag reads (physics body, mirrored bodyMassT, then nominal), so both presenters agree.
     const playerMass = lineBodyMassT(player);
     const massRead = massPreviewRead(target, playerMass);
-    // R12: the quiet glass names the relationship with the live binding — `RMB · TOW`, `RMB · TUG`,
-    // `RMB · ANCHOR` — and never refuses. OPENING-1b's hush stays: until the first throw lands, a body you
-    // would only swing round (ANCHOR) stays unlabelled so the light lesson rock is the one thing that speaks.
     const relation = seedPreview ? '' : lineRelationWord(target, playerMass);
     const heavyHushed = openingQuiet(state) && !(state.onboarding && state.onboarding.firstThrowSeen === true)
       && relation === 'ANCHOR' && !lineLessonBody(target);
     const massText = !seedPreview && ready && !heavyHushed
       ? (quietTelemetry
-        ? verbChip(state, 'tether', relation || 'LATCH')
+        ? verbChip(state, 'tether', readyDetonator ? 'Latch Detonator' : (relation || 'LATCH'))
         : massPreviewWord(target, playerMass, state))
       : '';
     const text = seedText || massText || bracketReadText(read);
     const paint = seedText || massText || bracketPaintText(read);
+    // HUD-2 Item 7: unify world-prompt styling across BOTH Adventure and Swarm under the visor skin.
+    const visorLatch = ready && !offscreen && !seedText && massText
+      && typeof document !== 'undefined' && document.body?.dataset?.hudSkin === 'orrery'
+      && document.documentElement?.dataset?.sfMobileFlight !== '1' && viewportWidth >= 840;
+    resetPreviewStyles(dom, readyDetonator, visorLatch);
+    let obstacles = liveObstacles;
+    const padRects = readyDetonator ? hud?.getFloorPadLabelRects?.() : null;
+    if (padRects?.length) {
+      obstacles = this._dartCaptionObstacles;
+      obstacles.length = 0;
+      obstacles.push(...liveObstacles, ...padRects);
+    }
     const placed = placeHudBracketWords(this, dom.previewEl, paint || text,
-      { x: cueX, y: cueY }, player, w2s, { w: viewportWidth, h: viewportHeight });
+      { x: cueX, y: cueY }, player, w2s, { w: viewportWidth, h: viewportHeight }, obstacles, visorLatch);
     const labelX = placed.x;
     const labelY = placed.y;
 
@@ -1586,17 +1776,26 @@ export const masslineHud = {
     setClass(dom.previewMark, 'ml2-offscreen', offscreen);
     setClass(dom.previewMark, 'ml2-mark-protected', selected.status === 'protected');
     setClass(dom.previewMark, 'ml2-mark-unavailable', !ready && selected.status !== 'protected');
-    clearVerdictClasses(dom);
     setBracketShape(dom.previewMark, bracketShapeId(read));
     setAttr(dom.previewMark, 'aria-hidden', 'false');
     setAttr(dom.previewMark, 'role', 'img');
     setAttr(dom.previewMark, 'aria-label', offscreen ? `${text}, offscreen` : text);
 
-    setStyle(dom.previewEl, 'display', paint && !placed.hidden ? 'block' : 'none');
+    // 08 §4: the words sit on the body under the cursor, never over empty space. A target past the
+    // screen edge keeps only its rim pin (the direction); its words return when it is in view.
+    setStyle(dom.previewEl, 'display', paint && !placed.hidden && !offscreen ? 'block' : 'none');
     setClass(dom.previewEl, 'ml2-preview-snare', false);
     setClass(dom.previewSvg, 'ml2-snare-preview', false);
     setClass(dom.previewSvg, 'ml2-bridle-preview', false);
-    setStyle(dom.previewSvg, 'display', 'none');
+    const showLeader = visorLatch && !placed.hidden;
+    if (showLeader) {
+      const side = cueX < labelX ? 1 : cueX > labelX + placed.w ? -1 : 0;
+      const x = Math.round(clampRange(cueX, labelX + 1, labelX + placed.w - 1));
+      const y = Math.round(side ? labelY + placed.h / 2 : clampRange(cueY, labelY, labelY + placed.h));
+      const knee = x - side * Math.min(14, Math.abs(x - cueX) / 3);
+      setAttr(dom.previewLatchStem, 'd', `M${Math.round(cueX)} ${Math.round(cueY)}L${Math.round(knee)} ${y}H${x}`);
+    }
+    setStyle(dom.previewSvg, 'display', showLeader ? 'block' : 'none');
     setStyle(dom.previewEl, 'transform', `translate3d(${Math.round(labelX)}px, ${Math.round(labelY)}px, 0)`);
     if (dom.previewEl.textContent !== paint) dom.previewEl.textContent = paint;
     setAttr(dom.previewEl, 'data-bracket-state', read.state);
@@ -1614,9 +1813,13 @@ export const masslineHud = {
     if (!held || !held.pos || held.id === state.playerId) return this._hideAcquisitionPreview(dom);
     const screen = projectWorld(w2s, held.pos.x, held.pos.z);
     if (!finiteProjection(screen) || !screen.onScreen) return this._hideAcquisitionPreview(dom);
-    const text = verbChip(state, 'tether', 'THROW');
+    const liveObstacles = collectLiveHudPanelRects(this._flightTextObstacles);
+    if (pointUnderHud(screen.x, screen.y, liveObstacles, 16)) return this._hideAcquisitionPreview(dom);
+    const text = throwActionCue(state);
+    resetPreviewStyles(dom);
     const placed = placeHudBracketWords(this, dom.previewEl, text, { x: screen.x, y: screen.y }, player, w2s,
-      { w: viewportExtent('innerWidth', 'clientWidth', 1440), h: viewportExtent('innerHeight', 'clientHeight', 900) });
+      { w: viewportExtent('innerWidth', 'clientWidth', 1440), h: viewportExtent('innerHeight', 'clientHeight', 900) },
+      liveObstacles);
     setStyle(dom.previewMark, 'display', 'none');
     setStyle(dom.previewSourceMark, 'display', 'none');
     setStyle(dom.previewSvg, 'display', 'none');
@@ -1633,6 +1836,7 @@ export const masslineHud = {
   // VERB-25 — a mass seed under the cursor uses the same preview caption, not a second mark.
   // A locking seed is not an acquisition candidate; this reads the preview massSeed published.
   _renderSeedLatchPreview(dom, state, player, w2s, preview) {
+    if (higherWorldPromptActive()) return this._hideAcquisitionPreview(dom);
     const screen = projectWorld(w2s, preview.x, preview.z);
     if (!finiteProjection(screen)) return this._hideAcquisitionPreview(dom);
     const viewportWidth = viewportExtent('innerWidth', 'clientWidth', 1440);
@@ -1643,9 +1847,11 @@ export const masslineHud = {
     const pinned = offscreen ? pinToCueRing(screen.x, screen.y, viewportWidth, viewportHeight) : null;
     const cueX = pinned ? pinned.x : screen.x;
     const cueY = pinned ? pinned.y : screen.y;
+    const liveObstacles = collectLiveHudPanelRects(this._flightTextObstacles);
+    if (!offscreen && pointUnderHud(cueX, cueY, liveObstacles, 18)) return this._hideAcquisitionPreview(dom);
     const text = masslineSeedPreviewText(preview);
     const placed = placeHudBracketWords(this, dom.previewEl, text,
-      { x: cueX, y: cueY }, player, w2s, { w: viewportWidth, h: viewportHeight });
+      { x: cueX, y: cueY }, player, w2s, { w: viewportWidth, h: viewportHeight }, liveObstacles);
     const holds = preview.isMassSeedTetherEligible === true;
     setStyle(dom.previewMark, 'display', 'block');
     setStyle(dom.previewSourceMark, 'display', 'none');
@@ -1654,7 +1860,7 @@ export const masslineHud = {
     setClass(dom.previewMark, 'ml2-offscreen', offscreen);
     setClass(dom.previewMark, 'ml2-mark-protected', false);
     setClass(dom.previewMark, 'ml2-mark-unavailable', !holds);
-    clearVerdictClasses(dom);
+    resetPreviewStyles(dom);
     setBracketShape(dom.previewMark, holds ? 'can' : 'denied');
     setAttr(dom.previewMark, 'aria-hidden', 'false');
     setAttr(dom.previewMark, 'role', 'img');
@@ -1694,15 +1900,17 @@ export const masslineHud = {
     const pinned = offscreen ? pinToCueRing(screen.x, screen.y, viewportWidth, viewportHeight) : null;
     const cueX = pinned ? pinned.x : screen.x;
     const cueY = pinned ? pinned.y : screen.y;
+    const liveObstacles = collectLiveHudPanelRects(this._flightTextObstacles);
     const read = resolveMasslineBracketRead('invalid', denial.reason);
     const text = bracketReadText(read);
     const paint = bracketPaintText(read);
     const placed = placeHudBracketWords(this, dom.previewEl, paint || text,
-      { x: cueX, y: cueY }, player, w2s, { w: viewportWidth, h: viewportHeight });
+      { x: cueX, y: cueY }, player, w2s, { w: viewportWidth, h: viewportHeight }, liveObstacles);
     const labelX = placed.x;
     const labelY = placed.y;
-    setStyle(dom.previewMark, 'display', denied ? 'block' : 'none');
-    if (denied) {
+    const markClear = denied && !pointUnderHud(cueX, cueY, liveObstacles, 14);
+    setStyle(dom.previewMark, 'display', markClear ? 'block' : 'none');
+    if (markClear) {
       setStyle(dom.previewMark, 'transform', `translate3d(${Math.round(cueX)}px, ${Math.round(cueY)}px, 0)`);
       setClass(dom.previewMark, 'ml2-bridle-target', false);
       setClass(dom.previewMark, 'ml2-offscreen', offscreen);
@@ -1717,7 +1925,7 @@ export const masslineHud = {
     setStyle(dom.previewSvg, 'display', 'none');
     setStyle(dom.previewEl, 'display', placed.hidden ? 'none' : 'block');
     setClass(dom.previewEl, 'ml2-preview-snare', false);
-    clearVerdictClasses(dom);
+    resetPreviewStyles(dom);
     setStyle(dom.previewEl, 'transform', `translate3d(${Math.round(labelX)}px, ${Math.round(labelY)}px, 0)`);
     if (dom.previewEl.textContent !== paint) dom.previewEl.textContent = paint;
     setAttr(dom.previewEl, 'data-bracket-state', read.state);
@@ -1762,6 +1970,7 @@ export const masslineHud = {
     const displayGrade = thrown ? 'good' : grade;
     const text = releaseVerdictCopy(thrown ? { ...verdict, quickThrow: true } : verdict,
       { plain: isAdventureFlight(state) || isSwarmGlass(state) });
+    resetPreviewStyles(dom);
     const placed = placeHudBracketWords(this, dom.previewEl, text,
       { x: cueX, y: cueY }, player, w2s, { w: viewportWidth, h: viewportHeight });
     setStyle(dom.previewMark, 'display', 'block');
@@ -1808,7 +2017,7 @@ export const masslineHud = {
     setClass(dom.previewEl, 'ml2-preview-snare', false);
     setClass(dom.previewSvg, 'ml2-snare-preview', false);
     setClass(dom.previewSvg, 'ml2-bridle-preview', false);
-    clearVerdictClasses(dom);
+    resetPreviewStyles(dom);
   },
 
   _updateSnarePreview(dom, preview, w2s) {
@@ -1847,7 +2056,7 @@ export const masslineHud = {
     setAttr(dom.previewEl, 'data-receipt-id', String(preview.receiptId || ''));
     setAttr(dom.previewEl, 'data-target-id', 'free-target-line');
     setClass(dom.previewEl, 'ml2-preview-snare', true);
-    clearVerdictClasses(dom);
+    resetPreviewStyles(dom);
     for (const name of ['ready', 'blocked', 'protected', 'out-of-range', 'cooldown', 'invalid']) {
       setClass(dom.previewEl, `ml2-preview-${name}`, false);
     }
@@ -1941,7 +2150,7 @@ export const masslineHud = {
     setAttr(dom.previewEl, 'data-receipt-id', String((selected && receipt.id) || setup.sourceReceiptId || ''));
     setAttr(dom.previewEl, 'data-target-id', String((selected && selected.targetId) || ''));
     const visualStatus = pairDenial ? 'invalid' : selected?.status;
-    clearVerdictClasses(dom);
+    resetPreviewStyles(dom);
     for (const name of ['ready', 'blocked', 'protected', 'out-of-range', 'cooldown', 'invalid']) {
       setClass(dom.previewEl, `ml2-preview-${name}`, visualStatus === name);
     }
@@ -1970,18 +2179,17 @@ export const masslineHud = {
       onSolution: solution.onSolution,
       targetKind: mark.targetKind,
     });
-    if (!cue.visible) {
+    // A degraded solution (the target turned out of it) promises nothing, so it paints nothing:
+    // no tag, no path. The aim comes back the moment the solution does.
+    if (!cue.visible || solution.degraded === true) {
       setStyle(dom.throwEl, 'display', 'none');
       if (dom.ghostSvg) setStyle(dom.ghostSvg, 'display', 'none');
       return;
     }
     setStyle(dom.throwEl, 'display', 'block');
     setStyle(dom.throwEl, 'transform', `translate3d(${cue.x}px, ${cue.y}px, 0)`);
-    // INF-016: degraded confidence is its own mark — dashed, never hot, labelled STALE.
-    const degradedThrow = solution.degraded === true;
-    const hot = !!solution.onSolution && !degradedThrow;
+    const hot = !!solution.onSolution;
     setClass(dom.throwEl, 'ml2-hot', hot);
-    setClass(dom.throwEl, 'ml2-degraded', degradedThrow);
     setClass(dom.throwEl, 'ml2-offscreen', cue.offscreen);
     setCssVar(dom.throwEl, '--ml2-c', rampColor(solution.errorRad, solution.tolRad, hot));
     applyCueState(dom.throwEl, dom.throwLabel, cue);
@@ -1996,7 +2204,7 @@ export const masslineHud = {
     // SF-027: the pilot's own route is the one victim class the protected-body spots cannot
     // carry; it joins the SAME single advisory and the nearer of the two wins — still one
     // named victim, still no veto.
-    if (!degradedThrow) {
+    {
       const payloadPoint = throwPayloadPoint(throwState, state);
       let collateral = resolveThrowCollateral(solution,
         payloadPoint, throwPayloadRadius(throwState, state),
@@ -2011,18 +2219,15 @@ export const masslineHud = {
         collateral = ownRoute;
       }
       if (collateral) {
-        const advisory = `${cue.label} · COLLATERAL RISK · ${collateral.label}`;
+        const advisory = cue.label
+          ? `${cue.label} · COLLATERAL RISK · ${collateral.label}`
+          : `COLLATERAL RISK · ${collateral.label}`;
         if (dom.throwLabel && dom.throwLabel.textContent !== advisory) {
           dom.throwLabel.textContent = advisory;
         }
         setAttr(dom.throwEl, 'aria-label',
           `${cue.ariaLabel}, possible collateral risk near ${collateral.label.toLowerCase()}`);
       }
-    }
-    if (degradedThrow) {
-      if (dom.throwLabel && dom.throwLabel.textContent !== 'STALE') dom.throwLabel.textContent = 'STALE';
-      setAttr(dom.throwEl, 'aria-label', 'Massline throw intercept degraded, target turning');
-      setAttr(dom.throwEl, 'data-window-state', 'degraded');
     }
   },
 
@@ -2096,13 +2301,11 @@ export const masslineHud = {
       onSolution: self.onSolution,
       targetKind: self.targetKind,
     });
-    if (!cue.visible) { hideSelf(); return; }
+    // The self-sling degrades exactly like the throw: a degraded solution paints nothing.
+    if (!cue.visible || self.degraded === true) { hideSelf(); return; }
     setStyle(dom.selfEl, 'display', 'block');
     setStyle(dom.selfEl, 'transform', `translate3d(${cue.x}px, ${cue.y - 26}px, 0)`);
-    // INF-016: the self-sling cue degrades exactly like the throw diamond.
-    const degradedSelf = self.degraded === true;
-    setClass(dom.selfEl, 'ml2-hot', !!self.onSolution && !degradedSelf);
-    setClass(dom.selfEl, 'ml2-degraded', degradedSelf);
+    setClass(dom.selfEl, 'ml2-hot', !!self.onSolution);
     setClass(dom.selfEl, 'ml2-offscreen', cue.offscreen);
     setCssVar(dom.selfEl, '--ml2-c', rampColor(self.errorRad, self.tolRad, self.onSolution));
     applyCueState(dom.selfEl, dom.selfLabel, cue);
@@ -2110,13 +2313,7 @@ export const masslineHud = {
     // mirrored fields, from the player's own position rather than the tethered anchor's.
     const selfFrom = state.entities && state.entities.get
       ? state.entities.get(state.playerId) : null;
-    this._updateThrowGhost(dom, self, selfFrom && selfFrom.pos, w2s,
-      !!self.onSolution && !degradedSelf);
-    if (degradedSelf) {
-      if (dom.selfLabel && dom.selfLabel.textContent !== 'STALE') dom.selfLabel.textContent = 'STALE';
-      setAttr(dom.selfEl, 'aria-label', 'Massline self-sling intercept degraded, target turning');
-      setAttr(dom.selfEl, 'data-window-state', 'degraded');
-    }
+    this._updateThrowGhost(dom, self, selfFrom && selfFrom.pos, w2s, !!self.onSolution);
   },
 
   // PB-MASS-A live-line marks. SF-023: the threat mark rides the rope at the bite point a
@@ -2180,9 +2377,15 @@ export const masslineHud = {
       return;
     }
     const r = Math.max(6, Math.abs(edge.x - center.x));
+    const k = Math.max(6, Math.min(18, r * 0.28));
     setStyle(dom.ringSvg, 'display', 'block');
     setStyle(dom.ringSvg, 'transform', `translate3d(${center.x}px, ${center.y}px, 0)`);
-    setAttr(dom.ringCircle, 'r', String(r));
+    // Four corner ticks at ±r instead of a closed circle around the player (owner 2026-11-23).
+    setAttr(dom.ringCircle, 'd',
+      `M${(-r).toFixed(1)} ${(-r + k).toFixed(1)}V${(-r).toFixed(1)}H${(-r + k).toFixed(1)}`
+      + `M${(r - k).toFixed(1)} ${(-r).toFixed(1)}H${r.toFixed(1)}V${(-r + k).toFixed(1)}`
+      + `M${r.toFixed(1)} ${(r - k).toFixed(1)}V${r.toFixed(1)}H${(r - k).toFixed(1)}`
+      + `M${(-r + k).toFixed(1)} ${r.toFixed(1)}H${(-r).toFixed(1)}V${(r - k).toFixed(1)}`);
   },
 
   // FB-007 — the drawn stroke on the glass: the model decides what is true (resolveDrawFlightInk),
@@ -2247,9 +2450,15 @@ export const masslineHud = {
       return;
     }
     const r = Math.max(6, Math.abs(edge.x - center.x));
+    const k = Math.max(6, Math.min(18, r * 0.28));
     setStyle(dom.orbitSvg, 'display', 'block');
     setStyle(dom.orbitSvg, 'transform', `translate3d(${center.x}px, ${center.y}px, 0)`);
-    setAttr(dom.orbitCircle, 'r', String(r));
+    // Four corner ticks at ±r instead of a closed orbit circle (owner 2026-11-23).
+    setAttr(dom.orbitCircle, 'd',
+      `M${(-r).toFixed(1)} ${(-r + k).toFixed(1)}V${(-r).toFixed(1)}H${(-r + k).toFixed(1)}`
+      + `M${(r - k).toFixed(1)} ${(-r).toFixed(1)}H${r.toFixed(1)}V${(-r + k).toFixed(1)}`
+      + `M${r.toFixed(1)} ${(r - k).toFixed(1)}V${r.toFixed(1)}H${(r - k).toFixed(1)}`
+      + `M${(-r + k).toFixed(1)} ${r.toFixed(1)}H${(-r).toFixed(1)}V${(r - k).toFixed(1)}`);
   },
 
   _updateMeters(dom, ml2, state) {
@@ -2404,15 +2613,16 @@ export const masslineHud = {
     const root = document.createElement('div');
     root.id = 'sf-ml2';
 
-    // Ordinary target acquisition never draws a player-to-target link. This SVG is reserved for
-    // remote-head previews whose exact world-to-world segment is the thing a press will deploy;
-    // once deployed, the real rendered Massline cable replaces it.
+    // Remote-head previews show the proposed cable. Ready acquisition uses the same surface
+    // for a short label leader from the body to its flight caption.
     const previewSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     previewSvg.setAttribute('class', 'ml2-preview-link');
     previewSvg.style.display = 'none';
     const previewLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
     previewLine.setAttribute('class', 'ml2-preview-line');
-    previewSvg.appendChild(previewLine);
+    const previewLatchStem = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    previewLatchStem.setAttribute('class', 'ml2-latch-stem');
+    previewSvg.append(previewLine, previewLatchStem);
     root.appendChild(previewSvg);
 
     // World-anchored acquisition mark: the candidate the Massline will grab, drawn ON the candidate.
@@ -2468,9 +2678,6 @@ export const masslineHud = {
     const throwEl = document.createElement('div');
     throwEl.className = 'ml2-mark ml2-throw';
     throwEl.style.display = 'none';
-    const diamond = document.createElement('div');
-    diamond.className = 'ml2-diamond';
-    throwEl.appendChild(diamond);
     const throwLabel = document.createElement('span');
     throwLabel.className = 'ml2-mark-label';
     throwEl.appendChild(throwLabel);
@@ -2526,10 +2733,8 @@ export const masslineHud = {
     ringSvg.setAttribute('width', '0');
     ringSvg.setAttribute('height', '0');
     ringSvg.style.display = 'none';
-    const ringCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-    ringCircle.setAttribute('cx', '0');
-    ringCircle.setAttribute('cy', '0');
-    ringCircle.setAttribute('r', '60');
+    const ringCircle = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    ringCircle.setAttribute('d', '');
     ringSvg.appendChild(ringCircle);
     root.appendChild(ringSvg);
 
@@ -2539,10 +2744,8 @@ export const masslineHud = {
     orbitSvg.setAttribute('height', '0');
     orbitSvg.setAttribute('aria-hidden', 'true');
     orbitSvg.style.display = 'none';
-    const orbitCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-    orbitCircle.setAttribute('cx', '0');
-    orbitCircle.setAttribute('cy', '0');
-    orbitCircle.setAttribute('r', '60');
+    const orbitCircle = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    orbitCircle.setAttribute('d', '');
     orbitSvg.appendChild(orbitCircle);
     root.appendChild(orbitSvg);
 
@@ -2595,7 +2798,7 @@ export const masslineHud = {
     this._lineStrainReadout?.destroy();
     this._lineStrainReadout = createLineStrainReadout(root);
     this._dom = {
-      root, previewEl, previewMark, previewSourceMark, previewSvg, previewLine,
+      root, previewEl, previewMark, previewSourceMark, previewSvg, previewLine, previewLatchStem,
       ghostSvg, ghostPath, ghostD: null,
       inkSvg, inkAheadPath, inkFlownPath, inkD: null,
       throwEl, throwLabel, selfEl, selfLabel, ringSvg, ringCircle,
@@ -2669,7 +2872,7 @@ function worldEntityLabel(entity) {
   if (isWreckLike(entity)) return targetDisplayName(entity);
   const label = data && (data.displayName || data.name || data.label);
   if (typeof label === 'string' && label.trim()) return label.trim();
-  if (data && (data.massSeed === true || data.kind === 'mass_seed')) return 'Mass Seed';
+  if (data && (data.massSeed === true || data.kind === 'mass_seed')) return 'Pin anchor';
   const type = entity && entity.type || 'endpoint';
   return type === 'asteroid' ? 'Anchor' : type.charAt(0).toUpperCase() + type.slice(1);
 }

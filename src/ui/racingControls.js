@@ -7,6 +7,11 @@ export function setSteeringView(state, bus, value) {
   if (!state.settings.gameplay) state.settings.gameplay = {};
   state.settings.gameplay.steeringView = next;
   bus?.emit?.('settings:changed', { section: 'gameplay', key: 'steeringView', value: next });
+  // From here on the view is the pilot's own choice, 'overhead' included (preferredSteeringView).
+  if (state.settings.gameplay.steeringViewChosen !== true) {
+    state.settings.gameplay.steeringViewChosen = true;
+    bus?.emit?.('settings:changed', { section: 'gameplay', key: 'steeringViewChosen', value: true });
+  }
   return next;
 }
 export function toggleSteeringView(state, bus) {

@@ -24,7 +24,7 @@ import { IRON_KRAKEN_ENEMIES } from './ironKraken.js';
 export const ENEMY_TYPES = [
 
   {
-    id: 'wasp_swarmer', name: 'Wasp Swarmer', shipId: 'ship_wasp',
+    id: 'wasp_swarmer', name: 'Wasp Swarmer', kind: 'Wasp', shipId: 'ship_wasp',
     silhouette: 'drone_swarm', factionId: 'faction_reach',
     aiArchetype: 'swarmer', levelRange: [1, 3],
     combatDoctrineId: 'interceptor_flyby',
@@ -47,7 +47,7 @@ export const ENEMY_TYPES = [
     },
   },
   {
-    id: 'lancer_sniper', name: 'Lancer Sniper', shipId: 'ship_wasp',
+    id: 'lancer_sniper', name: 'Lancer Sniper', kind: 'Lancer', shipId: 'ship_wasp',
     silhouette: 'sniper_lance', factionId: 'faction_reach',
     aiArchetype: 'sniper', levelRange: [2, 5],
     combatDoctrineId: 'ranged_disengager',
@@ -69,7 +69,7 @@ export const ENEMY_TYPES = [
     },
   },
   {
-    id: 'detonator_dart', name: 'Detonator Dart', shipId: 'ship_wasp',
+    id: 'detonator_dart', name: 'Detonator Dart', kind: 'Dart', shipId: 'ship_wasp',
     silhouette: 'detonator_dart', factionId: 'faction_reach',
     aiArchetype: 'kamikaze', levelRange: [2, 5],
     combatDoctrineId: 'detonator_run',
@@ -100,7 +100,7 @@ export const ENEMY_TYPES = [
     },
   },
   {
-    id: 'bruiser_brawler', name: 'Bruiser Brawler', shipId: 'ship_bastion',
+    id: 'bruiser_brawler', name: 'Bruiser Brawler', kind: 'Bruiser', shipId: 'ship_bastion',
     silhouette: 'bruiser_armor', factionId: 'faction_reach',
     aiArchetype: 'brawler', levelRange: [3, 7],
     combatDoctrineId: 'brawler_commit',
@@ -124,7 +124,7 @@ export const ENEMY_TYPES = [
     },
   },
   {
-    id: 'mule_trader', name: 'Fleeing Trader', shipId: 'ship_mule',
+    id: 'mule_trader', name: 'Fleeing Trader', kind: 'Trader', shipId: 'ship_mule',
     silhouette: 'trader_haul', factionId: 'faction_free',
     aiArchetype: 'fleeing_trader', levelRange: [1, 6],
     combatDoctrineId: null,
@@ -147,7 +147,7 @@ export const ENEMY_TYPES = [
     },
   },
   {
-    id: 'reaver_pirate', name: 'Reaver Pirate', shipId: 'ship_drifter',
+    id: 'reaver_pirate', name: 'Reaver Pirate', kind: 'Reaver', shipId: 'ship_drifter',
     silhouette: 'pirate_swoop', factionId: 'faction_reach',
     aiArchetype: 'pirate', levelRange: [1, 8],
     combatDoctrineId: 'interceptor_flyby',
@@ -173,7 +173,7 @@ export const ENEMY_TYPES = [
     },
   },
   {
-    id: 'corsair_raider', name: 'Corsair Raider', shipId: 'ship_hornet',
+    id: 'corsair_raider', name: 'Corsair Raider', kind: 'Raider', shipId: 'ship_hornet',
     silhouette: 'corsair_blade', factionId: 'faction_reach',
     aiArchetype: 'pirate', levelRange: [4, 10],
     combatDoctrineId: 'interceptor_flyby',
@@ -200,7 +200,7 @@ export const ENEMY_TYPES = [
     },
   },
   {
-    id: 'patrol_lawman', name: 'Patrol Interceptor', shipId: 'ship_hornet',
+    id: 'patrol_lawman', name: 'Patrol Interceptor', kind: 'Patrol', shipId: 'ship_hornet',
     silhouette: 'patrol_interdict', factionId: 'faction_scn',
     aiArchetype: 'brawler', levelRange: [3, 9],
     combatDoctrineId: 'interceptor_flyby',
@@ -224,7 +224,7 @@ export const ENEMY_TYPES = [
     },
   },
   {
-    id: 'dreadnought_boss', name: "Dreadnought 'Iron Maw'", shipId: 'ship_leviathan',
+    id: 'dreadnought_boss', name: "Dreadnought 'Iron Maw'", kind: 'Maw', shipId: 'ship_leviathan',
     silhouette: 'dreadnought_enemy', factionId: 'faction_vael',
     aiArchetype: 'miniboss_capital', levelRange: [10, 15],
     combatDoctrineId: 'capital_broadside',
@@ -274,7 +274,7 @@ export const ENEMY_TYPES = [
   },
   // ── Variety roles (append-only; reuse existing AI archetypes / doctrines / silhouettes) ──
   {
-    id: 'mine_layer_jackal', name: 'Mine-Layer Jackal', shipId: 'ship_drifter',
+    id: 'mine_layer_jackal', name: 'Mine-Layer Jackal', kind: 'Jackal', shipId: 'ship_drifter',
     silhouette: 'jackal_rack', factionId: 'faction_reach',
     aiArchetype: 'pirate', levelRange: [3, 8],
     combatDoctrineId: 'mine_layer_wake',
@@ -301,7 +301,7 @@ export const ENEMY_TYPES = [
     },
   },
   {
-    id: 'pd_screen_escort', name: 'Point-Defense Screen', shipId: 'ship_bastion',
+    id: 'pd_screen_escort', name: 'Point-Defense Screen', kind: 'Escort', shipId: 'ship_bastion',
     silhouette: 'bruiser_armor', factionId: 'faction_reach',
     aiArchetype: 'brawler', levelRange: [4, 9],
     // FB-018: the screen is the row's identity, not an override table entry — the escort holds
@@ -330,7 +330,7 @@ export const ENEMY_TYPES = [
     },
   },
   {
-    id: 'customs_cutter', name: 'Customs Cutter', shipId: 'ship_hornet',
+    id: 'customs_cutter', name: 'Customs Cutter', kind: 'Cutter', shipId: 'ship_hornet',
     silhouette: 'customs_prow', factionId: 'faction_scn',
     aiArchetype: 'brawler', levelRange: [2, 7],
     combatDoctrineId: 'interceptor_flyby',
@@ -358,7 +358,7 @@ export const ENEMY_TYPES = [
     },
   },
   {
-    id: 'choir_zealot', name: 'Choir Zealot', shipId: 'ship_wasp',
+    id: 'choir_zealot', name: 'Choir Zealot', kind: 'Zealot', shipId: 'ship_wasp',
     silhouette: 'drone_swarm', factionId: 'faction_choir',
     aiArchetype: 'swarmer', levelRange: [3, 8],
     // FB-017: not a faster wasp — a guardian. The zealot bodies the lane between its marked
@@ -391,7 +391,7 @@ export const ENEMY_TYPES = [
     },
   },
   {
-    id: 'quiet_ghost', name: 'Quiet Ghost', shipId: 'ship_wasp',
+    id: 'quiet_ghost', name: 'Quiet Ghost', kind: 'Ghost', shipId: 'ship_wasp',
     silhouette: 'sniper_lance', factionId: 'faction_quiet',
     aiArchetype: 'sniper', levelRange: [4, 10],
     // FB-017: the stalker variant — same hull as the lancer, a different problem. It only opens
@@ -422,7 +422,7 @@ export const ENEMY_TYPES = [
     },
   },
   {
-    id: 'tether_control_raider', name: 'Tether-Control Raider', shipId: 'ship_hornet',
+    id: 'tether_control_raider', name: 'Tether-Control Raider', kind: 'Wrangler', shipId: 'ship_hornet',
     silhouette: 'corsair_blade', factionId: 'faction_reach',
     aiArchetype: 'pirate', levelRange: [5, 11],
     combatDoctrineId: 'tether_control_raider',
@@ -433,7 +433,7 @@ export const ENEMY_TYPES = [
     aiDoctrine: { defaultActivity: 'attack_run', roe: 'weapons_free', preferredRange: 260, leashRadius: 2800 },
     rareSpecialist: true,
     physicalClass: 'specialist',
-    telegraph: { bark: 'warn', line: 'Enemy Massline spooling. Displace, break anchor, or outmass it.', cue: 'attach_spool' },
+    telegraph: { bark: 'warn', line: 'Enemy reeling a line onto you. Move, break its anchor, or outweigh it.', cue: 'attach_spool' },
     counterHint: 'displace_break_anchor_or_outmass',
     behavior: 'rare specialist; telegraphs a Massline attach then contests the player line until displaced, broken, or outmassed',
     bountyCr: 700, shipClass: 'gunship',
@@ -447,7 +447,7 @@ export const ENEMY_TYPES = [
     },
   },
   {
-    id: 'warden_escort', name: 'Warden Escort', shipId: 'ship_bastion',
+    id: 'warden_escort', name: 'Warden Escort', kind: 'Warden', shipId: 'ship_bastion',
     silhouette: 'warden_screen', factionId: 'faction_vael',
     aiArchetype: 'guardian', levelRange: [4, 9],
     combatDoctrineId: 'escort_screen',
@@ -472,7 +472,7 @@ export const ENEMY_TYPES = [
     },
   },
   {
-    id: 'field_anchor_controller', name: 'Anchor Controller', shipId: 'ship_bastion',
+    id: 'field_anchor_controller', name: 'Anchor Controller', kind: 'Anchor', shipId: 'ship_bastion',
     silhouette: 'anchor_dish', factionId: 'faction_reach',
     aiArchetype: 'brawler', levelRange: [5, 11],
     combatDoctrineId: 'field_anchor_controller',
@@ -515,7 +515,7 @@ export const ENEMY_TYPES = [
   // INF-025 implements the prow/stern split as authored directionalArmor on the shared
   // damage router; stern hits additionally fall on the standard aft drive-subsystem volume.
   {
-    id: 'mirrorjaw_foreman', name: 'Mirrorjaw Foreman', shipId: 'ship_bastion',
+    id: 'mirrorjaw_foreman', name: 'Mirrorjaw Foreman', kind: 'Mirrorjaw', shipId: 'ship_bastion',
     silhouette: 'bruiser_armor', factionId: 'faction_reach',
     aiArchetype: 'brawler', levelRange: [4, 4],
     // DUST P6 (BS-7): the Foreman is the roster's committed ram and KEEPS the committed-ram
@@ -579,7 +579,7 @@ export const ENEMY_TYPES = [
   // identity, telegraph and kill geometry ship here. Zero pay and no loot stay as for the Foreman:
   // combat pays d.bountyCr/d.loot without a run-ownership gate, and this is a survival boss.
   {
-    id: 'forge_regent', name: 'Forge Regent', shipId: 'ship_bastion',
+    id: 'forge_regent', name: 'Forge Regent', kind: 'Regent', shipId: 'ship_bastion',
     silhouette: 'bruiser_armor', factionId: 'faction_reach',
     aiArchetype: 'brawler', levelRange: [4, 4],
     // DUST P6 (BS-7): the Regent stops replaying the Foreman's doctrine. The light repeater is
@@ -626,7 +626,7 @@ export const ENEMY_TYPES = [
   // stern so the weak arc and the mounts tell one story. Her flood is the brood cohort itself:
   // her wave's plan fields nothing but mites at full population.
   {
-    id: 'brood_queen', name: 'Brood Queen', shipId: 'ship_saucer',
+    id: 'brood_queen', name: 'Brood Queen', kind: 'Queen', shipId: 'ship_saucer',
     silhouette: 'drone_swarm', factionId: 'faction_reach',
     aiArchetype: 'brawler', levelRange: [4, 4],
     combatDoctrineId: 'pack_pursuit',
@@ -663,7 +663,7 @@ export const ENEMY_TYPES = [
   // engine's segment chain: light bodies that follow the head, split when a middle segment
   // dies, and collapse when the head does. Sling it into itself: feed the weave a rock.
   {
-    id: 'brood_tendril', name: 'The Tendril', shipId: 'ship_hornet',
+    id: 'brood_tendril', name: 'The Tendril', kind: 'Tendril', shipId: 'ship_hornet',
     silhouette: 'drone_swarm', factionId: 'faction_reach',
     aiArchetype: 'brawler', levelRange: [4, 4],
     // DUST P6 (BS-7): the worm is not a fourth committed ram. Its fight is the brood's fight —
@@ -692,7 +692,7 @@ export const ENEMY_TYPES = [
     loot: null,
   },
   {
-    id: 'scissorwake', name: 'Scissorwake', shipId: 'ship_hornet',
+    id: 'scissorwake', name: 'Scissorwake', kind: 'Scissorwake', shipId: 'ship_hornet',
     silhouette: 'corsair_blade', factionId: 'faction_reach', aiArchetype: 'pirate',
     combatDoctrineId: 'scissorwake', levelRange: [2, 6],
     hull: 105, armor: 14, armorFlat: 1, shield: 25, shieldRegen: 0,
@@ -718,7 +718,7 @@ export const ENEMY_TYPES = [
   // mounts between the door tracks, and its "flood" is the score's wasp wing. The belly is
   // the soft arc: the doors and the bays behind them all live underneath.
   {
-    id: 'nest_carrier', name: 'Nest Carrier', shipId: 'ship_atlas',
+    id: 'nest_carrier', name: 'Nest Carrier', kind: 'Carrier', shipId: 'ship_atlas',
     silhouette: 'trader_haul', factionId: 'faction_reach',
     aiArchetype: 'miniboss_capital', levelRange: [8, 12],
     combatDoctrineId: 'capital_broadside',
@@ -757,7 +757,7 @@ export const ENEMY_TYPES = [
   // fore, mid, aft — that tear free one at a time as ammunition. The mid segment covers the
   // drive, so cutting the middle literally slows the thing.
   {
-    id: 'casket_worm', name: 'Casket Worm', shipId: 'ship_ironback',
+    id: 'casket_worm', name: 'Casket Worm', kind: 'Worm', shipId: 'ship_ironback',
     silhouette: 'dreadnought_enemy', factionId: 'faction_reach',
     aiArchetype: 'brawler', levelRange: [4, 6],
     // DUST P6 (BS-7): the grave-worm does not trade passes — it GRINDS. pack_pursuit holds the
@@ -794,7 +794,7 @@ export const ENEMY_TYPES = [
   // opens its belly cavity to feed; the radiator plates hanging off its flanks are the
   // armor you rip, and the cavity behind them is the weak arc you feed.
   {
-    id: 'furnace_maw', name: 'Furnace Maw', shipId: 'ship_ironback',
+    id: 'furnace_maw', name: 'Furnace Maw', kind: 'Furnace', shipId: 'ship_ironback',
     silhouette: 'bruiser_armor', factionId: 'faction_pitborn',
     aiArchetype: 'miniboss_capital', levelRange: [8, 12],
     combatDoctrineId: 'capital_broadside',
@@ -832,7 +832,7 @@ export const ENEMY_TYPES = [
   // score's plates are the biggest accreted chunks; the core is the deepest tear. Its flak
   // mounts are junk guns bolted into the pile — destructible like everything it wears.
   {
-    id: 'yardmaster', name: 'The Yardmaster', shipId: 'ship_colossus',
+    id: 'yardmaster', name: 'The Yardmaster', kind: 'Yardmaster', shipId: 'ship_colossus',
     silhouette: 'bruiser_armor', factionId: 'faction_pitborn',
     aiArchetype: 'miniboss_capital', levelRange: [10, 14],
     combatDoctrineId: 'capital_broadside',
@@ -866,7 +866,7 @@ export const ENEMY_TYPES = [
   // welds the exit. The clamp and the emitters are the parts — the torn clamp slab is the
   // best thing in the room to throw.
   {
-    id: 'adjudicator_44c', name: 'Adjudicator 44-C', shipId: 'ship_warden',
+    id: 'adjudicator_44c', name: 'Adjudicator 44-C', kind: 'Adjudicator', shipId: 'ship_warden',
     silhouette: 'patrol_interdict', factionId: 'faction_helix',
     aiArchetype: 'miniboss_capital', levelRange: [10, 14],
     combatDoctrineId: 'capital_broadside',
@@ -901,7 +901,7 @@ export const ENEMY_TYPES = [
   // free before the hulk's spool is bare — plus the bay doors, which are rope-only: the
   // hulk never sheds its own hoard.
   {
-    id: 'hive_hulk', name: 'Hive-Hulk', shipId: 'ship_leviathan',
+    id: 'hive_hulk', name: 'Hive-Hulk', kind: 'Hulk', shipId: 'ship_leviathan',
     silhouette: 'dreadnought_enemy', factionId: 'faction_reach',
     aiArchetype: 'miniboss_capital', levelRange: [12, 16],
     combatDoctrineId: 'capital_broadside',
@@ -936,6 +936,34 @@ export const ENEMY_TYPES = [
 ];
 
 const ENEMY_BY_ID = new Map(ENEMY_TYPES.map((row) => [row.id, row]));
+
+// Frozen rows that join ENEMY_TYPES from other modules cannot grow a field. Their short
+// kind lives here so an arrow never prints the article or the leading adjective.
+const KIND_BY_ID = Object.freeze({
+  last_argument: 'Argument',
+  kilnback: 'Kilnback',
+  mothlight: 'Mothlight',
+  pallet_jack: 'Pallet',
+  enemy_iron_kraken: 'Kraken',
+  enemy_iron_kraken_colossus: 'Colossus',
+});
+const KIND_ARTICLE = /^(?:the|a|an)$/i;
+
+/** The short kind a stranger reads on an edge arrow or the radar. An authored word wins;
+ *  otherwise the last word of the name, never the article "The". */
+export function enemyKindWord(row) {
+  const id = row && typeof row === 'object' ? row.id : '';
+  const authored = (row && typeof row === 'object' && typeof row.kind === 'string' && row.kind.trim())
+    || KIND_BY_ID[id]
+    || '';
+  if (authored && !KIND_ARTICLE.test(authored)) return authored;
+  const name = typeof row === 'string' ? row : (row && row.name) || '';
+  const words = String(name).replace(/['"]/g, '').split(/\s+/).filter(Boolean);
+  for (let i = words.length - 1; i >= 0; i -= 1) {
+    if (!KIND_ARTICLE.test(words[i])) return words[i];
+  }
+  return '';
+}
 
 // ── DUST P6 (BS-7): authored Enemy Mind archetypes ─────────────────────────────
 // The 9-verb utility mind (src/ai/enemyMind) reads a pilot's personality from this

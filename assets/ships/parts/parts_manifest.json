@@ -1678,8 +1678,8 @@
       "category": "hulls",
       "priority": "P0",
       "file": "hulls/hull_miner.glb",
-      "tris": 12991,
-      "bytes": 3960108,
+      "tris": 10863,
+      "bytes": 4018732,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull"
@@ -2422,8 +2422,8 @@
       },
       "factionAccentVariants": {},
       "mount": "origin",
-      "tris": 11928,
-      "bytes": 1216060,
+      "tris": 11964,
+      "bytes": 1636244,
       "hooks": [],
       "sockets": [],
       "bounds": {
@@ -2703,8 +2703,8 @@
       "category": "places",
       "priority": "P2",
       "file": "places/place_cold_locker.glb",
-      "tris": 10022,
-      "bytes": 823492,
+      "tris": 9268,
+      "bytes": 828412,
       "textureSize": 0,
       "tintable": {
         "hull": "Material_Hull",
@@ -5106,9 +5106,9 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_station_billboard.glb",
-      "tris": 6024,
+      "tris": 5932,
       "triangleMetric": "lod0",
-      "bytes": 980032,
+      "bytes": 1213664,
       "textureSize": 256,
       "note": "Forge rebuild of the station information billboard: a framed twin-face lit display on a truss mast with service platform, no text.",
       "hooks": [],
@@ -5681,8 +5681,8 @@
       "category": "places",
       "priority": "P1",
       "file": "places/var_station_kit_concord_v01.glb",
-      "tris": 36744,
-      "bytes": 2936460,
+      "tris": 54966,
+      "bytes": 4139728,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -5710,7 +5710,7 @@
       "bounds": {
         "min": [
           -57.619998931884766,
-          8,
+          -4.702820777893066,
           -57.619998931884766
         ],
         "max": [
@@ -5720,7 +5720,7 @@
         ],
         "dimensionsM": [
           118.8741683959961,
-          42.824501037597656,
+          55.52732181549072,
           116.52775573730469
         ]
       }
@@ -5731,10 +5731,11 @@
       "category": "places",
       "priority": "P1",
       "file": "places/var_station_kit_meridian_v01.glb",
-      "tris": 22528,
-      "bytes": 1848292,
+      "tris": 45992,
+      "bytes": 3387028,
       "textureSize": 1024,
       "tintable": {
+        "hull": "Material_Hull",
         "dark": "Material_Armor",
         "mechanical": "Material_Mechanical",
         "accent": "Material_Accent"
@@ -5759,18 +5760,18 @@
       "bounds": {
         "min": [
           -56.900001525878906,
-          7.860000133514404,
+          -4.702823638916016,
           -57.57682800292969
         ],
         "max": [
           58.20792007446289,
           39.375,
-          58.45966720581055
+          57.57682800292969
         ],
         "dimensionsM": [
           115.1079216003418,
-          31.514999866485596,
-          116.03649520874023
+          44.077823638916016,
+          115.15365600585938
         ]
       }
     },
@@ -5780,8 +5781,8 @@
       "category": "places",
       "priority": "P1",
       "file": "places/var_station_kit_drift_v01.glb",
-      "tris": 31067,
-      "bytes": 2411904,
+      "tris": 51729,
+      "bytes": 3792964,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -5830,12 +5831,13 @@
       "category": "places",
       "priority": "P1",
       "file": "places/var_station_kit_reach_v01.glb",
-      "tris": 24267,
-      "bytes": 1895332,
+      "tris": 47814,
+      "bytes": 3420492,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
         "accent": "Material_Accent"
       },
       "hooks": [],
@@ -5858,7 +5860,7 @@
       "bounds": {
         "min": [
           -54.25,
-          3.3892767429351807,
+          -4.702820777893066,
           -54.25
         ],
         "max": [
@@ -5868,7 +5870,7 @@
         ],
         "dimensionsM": [
           113.94359588623047,
-          40.19833540916443,
+          48.290432929992676,
           108.5
         ]
       }
@@ -5879,8 +5881,8 @@
       "category": "places",
       "priority": "P1",
       "file": "places/var_station_kit_quiet_v01.glb",
-      "tris": 18055,
-      "bytes": 1535868,
+      "tris": 38857,
+      "bytes": 2892468,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -5908,7 +5910,7 @@
       "bounds": {
         "min": [
           -54.72672653198242,
-          6.729812145233154,
+          -4.702820777893066,
           -55.88616180419922
         ],
         "max": [
@@ -5918,7 +5920,7 @@
         ],
         "dimensionsM": [
           110.61288833618164,
-          41.272236347198486,
+          52.70486927032471,
           111.7723274230957
         ]
       }
@@ -5929,8 +5931,8 @@
       "category": "places",
       "priority": "P1",
       "file": "places/var_station_kit_vael_v01.glb",
-      "tris": 25000,
-      "bytes": 1940932,
+      "tris": 47013,
+      "bytes": 3405384,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -5958,7 +5960,7 @@
       "bounds": {
         "min": [
           -53.6212043762207,
-          10,
+          -4.702820777893066,
           -53.99362564086914
         ],
         "max": [
@@ -5968,7 +5970,7 @@
         ],
         "dimensionsM": [
           107.5474739074707,
-          34.70000076293945,
+          49.40282154083252,
           107.98725128173828
         ]
       }
@@ -5979,8 +5981,8 @@
       "category": "places",
       "priority": "P1",
       "file": "places/var_station_kit_frontier_v01.glb",
-      "tris": 23970,
-      "bytes": 1961032,
+      "tris": 46849,
+      "bytes": 3508396,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6008,7 +6010,7 @@
       "bounds": {
         "min": [
           -54.25,
-          6.84250020980835,
+          -4.702820777893066,
           -54.25
         ],
         "max": [
@@ -6018,7 +6020,7 @@
         ],
         "dimensionsM": [
           108.5,
-          36.461721897125244,
+          48.00704288482666,
           108.5
         ]
       }
@@ -6029,8 +6031,8 @@
       "category": "places",
       "priority": "P1",
       "file": "places/var_station_kit_choir_v01.glb",
-      "tris": 21804,
-      "bytes": 1768140,
+      "tris": 46151,
+      "bytes": 3322684,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6079,8 +6081,8 @@
       "category": "places",
       "priority": "P1",
       "file": "places/var_station_kit_helix_v01.glb",
-      "tris": 29803,
-      "bytes": 2337528,
+      "tris": 51910,
+      "bytes": 3786224,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6109,7 +6111,7 @@
       "bounds": {
         "min": [
           -55.900001525878906,
-          10,
+          -4.702820777893066,
           -55.900001525878906
         ],
         "max": [
@@ -6119,7 +6121,7 @@
         ],
         "dimensionsM": [
           111.80000305175781,
-          30.84499740600586,
+          45.547818183898926,
           111.80000305175781
         ]
       }
@@ -6130,12 +6132,13 @@
       "category": "places",
       "priority": "P1",
       "file": "places/var_station_kit_understory_v01.glb",
-      "tris": 25863,
-      "bytes": 1704832,
+      "tris": 50001,
+      "bytes": 3364644,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
         "accent": "Material_Accent"
       },
       "hooks": [],
@@ -6157,19 +6160,19 @@
       "note": "Row 512 canonical-shell kit (the Overgrowth): root-mat band, moss mats, vine runs, spore pods, moss crown with fronds, bio-lamps.",
       "bounds": {
         "min": [
-          -57.62180709838867,
-          -4.2524333000183105,
-          -56.29335403442383
+          -55.147830963134766,
+          -4.300000190734863,
+          -54.44147491455078
         ],
         "max": [
           55.298545837402344,
           47.07927322387695,
-          57.140411376953125
+          54.61403274536133
         ],
         "dimensionsM": [
-          112.92035293579102,
-          51.331706523895264,
-          113.43376541137695
+          110.44637680053711,
+          51.379273414611816,
+          109.05550765991211
         ]
       }
     },
@@ -6179,12 +6182,13 @@
       "category": "places",
       "priority": "P1",
       "file": "places/var_station_kit_fulfillment_v01.glb",
-      "tris": 37723,
-      "bytes": 2650976,
+      "tris": 60562,
+      "bytes": 4152260,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
         "accent": "Material_Accent"
       },
       "hooks": [],
@@ -6207,7 +6211,7 @@
       "bounds": {
         "min": [
           -53.79999923706055,
-          10,
+          -4.702820777893066,
           -53.79999923706055
         ],
         "max": [
@@ -6217,7 +6221,7 @@
         ],
         "dimensionsM": [
           107.5999984741211,
-          30.60000228881836,
+          45.302823066711426,
           107.5999984741211
         ]
       }
@@ -6228,8 +6232,8 @@
       "category": "places",
       "priority": "P1",
       "file": "places/var_station_kit_archive_v01.glb",
-      "tris": 62634,
-      "bytes": 4801028,
+      "tris": 79240,
+      "bytes": 5892200,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6257,7 +6261,7 @@
       "bounds": {
         "min": [
           -53.90000534057617,
-          9,
+          -4.702820777893066,
           -53.96856689453125
         ],
         "max": [
@@ -6267,7 +6271,7 @@
         ],
         "dimensionsM": [
           107.80001068115234,
-          32.87999725341797,
+          46.582818031311035,
           107.93712997436523
         ]
       }
@@ -6278,8 +6282,8 @@
       "category": "places",
       "priority": "P1",
       "file": "places/var_station_kit_pitborn_v01.glb",
-      "tris": 29492,
-      "bytes": 2215480,
+      "tris": 55023,
+      "bytes": 3900656,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6307,7 +6311,7 @@
       "bounds": {
         "min": [
           -54.42133331298828,
-          8.54079532623291,
+          -4.702820777893066,
           -54.366310119628906
         ],
         "max": [
@@ -6317,7 +6321,7 @@
         ],
         "dimensionsM": [
           108.78682327270508,
-          35.33920192718506,
+          48.582818031311035,
           109.33781433105469
         ]
       }
@@ -6328,8 +6332,8 @@
       "category": "places",
       "priority": "P1",
       "file": "places/var_station_kit_verge_v01.glb",
-      "tris": 21796,
-      "bytes": 1785000,
+      "tris": 52610,
+      "bytes": 3671896,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6377,8 +6381,8 @@
       "category": "places",
       "priority": "P2",
       "file": "places/place_tally_post.glb",
-      "tris": 5810,
-      "bytes": 622348,
+      "tris": 5602,
+      "bytes": 628176,
       "textureSize": 128,
       "tintable": {
         "hull": "Material_Hull",
@@ -6452,8 +6456,8 @@
       "category": "places",
       "priority": "P2",
       "file": "places/place_transponder_gate.glb",
-      "tris": 7428,
-      "bytes": 1047376,
+      "tris": 7572,
+      "bytes": 1147704,
       "textureSize": 512,
       "tintable": {
         "dark": "Material_Armor",
@@ -8324,7 +8328,7 @@
       "status": "integration_candidate",
       "wiringStatus": "live_player_bastion",
       "tris": 34806,
-      "bytes": 2134012,
+      "bytes": 2134004,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -8819,7 +8823,7 @@
       "status": "integration_candidate",
       "wiringStatus": "live_player_hornet",
       "tris": 16076,
-      "bytes": 1167952,
+      "bytes": 1167896,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -9313,7 +9317,7 @@
       "status": "integration_candidate",
       "wiringStatus": "live_player_mule",
       "tris": 26746,
-      "bytes": 1721536,
+      "bytes": 1721560,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -9488,7 +9492,7 @@
       "priority": "P2",
       "file": "wholeships/prospector_skiff.glb",
       "tris": 38670,
-      "bytes": 2286144,
+      "bytes": 2286124,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -9600,7 +9604,7 @@
       "priority": "P2",
       "file": "wholeships/repair_tender.glb",
       "tris": 52822,
-      "bytes": 3106704,
+      "bytes": 3106684,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -9705,7 +9709,7 @@
       "priority": "P2",
       "file": "wholeships/salvage_cutter.glb",
       "tris": 37306,
-      "bytes": 2263140,
+      "bytes": 2263044,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -9757,7 +9761,7 @@
       "priority": "P2",
       "file": "wholeships/scrap_sweeper.glb",
       "tris": 34101,
-      "bytes": 2158072,
+      "bytes": 2158048,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -12165,18 +12169,18 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -3.894061326980591,
+          -3.8966124057769775,
           -0.7899999618530273,
           -2
         ],
         "max": [
-          3.7915306091308594,
-          0.8220000267028809,
+          3.7921195030212402,
+          0.8222433924674988,
           2.0999999046325684
         ],
         "dimensionsM": [
-          7.68559193611145,
-          1.6119999885559082,
+          7.688731908798218,
+          1.6122433543205261,
           4.099999904632568
         ]
       }

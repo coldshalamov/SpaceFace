@@ -13,6 +13,7 @@
 // main lane, a 'wheelVerb' DOM descriptor through the lane facade under worker sim.
 
 import { contextActionAllowed } from '../data/inputContexts.js';
+import { PLANET_REGION_RANK } from '../data/planets.js';
 import { isSwarmControls } from '../data/swarmControls.js';
 import { selectedWorldSiteTarget } from '../systems/input.js';
 import { injectFlightRadialsLayouts, syncRadialOwnsFrame } from './orrery/flight-radialsLayouts.js';
@@ -32,25 +33,28 @@ const CHOOSE_DEADZONE = 0.32;         // stick/pointer this far inside the hub p
 // phase 'toggle' = latch slice; 'tap' = one edge. Order is the authored seat on the ring —
 // combat context re-filters the list, so every seat lands on a live slice wherever it opens.
 // Exported so help/settings surfaces can ask "is this verb a wheel slice" from one source.
+// R17 (2026-11-20): the wheel holds only rarely-used actions, at most WHEEL_MAX_SLICES at once.
+// Full stop (X), scan (C) and the mining beam (G) have real keys; reel is the Line's own hold
+// (hold + S pays out); strafe is A/D in the default scheme. Contextual slices (site beam, call-in,
+// scoop) come first so they always fit.
+export const WHEEL_MAX_SLICES = 8;
 export const SLICES = Object.freeze([
-  { action: 'brake',            label: 'Full Stop',    icon: 'brake',    phase: 'toggle' },
-  { action: 'aimedMine',        label: 'Mine Beam',    icon: 'mining',   phase: 'toggle', mineSlice: true },
   { action: 'siteBeam',         label: 'Site Beam',    icon: 'asteroid', phase: 'toggle', needsSite: true },
-  { action: 'reelIn',           label: 'Winch In',     icon: 'line',     phase: 'toggle' },
-  { action: 'reelOut',          label: 'Winch Out',    icon: 'line',     phase: 'toggle' },
-  { action: 'strafeLeft',       label: 'Strafe ←',     icon: 'chevron-left',  phase: 'toggle' },
-  { action: 'strafeRight',      label: 'Strafe →',     icon: 'chevron-right', phase: 'toggle' },
   { action: 'bulletTime',       label: 'Bullet Time',  icon: 'clock',    phase: 'toggle' },
-  { action: 'gyreSnare',        label: 'Gyre Lash',    icon: 'cone',     phase: 'toggle' },
+  // R17: the skim scoop is a deliberate, labelled choice inside a planet's skim band (it used to
+  // hide behind key 5). Shown only where it harvests.
+  { action: 'scoop',            label: 'Scoop',        icon: 'cargo',    phase: 'tap', needsBand: true },
   { action: 'cloak',            label: 'Cloak',        icon: 'pod',      phase: 'tap' },
   { action: 'countermeasure',   label: 'Counter',      icon: 'shield',   phase: 'tap' },
-  { action: 'scanPulse',        label: 'Scan',         icon: 'scan',     phase: 'tap' },
-  { action: 'cycleBomb',        label: 'Ordnance',     icon: 'munitions', phase: 'tap' },
+  { action: 'cycleBomb',        label: 'Bomb type',    icon: 'munitions', phase: 'tap' },
   { action: 'autoFire',         label: 'Auto-Aim',     icon: 'target',   phase: 'tap' },
   { action: 'travelBurn',       label: 'Travel Burn',  icon: 'drive',    phase: 'tap' },
   { action: 'cruise',           label: 'Cruise',       icon: 'engine',   phase: 'tap' },
-  { action: 'jettisonLot',      label: 'Jettison',     icon: 'cargo',    phase: 'tap' },
+  // The beacon is legal ONLY in open space — seated before jettison/pylon so the
+  // WHEEL_MAX_SLICES cap never pushes its one legal context off the ring. Jettison and the
+  // pylon stay reachable through the combat ring, which has seats to spare.
   { action: 'deployBeacon',     label: 'Beacon',       icon: 'beacon',   phase: 'tap' },
+  { action: 'jettisonLot',      label: 'Jettison',     icon: 'cargo',    phase: 'tap' },
   { action: 'deployShieldPylon', label: 'Pylon',       icon: 'energy',   phase: 'tap' },
   // Swarm only: deploys the next bought called charge (turret, wing, dome, decoy). The slice
   // exists only while the swarmCallins director holds a pending call — the allowlist alone
@@ -73,12 +77,21 @@ function sliceAllowed(state, slice, callinPending = 0) {
   if (!contextActionAllowed(state, slice.action)) return false;
   if (slice.needsSite && !selectedWorldSiteTarget(state)) return false;
   if (slice.needsCallin && callinPending <= 0) return false;
+  if (slice.needsBand) {
+    const rec = state && state.planet && state.planet.active ? state.planet.player : null;
+    if (!rec) return false;
+    if (rec.collectorOn === true) return true;
+    return Number(rec.regionRank) >= PLANET_REGION_RANK.skim;
+  }
   return true;
 }
 
 /** The live slices, in ring order. Exported so tests can pin reachability. */
 export function contextWheelSlices(state, callinPending = 0) {
-  return SLICES.filter((slice) => sliceAllowed(state, slice, callinPending));
+  const live = SLICES.filter((slice) => sliceAllowed(state, slice, callinPending));
+  const contextual = live.filter((s) => s.needsSite || s.needsCallin || s.needsBand);
+  const rest = live.filter((s) => !(s.needsSite || s.needsCallin || s.needsBand));
+  return [...contextual, ...rest].slice(0, WHEEL_MAX_SLICES);
 }
 
 export function createContextWheel(ctx) {
@@ -117,6 +130,7 @@ export function createContextWheel(ctx) {
   root.appendChild(overlay);
 
   let open = false;
+  let clickOpened = false;
   let destroyed = false;
   let wedgeEls = [];
   let wedgeSlices = [];
@@ -306,6 +320,7 @@ export function createContextWheel(ctx) {
       ? wedgeSlices[aimIndex] : null;
     if (aimed) { choose(aimed); return; }
     open = false;
+    clickOpened = false;
     wedgeSlices = [];
     wedgeEls = [];
     aimIndex = -1;
@@ -321,8 +336,8 @@ export function createContextWheel(ctx) {
     if (destroyed) return;
     const held = !!(state.input && state.input.actions && state.input.actions.contextWheel === true);
     if (!held) awaitRelease = false;
-    if (held && !open && !awaitRelease) openWheel();
-    else if (!held && open) close(true);
+    if (held && !open && !awaitRelease) { clickOpened = false; openWheel(); }
+    else if (!held && open && !clickOpened) close(true);
     if (!open) return;
     // The context may re-filter mid-hold (a fight ends, a site deselects): the seat layout is
     // stable for the hold, but a slice that went illegal in context simply can't fire.
@@ -332,10 +347,23 @@ export function createContextWheel(ctx) {
     refreshLamps();
   }
 
+  const onEscape = (ev) => {
+    if (!open || !clickOpened || ev.key !== 'Escape') return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    close(false);
+  };
+  if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
+    document.addEventListener('keydown', onEscape, true);
+  }
+
   function destroy() {
     destroyed = true;
     if (open) close();
     if (state.ui) state.ui.contextWheelOpen = false;
+    if (typeof document !== 'undefined' && typeof document.removeEventListener === 'function') {
+      document.removeEventListener('keydown', onEscape, true);
+    }
     for (const off of busOffs) {
       try { if (typeof off === 'function') off(); } catch (_) {}
     }
@@ -346,6 +374,11 @@ export function createContextWheel(ctx) {
   // Flight is left (dock / death / screen) → the verb drops with it, same contract as the
   // neutralized flight input the wheel feeds.
   if (bus && typeof bus.on === 'function') {
+    busOffs.push(bus.on('ui:contextWheelToggle', () => {
+      if (destroyed) return;
+      if (open) close(false);
+      else if (openWheel()) clickOpened = true;
+    }));
     busOffs.push(bus.on('mode:changed', () => { if (open && state.mode !== 'flight') close(); }));
     busOffs.push(bus.on('dock:docked', () => close()));
     // The Call-in slice is gated on a charge actually waiting for deploy — a new run starts

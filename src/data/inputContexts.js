@@ -31,6 +31,20 @@ import {
 
 export const INPUT_CONTEXTS = Object.freeze(['swarm', 'station', 'map', 'combat', 'flight']);
 
+// R17 (2026-11-20): "Nothing may steal keys 1–5 in flight." Decision cards, the hail panel and
+// the comms / wingman radials answer on the five digits the powers never use: 6, 7, 8, 9, 0.
+export const PROMPT_ANSWER_KEYS = Object.freeze(['6', '7', '8', '9', '0']);
+export const PROMPT_ANSWER_SLOTS = PROMPT_ANSWER_KEYS.length;
+/** Slot index (0-based) a key answers, or -1. Accepts KeyboardEvent.code or .key. */
+export function promptAnswerSlot(key) {
+  const m = /^(?:Digit|Numpad)?([0-9])$/.exec(String(key || ''));
+  return m ? PROMPT_ANSWER_KEYS.indexOf(m[1]) : -1;
+}
+/** The keycap printed for an answer slot ('' past the last answer key). */
+export function promptAnswerKey(slot) {
+  return PROMPT_ANSWER_KEYS[slot] || '';
+}
+
 /** The unified map surface plus the legacy ids the normal route no longer opens. */
 export const MAP_CONTEXT_SCREEN_IDS = Object.freeze(['galaxyMap', 'localmap', 'starmap']);
 
@@ -42,16 +56,20 @@ export const FLIGHT_ACTIONS = Object.freeze([
   'siteBeam', 'tether', 'pull', 'shove', 'pin', 'rig', 'scanPulse', 'cruise',
   'deployShieldPylon', 'deployBeacon', 'bulletTime', 'cloak', 'gyreSnare',
   'cycleBomb', 'jettisonLot', 'travelBurn', 'massline', 'contextWheel',
+  // R17: the planet-band skim scoop left key 5; it is its own labelled wheel slice.
+  'scoop',
+  // R17: the mining beam has a real key (G), held.
+  'mine',
 ]);
 
 // The fight set: movement, the gun, the Line, the five powers, the defensive/utility verbs that
-// matter in contact. Travel drive, autopilot, cruise, map/codex/cargo UI and photo/drill are out —
+// matter in contact. Travel drive, autopilot, cruise and the other off-fight verbs are out —
 // except the low-hull flee below (X5 #10): a pilot about to die may always light the long burn.
 export const COMBAT_ACTIONS = Object.freeze([
   'forward', 'reverse', 'yawLeft', 'yawRight', 'strafeLeft', 'strafeRight', 'brake', 'boost',
   'fire', 'countermeasure', 'bomb', 'reelIn', 'reelOut', 'massline', 'tether',
   'pull', 'shove', 'pin', 'rig', 'scanPulse', 'bulletTime', 'cloak', 'gyreSnare',
-  'cycleBomb', 'jettisonLot', 'deployShieldPylon', 'contextWheel',
+  'cycleBomb', 'jettisonLot', 'deployShieldPylon', 'contextWheel', 'scoop',
 ]);
 
 /** A pilot under this hull fraction is in the fight whether or not they have a lock. */
@@ -145,21 +163,20 @@ export function contextActionAllowed(state, action) {
 }
 
 // ---- the UI letter layer ---------------------------------------------------------------------
-// One name per interface key. `ui/input.js` asks THIS gate before it opens a screen, so a fight
-// cannot pull up the chart, the tech tree or the codex mid-turn. The full set is every interface
-// verb the router owns; the combat set is the ones that keep the pilot in the fight (a pause, a
-// read, a lower volume, a save) without leaving it. Station and map keep the full set: those
-// screens are how the player gets back out.
+// Keyboard, gamepad and touch share this interface gate. An active target or low hull still
+// allows an explicit navigation choice, including the chart action advertised by the mission HUD.
+// The combat set reserves unrelated full screens for ordinary flight.
 export const UI_ACTIONS = Object.freeze([
   'pause', 'help', 'map', 'localmap', 'starmap', 'techTree', 'missionLog', 'codex', 'find',
-  'cargo', 'comms', 'fleetCommand', 'claimBase', 'drill', 'band', 'recallObjective',
+  'cargo', 'comms', 'fleetCommand', 'claimBase', 'drill', 'fieldBuild', 'band', 'recallObjective',
   'dismissVoice', 'zoom', 'save', 'load', 'ship', 'footprint', 'range', 'overview', 'debug',
   // Station / map surfaces
   'select', 'confirm', 'back', 'undock',
 ]);
 
 export const COMBAT_UI_ACTIONS = Object.freeze([
-  'pause', 'help', 'missionLog', 'cargo', 'comms', 'find', 'recallObjective', 'dismissVoice',
+  'pause', 'help', 'map', 'localmap', 'starmap', 'missionLog', 'cargo', 'comms', 'find',
+  'recallObjective', 'dismissVoice',
   'zoom', 'save', 'load',
 ]);
 
@@ -184,13 +201,17 @@ export function contextStockBindings(state) {
 // (live keys come from the caller's resolver) or a fixed interface key (text, because those are
 // not rebindable). A saved rebind therefore moves the card, and an action the context refuses is
 // dropped instead of being taught.
+// The Move row names the keys that move the ship in every scheme: W/S thrust, and A/D as either
+// yaw (pilot, classic) or strafe (helm assist). Whichever pair a scheme leaves unbound drops out,
+// so the row reads WASD everywhere instead of printing a wheel fallback for the unbound pair.
+export const MOVE_CARD_ACTIONS = Object.freeze(['forward', 'yawLeft', 'strafeLeft', 'reverse', 'yawRight', 'strafeRight']);
 const CARD_SPECS = Object.freeze({
   flight: Object.freeze([
-    Object.freeze({ actions: Object.freeze(['forward', 'yawLeft', 'reverse', 'yawRight']), verb: 'Move' }),
+    Object.freeze({ actions: MOVE_CARD_ACTIONS, verb: 'Move' }),
     Object.freeze({ fixed: 'Mouse', verb: 'Aim' }),
     Object.freeze({ actions: Object.freeze(['fire']), verb: 'Fire' }),
-    Object.freeze({ actions: Object.freeze(['tether']), verb: 'Line — fire / release' }),
-    Object.freeze({ actions: Object.freeze(['pull', 'shove', 'pin', 'bomb', 'rig']), verb: 'Pull · Shove · Pin · Bomb · Rig' }),
+    Object.freeze({ actions: Object.freeze(['tether']), verb: 'Line: hook, swing, throw' }),
+    Object.freeze({ actions: Object.freeze(['pull', 'shove', 'pin', 'bomb', 'rig']), verb: 'Pull · Shove · Pin · Bomb · Plow' }),
     Object.freeze({ actions: Object.freeze(['boost']), verb: 'Boost' }),
     Object.freeze({ actions: Object.freeze(['contextWheel']), verb: 'Wheel — hold · aim · release' }),
     Object.freeze({ fixed: 'Tab / Backspace', verb: 'Target · clear' }),
@@ -199,11 +220,11 @@ const CARD_SPECS = Object.freeze({
     Object.freeze({ fixed: 'Esc', verb: 'Pause' }),
   ]),
   combat: Object.freeze([
-    Object.freeze({ actions: Object.freeze(['forward', 'yawLeft', 'reverse', 'yawRight']), verb: 'Move' }),
+    Object.freeze({ actions: MOVE_CARD_ACTIONS, verb: 'Move' }),
     Object.freeze({ fixed: 'Mouse', verb: 'Aim' }),
     Object.freeze({ actions: Object.freeze(['fire']), verb: 'Fire' }),
-    Object.freeze({ actions: Object.freeze(['tether']), verb: 'Line — fire / release' }),
-    Object.freeze({ actions: Object.freeze(['pull', 'shove', 'pin', 'bomb', 'rig']), verb: 'Pull · Shove · Pin · Bomb · Rig' }),
+    Object.freeze({ actions: Object.freeze(['tether']), verb: 'Line: hook, swing, throw' }),
+    Object.freeze({ actions: Object.freeze(['pull', 'shove', 'pin', 'bomb', 'rig']), verb: 'Pull · Shove · Pin · Bomb · Plow' }),
     Object.freeze({ actions: Object.freeze(['boost']), verb: 'Boost' }),
     Object.freeze({ actions: Object.freeze(['contextWheel']), verb: 'Wheel — hold · aim · release' }),
     Object.freeze({ fixed: 'Tab / Backspace', verb: 'Target · clear' }),
@@ -229,7 +250,7 @@ const CARD_SPECS = Object.freeze({
 });
 
 /** Join live key glyphs: single characters run together ("WASD"), words stay spaced. */
-function compactKeys(keys) {
+export function compactKeys(keys) {
   const list = keys.filter(Boolean);
   if (!list.length) return '';
   if (list.every((k) => k.length === 1)) return list.join('');
@@ -245,7 +266,11 @@ function compactKeys(keys) {
  */
 export function contextHelpRows(state, resolveKey = null) {
   const ctx = inputContextFor(state);
-  if (ctx === 'swarm') return SWARM_HELP_ROWS;
+  if (ctx === 'swarm') return SWARM_HELP_ROWS.map(([stock, verb, action]) => {
+    if (!action || typeof resolveKey !== 'function') return [stock, verb];
+    const key = resolveKey(action);
+    return [action === 'tether' && key && key !== 'RMB' ? `${key} / RMB` : key || 'Not set', verb];
+  });
   const specs = CARD_SPECS[ctx] || CARD_SPECS.flight;
   const rows = [];
   for (const spec of specs) {

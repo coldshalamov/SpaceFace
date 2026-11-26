@@ -10,7 +10,9 @@
 // Requires: server.js serving the repo root on :8123, Chrome on :29229,
 //           ffmpeg + ffprobe on PATH, playwright-core installed (npm i -D).
 
-import { chromium } from 'playwright-core';
+import { chromium as rawChromium } from 'playwright-core';
+import { quietChromium } from '../../scripts/lib/quietLaunch.mjs';
+const chromium = quietChromium(rawChromium);
 import { spawnSync } from 'node:child_process';
 import { mkdirSync, writeFileSync, rmSync, existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';

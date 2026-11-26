@@ -96,10 +96,11 @@ export function createCeresNinthMouthVisuals({ state, scene }) {
       const rows = state.entityList;
       if (rows) for (let n = 0; n < rows.length; n++) {
         const entity = rows[n];
+        const role = entity?.data?.ninthMouthRole;
+        if (!role) continue;
         if (!entity?.alive || !(entity.hull > 0)
           || state.entities?.get(entity.id) !== entity
           || !Number.isFinite(entity.pos?.x) || !Number.isFinite(entity.pos?.z)) continue;
-        const role = entity.data?.ninthMouthRole;
         const identity = entity.data?.ninthMouthIdentity;
         if (entity.data?.ninthMouthLight === true) {
           if (!Number.isSafeInteger(entity.occupantGeneration)) continue;

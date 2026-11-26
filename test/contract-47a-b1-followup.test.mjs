@@ -5,6 +5,7 @@ import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
 import { createSimulation } from '../src/core/sim.js';
 import { laneSetMode } from '../src/core/simLaneCommands.js';
+import { buildFirstTradeOffer } from '../src/data/economyContractTemplates.js';
 import { save } from '../src/save/saveSystem.js';
 import { addCargo, removeCargo } from '../src/systems/cargo.js';
 import { economy } from '../src/systems/economy.js';
@@ -123,6 +124,28 @@ function receipt(bus, eventName) {
     const off = bus.on(eventName, value => { off(); resolve(value); });
   });
 }
+
+test('the queued story freight boards without taking the course from the job chosen at Helios', t => {
+  const h = bootAtFirstBerth(t, { tutorialAtDock: true });
+  const offer = buildFirstTradeOffer(h.state.meta.seed, { nonce: 'helios' });
+  const board = h.missions.ensureBoard(offer.stationId);
+  board.slots = board.slots.filter(row => row.id !== offer.id);
+  board.slots.push(offer);
+  h.bus.emit('ui:acceptMission', { missionId: offer.id });
+  const freight = h.state.missions.active.find(row => row.sourceOfferId === offer.id);
+  assert.ok(freight, 'Jobs accepts the signed freight');
+  assert.equal(h.state.ui.trackedMissionId, freight.id);
+  assert.equal(h.state.nav.waypoint.missionId, freight.id);
+  assert.equal(h.state.player.cargo.items.cmdty_fuel_cells, 8);
+
+  Object.assign(h.state.ui, { docked: false, dockedStationId: null });
+  h.bus.emit('dock:undocked', { stationId: 'station_helios' });
+
+  assert.equal(h.activeAlloyRun()?.destStationId, 'station_tethys');
+  assert.equal(h.state.player.cargo.items.cmdty_alloys, 6);
+  assert.equal(h.state.ui.trackedMissionId, freight.id);
+  assert.equal(h.state.nav.waypoint.missionId, freight.id);
+});
 
 test('Continue after leaving the first Helios berth points to the open alloy contract before delivery',
   { timeout: 5000 }, async t => {
@@ -255,7 +278,7 @@ test('47-A settlement dispatches the sealed alloy run — §34.7 Book 1 first po
   assert.equal(mission.params.silentRecat, true);
   assert.equal(h.state.ui.trackedMissionId, mission.id);
 
-  // The sealed crate settles its list step at Tycho — but Book 1 stays open:
+  // The sealed crate settles its list step at Tethys — but Book 1 stays open:
   // Scale 4 and the furnace detail are still owed before the beat advances.
   h.bus.emit('dock:docked', { stationId: 'station_tethys' });
   assert.equal(mission.status, 'completed');

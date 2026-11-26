@@ -10,7 +10,7 @@ import {
   buildNewGamePlusOverlay,
 } from '../src/core/newGamePlus.js';
 import { STORY_ENTRY_CONTACT } from '../src/data/narrative.js';
-import { failEncounter } from '../src/story/campaign47a/index.js';
+import { failEncounter, FAIL_RECOVERY_COOLDOWN_S } from '../src/story/campaign47a/index.js';
 import { continuationJobPermitted } from '../src/story/endings/continuationAccess.js';
 import { evaluateEndingEligibility } from '../src/story/endings/index.js';
 import { story as storyProto } from '../src/systems/story.js';
@@ -111,6 +111,34 @@ test('trader, fighter, and salvager reach one Helios opening and a lull does not
   salvager.story.update(0, salvager.state);
   assert.equal(ids(salvager.comms, 'cold_next_berth')[0].text, traderBerth[0].text);
   assert.equal(salvager.state.story.beatIndex, 0);
+});
+
+test('the scheduled first berth survives Continue until the opening job is closed', () => {
+  const h = harness();
+  h.bus.emit('game:started', {});
+  finishTutorial(h);
+  assert.ok(h.state.story.scheduled.some((entry) => entry.id === STORY_ENTRY_CONTACT.commsId));
+
+  const continued = harness();
+  continued.state.onboarding = { ...h.state.onboarding };
+  continued.story.deserialize(structuredClone(h.story.serialize()));
+  continued.bus.emit('save:loaded');
+  continued.state.simTime = 20;
+  continued.story.update(0, continued.state);
+  continued.story.update(0, continued.state);
+  assert.equal(ids(continued.comms, STORY_ENTRY_CONTACT.commsId).length, 1);
+
+  // Missions have closed the opening job while the already-scheduled line waited.
+  h.state.story.beatIndex = 1;
+  const freightCourse = { label: 'Gate → Tethys Junction', pos: { x: 2388, z: 1592 } };
+  h.state.nav.waypoint = freightCourse;
+  h.state.simTime = 20;
+  h.story.update(0, h.state);
+
+  assert.equal(ids(h.comms, STORY_ENTRY_CONTACT.commsId).length, 0);
+  assert.equal(ids(h.comms, 'cold_dockmaster').length, 1);
+  assert.equal(h.state.story.scheduled.some((entry) => entry.id === STORY_ENTRY_CONTACT.commsId), false);
+  assert.equal(h.state.nav.waypoint, freightCourse);
 });
 
 test('NXB-046: a torn-down tutorial rail cannot permanently strand the cold start', () => {
@@ -349,4 +377,58 @@ test('story facts, recovery, and the schedule share state.simTime', () => {
   h.bus.emit('career:origin:declined', { careerId: 'hauler' });
   h.bus.emit('career:ladder:stepDone', { careerId: 'prospector', stepId: 'tow_salvage' });
   assert.equal(h.state.story.facts.length, savedFacts.length, 'a repeated event does not duplicate the fact');
+});
+
+test('a held retry notice survives Continue and expires when the mission beat advances', () => {
+  const h = harness();
+  h.state.onboarding = { active: false, finished: true };
+  h.state.story.beatIndex = 5;
+  h.state.simTime = 5000;
+  failEncounter(h.state, 'chain_failed', h.state.simTime);
+  h.state.simTime += FAIL_RECOVERY_COOLDOWN_S + 1;
+  const lull = h.state.simTime + 3;
+  const station = { stationId: 'station_tethys' };
+  const id = 'story_recovery_5_1';
+  h.state.story.narrativeCalmUntilS = lull;
+  h.bus.emit('dock:docked', station);
+  h.bus.emit('dock:docked', station);
+  assert.equal(h.state.story.campaign47a.beatStatus, 'tracking');
+  assert.equal(h.state.story.scheduled.filter((event) => event.id === id).length, 1);
+  assert.equal(h.state.story.seenComms[id], undefined);
+  assert.equal(ids(h.comms, id).length, 0);
+
+  function resume(blob, beat, at) {
+    const continued = harness();
+    continued.state.onboarding = { ...h.state.onboarding };
+    continued.state.simTime = at;
+    // Missions restores the canonical beat and campaign state before narrative reconcile.
+    continued.state.story = structuredClone(blob.story);
+    continued.state.story.beatIndex = beat;
+    continued.story.deserialize(blob);
+    continued.bus.emit('save:loaded');
+    return continued;
+  }
+
+  const pending = structuredClone(h.story.serialize());
+  // An older save from the same combat hold can carry the premature reservation.
+  pending.story.seenComms[id] = true;
+  const continued = resume(pending, 5, lull - 1);
+  continued.bus.emit('dock:docked', station);
+  assert.equal(continued.state.story.scheduled.filter((event) => event.id === id).length, 1);
+  assert.equal(ids(continued.comms, id).length, 0);
+  continued.state.simTime = lull;
+  continued.story.update(0, continued.state);
+  continued.bus.emit('dock:docked', station);
+  assert.equal(ids(continued.comms, id).length, 1);
+  assert.equal(continued.state.story.seenComms[id], true);
+
+  const heard = resume(structuredClone(continued.story.serialize()), 5, lull);
+  heard.bus.emit('dock:docked', station);
+  assert.equal(heard.state.story.seenComms[id], true);
+  assert.equal(ids(heard.comms, id).length, 0);
+
+  const movedOn = resume(pending, 6, lull);
+  movedOn.story.update(0, movedOn.state);
+  assert.equal(ids(movedOn.comms, id).length, 0);
+  assert.equal(movedOn.state.story.scheduled.some((event) => event.id === id), false);
 });

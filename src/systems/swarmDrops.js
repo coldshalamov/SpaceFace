@@ -20,7 +20,7 @@
 
 import { mulberry32 } from '../core/rng.js';
 import { WEAPONS } from '../data/weapons.js';
-import { validateRunState } from '../core/runState.js';
+import { validateRunStateForTick } from '../core/runState.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
 import { HEAVY_AS_TERRAIN_MASS } from '../combat/impulseKernel.js';
 import { runOwnsReward, createRewardDeathLedger } from '../combat/rewardEligibility.js';
@@ -66,7 +66,7 @@ function liveSwarmRun(state) {
   if (run.kind !== 'survival') return null;
   if (run.phase === 'inactive') return null;
   if (!isSwarmRuleset(run.ruleset)) return null;
-  if (!validateRunState(run).ok) return null;
+  if (!validateRunStateForTick(run, state.tick).ok) return null;
   return run;
 }
 
@@ -104,6 +104,9 @@ export const swarmDrops = {
     // that DOES survive a save is the doubled gun value on the player's mounts. Put every gun back.
     this._unsubs.push(this.bus.on('save:loaded', () => this._reset()));
     this._unsubs.push(this.bus.on('run:ended', () => this._reset()));
+    // Victory reaches the next run via run:started with no run:ended — drop state, placed
+    // turrets, and the seeded drop index must reset there too (siblings already do).
+    this._unsubs.push(this.bus.on('run:started', () => this._reset()));
   },
 
   destroy() {
@@ -406,7 +409,7 @@ export const swarmDrops = {
       name: dropDef.name,
       wave: run.wave,
     });
-    this._emit('toast', { text: dropDef.line, kind: 'good', ttl: 2.5 });
+    this._emit('toast', { text: dropDef.line, kind: 'good', quip: true, ttl: 2.5 });
   },
 
   // ---- Full Rack --------------------------------------------------------------------------
@@ -573,7 +576,7 @@ export const swarmDrops = {
     if (fields && typeof fields.deployOneOffShove === 'function') {
       fields.deployOneOffShove(SWARM_DROP_ARENA_RADIUS);
     }
-    this._emit('camera:shake', { amount: 0.8 });
+    this._emit('camera:shake', { amount: 0.8, cause: 'pickup' });
   },
 
   // ---- Double Scrap -----------------------------------------------------------------------

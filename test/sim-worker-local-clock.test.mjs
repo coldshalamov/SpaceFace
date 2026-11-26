@@ -722,16 +722,17 @@ test('the first freed reply credit sends the contiguous retained tail before the
     send({ kind: 'finalize', seq: 'fifo-barrier' });
     await waitFor(() => replies.some(reply => reply.seq === 'fifo-barrier'));
     const before = ticks();
-    assert.equal(before.length, 4, 'one reply remains retained while all four credits are used');
+    // NO-FREEZE: two credits (one applying, one queued); the other three ticks merge into one retained reply.
+    assert.equal(before.length, 2, 'the rest is retained while both credits are used');
     send({ kind: 'clockAck', lifecycleGeneration: 0, clockSequence: before[0].clockSequence,
       ackJournalEnd: before[0].journalEnd });
     const after = ticks();
-    assert.equal(after.length, 5, 'the freed credit sends the retained reply during ACK ingress');
-    assert.equal(after[4].clockSequence, after[3].clockSequence + 1);
-    assert.equal(after[4].journalStart, after[3].journalEnd);
-    assert.equal(after[4].journalFullRebuild, false);
-    assert.equal(after[4].spawnInfos.length, 1);
-    assert.equal(after[4].commandSequence, 5);
+    assert.equal(after.length, 3, 'the freed credit sends the retained reply during ACK ingress');
+    assert.equal(after[2].clockSequence, after[1].clockSequence + 1);
+    assert.equal(after[2].journalStart, after[1].journalEnd);
+    assert.equal(after[2].journalFullRebuild, false);
+    assert.equal(after[2].spawnInfos.length, 3, 'the merged reply carries every retained spawn in order');
+    assert.equal(after[2].commandSequence, 5);
   } finally {
     send({ kind: 'shutdown', seq: 'fifo-shutdown' });
     await waitFor(() => replies.some(reply => reply.seq === 'fifo-shutdown'));
@@ -912,11 +913,10 @@ test('coalesced journal keeps generation reuse ordering, type remaps, and SAB bo
   }
 });
 
-test('a two-second presentation stall resumes without teleporting the world ahead', { timeout: 120000 }, async () => {
+test('the real worker publishes motion across more than two seconds without presentation', { timeout: 120000 }, async () => {
   const replies = [];
   let receive;
   let workerError;
-  let heartbeat;
   const worker = new Worker(new URL('./fixtures/whole-sim-browser-worker-thread.mjs', import.meta.url), { type: 'module' });
   const state = createGameState(4242);
   const effects = createTimeEffects(state);
@@ -952,37 +952,20 @@ test('a two-second presentation stall resumes without teleporting the world ahea
     lane.runner.setClockActive(true);
     const latest = () => replies.filter((reply) => reply.kind === 'clockTick').at(-1);
     await waitFor(() => latest()?.clockDiagnostics?.scale === 1 && (latest()?.stateTick || 0) >= 4, 60000);
-    // Simulate a 2 s main-thread stall: no presentation beats at all. The world
-    // may only step inside the initial hold window, never through the stall.
+    // Keep the clock active while presentation stops producing heartbeats.
     lane.runner.heartbeat();
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    const heldTick = latest()?.stateTick || 0;
-    const heldSimTime = latest()?.simTime || 0;
-    // Foreground presentation resumes its recurring beats; the world must resume from the held pose — a
-    // teleport would replay ~120 owed ticks and land simTime ~2 s ahead.
-    lane.runner.heartbeat();
-    heartbeat = setInterval(() => lane.runner.heartbeat(), 16);
-    await waitFor(() => (latest()?.stateTick || 0) > heldTick + 2, 30000);
-    await new Promise((resolve) => setTimeout(resolve, 600));
-    const resumed = latest() || {};
-    const resumedAdvance = (resumed.stateTick || 0) - heldTick;
-    assert.ok(heldTick <= 45,
-      `during a 2 s stall the clock held (tick reached ${heldTick}, a runaway would be ~120+)`);
-    assert.ok(resumedAdvance <= 60,
-      `after the stall the world resumed at run rate (+${resumedAdvance} ticks in ~0.6 s, a teleport would burst ~105)`);
-    assert.ok((resumed.simTime || 0) - heldSimTime <= 1.2,
-      `simTime did not jump seconds ahead on resume (+${((resumed.simTime || 0) - heldSimTime).toFixed(2)} s)`);
-    assert.ok((resumed.clockDiagnostics?.heartbeatHolds || 0) > 0,
-      'the worker recorded the presentation-stall hold');
+    const start = latest().stateTick;
+    const time = latest().simTime;
+    await waitFor(() => (latest()?.stateTick || 0) >= start + 125, 30000);
+    assert.ok(latest().simTime - time >= 2, 'world time advanced without a presentation heartbeat');
     assert.equal(workerError, undefined);
   } finally {
-    clearInterval(heartbeat);
     lane?.close();
     await worker.terminate();
   }
 });
 
-test('a foreground heartbeat arriving before a throttled timer discards the hidden wall interval', async (t) => {
+test('an explicit lifecycle transition discards the hidden interval and invalidates the old timer', async (t) => {
   const previousSelf = globalThis.self;
   const replies = [];
   globalThis.self = { postMessage: (reply) => replies.push(reply) };
@@ -1021,19 +1004,23 @@ test('a foreground heartbeat arriving before a throttled timer discards the hidd
     send({ kind: 'clockControl', active: true, generation: 1, timeScale: 1 });
     await settle();
     send({ kind: 'laneHeartbeat' });
-    now += 1000;
-    send({ kind: 'laneHeartbeat' });
-    await fireClock();
+    const hiddenTimer = [...timers.values()][0];
+    send({ kind: 'clockControl', active: false, generation: 2, timeScale: 1 });
+    await settle();
+    now += 1500;
+    hiddenTimer();
+    await settle();
     assert.equal(replies.filter((reply) => reply.kind === 'clockTick').length, 0,
-      'a timer overdue across the gap may not publish a catch-up step');
+      'the timer from an inactive lifecycle cannot step the world');
 
+    send({ kind: 'clockControl', active: true, generation: 3, timeScale: 1 });
+    await settle();
     now += 1000 / 60 + 1;
     await fireClock();
     const first = replies.find((reply) => reply.kind === 'clockTick');
     assert.ok(first, 'one fresh interval resumes simulation');
     assert.equal(first.clockDiagnostics.steps, 1);
     assert.equal(first.clockDiagnostics.shedSteps, 0);
-    assert.equal(first.clockDiagnostics.heartbeatHolds, 1);
 
     send({ kind: 'clockAck', clockSequence: first.clockSequence, ackJournalEnd: first.journalEnd });
     await settle();
@@ -1168,12 +1155,8 @@ test('overdue worker wakes yield a timer and discard obsolete posted tasks', asy
     heartbeat();
     missed();
     await settle();
-    assert.equal(ticks(), beforeObsolete, 'a pending task cannot charge a missed heartbeat');
-    assert.ok(clockTimer()[1].delay > 0, 'foreground return starts a fresh deadline');
-
-    now += 1000 / 60 + 1;
-    await fireTimer();
-    assert.equal(tasks.length, 1);
+    assert.equal(ticks(), beforeObsolete + 1, 'presentation silence does not invalidate the pending wake');
+    assert.equal(tasks.length, 1, 'bounded debt is left to a later task');
     const beforeShutdown = ticks();
     send({ kind: 'shutdown', seq: 'overdue-wake-shutdown' });
     await settle();
@@ -1456,10 +1439,10 @@ test('a stale local completion cannot close a replacement command', async (t) =>
   assert.equal(f.lane.runner.isClosed(), false);
 });
 
-test('DOM input batches coalesce onto one transport post per window', async (t) => {
+test('pointer motion is latest-wins state: it rides the next frame batch, edges stay ordered and immediate', async (t) => {
   const f = makeWatchdogFixture(t);
   f.lane.runner.setClockActive(true);
-  laneDomEvent({ type: 'resize' });
+  laneDomEvent({ type: 'keydown', code: 'KeyQ', pressed: true });
   const first = f.posts.at(-1);
   assert.equal(first.kind, 'clockCommand', 'the leading event posts immediately');
   f.receive({
@@ -1483,8 +1466,11 @@ test('DOM input batches coalesce onto one transport post per window', async (t) 
   const dragged = f.posts.at(-1);
   assert.equal(dragged.kind, 'clockCommand', 'discrete input still posts immediately');
   assert.notEqual(dragged.commandSequence, first.commandSequence);
-  assert.equal(dragged.commands.filter((env) => env.t === 'dom').length, 4,
-    'the immediate post carries the coalesced stream envelopes ahead of the key');
+  // NO-FREEZE step 4: pointer motion is latest-wins state — one row per pointer event type
+  // (movement summed), landing ahead of the key edge that drags it.
+  const domRows = dragged.commands.filter((env) => env.t === 'dom');
+  assert.equal(domRows.length, 3, 'mousemove + pointermove (one latest row each) ahead of the key');
+  assert.equal(domRows[2].p.d.type, 'keydown', 'the key edge stays last, in order');
   f.receive({
     kind: 'clockTick', clockSequence: 2, commandSequence: dragged.commandSequence,
     clockDiagnostics: { appliedCommandSequence: dragged.commandSequence },
@@ -1496,8 +1482,8 @@ test('DOM input batches coalesce onto one transport post per window', async (t) 
   laneDomEvent({ type: 'pointermove', clientX: 102, clientY: 100 });
   assert.equal(f.posts.length, postsAfterKey, 'a fresh stream event re-enters the window');
 
-  // The trailing flush ships the queued envelope.
-  t.mock.timers.tick(9);
+  // Without a presented frame, the fallback state flush ships the latest pointer row.
+  t.mock.timers.tick(51);
   const batched = f.posts.at(-1);
   assert.equal(batched.kind, 'clockCommand');
   assert.equal(batched.commands.filter((env) => env.t === 'dom').length, 1);
@@ -2179,7 +2165,7 @@ test('SAB presentation ACKs free reply capacity before an earlier directive comp
     const cancel = globalThis.clearTimeout;
     t.mock.method(globalThis, 'setTimeout', (callback, delay, ...args) => {
       const handle = schedule(callback, delay, ...args);
-      if (delay === 3000) ackTimers.add(handle);
+      if (delay === 2000) ackTimers.add(handle);
       return handle;
     });
     t.mock.method(globalThis, 'clearTimeout', (handle) => {
@@ -2248,7 +2234,7 @@ test('SAB presentation ACKs free reply capacity before an earlier directive comp
   }
 });
 
-test('a lost presentation ACK self-heals through a full rebuild instead of freezing the lane', { timeout: 30000 }, async () => {
+test('a lost presentation ACK frees its reply credit after two silent seconds and keeps publishing incrementally (no rebuild, no stop)', { timeout: 30000 }, async () => {
   const hadSelf = Object.prototype.hasOwnProperty.call(globalThis, 'self');
   const previousSelf = globalThis.self;
   const workerReplies = [];
@@ -2298,16 +2284,17 @@ test('a lost presentation ACK self-heals through a full rebuild instead of freez
     const wedgedSteps = wedgedPublish.clockDiagnostics?.steps || 0;
     const repliesBeforeWedge = workerReplies.filter((reply) => reply.kind === 'clockTick').length;
 
-    // No ACK is ever sent. Within the stale-ack budget the worker must declare
-    // it lost, arm a journal rebuild, and publish again — self-healing instead
-    // of retaining indefinitely.
+    // No ACK is ever sent. NO-FREEZE rule (2026-11-21): the reply channel is FIFO, so a late
+    // ACK is never a lost range. After two silent seconds the worker frees the credit and keeps
+    // publishing ordered incremental replies — never a full rebuild (the old 3 s 'blip').
     await waitFor(() => workerReplies.some((reply) => reply.kind === 'clockTick'
-      && reply.journalFullRebuild === true
-      && (reply.clockDiagnostics?.staleAckRecoveries || 0) >= 1), 8000);
+      && (reply.clockDiagnostics?.staleAckRecoveries || 0) >= 1), 6000);
 
     const recovered = workerReplies.filter((reply) => reply.kind === 'clockTick'
-      && reply.journalFullRebuild === true
       && (reply.clockDiagnostics?.staleAckRecoveries || 0) >= 1).at(-1);
+    assert.equal(workerReplies.some((reply) => reply.kind === 'clockTick' && reply.journalFullRebuild === true
+      && reply.clockSequence > wedgedPublish.clockSequence), false,
+    'a late ACK must never trigger a full journal rebuild');
     assert.ok(
       recovered.clockDiagnostics.steps > wedgedSteps,
       'the authoritative clock kept stepping through the wedged publish instead of stopping',
@@ -2353,7 +2340,7 @@ test('foreground heartbeats recover an expired reply even when the watchdog time
     await waitFor(() => replies.some(reply => reply.kind === 'ready'));
     t.mock.method(performance, 'now', () => now() + wallOffset);
     t.mock.method(globalThis, 'setTimeout', (fire, delay, ...args) => {
-      if (delay !== 3000) return setTimer(fire, delay, ...args);
+      if (delay !== 2000) return setTimer(fire, delay, ...args);
       watchdogTimer = fire;
       return fire;
     });
@@ -2382,8 +2369,11 @@ test('foreground heartbeats recover an expired reply even when the watchdog time
     assert.equal(replies.at(-1).unacked, 0, 'a foreground beat clears expired credits without the timer');
     assert.equal(replies.at(-1).staleAckRecoveries, 1);
     advance(3);
+    // NO-FREEZE: the freed credit publishes the next ordered reply; no full rebuild.
     await waitFor(() => replies.some(reply => reply.kind === 'clockTick'
-      && reply.journalFullRebuild === true && reply.clockSequence > wedged.clockSequence));
+      && reply.clockSequence > wedged.clockSequence));
+    assert.equal(replies.some(reply => reply.kind === 'clockTick' && reply.journalFullRebuild === true
+      && reply.clockSequence > wedged.clockSequence), false, 'a late ACK never rebuilds the journal');
     assert.ok(lastTick().clockDiagnostics.steps > wedged.clockDiagnostics.steps);
 
     delayed();
@@ -2597,4 +2587,48 @@ test('freeze recorder stays quiet while paused or outside flight', async (t) => 
   assert.equal(f.lane.getDiagnostics().freezeEpisodes.length, 1,
     're-entering advancing flight re-arms the recorder');
   assert.equal(f.lane.getDiagnostics().freezeActive, true);
+});
+
+test('an id recycled three times inside one merged reply ends with its newest life on main (facade and drawn world)', async (t) => {
+  const hadSelf = Object.prototype.hasOwnProperty.call(globalThis, 'self');
+  const previousSelf = globalThis.self;
+  globalThis.self = { postMessage() {} };
+  let worker;
+  try {
+    worker = await import(`../src/core/wholeSimBrowserWorker.js?recycle3-${Date.now()}`);
+  } finally {
+    if (hadSelf) globalThis.self = previousSelf; else delete globalThis.self;
+  }
+  const f = makeFixture(t);
+  // Three ticks, each recycling id 9 into a new life, merged into ONE retained reply on the worker.
+  const tickReply = (n, start, rows, infos) => ({
+    kind: 'clockTick', clockSequence: n, lifecycleGeneration: 0, journalValid: true,
+    journalStart: start, journalEnd: start + rows.length, pack: journalPack(start, rows),
+    completedTick: { sequence: n, tick: n, journalStart: start, journalEnd: start + rows.length },
+    spawnInfos: infos, stateTick: n, simTime: n / 60,
+  });
+  const first = tickReply(1, 0, [
+    { kind: 1, entityId: 9, generation: 1, type: 'ship', tick: 1, x: 1 },
+  ], [{ entityId: 9, type: 'ship', occupantGeneration: 101 }]);
+  const second = tickReply(2, 1, [
+    { kind: 2, entityId: 9, generation: 1, type: 'ship', tick: 2 },
+    { kind: 1, entityId: 9, generation: 2, type: 'ship', tick: 2, x: 2 },
+  ], [{ entityId: 9, type: 'ship', occupantGeneration: 102 }]);
+  const third = tickReply(3, 3, [
+    { kind: 2, entityId: 9, generation: 2, type: 'ship', tick: 3 },
+    { kind: 1, entityId: 9, generation: 3, type: 'ship', tick: 3, x: 3 },
+  ], [{ entityId: 9, type: 'ship', occupantGeneration: 103 }]);
+  const merged = worker.localMergeReply(worker.localMergeReply(first, second), third);
+  worker.localMaterializePack(merged);
+  assert.equal(merged.pack.count, 5, 'the middle life keeps both its spawn and its destroy');
+  f.receive(merged);
+  assert.equal(f.state.entities.get(9)?.occupantGeneration, 103, 'the facade holds the newest occupant');
+  const world = createPresentationWorld();
+  const publisher = createPresentationPublisher(world, f.state, { journal: f.lane.journal });
+  publisher.consume({ journal: f.lane.journal, journalStart: 0, journalEnd: merged.pack.end,
+    journalValid: true, completedTickCount: 3, lifecycleGeneration: 0 }, { atomic: true });
+  const slot = world.getSlotForEntityId(9);
+  assert.ok(slot >= 0);
+  assert.equal(world.sourceGenerations[slot], 3, 'the drawn world holds the newest journal life');
+  assert.equal(world.x[slot], 3);
 });

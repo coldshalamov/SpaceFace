@@ -509,7 +509,7 @@ function heatWords(reading) {
   if (reading.held === 'impound') return { clears: 'held at the pound', short: 'held · impounded' };
   if (reading.held === 'docked') return { clears: 'held while docked', short: 'held · docked' };
   if (reading.held === 'inside') return { clears: 'held inside the search zone', short: 'held · inside the zone' };
-  return { clears: `clears in ${clearsText(reading.clearsIn)} outside a ${Math.round(reading.radius).toLocaleString('en-US')} u search zone`, short: 'clears in' };
+  return { clears: `clears in ${clearsText(reading.clearsIn)} outside a ${Math.round(reading.radius).toLocaleString('en-US')} m search zone`, short: 'clears in' };
 }
 
 export const footprintScreen = {
@@ -906,7 +906,7 @@ export const footprintScreen = {
       top = bounty > 0 ? 'No search on you · the bounty stands' : (recordWord ? 'No search on you' : 'Clean record · no search on you');
       rule = recordWord ? '' : (settled ? `${counted(settled, 'chain', 'chains')} settled${older ? ` · ${older} older` : ''}` : 'No chain on the record');
     } else {
-      const zone = `Search zone ${Math.round(reading.radius).toLocaleString('en-US')} u`;
+      const zone = `Search zone ${Math.round(reading.radius).toLocaleString('en-US')} m`;
       if (reading.held === 'impound') top = 'Impounded · recover the hull at the pound';
       else if (reading.held === 'docked') top = `${zone} · the clock holds while docked`;
       else if (reading.held === 'inside') top = `${zone} · inside it · the clock holds`;

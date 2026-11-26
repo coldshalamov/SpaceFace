@@ -35,9 +35,9 @@ test('FB-055 one readout names output per day and the limit, seed 4242', () => {
   assert.equal(fromState.lines[0].outputPerDay, 1440);
   assert.equal(fromState.lines[0].unit, 'cr');
   assert.equal(fromState.lines[3].outputPerDay, 720);
-  assert.equal(fromState.lines[3].unit, 'u');
-  assert.match(fromState.lines[3].text, /Helios Claim — 720 u\/day, limited by Hold is full/);
-  assert.match(fromState.lines[1].text, /Moth — 2880 cr\/day, limited by No fuel/);
+  assert.equal(fromState.lines[3].unit, 'units');
+  assert.match(fromState.lines[3].text, /Helios Claim: 720 units a day, limited by Hold is full/);
+  assert.match(fromState.lines[1].text, /Moth: 2880 cr a day, limited by No fuel/);
   assert.equal(fromState.sentence.includes('drone_hauler'), false);
   assert.equal(fromState.crest.includes('Hold is full') || fromState.crest.includes('No fuel'), true);
 
@@ -48,7 +48,7 @@ test('FB-055 one readout names output per day and the limit, seed 4242', () => {
       receipt: { result: 'paid', credited: 40 },
     }) });
     const text = textLines(node).join('\n');
-    assert.match(text, /Hauler — 1440 cr\/day/);
+    assert.match(text, /Hauler: 1440 cr a day/);
     assert.equal(text.split('1440').length - 1, 1, 'each asset is one line, not a sentence and a list');
     assert.match(text, /Trader run paid 40 cr/);
     const buttons = [];

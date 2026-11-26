@@ -9,8 +9,8 @@
 //          into design/program/player-truth/<label>/; scratch frames stay) · --prune-frames (opt-in delete of scratch frames after --evidence; default off)
 //   gate:  --gate (idle pass + active pass to round 3; UNKNOWN on core checks = FAIL)
 //          --gate=idle or --gate=active runs one of those passes · --viewports=960x540,1280x720,1920x1080
-//          --hull=all|<starter id> · --baseline=<git ref> (before/after table) · --baseline-source=<manifest>
-//          --candidate-source=<manifest> tests explicit uncommitted source/assets; it is not a Git baseline
+//          --hull=all|<starter id> · --baseline=<git ref> --baseline-verdict=<saved capture> · --baseline-source=<manifest>
+//          --candidate-source=<manifest> tests explicit uncommitted source or asset hash pins
 //   diagnostic: --vfx-attribution enumerates per-draw VFX deltas only at a threat-hidden sample (up to 65 extra draws)
 //          browser: bundled Chromium
 //          (`npx playwright install chromium`), else CHROME_PATH or /opt/google/chrome/chrome
@@ -46,7 +46,7 @@ import { analyzeReadability } from './readability.mjs';
 import { buildContactSheet } from './contactSheet.mjs';
 import { renderVerdict, printSummary } from './verdict.mjs';
 import { verifyHarnessEnvironment, ENVIRONMENT_EXIT, renderEnvironmentAbort, quoteLoadError } from './environment.mjs';
-import { bootToMenu, crucibleToArmory, readLoadError, waitUntilFlight, readArmoryShelf, classifyOfferRead, readFittedRows, auditItems, swapProbe, armoryLaunchWord, waitForPreparationLaunch, clickText, waitBootOverlayGone, adventureToFlight, racingToFlight, listDoorArenas, listHulls, installFirstLightPromptHandler, readLaunchedRunSeed, T } from './routes.mjs';
+import { bootToMenu, crucibleToArmory, readLoadError, waitUntilFlight, readArmoryShelf, classifyOfferRead, fitFreeStartingGun, readFittedRows, auditItems, swapProbe, armoryLaunchWord, waitForPreparationLaunch, clickText, waitBootOverlayGone, adventureToFlight, racingToFlight, listDoorArenas, listHulls, installFirstLightPromptHandler, readLaunchedRunSeed, T } from './routes.mjs';
 import { waitSim, simNow, wallNow, controlProbes, fightBeat, cruiseBeat, readPlaySample, drainPlayerTruth, noteKey, foldTargetRejections } from './driver.mjs';
 import { createPlayWatch, formatPlayStop } from './playWatch.mjs';
 import { createFreezeWatch, readHostPressure } from './freezeWatch.mjs';
@@ -312,7 +312,7 @@ export async function awaitRoundHandoff(page, {
 }
 
 export function parseArgs(argv) {
-  const a = { mode: 'swarm', arena: null, seed: 4242, rounds: 3, duration: null, wall: null, idle: 6, headed: false, viewport: null, viewports: null, hull: null, gate: false, baseline: null, baselineSource: null, candidateSource: false, out: null, evidence: false, pruneFrames: false, shotEvery: null, tag: null, fight: false, vfxAttribution: false, fortify: false, startRound: null };
+  const a = { mode: 'swarm', arena: null, seed: 4242, rounds: 3, duration: null, wall: null, idle: 6, headed: false, viewport: null, viewports: null, hull: null, gate: false, baseline: null, baselineVerdict: null, baselineSource: null, candidateSource: false, out: null, evidence: false, pruneFrames: false, shotEvery: null, tag: null, fight: false, vfxAttribution: false, fortify: false, startRound: null };
   for (const raw of argv) {
     const m = raw.match(/^--([^=]+)(?:=(.*))?$/); if (!m) continue;
     const [, k, v] = m;
@@ -330,6 +330,14 @@ export function parseArgs(argv) {
     else if (k === 'gate') a.gate = v == null || v === '' || v === 'true' ? true : v;
     else if (k === 'shot-every') a.shotEvery = Number(v);
     else if (k === 'duration' || k === 'wall') a[k] = Number(v);
+    else if (k === 'baseline') {
+      if (!v?.trim()) throw new Error('--baseline requires a Git ref');
+      a.baseline = v;
+    }
+    else if (k === 'baseline-verdict') {
+      if (!v?.trim()) throw new Error('--baseline-verdict requires a saved verdict path');
+      a.baselineVerdict = v;
+    }
     else if (k === 'baseline-source' || k === 'candidate-source') {
       if (v == null || !String(v).trim()) throw new Error(`--${k} requires a manifest path`);
       if (a.baselineSource) throw new Error('choose only one source overlay');
@@ -341,7 +349,11 @@ export function parseArgs(argv) {
   if (a.fortify && a.mode !== 'swarm') throw new Error('--fortify requires --mode=swarm');
   if (a.startRound != null && a.mode !== 'swarm') throw new Error('--start-round requires --mode=swarm');
   if (!MODES.includes(a.mode)) throw new Error(`--mode must be one of ${MODES.join(', ')}`);
-  if (a.candidateSource && a.baseline) throw new Error('--candidate-source cannot be used as a Git performance baseline');
+  if (a.candidateSource && (a.baseline || a.baselineVerdict)) throw new Error('--candidate-source cannot be used with a Git performance baseline');
+  if (a.baseline && !a.baselineVerdict) {
+    throw new Error('Use --baseline=<git ref> with --baseline-verdict=<saved capture>. To compare two saved runs, use scripts/player-truth/compare.mjs.');
+  }
+  if (a.baselineVerdict && !a.baseline) throw new Error('--baseline-verdict requires --baseline=<git ref>');
   // SwiftShader fill cost dominates a software run; a smaller canvas keeps a bounded run in minutes.
   a.viewport = a.viewport || (a.headed ? '1280x720' : '960x540');
   a.viewportList = a.viewports ? String(a.viewports).split(',').map((x) => x.trim()).filter((x) => /^\d+x\d+$/.test(x)) : [a.viewport];
@@ -445,13 +457,6 @@ export function environmentReportLines(outcomes) {
   return (outcomes || []).filter((o) => o && o.verdict === 'ENVIRONMENT').map((o) => `player-truth ENVIRONMENT: ${o.label} — harness environment, not a gameplay FAIL`);
 }
 
-/** A baseline extract that refused to start (low disk) is an environment result, not a harness crash. */
-export function absorbBaselineEnvironment(outcomes, err) {
-  if (!(err && err.environment)) return false;
-  outcomes.push({ verdict: 'ENVIRONMENT', label: 'baseline-assets' });
-  return true;
-}
-
 /** Starter-fight pacing watch: shots, encounter beats and the post-combat silence, in sim seconds. */
 async function installPacingWatch(page) {
   await page.evaluate(() => {
@@ -517,6 +522,7 @@ function compactSourceOverlayIdentity(identity) {
     sourceOverlayDigest: identity.sourceOverlayDigest || null,
     fileCount: Number.isSafeInteger(identity.fileCount) ? identity.fileCount : null,
     totalBytes: Number.isSafeInteger(identity.totalBytes) ? identity.totalBytes : null,
+    ...(identity.assetPinCount ? { assetPinCount: identity.assetPinCount } : {}),
   } : null;
 }
 
@@ -548,9 +554,10 @@ async function readServedBaselineSource(page, expected) {
       sourceOverlayDigest: identity?.sourceOverlayDigest || null,
       fileCount: Number.isSafeInteger(identity?.fileCount) ? identity.fileCount : null,
       totalBytes: Number.isSafeInteger(identity?.totalBytes) ? identity.totalBytes : null,
+      ...(identity?.assetPinCount ? { assetPinCount: identity.assetPinCount } : {}),
     };
   });
-  const fields = ['schema', 'sourceCommit', 'sourceOverlayDigest', 'fileCount', 'totalBytes'];
+  const fields = ['schema', 'sourceCommit', 'sourceOverlayDigest', 'fileCount', 'totalBytes', 'assetPinCount'];
   const mismatch = fields.find((field) => observed?.[field] !== expected.identity?.[field]);
   if (mismatch) {
     throw new Error(`served source overlay identity mismatch at ${mismatch}: expected ${JSON.stringify(expected.identity)} got ${JSON.stringify(observed)}`);
@@ -568,6 +575,7 @@ async function runOne(args, arena, extra = {}) {
   const sourceAtStart = readSourceState();
   const label = [args.mode, arena ? slug(arena) : null, extra.hull ? slug(extra.hull) : null, extra.vpTag ? args.viewport : null, args.tag ? slug(args.tag) : null].filter(Boolean).join('-');
   const outDir = runOutputDirectory(args, label, extra.multiple);
+  extra.checkOutput?.(outDir);
   rmSync(outDir, { recursive: true, force: true }); mkdirSync(path.join(outDir, 'frames'), { recursive: true });
   const [vwStr, vhStr] = args.viewport.split('x'); const vw = Number(vwStr); const vh = Number(vhStr);
   const wallCapMs = (args.wall || (args.headed ? 10 : 40)) * 60000;
@@ -886,45 +894,33 @@ async function runOne(args, arena, extra = {}) {
         await beginImpulseObserver(opening.tick, opening.wave);
       }
       if (args.mode === 'swarm') {
-        // A --start-round run's armory button reads "Launch round N", not "round 1". The
-        // stock wait greps only round 1, so feed it a snap that accepts any numbered round
-        // and reports the mid-round "Fit out before round N" subtitle as still-warming.
-        const readAnyRound = () => page.evaluate(() => {
-          const n = (s) => String(s || '').replace(/\s+/g, ' ').trim();
-          const root = document.getElementById('screens');
-          const visible = !!(root && root.style.display !== 'none' && root.getAttribute('aria-hidden') !== 'true');
-          const titleEl = document.querySelector('#screens #sf-crucible-draft-title, #screens h1');
-          const subEl = document.querySelector('#screens .sf-cru-sub');
-          const screen = document.querySelector('#screens .k-screen');
-          const stamp = screen && screen.dataset ? screen.dataset.stamp || '' : '';
-          const launch = [...document.querySelectorAll('#screens button')]
-            .some((x) => x.offsetParent && !x.disabled && /Launch round \d+/.test(n(x.textContent)));
-          const sm = window.SF && window.SF.ctx && window.SF.ctx.screenManager;
-          let sub = subEl ? n(subEl.textContent) : '';
-          if (/fit out before round \d+/i.test(sub)) sub = 'fit out before round 1';
-          return { visible, title: titleEl ? n(titleEl.textContent) : '', sub, stamp: n(stamp),
-            top: sm && typeof sm.top === 'function' ? sm.top() : null, launch };
-        }).catch(() => null);
-        await waitForPreparationLaunch(page, startRound != null ? { read: readAnyRound } : {});
+        await waitForPreparationLaunch(page, { round: startRound ?? 1 });
         await waitBootOverlayGone(page);
         await shoot('armory', false);
         const shelf = await readArmoryShelf(page);
         const classified = classifyOfferRead(shelf);
         const doorClaim = doorInfo && doorInfo.doorPrep ? doorInfo.doorPrep.fittedClaimed : 0;
         let fitted = []; let fittedRead = true; let fittedError = null;
+        let starterFit = null;
         try {
+          starterFit = await fitFreeStartingGun(page);
           const fit = await readFittedRows(page);
           fitted = fit.rows || [];
+          if (starterFit && !fitted.some(row => row.visible && row.name === starterFit.name
+            && row.slotLabel === `Hardpoint ${starterFit.slotIndex + 1}`)) {
+            throw new Error(`The fitted ${starterFit.name} was not visible at its recorded hardpoint.`);
+          }
         } catch (err) {
           fittedRead = false;
           fittedError = String(err && err.message || err).split('\n')[0].slice(0, 160);
         }
         const audit = auditItems(args.mode, [...shelf.cards, ...fitted]);
-        const probe = shelf.cards.length && fittedRead
-          ? await swapProbe(page, 3)
-          : { silentSwaps: [], announcedSwaps: 0, buys: 0, swapProbe: shelf.cards.length ? 'not-run' : 'no install possible' };
+        let probe = { silentSwaps: [], announcedSwaps: 0, buys: 0, swapProbe: shelf.cards.length ? 'not-run' : 'no install possible' };
+        if (starterFit && fittedRead) probe.swapProbe = `${starterFit.name} fitted free · Hardpoint ${starterFit.slotIndex + 1}`;
+        else if (shelf.cards.length && fittedRead) probe = await swapProbe(page, 3);
         trace.loadout = {
           items: shelf.cards, fitted, ...audit, ...probe, ...classified,
+          ...(starterFit ? { starterFit } : {}),
           fittedClaimed: Math.max(doorClaim || 0, shelf.fittedClaimed || 0),
           fittedRead, fittedError, doorQuote: doorInfo && doorInfo.doorPrep ? doorInfo.doorPrep.quote : null,
           shotT: shots[shots.length - 1] ? shots[shots.length - 1].t : null,
@@ -1205,7 +1201,7 @@ async function runOne(args, arena, extra = {}) {
   const seenSignals = signalsSince(sessionGuard, T0).map((s) => s.name);
   if (seenSignals.length && !environmentLoss) log(`session signal ignored, chrome left running: ${seenSignals.join(', ')}`);
   Object.assign(trace.meta, {
-    label, browserExecutable: executable, hullPicked: extra.hull || null, hullsOffered: doorInfo && doorInfo.hulls ? doorInfo.hulls : null, idleSeconds: args.idle, seedSet: !!(doorInfo && doorInfo.seedSet), arena: arena || (doorInfo && doorInfo.arenas ? (doorInfo.arenas.find((x) => x.pressed) || {}).name : null) || null, seed: args.seed, renderer, softwareGl, headed: args.headed, browserVersion,
+    label, startRound: args.startRound, browserExecutable: executable, hullPicked: extra.hull || null, hullsOffered: doorInfo && doorInfo.hulls ? doorInfo.hulls : null, idleSeconds: args.idle, seedSet: !!(doorInfo && doorInfo.seedSet), arena: arena || (doorInfo && doorInfo.arenas ? (doorInfo.arenas.find((x) => x.pressed) || {}).name : null) || null, seed: args.seed, renderer, softwareGl, headed: args.headed, browserVersion,
     resolution: `${vw}x${vh}`, when: new Date().toISOString(), wallSeconds: Math.round((Date.now() - T0) / 1000),
     simSeconds: t1 && playStart != null ? +(t1.sim - playStart).toFixed(1) : 0, frames: trace.samples.length, shots: shots.length,
     rowStorage: trace.rowStorage || null,
@@ -1340,6 +1336,8 @@ async function assertHarnessEnvironment(baselineSource = null, candidateAssets =
 async function main() {
   sessionGuard = installSessionSignalGuard(process);
   const args = parseArgs(process.argv.slice(2));
+  const comparison = args.baseline ? await import('./compare.mjs') : null;
+  const baseline = comparison?.loadCapturedBaseline({ ref: args.baseline, verdict: args.baselineVerdict, root: ROOT });
   args.baselineSource = resolveBaselineSource(args.baselineSource);
   process.env.SPACEFACE_PLAYER_STORE_DIR = '';
   await assertHarnessEnvironment(args.baselineSource, args.candidateSource);
@@ -1376,9 +1374,11 @@ async function main() {
   const passes = gatePasses(args);
   const outcomes = [];
   const multiple = args.viewportList.length * hulls.length * arenas.length * passes.length > 1;
+  if (baseline?.single && multiple) throw new Error('--baseline-verdict needs a directory containing one saved verdict per matrix cell');
+  const checkOutput = baseline ? (outDir) => comparison.assertCapturedBaselineOutput(baseline, outDir) : null;
   for (const viewport of args.viewportList) for (const hull of hulls) for (const arena of arenas) for (const pass of passes) {
     const a = { ...args, viewport, ...pass, tag: pass.tag !== undefined ? [pass.tag, args.tag].filter(Boolean).join('-') || null : args.tag };
-    const extra = { hull, vpTag: args.viewportList.length > 1, multiple };
+    const extra = { hull, vpTag: args.viewportList.length > 1, multiple, checkOutput };
     const outcome = await runWithEnvironmentRetry(a, arena, extra);
     outcomes.push(outcome);
   }
@@ -1386,15 +1386,7 @@ async function main() {
     console.log('\nplayer-truth matrix:');
     for (const o of outcomes) console.log(`  ${o.verdict.padEnd(10)} ${o.label}  →  ${path.relative(ROOT, path.join(o.outDir, 'verdict.md'))}`);
   }
-  if (args.baseline) {
-    const { runBaseline } = await import('./compare.mjs');
-    try {
-      await runBaseline({ ref: args.baseline, argv: process.argv.slice(2), outcomes, root: ROOT });
-    } catch (err) {
-      if (!absorbBaselineEnvironment(outcomes, err)) throw err;
-      console.error(err.message);
-    }
-  }
+  if (baseline) comparison.compareCapturedBaseline({ baseline, outcomes, root: ROOT });
   for (const line of environmentReportLines(outcomes)) console.log(line);
   const worst = gateExitCode(outcomes.map((o) => o.verdict));
   console.log(`player-truth exit ${worst}`);

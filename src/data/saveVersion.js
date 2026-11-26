@@ -23,4 +23,10 @@
 // v21: physical industry experiences retain original bodies, progress and settlement receipts.
 // v22: loss-owned survey custody and scanner-sidecar recognition survive Continue.
 // v23: Lantern Ward finite work/custody and once-only service settlement.
-export const CURRENT_VERSION = 23;
+// v24: CARGO-BUILD-1 — the hold is a slot bag: cargo.slots/slotCount and salvageBay slots
+//      persist; legacy items maps pack greedily into stacks (over-cap stays aboard).
+// v25: PORT-PRO-FIVE — physical expeditions, the Towjaw encounter and fitted kinetic
+//      catalyst state (towjaw/derelictExpedition/convoyRaid/stormChase/kineticCatalysts).
+// v26: the Adventure Pilot Tree — player.pilot { schema, xp, level, points, nodes, banked, respecs }
+//      (absent before v26; the migration normalizes any stray record and leaves it absent otherwise).
+export const CURRENT_VERSION = 26;

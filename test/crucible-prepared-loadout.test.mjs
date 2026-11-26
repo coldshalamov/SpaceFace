@@ -12,7 +12,8 @@ import { requestSandboxGame, installSandboxGameStartedHook } from '../src/ui/san
 test('Crucible fits its real selected hull before GPU admission and consumes setup only once', () => {
   const state = createGameState(4242);
   const bus = createBus();
-  const world = { enterSector() {}, relocatePlayerInSector() { return true; } };
+  // OVH-04: a Swarm arena entry reports success; an arena the world refuses fails the launch closed.
+  const world = { enterSector() { return true; }, relocatePlayerInSector() { return true; } };
   const registry = { get: name => ({ ships, economy, runSession, world })[name] };
   const ctx = { state, bus, registry, helpers: {} };
   economy.init(ctx);

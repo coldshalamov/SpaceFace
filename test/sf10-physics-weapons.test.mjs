@@ -59,8 +59,8 @@ test('the three SF-10 families exist and declare distinct physics-first identity
     'concussion trades damage for momentum — a much heavier shove than a DPS autocannon');
   assert.ok(CONCUSSION.dmg <= BY_ID.get('wpn_autocannon_s').dmg,
     'concussion damage stays low — the kill comes from terrain, not the gun');
-  assert.equal(CONCUSSION.impulsePerHit, 920,
-    'concussion cannon delivers 920 momentum (~54.76 % of light-hostile cruise)');
+  assert.equal(CONCUSSION.impulsePerHit, 1400,
+    'R5 Thump: "wallops them… they become a weapon themselves" — 1400 momentum, one hit >= 1 screen depth in 2 s');
 
   // Vector mine throws, it does not burn: zero authored hull damage (design Q9).
   assert.equal(VECTOR_MINE.dmg, 0, 'vector mine must deal zero hull damage — it is pure impulse');

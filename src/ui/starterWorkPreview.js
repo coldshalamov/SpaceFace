@@ -9,18 +9,22 @@ const ROUTE = Object.freeze({
   starter_wasp: 'Ram the gate runner',
 });
 
+// The station's work lives behind its Jobs door (the old Contracts tab is gone), so the preview
+// names the door a player will actually see at the berth.
+export const STARTER_WORK_FALLBACK = Object.freeze(['Take a job', 'Pick work your fit can take from the Helios Jobs board.']);
+
 export function starterWorkPreview(starter) {
-  const fallback = ['Dock and pick work', 'Check Contracts at Helios for work your current fit can take.'];
+  const fallback = [...STARTER_WORK_FALLBACK];
   const job = starterJobForShip(starter?.shipId);
   const heading = job && ROUTE[job.id];
   const step = job?.steps?.[0];
   const tool = job && MODULES.find(module => module.id === job.requiredModule)?.name;
   if (!heading || !step || !tool || starter?.id !== job.id) return fallback;
   if (!shipCarriesModule({ fittings: starter.fittedModules }, job.requiredModule)) {
-    return ['Check the local fit', `Helios local work needs a ${tool}. Check your fittings and the current Contracts board.`];
+    return ['Check the local fit', `Helios local work needs a ${tool}. Check your fittings, then the Jobs board.`];
   }
   const condition = job.requiredModule === 'mod_ram_plate' ? `${tool}; guns do not count` : tool;
-  return [heading, `First local ticket: “${step.title}.” ${condition}. Check Contracts at Helios.`];
+  return [heading, `First local ticket: “${step.title}.” ${condition}. On the Helios Jobs board.`];
 }
 
 // Update the existing row in place so a new hull/fit replaces the previous job.

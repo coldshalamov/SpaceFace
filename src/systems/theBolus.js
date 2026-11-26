@@ -322,14 +322,11 @@ function speedOf(entity) {
 
 function push(world, entity, ix, iz) {
   if (!entity) return;
-  if (world.state.settings?.gameplay?.physicsBackend === 'rapier-dynamic') {
-    const mass = Number(entity.physicsBody?.mass) || Number(entity.mass) || 1;
-    queuePhysicsImpulse(entity, { x: ix * mass, y: 0, z: iz * mass });
-    return;
-  }
-  if (!entity.vel) entity.vel = { x: 0, y: 0, z: 0 };
-  entity.vel.x += ix;
-  entity.vel.z += iz;
+  // Every backend routes through the SG-02 membrane (R23): the old direct `vel +=`
+  // fallback bypassed the solver on non-rapier backends and could be silently
+  // discarded or doubled by the next mirror publish.
+  const mass = Number(entity.physicsBody?.mass) || Number(entity.mass) || 1;
+  queuePhysicsImpulse(entity, { x: ix * mass, y: 0, z: iz * mass });
 }
 
 function drive(world, entity, vx, vz) {

@@ -124,10 +124,12 @@ const FORGE_ENV_INTENSITY = Object.freeze({
   hull: 1.15, accent: 1.1, mechanical: 1.6, warning: 1.0, ceramic: 0.7, drive: 0.6, signal: 0.4,
 });
 
-// LOOK-05A: the stone faces of the UV-less `place_rock_*` bodies sample a generated set in object space
-// (rockTriplanar.js). Must run BEFORE installIllustratedSurface so the Look's governor wraps it.
+// LOOK-05A: the stone faces of the UV-less `place_rock_*` and `place_asteroid_*` bodies sample a
+// generated set in object space (rockTriplanar.js). Must run BEFORE installIllustratedSurface so
+// the Look's governor wraps it. Keep authored mineral vein accents (`Material_Stone_vein`) intact.
 function installRockStoneSurface(material, assetId) {
-  if (!material || !/^material_stone/i.test(String(material.name || ''))) return false;
+  const matName = String(material?.name || '');
+  if (!material || !/^material_stone/i.test(matName) || /^material_stone_vein/i.test(matName)) return false;
   if (material.map || material.normalMap) return false;
   const family = rockTriplanarFamilyForAsset(assetId);
   return family ? installTriplanarRock(material, family) : false;

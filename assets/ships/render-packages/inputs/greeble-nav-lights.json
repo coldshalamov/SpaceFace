@@ -7,7 +7,8 @@
   "compiler": {
     "externalizeKtx2": true,
     "externalizeKtx2Hashes": [
-      "830f03af281802085a1ccabfb9abdb7cb736c593a0bafb0ac595d153613867dd"
+      "830f03af281802085a1ccabfb9abdb7cb736c593a0bafb0ac595d153613867dd",
+      "c83d93e155a49edddc5c3ffccba87aff7963f04502375c743fa8d5acd464ebba"
     ],
     "name": "spaceface-render-package-compiler",
     "positionPrecisionPolicy": "standard",
@@ -33,7 +34,8 @@
     "rootNode": "greeble_nav_lights",
     "runtimeAssetId": "SF_GREEBLE_NAV_LIGHTS",
     "sharedKtx2Hashes": [
-      "830f03af281802085a1ccabfb9abdb7cb736c593a0bafb0ac595d153613867dd"
+      "830f03af281802085a1ccabfb9abdb7cb736c593a0bafb0ac595d153613867dd",
+      "c83d93e155a49edddc5c3ffccba87aff7963f04502375c743fa8d5acd464ebba"
     ],
     "slot": "greeble",
     "sourceUrl": "assets/ships/release/parts/greebles/greeble_nav_lights.glb"

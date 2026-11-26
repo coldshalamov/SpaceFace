@@ -14,7 +14,7 @@
 //   - chip text comes ONLY from LENS_CHIPS. The UI never invents a chip word.
 //   - no tutorial copy. It prints once elsewhere (the announcer), never here.
 //   - the card is pointer-transparent, so it can never steal the hover that created it.
-import { SITE_MACHINE_BY_ID } from '../../data/sites.js';
+import { CONTACT_RULES, SITE_MACHINE_BY_ID } from '../../data/sites.js';
 import { commodityDisplayName } from '../commodityNames.js';
 import { COMMODITIES } from '../../data/commodities.js';
 import { arcGauge } from '../orrery/instruments.js';
@@ -22,6 +22,14 @@ import { injectOrrery } from '../orrery/tokens.js';
 import { MATERIALS, ORE_TINTS } from './asteroidRenderer2d.js';
 import { drillTierReqForOre } from '../../systems/drill.js';
 import { machineCapability, oreContactRate } from '../../systems/siteProduction.js';
+import { machineSeating, seatingGrade } from '../../systems/siteReport.js';
+
+// "Seat B": how close this seat is to a perfect one for this machine (the rock's dig grade is the
+// average of these). Null for a machine that reads no rock.
+function seatWord(defId, mode, profile) {
+  const grade = seatingGrade(machineSeating({ defId, mode }, profile));
+  return grade ? `Seat ${grade}` : null;
+}
 import { counted } from '../numberFormat.js';
 
 
@@ -101,7 +109,7 @@ export function placementReason(check) {
   const reasons = {
     'not-hollow': 'The cell must be hollow. Bore it out first.',
     occupied: 'A machine already occupies this cell.',
-    'rover-here': 'The rover is parked there — move it first.',
+    'rover-here': 'The rover is parked there. Move it first.',
     'rover-not-adjacent': 'Drive the rover beside the first installation. A staked claim can build along connected tunnels.',
     'no-access-route': 'Bore a connected tunnel to this cell. Machines cannot be built through solid rock or blocked passages.',
     'entry-reserved': 'Keep the rover entrance clear. Build beside it instead.',
@@ -112,8 +120,15 @@ export function placementReason(check) {
     'out-of-bounds': 'Outside the survey grid.',
     'core-locked': 'The Core does not dismantle.',
     'survey-stale': 'Survey readings no longer match this rock — the assayed formation changed. Pulse the survey scanner again before anchoring.',
+    'skill-locked': 'Needs a Building skill from the Pilot Tree.',
+    'fill-solid': 'That cell is already solid.',
+    'fill-no-claim': 'Stake the claim first. Packed fill is set inside a claim.',
+    'fill-vented': 'A vented gas seam stays open. A gas tap can still draw from it.',
+    'fill-line': 'Clear the cable or lane from this cell first.',
+    'fill-charge': 'A charge is planted there.',
   };
   let text = reasons[check.reason] || 'Placement blocked.';
+  if (check.reason === 'skill-locked' && check.skill && check.skill.line) text = check.skill.line;
   if (check.reason === 'materials' && check.missing) {
     const parts = Object.keys(check.missing).sort().map((g) => `${check.missing[g]} ${commodityName(g)}`);
     text = `Missing: ${parts.join(', ')}. Site stores and ship hold are both checked.`;
@@ -139,6 +154,12 @@ const GHOST_BLOCK = {
   'out-of-bounds': 'Outside the grid',
   'core-locked': 'The Core does not dismantle',
   'survey-stale': 'Survey no longer matches',
+  'skill-locked': 'Needs a Building skill',
+  'fill-solid': 'Already solid',
+  'fill-no-claim': 'Stake the claim first',
+  'fill-vented': 'A gas seam stays open',
+  'fill-line': 'Clear the cable or lane',
+  'fill-charge': 'A charge is planted here',
 };
 
 // ------------------------------------------------------------------ the chip bank (law §6.4)
@@ -150,11 +171,18 @@ const GHOST_BLOCK = {
 // hazard/locked, mint = valid/running.
 export const LENS_CHIPS = Object.freeze({
   bore: { icon: 'bore', word: 'Bore', tone: 'gold' },        // + " 2u"
+  collect: { icon: 'bore', word: 'Collect', tone: 'gold' },
+  kept: { icon: 'farm', word: 'Stays in vein', tone: 'mint' },
+  hold: { icon: 'hazard', word: 'No hold space', tone: 'coral' },
+  spent: { icon: 'bore', word: 'Exhausted', tone: 'coral' },
+  heat: { icon: 'hazard', word: 'Cooling stop', tone: 'gold' },
+  energy: { icon: 'hazard', word: 'Charge stop', tone: 'gold' },
   farm: { icon: 'farm', word: 'Farm', tone: 'mint' },
   hazard: { icon: 'hazard', word: 'Hazard', tone: 'coral' },
   locked: { icon: 'locked', word: 'Locked', tone: 'coral' }, // + " Mk2"
   splits: { icon: 'splits', word: 'Splits seam', tone: 'gold' },
   seat: { icon: 'seat', word: 'Valid seat', tone: 'mint' },
+  seal: { icon: 'hazard', word: 'Seals return tunnel', tone: 'gold' },
   blocked: { icon: 'hazard', word: 'Blocked', tone: 'coral' },
   fault: { icon: 'fault', word: 'Cracked', tone: 'gold' },   // a fracture plane bores fast
   rich: { icon: 'rich', word: 'Rich seam', tone: 'gold' },
@@ -311,7 +339,7 @@ export function seamSplits(field, cols, rows, col, row) {
  * seeing on a hovered cell, and law §6.4 has no line to spend explaining it.
  */
 export function tileLensModel({
-  tile, appearance, telemetry, drillTier = 1, splits = false, formation = null, cutPreview = null,
+  tile, appearance, telemetry, drillTier = 1, splits = false, formation = null, cutPreview = null, anomaly = null,
 }) {
   if (!tile) return null;
   const claim = !formation ? null
@@ -342,32 +370,53 @@ export function tileLensModel({
   if (tile.fault) chips.push(lensChip('fault'));
   if (tile.rich) chips.push(lensChip('rich'));
   if (tile.cracked) chips.push(lensChip('strained'));
-  if (tile.rubble) chips.push(lensChip('rubble'));
+  // Packed fill is stored as a cave-in's rubble is, but it was put there on purpose: no alarm.
+  if (tile.rubble && !tile.fill) chips.push(lensChip('rubble'));
 
   const yieldU = Math.max(0, Math.trunc(Number(tile.yieldU) || 0));
   if (seam && seam.count > 1) numerals.push(`${seam.count} cells`);
-  if (yieldU > 0) numerals.push(seam && seam.count > 1 ? `${yieldU}u/cell` : `${yieldU}u`);
 
   if (type === 'gas') {
     chips.push(lensChip('hazard'));
     chips.push(lensChip('farm'));           // a Gas Tap beside it turns the hazard into fuel
   } else if (type === 'vein' && ore) {
     const req = Math.max(1, Math.trunc(Number(tile.tierReq) || drillTierReqForOre(ore) || 1));
+    const cut = telemetry?.cut;
     if (req > drillTier) chips.push(lensChip('locked', `Mk${req}`));
-    else if (yieldU > 0) chips.push(lensChip('bore', `${yieldU}u`));
+    else if (cut?.kept > 0 && cut.bank === 0) chips.push(lensChip('hold'));
+    else if (cut?.spent > 0 && cut.bank === 0) chips.push(lensChip('spent'));
+    else if ((cut?.bank ?? yieldU) > 0) {
+      chips.push(lensChip(telemetry?.remainingS === 0 ? 'collect' : 'bore', `${cut?.bank ?? yieldU} units`));
+      if (cut?.kept > 0) chips.push(lensChip('kept', `${cut.kept} units`));
+    }
     chips.push(lensChip('farm'));
     if (splits) chips.push(lensChip('splits'));
   } else {
     chips.push(lensChip('farm'));           // matrix and basalt are extractor feedstock
   }
 
+  const canCut = (tile.tierReq || 1) <= drillTier && !(telemetry?.cut?.kept > 0 && telemetry.cut.bank === 0);
+  if (canCut && telemetry?.remainingS >= 0.25 && Number.isFinite(telemetry.remainingS)) {
+    numerals.push(`${telemetry.remainingS.toFixed(1)}s cut`);
+  }
+  if (canCut && telemetry?.stop) chips.push(lensChip(telemetry.stop));
   const progress = telemetry ? Math.max(0, Math.min(1, Number(telemetry.progress) || 0)) : 0;
   let body = type === 'gas' ? 'Preserve for power or fuel'
     : (type === 'vein' ? 'Preserve for continuous extraction' : 'Preserve for silicate production');
   if (type === 'vein' && ore) {
     const rate = oreContactRate(ore);
-    body = rate >= 0.1 ? `Preserve: up to ${Number(rate.toFixed(2))}u/min per extractor`
+    body = rate >= 0.1 ? `Preserve: up to ${Number(rate.toFixed(2))} units per minute per extractor`
       : 'Rare harvest now · preserve for steady supply';
+    // What this cell does for a machine beside it, beyond paying out ore.
+    if (ore === CONTACT_RULES.coolantOre) body = 'Preserve: cools a refinery or fabricator beside it';
+    else if (CONTACT_RULES.conductorOres.includes(ore)) body = 'Preserve: carries power through the rock, no cable';
+  } else if (type === 'rock') {
+    body = 'Preserve: three beside a heavy machine brace its roof';
+  } else if (tile.fill) {
+    body = 'Packed by you: reads as matrix to machines';
+  }
+  if (anomaly && anomaly.status !== 'breached') {
+    body = sentenceCase(`${anomaly.name} · tap for aura or breach`);
   }
   if (cutPreview && (cutPreview.contactsLost > 0 || cutPreview.rateLost > 0 || cutPreview.powerLost > 0 || cutPreview.processBonusLost > 0)) {
     const bits = [];
@@ -394,6 +443,7 @@ export function tileLensModel({
 /** Strata qualifiers on the material name — 'Deep dense basalt', 'Upper silicate matrix'. */
 function strataName(tile, material, ore, type) {
   if (tile.cave) return 'Sealed cave fill';
+  if (tile.fill) return 'Packed fill';
   const base = materialLabel({ material, ore, type });
   const band = tile.stratum === 'heart' ? 'Deep ' : (tile.stratum === 'cap' ? 'Upper ' : '');
   // sentenceCase keeps mid-name qualifiers lowercase: 'Rich deep iron ore', not 'Rich Deep…'.
@@ -406,6 +456,32 @@ function contactCount(geo) {
     + (geo.matrix || 0) + (geo.basalt || 0) + (geo.gas || 0);
 }
 
+const SUPPORT_MACHINE_NUMERAL = {
+  sm_cryo_condenser: '−35% heat',
+  sm_seismic_brace: 'Span +2',
+  sm_capacitor_bank: '120 MwS',
+  sm_mass_driver: '+45% link',
+  sm_harmonic_resonator: '+30% vein',
+};
+
+const SUPPORT_GHOST_HINT = {
+  sm_cryo_condenser: 'Cools adjacent hot machines',
+  sm_seismic_brace: 'Braces 2-cell roof spans',
+  sm_capacitor_bank: 'Buffers 120 MwS surplus power',
+  sm_mass_driver: 'Boosts belt link transfer +45%',
+  sm_harmonic_resonator: 'Amplifies adjacent extractor yield +30%',
+};
+
+/** What the cells around a machine are doing for it, in a stranger's words. Empty when nothing. */
+export function contactGiftLine(cap) {
+  if (!cap) return '';
+  const bits = [];
+  if (cap.coolMultiplier >= 2) bits.push('Ice beside it: runs twice as fast');
+  else if (cap.coolMultiplier > 1) bits.push('Ice beside it: runs half again as fast');
+  if (cap.braced) bits.push('Basalt on three sides: braced');
+  return bits.join(' · ');
+}
+
 export function machineLensModel(pm) {
   if (!pm) return null;
   const def = SITE_MACHINE_BY_ID.get(pm.defId);
@@ -416,15 +492,18 @@ export function machineLensModel(pm) {
   const cap = pm.capability;
   const actual = pm.status?.ratePerMin || {};
   const goods = Object.keys(actual).sort();
-  if (goods.length) numerals.push(`${Object.values(actual).reduce((sum, n) => sum + (Number(n) || 0), 0).toFixed(1)}u/min`);
-  else if (cap && Object.keys(cap.outputsPerMin || {}).length) numerals.push('0u/min');
+  if (goods.length) numerals.push(`${Object.values(actual).reduce((sum, n) => sum + (Number(n) || 0), 0).toFixed(1)} units per minute`);
+  else if (cap && Object.keys(cap.outputsPerMin || {}).length) numerals.push('0 units per minute');
   if (!numerals.length && cap && cap.powerGen > 0) numerals.push(`${cap.powerGen.toFixed(0)} MW`);
+  if (!numerals.length && SUPPORT_MACHINE_NUMERAL[pm.defId]) numerals.push(SUPPORT_MACHINE_NUMERAL[pm.defId]);
   if (cap?.processMultiplier > 1) numerals.push(`+${Math.round((cap.processMultiplier - 1) * 100)}% speed`);
   // A cause line forces the head onto one row, and the NAME is the identity — it never shrinks.
   // So a machine that has something to say gives up its second numeral rather than its name.
   const numeralBudget = status.body ? 1 : 2;
-  if (numerals.length < numeralBudget && pm.geo && def && def.usesGeology) {
-    numerals.push(`${contactCount(pm.geo)} contacts`);
+  if (numerals.length < numeralBudget && pm.geo && def) {
+    const seat = seatWord(pm.defId, pm.mode, pm.geo);
+    if (seat) numerals.push(seat);
+    else if (def.usesGeology) numerals.push(`${contactCount(pm.geo)} contacts`);
   }
   return {
     kind: 'machine',
@@ -434,7 +513,8 @@ export function machineLensModel(pm) {
     numerals: numerals.join(' · '),
     hp: null,
     chips: [],
-    body: status.body,
+    // A fault speaks first. A machine with nothing wrong says what the rock is doing for it.
+    body: status.body || contactGiftLine(cap),
     ring: (pm.geo && (def?.usesGeology || cap?.processContacts > 0)) ? pm.geo.cells : null,
   };
 }
@@ -454,20 +534,56 @@ export function ghostLensModel(defId, check) {
   const output = rates.map(([id, n]) => `${n.toFixed(1)} ${sentenceCase(commodityName(id))}/min`).join(' · ');
   const power = capability && (capability.powerGen || capability.powerDraw);
   const missing = Object.entries(check?.missing || {}).map(([id, n]) => `${n} ${sentenceCase(commodityName(id))}`).join(' + ');
-  const body = ok ? (output || (capability?.processMultiplier > 1
+  const body = ok ? (output || contactGiftLine(capability) || (capability?.processMultiplier > 1
     ? `Preserved faces: +${Math.round((capability.processMultiplier - 1) * 100)}% process speed`
-    : (def?.usesGeology && !capability?.geologyLive ? 'No productive material contacts' : '')))
+    : (def?.usesGeology && !capability?.geologyLive ? 'No productive material contacts' : (SUPPORT_GHOST_HINT[defId] || ''))))
     : (check?.reason === 'materials' && missing ? `Need ${missing}` : (GHOST_BLOCK[check && check.reason] || 'Placement blocked'));
   return {
     kind: 'ghost',
     swatch: null,
     lamp: ok ? 'mint' : 'coral',
     name: sentenceCase(def ? def.name : defId),
-    numerals: profile ? `${contactCount(profile)} contacts${power ? ` · ${capability.powerGen > 0 ? '+' : '−'}${power} MW` : ''}` : '',
+    // The seat grade leads: it is the answer to "is this a good cell for this machine".
+    numerals: profile
+      ? `${seatWord(defId, def?.modes?.[0], profile) ? `${seatWord(defId, def?.modes?.[0], profile)} · ` : ''}${contactCount(profile)} contacts${power ? ` · ${capability.powerGen > 0 ? '+' : '−'}${power} MW` : ''}${capability?.processMultiplier > 1 ? ` · +${Math.round((capability.processMultiplier - 1) * 100)}%` : ''}`
+      : '',
     hp: null,
-    chips: [lensChip(ok ? 'seat' : 'blocked')].filter(Boolean),
+    chips: [lensChip(ok ? (check.sealsReturn ? 'seal' : 'seat') : 'blocked')],
     body,
     ring: (check && check.profile) ? check.profile.cells : null,
+  };
+}
+
+/**
+ * The packed-fill ghost: does a block go here, and what does it give the machines beside it.
+ * `check` is asteroidSites.canPackFill({ preview: true }). Cost is absent for the same reason it is
+ * absent from the machine ghost: the palette key carries it when it cannot be paid.
+ */
+export function fillLensModel(check) {
+  const ok = !!(check && check.ok);
+  const gain = (check && check.gain) || null;
+  const missing = Object.entries(check?.missing || {}).map(([id, n]) => `${n} ${sentenceCase(commodityName(id))}`).join(' + ');
+  let body;
+  if (!ok) {
+    body = check?.reason === 'materials' && missing ? `Need ${missing}`
+      : (GHOST_BLOCK[check && check.reason] || 'Placement blocked');
+  } else {
+    const bits = [];
+    if (gain && gain.contacts > 0) bits.push(`Restores ${counted(gain.contacts, 'contact', 'contacts')}`);
+    if (gain && gain.rate > 0) bits.push(`+${Number(gain.rate.toFixed(2))}/min`);
+    if (gain && gain.processBonus > 0) bits.push(`+${Math.round(gain.processBonus * 100)}% process speed`);
+    body = bits.length ? bits.join(' · ') : 'No machine beside this cell';
+  }
+  return {
+    kind: 'ghost',
+    swatch: null,
+    lamp: ok ? 'mint' : 'coral',
+    name: 'Packed fill',
+    numerals: '',
+    hp: null,
+    chips: [lensChip(ok ? (check.sealsReturn ? 'seal' : 'seat') : 'blocked')],
+    body,
+    ring: null,
   };
 }
 

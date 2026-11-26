@@ -10,7 +10,7 @@ import { createSurfaceContactReceipt, surfaceContactFromBodies } from '../src/co
 import { compileAttackSpec, digestAttackSpec } from '../src/combat/attackSpec.js';
 import { createLineage } from '../src/combat/attackLineage.js';
 import { tryBounce } from '../src/combat/attackPropagation.js';
-import { armAttackContinue, resolveLiveAttackHit } from '../src/combat/attackHit.js';
+import { armAttackContinue, resolveLiveAttackHit, retireContinuingProjectile } from '../src/combat/attackHit.js';
 import { resolveRicochet, steerAfterBounce } from '../src/combat/surfaceReflection.js';
 import { ENEMY_TYPES } from '../src/data/enemies.js';
 import { WEAPONS } from '../src/data/weapons.js';
@@ -20,6 +20,7 @@ import { planWave, hashSemanticWavePlan } from '../src/systems/survivalWavePlann
 import { materializeWaveBatch } from '../src/systems/waveMaterialization.js';
 import { makeBudgetApi } from '../src/systems/spawnBudget.js';
 import { survivalWave } from '../src/systems/survivalWave.js';
+import { noteSwarmPilotAction } from '../src/systems/swarmSafety.js';
 import { planArenaInstall } from '../src/systems/survivalArena.js';
 import { combat } from '../src/systems/combat.js';
 
@@ -105,8 +106,12 @@ test('eligible reflection continues one body, preserves AttackSpec and exhausts 
     assert.equal(result.consume, false);
     assert.equal(result.projectile, identity);
     assert.equal(body.vel.x, -12);
-    body.alive = false; // the existing physics continuation handshake
+    // d690a74a91: under default fastLiveEntities, `alive` stays a plain data field — the
+    // continuation handshake is physics' retire write, swallowed once for a pending bounce.
+    retireContinuingProjectile(body);
     assert.equal(body.alive, true);
+    retireContinuingProjectile(body);
+    assert.equal(body.alive, false, 'a second retire with no continuation pending kills the body');
     assert.equal(runtime.budget.consumed, 1);
     assert.equal(runtime.remaining.bounces, 0);
     assert.equal(tryBounce(runtime).reason, 'no_remaining_bounces');
@@ -200,11 +205,13 @@ test('Mirrorjaw materializes with real weapons and dies to Pulse hits through co
   assert.equal(boss.data.lootTableId, BOSS);
   assert.equal(boss.data.runCohort, 'survival');
   assert.ok(boss.data.weapons.length > 0);
-  assert.equal(boss.data.ai.combatDoctrineId, 'brawler_commit');
+  // DUST P6 (BS-7): Mirrorjaw intentionally authors interceptor_flyby; heavy mass steers it via brawler_commit.
+  assert.equal(boss.data.ai.combatDoctrineId, 'interceptor_flyby');
   assert.ok(boss.turnRate < 1, 'a heavy committed hull cannot snap to face the pilot');
   const pulse = WEAPONS.find(w => w.id === 'wpn_pulse_laser_s');
   assert.ok(boss.armorFlat < pulse.dmg);
   assert.equal(boss.shieldRegenRate, 0);
+  noteSwarmPilotAction(h.state);
   let hits = 0;
   while (boss.alive && hits < 500) {
     const applied = combat.onHit({ targetId: boss.id, ownerId: h.state.playerId,
@@ -239,6 +246,7 @@ test('ten wave schedules materialize under the unchanged cap and cleanup waits f
       assert.ok(h.budget.current() > 0 && h.budget.current() <= 24);
       const cohort = h.state.entityList.filter(e => e.alive && e.data?.runWave === wave);
       if (wave === 10) assert.ok(cohort.some(e => e.data.lootTableId === BOSS));
+      noteSwarmPilotAction(h.state);
       for (const entity of cohort) {
         combat.onHit({ targetId: entity.id, ownerId: h.state.playerId, damage: 100000,
           damageType: 'kinetic', weaponId: 'wpn_pulse_laser_s', pos: entity.pos });

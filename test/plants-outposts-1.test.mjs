@@ -446,7 +446,8 @@ test('PL-119 waiting it out with the cutters ends the minute clean', () => {
   assert.equal(eventsOf(rec, PLANTS_RED_MINUTE_EVENT, 'satItOut').length, 1);
   assert.equal(commsOf(rec, "Minute's done. Cut clean.").length, 1);
   const flare = rec.spawns.find((s) => s.data && s.data.storyPropKind === 'seal_flare');
-  assert.equal(flare.data.swarmFloorPad.label, 'SEAL FLARE', 'pad restores after the minute');
+  // Plain words, design/overhaul/08_INTERFACE.md §5: FLARE is a retired tier name; the pad seals the burst.
+  assert.equal(flare.data.swarmFloorPad.label, 'SEAL BURST', 'pad restores after the minute');
   redMinutePlant.destroy();
 });
 

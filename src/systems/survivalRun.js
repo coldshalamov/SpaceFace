@@ -4,7 +4,7 @@
 // Strict no-op without a live, valid survival run (absent / malformed / non-survival / inactive).
 // Never infers a phase from entity counts. Never writes campaign credits, entities, or fittings.
 
-import { validateRunState } from '../core/runState.js';
+import { validateRunStateForTick } from '../core/runState.js';
 import {
   SURVIVAL_ARC_LENGTH,
   SURVIVAL_TEMPLATE_BLOCK,
@@ -55,8 +55,10 @@ import {
 import {
   armGhostPlayback,
   beginGhostRecording,
+  clearSwarmResume,
   loadCrucibleMeta,
   sampleGhostPoseFromState,
+  writeSwarmResume,
 } from './survivalRecords.js';
 import { applyHangarToPlayer } from './swarmHangar.js';
 import { ownedSwarmLegendaryIds, SWARM_LEGENDARY_RECORD_KIND } from '../data/swarmDraft.js';
@@ -65,12 +67,19 @@ import { POWERED_CONVEYOR_RULESET, POWERED_CONVEYOR_DEMO_TICKS } from '../data/s
 
 export const SURVIVAL_RUN_WAVE_COUNT = SURVIVAL_ARC_LENGTH;
 export const SURVIVAL_REFIT_EVERY = 10;
+/** Does this Swarm wave end at the shop? Every fifth round — and every round of a Circuit, whose
+ *  authored route is chosen at the stop (its stages and nodes live in survivalCircuit.js). */
+export function swarmShopsThisWave(run) {
+  return !!run && (isSwarmDraftWave(run.wave) || run.telemetry?.circuit != null);
+}
 // FB-025 — real intro beats: two seconds for the arena, a second and a half for each wave.
 // survivalAnnounce owns the completion emit at window end; these constants are the machine's
 // floor AND its backstop when the announce voice is muted or absent. Never freezes the player.
 export const SURVIVAL_ARENA_INTRO_TICKS = 120;
 export const SURVIVAL_WAVE_INTRO_TICKS = 90;
 export const SURVIVAL_CLEANUP_TICKS = 180;
+/** How long a Swarm round waits for the level-up cards to land before going on without them. */
+export const SWARM_BREATH_GRACE_TICKS = 120;
 
 // PQ-133.04 R4 — the bounded public block (CRU-030/027). One authored ten-wave block — the
 // template the thirty-wave arc reuses — ending in wave-ten victory. Same planner owner, same
@@ -103,7 +112,7 @@ function liveSurvivalRun(state) {
   if (!run || typeof run !== 'object' || Array.isArray(run)) return null;
   if (run.kind !== 'survival') return null;
   if (run.phase === 'inactive') return null;
-  if (!validateRunState(run).ok) return null;
+  if (!validateRunStateForTick(run, state.tick).ok) return null;
   return run;
 }
 
@@ -136,15 +145,16 @@ export const survivalRun = {
     if (!this.bus || typeof this.bus.on !== 'function') return;
     this._unsubs.push(this.bus.on('run:started', (payload) => this._onStarted(payload)));
     this._unsubs.push(this.bus.on('run:transitioned', (payload) => this._onTransitioned(payload)));
-    this._unsubs.push(this.bus.on('run:ended', () => this._resetMachine()));
+    this._unsubs.push(this.bus.on('run:ended', (payload) => this._onRunEnded(payload)));
     this._unsubs.push(this.bus.on('run:loadoutReady', (payload) => this._onLoadoutReady(payload)));
-    this._unsubs.push(this.bus.on('run:openingPrepareRequested', () => this._prepareOpening()));
+    this._unsubs.push(this.bus.on('run:openingPrepareRequested', (payload) => this._prepareOpening(payload)));
     this._unsubs.push(this.bus.on('run:arenaIntroComplete', () => this._onArenaIntroComplete()));
     this._unsubs.push(this.bus.on('run:waveIntroComplete', () => this._onWaveIntroComplete()));
     this._unsubs.push(this.bus.on(WAVE_CLEARED_SEAM, (payload) => this._onWaveCleared(payload)));
     this._unsubs.push(this.bus.on('run:draftResolved', () => this._onDraftResolved()));
     this._unsubs.push(this.bus.on('run:modifierChosen', () => this._onDraftResolved()));
     this._unsubs.push(this.bus.on('run:refitClosed', () => this._onRefitClosed()));
+    this._unsubs.push(this.bus.on('run:breathEndRequested', () => this._onBreathEnd()));
     this._unsubs.push(this.bus.on('run:extractionRequested', () => this._onExtractionRequested()));
     this._unsubs.push(this.bus.on('run:partialBankRequested', () => this._onPartialBankRequested()));
     this._unsubs.push(this.bus.on('run:swarmDeepRequested', () => this._onSwarmDeepRequested()));
@@ -219,6 +229,7 @@ export const survivalRun = {
     if (phase === 'draft') {
       if (circuitStateError(run)) return;
       if (!this._draftResolved) return;
+      if (this._breathHolds(run)) return;
       this._requestTransition('draft', this._draftNext(run), this._draftReason(run));
       return;
     }
@@ -238,6 +249,7 @@ export const survivalRun = {
     this._waveCleared = false;
     this._draftResolved = false;
     this._refitClosed = false;
+    this._breathEnded = false;
     this._planFailed = false;
     this._waveIntroHandled = false;
     // PQ-133.07: the arc authors TWO system events (wave 20 and the wave-30 finale). The latch is
@@ -257,10 +269,94 @@ export const survivalRun = {
     this._waveCleared = false;
     this._draftResolved = false;
     this._refitClosed = false;
+    this._breathEnded = false;
+  },
+
+  /**
+   * SAVE-AND-SOAK-1 Part B — the interrupted-run record. Written when a Swarm run's draft
+   * opens (`_onTransitioned` above): `wave + 1` is the round the resume will replan, and the
+   * ship, purse, build and pilot are exactly the values that round starts with. The record is
+   * durable (crucible meta, shared store) so a closed window resumes the same way a menu quit
+   * does. Non-swarm rulesets and malformed bags write nothing.
+   */
+  _writeSwarmResume(run) {
+    if (!isSwarmRuleset(run && run.ruleset)) return;
+    // Only a run that has flown a round leaves a slot. The opening stop (round 0, or a checkpoint
+    // start parked one below its first round) resumes to exactly what PLAY gives — and the sim
+    // worker's boot rehearsal, a throwaway checkpoint fight, was leaving "Resume round 3" on a
+    // brand-new player's Swarm door.
+    const tele = run.telemetry;
+    const startWave = tele && Number.isInteger(tele.startWave) && tele.startWave > 1 ? tele.startWave : 1;
+    if (!Number.isInteger(run.wave) || run.wave < startWave) return;
+    const p = this.state && this.state.player;
+    const owned = p && Array.isArray(p.ownedShips)
+      ? p.ownedShips[Number.isInteger(p.activeShipIndex) ? p.activeShipIndex : 0]
+      : null;
+    const defId = owned && typeof owned.defId === 'string' ? owned.defId : null;
+    if (!defId) return;
+    const fittings = Array.isArray(owned.fittings) ? owned.fittings : [];
+    const loadout = [];
+    for (let i = 0; i < fittings.length; i += 1) {
+      const entry = fittings[i];
+      const fitted = entry && typeof entry === 'object' ? entry.defId : entry;
+      if (typeof fitted === 'string' && fitted) loadout.push({ slotIndex: i, defId: fitted });
+    }
+    try {
+      writeSwarmResume({
+        wave: (Number.isInteger(run.wave) ? run.wave : 0) + 1,
+        seed: run.seed,
+        arenaId: run.arenaId,
+        ruleset: run.ruleset,
+        ship: { defId, loadout },
+        run: {
+          wave: run.wave,
+          block: run.block,
+          act: run.act,
+          xp: run.xp,
+          level: run.level,
+          score: run.score,
+          credits: run.credits,
+          modifiers: run.modifiers,
+          draftHistory: run.draftHistory,
+          shopHistory: run.shopHistory,
+          arenaMutators: run.arenaMutators,
+          pilot: run.pilot,
+          style: run.style,
+          buildCode: run.buildCode,
+          practice: run.practice,
+          telemetry: run.telemetry,
+        },
+        savedAt: new Date().toISOString(),
+      });
+    } catch { /* the slot is best-effort — a store failure must never stall a transition */ }
+  },
+
+  /**
+   * Part B — only a real ending retires the slot: victory, defeat and the player's own
+   * retire clear it. An exit to the menu (or a closed window, which emits nothing) keeps it —
+   * that quit is exactly what Resume exists for.
+   */
+  _onRunEnded(payload) {
+    const reason = payload && typeof payload.reason === 'string' ? payload.reason : '';
+    const outcome = payload && payload.outcome;
+    if (outcome === 'victory' || outcome === 'defeat' || reason === 'player_retired') {
+      try { clearSwarmResume(); } catch { /* best-effort */ }
+    }
+    this._resetMachine();
   },
 
   _onStarted(payload) {
     this._resetMachine();
+    const run0 = liveSurvivalRun(this.state);
+    // A fresh Swarm launch (PLAY, a checkpoint start — anything that did not press Resume)
+    // retires the previous run's slot up front: quitting the new run in round 1 must not
+    // resurrect "Resume round N" for a run the player already replaced. The boot rehearsal
+    // flies this same route; its marker keeps the throwaway fight off a real player's slot.
+    if (run0 && isSwarmRuleset(run0.ruleset)
+      && !(payload && payload.swarmResumed === true)
+      && !(payload && payload.bootRehearsal === true)) {
+      try { clearSwarmResume(); } catch { /* best-effort — a store failure must not stall a start */ }
+    }
     const queued = takeQueuedChallenge();
     // SWARM-08 B5 — the Circuit entry gate reads this: a queued trial/daily challenge owns the
     // run's contract and may not also steer it through the Circuit.
@@ -316,18 +412,23 @@ export const survivalRun = {
     this._phaseTicks = 0;
     this._clearReceiptLatches();
 
-    // EVERY WAVE OPENS THE ARMORY NOW — SWARM_DRAFT_EVERY is 1, so the swarm leg of this latch is
-    // dormant. It stays written because `cleanup` may still only lead to draft, refit or victory:
-    // if the armory cadence ever thins again, a swarm run passes THROUGH `draft` on the off waves
-    // and must resolve it on arrival rather than flash a menu. The legs that still fire today are
-    // draftless contracts and the boss circuit.
+    // Only the Bench (every SWARM_DRAFT_EVERY = 10 rounds) opens the equipment stop. `cleanup` may
+    // only lead to draft, refit or victory, so every other swarm round passes THROUGH `draft` and
+    // resolves it on arrival rather than flashing a menu; the level-up breath still holds there.
+    // Draftless contracts and the boss circuit resolve the same way.
     if (phase === 'draft' && (
       compileChallenge(run.seed, run.arenaMutators, run.ruleset).skipDraft
       || isBossCircuitRuleset(run.ruleset)
-      || (isSwarmRuleset(run.ruleset) && !isSwarmDraftWave(run.wave) && !isSwarmRefitWave(run.wave))
+      || (isSwarmRuleset(run.ruleset) && !swarmShopsThisWave(run) && !isSwarmRefitWave(run.wave))
     )) {
       this._draftResolved = true;
     }
+
+    // SAVE-AND-SOAK-1 Part B: a draft opening is the round's own start boundary — the purse,
+    // build, mutators and pilot are all settled and no pick is in flight. Stamping the
+    // interrupted-run slot here means a quit at any later beat of the round replays the whole
+    // round — the shop re-offers and the wave replans — never a resume mid-fight or mid-write.
+    if (phase === 'draft' && isSwarmRuleset(run.ruleset)) this._writeSwarmResume(run);
 
     if (phase === 'wave_intro') {
       this._planCurrentWaveIntro(run);
@@ -355,7 +456,7 @@ export const survivalRun = {
     this._loadoutReady = true;
   },
 
-  _prepareOpening() {
+  _prepareOpening(payload) {
     const run = liveSurvivalRun(this.state);
     if (this.state?.mode !== 'loading' || !run || run.phase !== 'loadout' || !this._loadoutReady) return;
     // Populate the real first round before GPU preparation. Intro timers are
@@ -378,7 +479,8 @@ export const survivalRun = {
       // the hangar stamp still applies and the purse still lands, but the opening stop is
       // round 1 in flight instead of the draft. Later waves draft normally (every swarm wave
       // does), so the armory is never more than one round away.
-      if (!(run.telemetry && run.telemetry.openArmoryBeforeRound1 === false)) {
+      const approvedRetry = run.telemetry?.zeroScrapOpening === true && payload?.retryEquipmentReady === true;
+      if (!approvedRetry && run.telemetry?.openArmoryBeforeRound1 !== false) {
         this._requestTransition('loadout', 'draft', REASON_DRAFT_OPEN);
         return;
       }
@@ -834,6 +936,27 @@ export const survivalRun = {
     this._draftResolved = true;
   },
 
+  /**
+   * THE BREATH (04_SWARM.md §2, R3). A Swarm round with no armory passes straight through
+   * `draft` — unless a level-up hand waits. Then the next round holds for the cards: the screen
+   * pauses the world once it is up, and `run:breathEndRequested` (a card taken to the last pick,
+   * or Later) lets the round begin. The grace is only for the moment before the screen lands;
+   * a run with no screen at all (a headless soak) waits that long and goes on.
+   */
+  _breathHolds(run) {
+    if (!isSwarmRuleset(run && run.ruleset) || this._breathEnded) return false;
+    if (swarmShopsThisWave(run) || this._isRefitWave(run)) return false;
+    const pilot = run.pilot;
+    if (!pilot || !(pilot.banked > 0) || !pilot.offer) return false;
+    return this._phaseTicks < SWARM_BREATH_GRACE_TICKS;
+  },
+
+  _onBreathEnd() {
+    const run = liveSurvivalRun(this.state);
+    if (!run || run.phase !== 'draft') return;
+    this._breathEnded = true;
+  },
+
   _onRefitClosed() {
     const run = liveSurvivalRun(this.state);
     if (!run || run.phase !== 'refit') return;
@@ -948,7 +1071,7 @@ export const survivalRun = {
     // so a wave-10 stop is draft then bench rather than a bench instead of the draft the player
     // came for. The arc keeps its own shape: there, wave 10 has always been a bench and nothing
     // else, and the two rulesets are not obliged to agree.
-    if (isSwarmRuleset(run && run.ruleset) && isSwarmDraftWave(run && run.wave)) {
+    if (isSwarmRuleset(run && run.ruleset) && swarmShopsThisWave(run)) {
       this._requestTransition('cleanup', 'draft', REASON_DRAFT_OPEN);
       return;
     }

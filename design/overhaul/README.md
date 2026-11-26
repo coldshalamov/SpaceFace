@@ -17,10 +17,11 @@ quality that anyone would notice".
 | [07 Look and light](07_LOOK_AND_LIGHT.md) | Every glow has a source and lands; surfaces under every fight; effects as force + light + matter |
 | [08 Interface](08_INTERFACE.md) | Boot to title, the four-corner HUD, the banned words, the station as a hangar |
 | [09 Sound](09_SOUND.md) | The last lane; the game reads muted |
-| [10 Engine](10_ENGINE.md) | Targets, measured costs, Swarm in its own space |
-| [11 Order of work](11_ORDER_OF_WORK.md) | Category 1 (tweaked now) and category 2 (built from `build_map.md` §40), the order, the checks |
-| [12 The pipeline](12_PIPELINE.md) | Who builds what (Devin, zcode, Sonnet, Codex), the line every change walks, the live board |
+| [10 Engine](10_ENGINE.md) | The active playable-flight spec. Control and motion, backend replacement, agent assignments and player-route acceptance. |
+| [11 Work inventory](11_ORDER_OF_WORK.md) | The original tweaks and productions, retained for context |
+| [12 Live board](12_PIPELINE.md) | Status and observed results |
+| [14 Performance evidence](14_PERF_PLAN.md) | Dated measurements and experiments |
+| [17 Stage-one campaign](17_AGENTIC_CAMPAIGN.md) | Product completion bar and campaign history |
 
-**Authority:** the owner's words → `design/VISION.md` → this folder → `design/game/` → the rest
-(`00_RULINGS.md` top). **Work:** category 1 is the director's; category 2 is `build_map.md` §40,
-dispatched through `design/program/fleet/QUEUE.md`.
+Follow the owner's direction and [root AGENTS.md](../../AGENTS.md). Start flight stability and performance work at
+[10 Engine](10_ENGINE.md). The live board records status. Historical receipts, handoffs, and queues supply evidence.

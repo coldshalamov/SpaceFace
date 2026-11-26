@@ -355,10 +355,20 @@ function publishOwner(owner, scene, camera, epoch) {
       owner.coordinator.diagnostics.processingEligibilitySkips++;
       return;
     }
-    if (work === 1 && eligibility < 2) {
-      owner.diagnostics.drawEligibilitySkips++;
-      owner.coordinator.diagnostics.drawEligibilitySkips++;
-      return;
+    if (eligibility < 2) {
+      let hasMandatoryFull = false;
+      for (let index = 0; index < owner.bindings.length; index++) {
+        const binding = owner.bindings[index];
+        if (binding.forceFull && binding.forceReason !== 'interrupted-render') {
+          hasMandatoryFull = true;
+          break;
+        }
+      }
+      if (!hasMandatoryFull) {
+        owner.diagnostics.drawEligibilitySkips++;
+        owner.coordinator.diagnostics.drawEligibilitySkips++;
+        return;
+      }
     }
 
     let published = false;
@@ -366,7 +376,7 @@ function publishOwner(owner, scene, camera, epoch) {
     for (let index = 0; index < owner.bindings.length; index++) {
       if (owner.invalid) return;
       const binding = owner.bindings[index];
-      if (binding.forceFull) {
+      if (binding.forceFull && (eligibility >= 2 || binding.forceReason !== 'interrupted-render')) {
         published = publishBinding(binding, epoch, true) || published;
       } else if (eligibility >= 2 && binding.pending.end > binding.pending.start) {
         published = publishBinding(binding, epoch, probeForceFull, probeForceFull) || published;

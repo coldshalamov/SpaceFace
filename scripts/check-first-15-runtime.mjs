@@ -101,13 +101,15 @@ try {
   assert.equal(routeReport.screenVisible, true, 'New Game panel should be visible');
   assert.equal(routeReport.routeVisible, true, 'first-15 route rail should be visible');
   assert.equal(routeReport.steps.length, 4, 'first-15 route rail should have four steps');
-  for (const phrase of ['Wake at the beacon', 'Tether the derelict', 'Mine the first seam']) {
-    assert(routeReport.steps.some((step) => step.includes(phrase)), 'route rail missing step: ' + phrase);
+  // The rail promises the route the game runs (demo route 2026-11-23): latch the loose rock,
+  // throw it, dock at Helios, take a job.
+  for (const [index, phrase] of [[0, 'Latch the loose rock'], [1, 'Throw it'], [2, 'Dock at Helios']]) {
+    assert(routeReport.steps[index].includes(phrase), `route rail step ${index + 1} must be "${phrase}": ${routeReport.steps[index]}`);
   }
   // The fourth row's heading follows the selected hull's actual Helios ticket (df437c6); the
-  // authored "Dock and pick work" is still acceptable when the preview has not painted yet.
+  // authored "Take a job" is still acceptable when the preview has not painted yet.
   assert(routeReport.steps[3].length > 0, 'fourth rail step must carry its text');
-  assert(routeReport.steps[3].includes('Dock and pick work')
+  assert(routeReport.steps[3].includes('Take a job')
     || routeReport.steps[3].includes('Cut iron at Helios'),
   'fourth rail step must name the default Hitch work: ' + routeReport.steps[3]);
   assert.equal(routeReport.routeVisible, true, 'first-15 route rail should be visible');
@@ -182,6 +184,25 @@ try {
     throw new Error(`Timed out waiting for B0 thrust sample: ${err.message}\ndiag=${JSON.stringify(diag)}`);
   });
 
+  // The opening holds an establishing shot over the harbour before the instruments come up; a
+  // software-GL host runs that on a slower wall clock. Sample once the objective is on the glass
+  // (or after 20 s, when the assertions below report what was there).
+  await page.waitForFunction(() => {
+    const shown = (sel) => {
+      let n = document.querySelector(sel);
+      if (!n) return false;
+      const r = n.getBoundingClientRect();
+      if (r.width < 2 || r.height < 2) return false;
+      for (; n && n.nodeType === 1; n = n.parentElement) {
+        const cs = getComputedStyle(n);
+        if (cs.display === 'none' || cs.visibility === 'hidden' || Number(cs.opacity) === 0) return false;
+      }
+      return true;
+    };
+    return shown('.sf-mission-tracker .sf-mt-obj') || shown('.sf-mission-tracker .sf-mt-compact-action')
+      || shown('#sf-onboarding .sf-ob-title');
+  }, null, { timeout: 20000 }).catch(() => {});
+
   // ── B0 one-verb exclusivity sample (before opening Mission Log) ─────────────
   const b0Report = await page.evaluate(() => {
     const visibleText = (sel) => {
@@ -205,12 +226,17 @@ try {
     const ob = state.onboarding || {};
     const hints = (state.player && state.player.hints) || {};
     const panel = visibleText('#sf-onboarding .sf-ob-title');
-    const trackerObj = visibleText('.sf-mission-tracker .sf-mt-obj');
+    // The tracker prints its instruction in the compact action line; the long objective line is
+    // the fallback layout (each is display:none while the other carries the words).
+    const trackerFull = visibleText('.sf-mission-tracker .sf-mt-obj');
+    const trackerObj = trackerFull.visible ? trackerFull : visibleText('.sf-mission-tracker .sf-mt-compact-action');
     const trackerRoot = document.querySelector('.sf-mission-tracker');
     const trackerRootShown = !!(trackerRoot && getComputedStyle(trackerRoot).display !== 'none');
     // Generic flight copy is preloaded into #control-hints even while the bar is opacity-hidden;
     // only visible text can compete with the B0 objective.
     const controlHints = visibleText('#control-hints');
+    // The opening asks one thing at a time: "[E] Fly to berth" waits until the rock is thrown.
+    const berthOffer = visibleText('.sf-helm-offer');
     const toastBlob = [...document.querySelectorAll('.sf-toast, .toast, [data-kind], [class*="toast"]')]
       .map((el) => (el.textContent || '').replace(/\s+/g, ' ').trim())
       .filter(Boolean)
@@ -241,6 +267,7 @@ try {
         return m && typeof m.storyTag === 'string' ? m.storyTag : null;
       })(),
       controlHints: controlHints.visible ? controlHints.text : '',
+      berthOffer: berthOffer.visible ? berthOffer.text : '',
       toastBlob,
       voiceText,
       topScreen: top,
@@ -252,7 +279,9 @@ try {
   assert.equal(b0Report.storyBeat, 0, 'first run should start on story beat 0');
   assert.equal(b0Report.onboardingActive, true, 'B0 sample requires active onboarding');
   assert.equal(b0Report.onboardingFinished, false, 'B0 sample requires unfinished onboarding');
-  assert.equal(b0Report.currentBeat, 0, 'B0 sample should still be on thrust (currentBeat 0)');
+  assert.equal(b0Report.currentBeat, 0, 'B0 sample should still be on the first latch (currentBeat 0, tether)');
+  assert.equal(b0Report.berthOffer, '',
+    'the berth chip must stay off the glass while the first instruction is the loose rock: ' + b0Report.berthOffer);
   // Opening marker must exist and be lifecycle-owned by the staged tutorial or story spine —
   // never a bare kind:'mission' / local / trade claim while B0 is teaching.
   assert.ok(b0Report.waypoint, 'opening must expose one authoritative waypoint/goal marker');
@@ -280,12 +309,14 @@ try {
   assert.ok(
     panelCmd || trackerCmd,
     'B0 must still expose exactly one persistent actionable objective surface '
-    + '(panel demoted or tracker primary — not neither)',
+    + '(panel demoted or tracker primary — not neither): '
+    + JSON.stringify({ panel: b0Report.panelTitle, panelVisible: b0Report.panelVisible,
+      tracker: b0Report.trackerObj, trackerVisible: b0Report.trackerVisible, trackerText: b0Report.trackerText }),
   );
   if (trackerCmd) {
     assert.match(
       b0Report.trackerText,
-      /Story|Tutorial|47-A|signal|anomaly|Mission Log|Objective|beacon|thrust|speed|target|derelict|marked/i,
+      /Story|Tutorial|47-A|Objective|loose rock|Latch|marked/i,
       'HUD tracker should expose first objective context when it owns the command',
     );
   }
@@ -339,8 +370,9 @@ try {
     'mission log should show the current/recommended rail as optional context');
   // Staged opening owns CURRENT ACTION as the story first-route. Cold-start 47-A remains tracked
   // for later handoff (ACTIVE MISSIONS cards) but must not replace this opening command text.
-  assert.match(flightReport.missionLogText, /Follow the anomaly/i,
-    'mission log should carry the first route action as optional context');
+  assert.match(flightReport.missionLogText, /loose rock|Latch/i,
+    'mission log should carry the first route action (the loose rock) as optional context: '
+    + flightReport.missionLogText.slice(0, 400));
   assert.deepEqual(issues.errorIssues(), [], 'first-15 runtime probe should not record page errors');
 
   console.log(

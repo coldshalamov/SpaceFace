@@ -8,7 +8,9 @@
 // `before` serves the HEAD copy of the files named in BEFORE_FILES to the page (Playwright route),
 // `after` serves the working tree, so one lock hold gives a true before/after of a placement change.
 
-import { chromium } from 'playwright';
+import { chromium as rawChromium } from 'playwright';
+import { quietChromium } from '../../lib/quietLaunch.mjs';
+const chromium = quietChromium(rawChromium);
 import { spawn } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';

@@ -122,6 +122,13 @@ ${H} > .orr-help__stage { ${PLAIN} grid-area:stage; position:relative; min-heigh
 /* CONTROLS: the rig and the ladder of every key */
 ${H} .orr-help-controls { position:relative; display:grid; grid-template-columns:minmax(0, 1fr) clamp(236px, 19vw, 430px); column-gap:clamp(20px, 2.4vw, 56px); height:100%; min-height:0; }
 ${H} .orr-help-controls__rig { position:relative; min-width:0; min-height:0; }
+/* Remove decorative concentric ring / tick bands round the ship; keep the hull, subtle ground shadow,
+   callout leaders, socket marks, and live thruster/weapon FX. */
+${H} .orr-hrig__under > g:has(> .orr-hrig__band),
+${H} .orr-hrig__under > .orr-drift,
+${H} .orr-hrig__under > .orr-hrig__tick,
+${H} .orr-hrig__gate { display:none !important; }
+${H} .orr-hrig__floor { opacity:.55; }
 ${H} .orr-hreg { position:relative; display:flex; flex-direction:column; min-height:0; height:100%; }
 ${H} .orr-hreg__head { display:flex; flex-direction:column; gap:10px; padding:0 0 12px 0; }
 ${H} .orr-hreg__title { margin:0; font-family:var(--dp-face-display, "Archivo"); font-stretch:125%; font-variation-settings:"wdth" 125, "wght" 800; font-weight:800; font-size:clamp(16px, 1.25vw, 22px);
@@ -153,7 +160,7 @@ ${H} .orr-hreg__row { position:relative; display:grid; grid-template-columns:min
 ${H} .orr-hreg__row::before { content:""; position:absolute; left:4px; top:50%; width:8px; height:2px; margin-top:-1px; background:rgb(${BONE} / .55); transition:width .16s, background .16s; }
 ${H} .orr-hreg__name { font-family:var(--dp-face-body, "Instrument Sans"), system-ui, sans-serif; font-size:clamp(14px, .73vw, 18px); line-height:1.3; color:rgb(${BONE} / .92); }
 ${H} .orr-hreg__row .orr-hkey { justify-self:end; max-width:210px; }
-/* ui-polish-436: a long verb list (Pull · Shove · Pin · Bomb · Rig) wrapped to leave "Rig" alone on its own line */
+/* ui-polish-436: a long verb list (Pull · Shove · Pin · Bomb · Plow) wrapped to leave "Plow" alone on its own line */
 ${H} .orr-hreg__name { text-wrap:balance; }
 ${H} .orr-hreg__row.is-echo::before { width:20px; background:rgb(255 255 255); box-shadow:0 0 8px rgb(143 203 255 / .8); }
 ${H} .orr-hreg__row.is-echo .orr-hreg__name { color:rgb(255 255 255); }
@@ -172,6 +179,10 @@ ${H} .orr-hreg__row.is-echo > .orr-hkey:not(.orr-hkey--text) { color:rgb(255 255
   box-shadow:inset 0 -1px 0 rgb(0 0 0 / .4), 0 0 0 1px rgb(143 203 255 / .35), 0 0 10px rgb(143 203 255 / .45); }
 ${H} .orr-hreg__fine { margin:10px 0 0; padding-left:30px; font-family:var(--dp-face-body, "Instrument Sans"), system-ui, sans-serif; font-size:clamp(12px, .6vw, 15px); line-height:1.4; color:rgb(${BONE} / .84); }
 ${H} .orr-hreg .orr-extent::before { left:7px; width:2px; }
+/* the shared MORE chip seats itself on the scroller's bottom rim, which in this narrow register is the last
+   visible row: it sat on top of "Map · M" and touched the rebind note. The rail's bright scroll segment and the
+   fold already say the list goes on, so the register keeps those and drops the chip (Settings does the same). */
+${H} .orr-hreg .orr-extent--foot { display:none !important; }
 
 /* ------------------------------------------------ the shared ladder + reading ------------------ */
 ${H} .orr-help-list { position:relative; display:grid; grid-template-columns:clamp(222px, 16vw, 340px) minmax(0, 1fr); grid-template-rows:minmax(0, 1fr);
@@ -244,10 +255,13 @@ ${H} .orr-help-empty { margin:10px 0 0 30px !important; font-size:14px !importan
 ${H} .orr-help-ladder ~ .orr-extent, ${H} .orr-help-ladder > .orr-extent { }
 
 /* the reading: promise-scale hairline card (was unbound Newgrounds shade pool) */
-/* ui-polish-393: .orr-help-reading wears 1px bone ~18% / radius 10 / faint fill; densify 8→6 */
+/* ui-polish-393: .orr-help-reading wears the promise-scale hairline card; densify 8→6.
+   The card's first alphas (.18 border / .025 fill) vanished against the lit title backdrop —
+   the same bench finding as the Records Wall — so the face sits on the house E0 tokens
+   (var(--sf-face) / var(--sf-edge), bench 2026-11-15). */
 ${H} .orr-help-reading { position:relative; z-index:2; max-width:clamp(420px, 26vw, 640px);
   box-sizing:border-box; padding:20px 24px;
-  border:1px solid rgb(${BONE} / .18); border-radius:10px; background:rgb(${BONE} / .025); }
+  border:1px solid rgb(${BONE} / .3); border-radius:10px; background:var(--sf-face, rgb(8 11 16 / .8)); box-shadow:var(--sf-edge, inset 0 1px 0 rgb(236 230 216 / .1), inset 0 -1px 0 rgb(0 0 0 / .5)); }
 ${H} .orr-help-reading::before { content:none; display:none; }
 @media (max-height:820px) { ${H} .orr-help-reading { border-radius:8px; } }
 @media (max-height:460px) { ${H} .orr-help-reading { border-radius:8px; } }
@@ -391,21 +405,21 @@ ${H} .orr-hmix__lbl:focus-visible { outline:none; }
   ${HD} .orr-help-list--ores .orr-help-list__stage { grid-template-columns:minmax(0, 1fr); }
   ${HD} .orr-help-list--ores .orr-help-list__hero { display:none; }
   ${HD} .orr-help-list--ores .orr-help-list__stage > .orr-help-reading { justify-self:center; width:100%; max-width:440px; }
-  ${HD} .orr-help-list--ores .orr-help-terms { margin:10px 0 0; padding:2px 12px; column-gap:0; border:1px solid rgb(${BONE} / .18); border-radius:6px; background:rgb(${BONE} / .025); }
+  ${HD} .orr-help-list--ores .orr-help-terms { margin:10px 0 0; padding:2px 12px; column-gap:0; border:1px solid rgb(${BONE} / .3); border-radius:6px; background:var(--sf-face, rgb(8 11 16 / .8)); box-shadow:var(--sf-edge, inset 0 1px 0 rgb(236 230 216 / .1), inset 0 -1px 0 rgb(0 0 0 / .5)); }
   ${HD} .orr-help-list--ores .orr-help-terms dt { padding:4px 18px 4px 0; border-top:1px solid rgb(${BONE} / .09); }
   ${HD} .orr-help-list--ores .orr-help-terms dd { padding:2px 0; border-top:1px solid rgb(${BONE} / .09); }
   ${HD} .orr-help-list--ores .orr-help-terms > .orr-help-terms__row:first-child > * { border-top:0; }
   ${HD} .orr-help-list:not(.orr-help-list--ores) .orr-help-list__stage { grid-template-columns:minmax(0, 1fr); }
   ${HD} .orr-help-list:not(.orr-help-list--ores) .orr-help-list__hero { display:none; }
   ${HD} .orr-help-list:not(.orr-help-list--ores) .orr-help-list__stage > .orr-help-reading { justify-self:center; width:100%; max-width:440px; }
-  ${HD} .orr-help-list:not(.orr-help-list--ores) .orr-help-terms { margin:10px 0 0; padding:2px 12px; column-gap:0; border:1px solid rgb(${BONE} / .18); border-radius:6px; background:rgb(${BONE} / .025); }
+  ${HD} .orr-help-list:not(.orr-help-list--ores) .orr-help-terms { margin:10px 0 0; padding:2px 12px; column-gap:0; border:1px solid rgb(${BONE} / .3); border-radius:6px; background:var(--sf-face, rgb(8 11 16 / .8)); box-shadow:var(--sf-edge, inset 0 1px 0 rgb(236 230 216 / .1), inset 0 -1px 0 rgb(0 0 0 / .5)); }
   ${HD} .orr-help-list:not(.orr-help-list--ores) .orr-help-terms dt { padding:4px 18px 4px 0; border-top:1px solid rgb(${BONE} / .09); }
   ${HD} .orr-help-list:not(.orr-help-list--ores) .orr-help-terms dd { padding:2px 0; border-top:1px solid rgb(${BONE} / .09); }
   ${HD} .orr-help-list:not(.orr-help-list--ores) .orr-help-terms > .orr-help-terms__row:first-child > * { border-top:0; }
-  ${HD} .orr-help-list:not(.orr-help-list--ores) .orr-help-reading__legal { margin:8px 0 0; padding:8px 12px; gap:20px; border:1px solid rgb(${BONE} / .18); border-radius:6px; background:rgb(${BONE} / .025); }
+  ${HD} .orr-help-list:not(.orr-help-list--ores) .orr-help-reading__legal { margin:8px 0 0; padding:8px 12px; gap:20px; border:1px solid rgb(${BONE} / .3); border-radius:6px; background:var(--sf-face, rgb(8 11 16 / .8)); box-shadow:var(--sf-edge, inset 0 1px 0 rgb(236 230 216 / .1), inset 0 -1px 0 rgb(0 0 0 / .5)); }
   /* ui-polish-341: Factions terms at 761-870 still float bare (Factions uses .orr-help-factions, not
      .orr-help-list). Match the Ores hairline card in this band so the ledger reads as one sheet. */
-  ${HD} .orr-help-factions .orr-help-terms { margin:10px 0 0; padding:2px 12px; column-gap:0; border:1px solid rgb(${BONE} / .18); border-radius:6px; background:rgb(${BONE} / .025); }
+  ${HD} .orr-help-factions .orr-help-terms { margin:10px 0 0; padding:2px 12px; column-gap:0; border:1px solid rgb(${BONE} / .3); border-radius:6px; background:var(--sf-face, rgb(8 11 16 / .8)); box-shadow:var(--sf-edge, inset 0 1px 0 rgb(236 230 216 / .1), inset 0 -1px 0 rgb(0 0 0 / .5)); }
   ${HD} .orr-help-factions .orr-help-terms dt { padding:4px 18px 4px 0; border-top:1px solid rgb(${BONE} / .09); }
   ${HD} .orr-help-factions .orr-help-terms dd { padding:2px 0; border-top:1px solid rgb(${BONE} / .09); }
   ${HD} .orr-help-factions .orr-help-terms > .orr-help-terms__row:first-child > * { border-top:0; }
@@ -414,7 +428,7 @@ ${H} .orr-hmix__lbl:focus-visible { outline:none; }
    1201+ wear the hairline-framed sheet. Box the mid-band ledger the same way so the terms read as one
    card beside the mix; type, colours and the one-pair-per-row grid are unchanged. */
 @media (min-width:871px) and (max-width:1200px) and (min-height:461px) {
-  ${HD} .orr-help-list--ores .orr-help-terms { margin:10px 0 0; padding:2px 12px; column-gap:0; border:1px solid rgb(${BONE} / .18); border-radius:6px; background:rgb(${BONE} / .025); }
+  ${HD} .orr-help-list--ores .orr-help-terms { margin:10px 0 0; padding:2px 12px; column-gap:0; border:1px solid rgb(${BONE} / .3); border-radius:6px; background:var(--sf-face, rgb(8 11 16 / .8)); box-shadow:var(--sf-edge, inset 0 1px 0 rgb(236 230 216 / .1), inset 0 -1px 0 rgb(0 0 0 / .5)); }
   ${HD} .orr-help-list--ores .orr-help-terms dt { padding:4px 18px 4px 0; border-top:1px solid rgb(${BONE} / .09); }
   ${HD} .orr-help-list--ores .orr-help-terms dd { padding:2px 0; border-top:1px solid rgb(${BONE} / .09); }
   ${HD} .orr-help-list--ores .orr-help-terms > .orr-help-terms__row:first-child > * { border-top:0; }
@@ -424,11 +438,11 @@ ${H} .orr-hmix__lbl:focus-visible { outline:none; }
    (and Commodities' Legality line its frame), rows kept compact so the scrolling reading grows by only the frame.
    The Ores rules above are more specific, so its 335 sheet is untouched. */
 @media (min-width:871px) and (max-width:1200px) and (min-height:461px) {
-  ${HD} .orr-help-terms { margin:12px 0 0; padding:2px 12px; column-gap:0; border:1px solid rgb(${BONE} / .18); border-radius:6px; background:rgb(${BONE} / .025); }
+  ${HD} .orr-help-terms { margin:12px 0 0; padding:2px 12px; column-gap:0; border:1px solid rgb(${BONE} / .3); border-radius:6px; background:var(--sf-face, rgb(8 11 16 / .8)); box-shadow:var(--sf-edge, inset 0 1px 0 rgb(236 230 216 / .1), inset 0 -1px 0 rgb(0 0 0 / .5)); }
   ${HD} .orr-help-terms dt { padding:6px 16px 6px 0; border-top:1px solid rgb(${BONE} / .09); }
   ${HD} .orr-help-terms dd { padding:4px 0; border-top:1px solid rgb(${BONE} / .09); }
   ${HD} .orr-help-terms > .orr-help-terms__row:first-child > * { border-top:0; }
-  ${HD} .orr-help-reading__legal { margin:8px 0 0; padding:8px 12px; border:1px solid rgb(${BONE} / .18); border-radius:6px; background:rgb(${BONE} / .025); }
+  ${HD} .orr-help-reading__legal { margin:8px 0 0; padding:8px 12px; border:1px solid rgb(${BONE} / .3); border-radius:6px; background:var(--sf-face, rgb(8 11 16 / .8)); box-shadow:var(--sf-edge, inset 0 1px 0 rgb(236 230 216 / .1), inset 0 -1px 0 rgb(0 0 0 / .5)); }
 }
 /* ...and on a 461-540 tall screen the Ships reading already scrolls, so its rows close up the way Ores' did in 324 */
 @media (min-width:871px) and (max-width:1200px) and (min-height:461px) and (max-height:540px) {
@@ -455,7 +469,7 @@ ${H} .orr-hmix__lbl:focus-visible { outline:none; }
    section list. The ledger now sits in one hairline-framed sheet on a faint fill, a rule between rows,
    and the Legality line under it wears the same frame; type, colours and the row data are unchanged. */
 @media (min-width:1201px) and (min-height:461px) {
-  ${HD} .orr-help-terms { margin:16px 0 0; padding:2px 12px; column-gap:0; border:1px solid rgb(${BONE} / .18); border-radius:6px; background:rgb(${BONE} / .025); }
+  ${HD} .orr-help-terms { margin:16px 0 0; padding:2px 12px; column-gap:0; border:1px solid rgb(${BONE} / .3); border-radius:6px; background:var(--sf-face, rgb(8 11 16 / .8)); box-shadow:var(--sf-edge, inset 0 1px 0 rgb(236 230 216 / .1), inset 0 -1px 0 rgb(0 0 0 / .5)); }
   ${HD} .orr-help-terms dt { padding:9px 18px 9px 0; border-top:1px solid rgb(${BONE} / .09); }
   ${HD} .orr-help-terms dd { padding:7px 0; border-top:1px solid rgb(${BONE} / .09); }
   ${HD} .orr-help-terms > .orr-help-terms__row:first-child > * { border-top:0; }
@@ -464,7 +478,7 @@ ${H} .orr-hmix__lbl:focus-visible { outline:none; }
   ${HD} .orr-help-list--ores .orr-help-terms dt { padding-right:12px; }
   ${HD} .orr-help-list--ores .orr-help-terms > .orr-help-terms__row:nth-child(2) > * { border-top:0; }
   ${HD} .orr-help-list--ores .orr-help-terms > .orr-help-terms__row:nth-child(odd) > dd { padding-right:14px; }
-  ${HD} .orr-help-reading__legal { margin:8px 0 0; padding:8px 12px; gap:20px; border:1px solid rgb(${BONE} / .18); border-radius:6px; background:rgb(${BONE} / .025); }
+  ${HD} .orr-help-reading__legal { margin:8px 0 0; padding:8px 12px; gap:20px; border:1px solid rgb(${BONE} / .3); border-radius:6px; background:var(--sf-face, rgb(8 11 16 / .8)); box-shadow:var(--sf-edge, inset 0 1px 0 rgb(236 230 216 / .1), inset 0 -1px 0 rgb(0 0 0 / .5)); }
 }
 /* ui-polish-331: at 1201+ wide and 461-599 tall the Ores hero (stage minus the reading under it) is 170-250px, but the mix
    keeps its 300px min-height, so its ring spilled over the reading's ledger and the rock's name. Here the reading stands beside

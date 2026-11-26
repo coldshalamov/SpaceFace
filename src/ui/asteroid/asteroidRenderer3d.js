@@ -43,7 +43,7 @@ import { contactKind, contactProfile } from '../../systems/siteProduction.js';
 import { asteroidSites } from '../../systems/asteroidSites.js';
 import { spawnParticleBurst, stepParticles } from '../screens/drill.js';
 import { ORE_TINTS, STATUS_COLORS } from './asteroidRenderer2d.js';
-import { createBloom } from '../../render/bloom.js';
+import { beginScenePipelineReadinessBatch, createBloom } from '../../render/bloom.js';
 import {
   preloadRockSurfaceLibrary, getReadyRockSurfaceTextures, ROCK_SURFACE_TEXTURE_REPEAT,
 } from '../../render/rockSurfaceLibrary.js';
@@ -1062,6 +1062,16 @@ const ORE_FAMILY = {
   cmdty_gem_ruby: 'exotic',
   cmdty_gem_diamond: 'ice',
   cmdty_exotic_amazonite: 'exotic',
+  // What each rock type carries inside (drillFieldModel ROCK_GEOLOGY): the same materials the
+  // laser cuts from that rock, in the host family whose surface they share.
+  cmdty_ore_titanium: 'metal',
+  cmdty_ore_platinoid: 'metal',
+  cmdty_ice_water: 'ice',
+  cmdty_volatiles: 'ice',
+  cmdty_gas_helium3: 'ice',
+  cmdty_crystal_silica: 'exotic',
+  cmdty_crystal_lumin: 'exotic',
+  cmdty_exotic_xenium: 'exotic',
 };
 
 // Seam count chips read `Fe 9` (law §3.5). Two glyphs, mono, no prose.
@@ -1078,6 +1088,14 @@ const ORE_SYMBOL = {
   cmdty_gem_ruby: 'Ru',
   cmdty_gem_diamond: 'Di',
   cmdty_exotic_amazonite: 'Px',
+  cmdty_ore_titanium: 'Ti',
+  cmdty_ore_platinoid: 'Pd',
+  cmdty_ice_water: 'Ic',
+  cmdty_volatiles: 'Vo',
+  cmdty_gas_helium3: 'He',
+  cmdty_crystal_silica: 'Qz',
+  cmdty_crystal_lumin: 'Lu',
+  cmdty_exotic_xenium: 'Xe',
 };
 
 // One host material per row of the law's table. Six instanced buckets instead of two: hue alone
@@ -1132,6 +1150,26 @@ const INCLUSION_KIT_FIT = {
   scar: [0.74, 0.04],
 };
 
+// EACH ROCK TYPE IS ITS OWN STONE. The six host materials above say what a CELL is; this says
+// what BODY the rover is inside. It multiplies the per-cell tint of the anonymous hosts (matrix,
+// basalt, the metal seam host) and of the crust, skirt and tunnel floor, so the whole cross-section
+// shifts together and the special cells (ice lens, exotic host, gas) keep their own identity
+// against it. Keyed by the rock's geology family (drillFieldModel ROCK_GEOLOGY); an unknown or
+// legacy family is the warm common stone the board always had.
+const HOST_STONE = Object.freeze({
+  ast_common_rock: Object.freeze([1.0, 1.0, 1.0]),
+  ast_metallic: Object.freeze([0.84, 0.70, 0.66]),     // iron-dark, rust in the shadows
+  ast_icy: Object.freeze([0.70, 1.08, 1.58]),          // pale, cold blue-grey
+  ast_crystalline: Object.freeze([0.66, 1.02, 0.94]),  // green-grey slate
+  ast_gas_cloud: Object.freeze([0.76, 0.88, 1.04]),    // ash grey: gas pockets are olive and yellow, so the body must not be
+  ast_rare_exotic: Object.freeze([0.52, 0.46, 0.96]),  // charcoal violet
+});
+const HOST_STONE_PLAIN = HOST_STONE.ast_common_rock;
+export function worksHostStone(family) { return HOST_STONE[family] || HOST_STONE_PLAIN; }
+// How much of the body's stone each bucket takes. Basalt keeps most of its own dark so it still
+// reads as the hard band in every body.
+const HOST_STONE_SHARE = Object.freeze({ matrix: 1, metal: 0.8, basalt: 0.55 });
+
 // The one classifier. Returns null only for a cell that is not there.
 function materialIdFor(tile) {
   if (!tile || tile.type === 'empty') return null;
@@ -1148,6 +1186,15 @@ const MACHINE_KIND = {
   sm_refinery: 'refinery',
   sm_fabricator: 'fabricator',
   sm_cargo_port: 'cargo_port',
+  sm_charge_press: 'charge_press',
+  sm_auto_drill: 'auto_drill',
+  sm_relay: 'relay',
+  sm_cryo_condenser: 'cryo_condenser',
+  sm_seismic_brace: 'seismic_brace',
+  sm_capacitor_bank: 'capacitor_bank',
+  sm_deep_synthesizer: 'deep_synthesizer',
+  sm_mass_driver: 'mass_driver',
+  sm_harmonic_resonator: 'harmonic_resonator',
 };
 
 const FAULT_STATES = new Set(['no-power', 'starved', 'backlogged', 'no-network', 'no-geology', 'no-pods']);
@@ -1473,6 +1520,11 @@ export function patchRockUvWindow(mat) {
   return mat;
 }
 
+// MEASURED 2026-11-21: these three do not decide how strongly the cell joints read. Raising them
+// to 0.64 / 0.42 / 0.42 moved a joint from luminance 80 to 84 against a pad at 134. The joint is
+// the shadow of the block shapes themselves (pad inset and lift in makeCellBlockGeos, which the
+// inclusion kits and contact brackets are seated on). Making the cut face read as one body of
+// rock (05_ADVENTURE 3.1) means changing that geometry, not these numbers.
 export const WORKS_CELL_GEOMETRY_OPTIONS = Object.freeze({
   jointOcclusion: 0.38, wallTopOcclusion: 0.30, grooveDepthScale: 0.75,
 });
@@ -1600,13 +1652,26 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
         for (const mat of materials) seen.set(mat, (seen.get(mat) || 0) | (1 << variant));
         leaves.push(leaf);
       });
-      for (const leaf of leaves) {
-        if (disposed || worksTearingDown) return false;
-        const result = await bloom.compileScenePipelines(leaf, camera, scene, { skipSharedBatch: true });
-        if (result?.skipped) throw new Error(result.reason || 'Mining pipeline unavailable');
-        // Bound software-driver linking to one material family per task, preserving UI input.
-        await new Promise((resolve) => setTimeout(resolve, 0));
+      // This board has its own context. Issue the material links in slices, then wait for them
+      // together so every rover material doesn't pay a separate driver readiness wait.
+      const batch = beginScenePipelineReadinessBatch(renderer, { independent: true });
+      const links = [];
+      try {
+        for (const leaf of leaves) {
+          if (disposed || worksTearingDown) return false;
+          links.push(bloom.compileScenePipelines(leaf, camera, scene, {
+            readinessBatch: batch,
+          }).catch(error => ({ skipped: true, reason: error?.message })));
+          if (batch.paceQueue) await batch.paceQueue();
+          else await new Promise(resolve => setTimeout(resolve, 0));
+        }
+        await batch.drain();
+        const skipped = (await Promise.all(links)).find(result => result?.skipped);
+        if (skipped) throw new Error(skipped.reason || 'Mining pipeline unavailable');
+      } finally {
+        batch.close();
       }
+      if (disposed || worksTearingDown) return false;
       // compile() creates NO attribute records — ledgering here would mark this renderer
       // resident before a single buffer exists and blind the per-admission gate to a re-detach
       // in the pre-draw window (W140-D1). Arm each drawable's onAfterRender: the ledger lands
@@ -2768,7 +2833,40 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   // Hemisphere: the law's warm/cool split (§3.5) expressed as a SOFT GRADIENT over surface
   // orientation instead of a hard directional. Up-facing stone catches cold sky, down-facing stone
   // catches warm bounce off the bore floor, and nothing gets a hard painted edge out of it.
-  scene.add(new THREE.HemisphereLight(0x8fa6cf, 0x7a5636, 1.1));
+  const hemi = new THREE.HemisphereLight(0x8fa6cf, 0x7a5636, 1.1);
+  scene.add(hemi);
+  // DARK INSIDE, LIT BY YOU. The rig above is the light at the mouth of the bore: sun on the cut
+  // face. It does not follow the rover down. As the rig descends the sun terms fall away and the
+  // rover's own lamps take over, so the heart of a rock is a pool of work light in the dark and
+  // what the lamp reaches is what the pilot can read. Real lights and real shadows throughout —
+  // the same key, the same spot — only their balance moves with depth.
+  const DEPTH_LIGHT = Object.freeze({
+    fullDarkRow: 16,                 // rows down at which the sun terms have bottomed out
+    key: [9.4, 1.9], fill: [1.3, 0.34], rim: [1.2, 0.12], hemi: [1.1, 0.3],
+    head: [52, 210], headReach: [8, 14], glow: [3.2, 85], glowReach: [3.4, 11],
+  });
+  const depthLight = { t: 0 };
+  function applyDepthLight(row, dt, powered) {
+    const raw = Math.max(0, Math.min(1, (Number(row) || 0) / DEPTH_LIGHT.fullDarkRow));
+    const target = raw * raw * (3 - 2 * raw);
+    // Ease toward the target so a fast climb does not snap the exposure.
+    depthLight.t += (target - depthLight.t) * (dt > 0 ? -Math.expm1(-dt / 0.6) : 1);
+    const t = depthLight.t;
+    const mix = (pair) => pair[0] + (pair[1] - pair[0]) * t;
+    key.intensity = mix(DEPTH_LIGHT.key);
+    fill.intensity = mix(DEPTH_LIGHT.fill);
+    rim.intensity = mix(DEPTH_LIGHT.rim);
+    hemi.intensity = mix(DEPTH_LIGHT.hemi);
+    if (headlight) {
+      headlight.intensity = powered ? mix(DEPTH_LIGHT.head) : 12;
+      headlight.distance = S * mix(DEPTH_LIGHT.headReach);
+    }
+    if (roverGlowLight) {
+      roverGlowLight.intensity = powered ? mix(DEPTH_LIGHT.glow) : 1.2;
+      roverGlowLight.distance = S * mix(DEPTH_LIGHT.glowReach);
+    }
+  }
+  let roverGlowLight = null;
 
   // ---------------------------------------------------------------- space + body extents
   // Warm-white stars behind the rock (law §3.5): the only billboard-style exception in the game,
@@ -2881,6 +2979,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
         const previous = backWall.material;
         backWall.material = makeCavityFloorMaterial(surface);
         previous.dispose();
+        paintBackWall();
       }
       rockSurfaceReady = true;
       for (const b of ROCK_BUCKETS) old[b].dispose();
@@ -3288,6 +3387,8 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     vent: new THREE.Color(0x7cd9a2),      // mint — the pocket the venting charge will open
     soften: new THREE.Color(0xc8a25a),    // dim gold — seismic fracture, rock stays standing
     spare: new THREE.Color(0x4a4438),     // barely lit — the payload passes this cell over
+    cableRoute: new THREE.Color(0xffb648),
+    laneRoute: new THREE.Color(0xf2e8d5),
   };
   let seatsUsed = 0;
   function seatGeometryForZoom() {
@@ -3883,6 +3984,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   const roverGlow = new THREE.PointLight(0xffd9a8, 3.2, S * 3.4, 2);
   roverGlow.position.set(0, S * 0.3, S * 0.4);
   rover.add(roverGlow);
+  roverGlowLight = roverGlow;
   const roverAnim = {
     flipY: 0, armAim: -Math.PI / 2, bite: 0, wheelSpin: 0, lean: 0, bob: 0,
     trackPhase: 0, hopStage: -1, lid: 0, lastTemp: 0, vent: 0, ventTick: 0,
@@ -4302,6 +4404,21 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   //      noisy quilt; what reads as geology is LOW-FREQUENCY banding on a slightly tilted axis,
   //      with broad patches over it and only a whisper of per-cell grain. Two sinusoids at
   //      different periods give wide beds with the occasional thin seam between them.
+  // The body's stone (HOST_STONE), set when a session begins.
+  let hostStone = HOST_STONE_PLAIN;
+  function applyHostStone(out, share = 1) {
+    if (hostStone === HOST_STONE_PLAIN || !(share > 0)) return out;
+    out.r *= 1 + (hostStone[0] - 1) * share;
+    out.g *= 1 + (hostStone[1] - 1) * share;
+    out.b *= 1 + (hostStone[2] - 1) * share;
+    return out;
+  }
+  function paintBackWall() {
+    if (!backWall || !backWall.material || !backWall.material.color) return;
+    backWall.material.color.setRGB(1.02, 0.94, 0.80);
+    applyHostStone(backWall.material.color, 0.9);
+  }
+
   function rockInstanceColor(c, r, _bucket, out) {
     const depthT = r / ROWS;
     const bed = r + c * 0.22;                                          // beds dip slightly
@@ -4311,7 +4428,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     const tint = Math.max(0.05, 1 + strata + patch + grain - depthT * 0.10);
     const warm = Math.sin(c * 0.16 - r * 0.12) * 0.012 + depthT * 0.08 - 0.03 + strata * 0.5;
     out.setRGB(Math.max(0, tint + warm), tint, Math.max(0, tint - warm * 1.2));
-    return out;
+    return applyHostStone(out, HOST_STONE_SHARE[_bucket] || 0);
   }
 
   // Geology tells on the rock itself: a fracture plane reads as a darker cracked face, a rich
@@ -4319,6 +4436,14 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   function cellTint(c, r, tile, bucket, out) {
     rockInstanceColor(c, r, bucket, out);
     if (tile && tile.cracked) { out.r = Math.min(1, out.r * 1.35 + 0.16); out.g *= 0.62; out.b *= 0.55; }
+    // Packed fill is cast stone: paler and flatter than the native rock it sits in, so a block the
+    // player set reads as made, not as a cave-in.
+    else if (tile && tile.fill) {
+      // The tint multiplies a warm rust albedo, so "pale" has to pull red down and blue up
+      // hard before the face stops reading as native rock (a near-white tint changed nothing).
+      const grey = (out.r + out.g + out.b) / 3;
+      out.r = grey * 0.70; out.g = grey * 0.90; out.b = grey * 1.24;
+    }
     else if (tile && tile.rubble) { out.r *= 0.7; out.g *= 0.66; out.b *= 0.62; }
     else if (tile && tile.fault) { out.r *= 0.55; out.g *= 0.5; out.b *= 0.62; }
     else if (tile && tile.rich) { out.r = Math.min(1, out.r * 1.28 + 0.1); out.g *= 1.06; out.b *= 0.5; }
@@ -4462,6 +4587,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       backWall.receiveShadow = true;
       rockGroup.add(backWall);
     }
+    paintBackWall();
   }
 
   // The surface strip: a jagged plateau row above the field + the winch derrick over the entry
@@ -4491,7 +4617,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       // Crust caps: the same stone, a touch cooler and dimmer than the interior because this is
       // the face that has been staring at cold starlight, not sitting in the work-light pool.
       const t = 0.86 + rnd01(c, 78, 'pt') * 0.1;
-      plateauInst.setColorAt(i, colScratch.setRGB(t * 0.97, t, t * 1.05));
+      plateauInst.setColorAt(i, applyHostStone(colScratch.setRGB(t * 0.97, t, t * 1.05)));
     }
     plateauInst.instanceMatrix.needsUpdate = true;
     if (plateauInst.instanceColor) plateauInst.instanceColor.needsUpdate = true;
@@ -4621,7 +4747,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       skirtInst.setMatrixAt(i, dummy.matrix);
       // crust: darker and cooler toward the rim, still the same stone family
       const t = 0.92 - cell.edge * 0.3 + rnd01(cell.c + 3, cell.r + 9, 'skt') * 0.06;
-      skirtInst.setColorAt(i, colScratch.setRGB(t * 0.95, t, t * 1.08));
+      skirtInst.setColorAt(i, applyHostStone(colScratch.setRGB(t * 0.95, t, t * 1.08)));
     });
     skirtInst.instanceMatrix.needsUpdate = true;
     if (skirtInst.instanceColor) skirtInst.instanceColor.needsUpdate = true;
@@ -5409,7 +5535,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   }
 
   function syncMachineArms(rec) {
-    const isContact = rec.defId === 'sm_extractor' || rec.defId === 'sm_gas_tap';
+    const isContact = rec.defId === 'sm_extractor' || rec.defId === 'sm_gas_tap' || rec.defId === 'sm_harmonic_resonator';
     const sig = isContact && field ? liveContactSig(rec.col, rec.row) : '';
     if (sig === rec.geoSig) return;
     rec.geoSig = sig;
@@ -6579,7 +6705,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
         shell.opacity = 0.45;
         shell.depthWrite = false;
         shell._own = true;
-        material.dispose(); // loader's initial per-instance shell is never rendered as the ghost
+        if (material.userData?.worksInstanceOwned) material.dispose();
         materials.push(shell);
         return shell;
       });
@@ -8012,7 +8138,8 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   // own bevel rings, and the ghost machine itself is the object you are placing.
   function syncCursor(ui) {
     const cursor = ui && ui.cursor;
-    const showGhost = !!(cursor && ui.mode === 'build' && ui.buildKind === 'machine' && ui.buildDefId);
+    const showGhost = !!(cursor && ui.mode === 'build' && ui.buildKind === 'machine' && ui.buildDefId
+      && ui.showMachineGhost !== false);
     cursorGroup.visible = !!cursor;
     // 1.5px, solved against the live camera EVERY frame — before the no-cursor early return, so a
     // reading taken with the pointer off the board still reports the hairline the board will draw
@@ -8050,6 +8177,18 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       }
       // The refused verdict is the hairline frame's bone, and that is ALL it is: a bracket in the
       // same cell doubles the ink and starts reading as a filled box again.
+    } else if (ui.mode === 'build' && ui.buildKind === 'fill') {
+      // Packed fill has no machine to ghost. The frame carries the verdict, and the machines that
+      // would read the new block get the same contact brackets a machine ghost gives its faces.
+      if (ghost) ghost.group.visible = false;
+      frameMat.color.setHex(ui.canOk ? 0x7cd9a2 : 0xf2e8d5);
+      frameMat.opacity = 0.85;
+      if (ui.canOk) {
+        const site = getSite ? getSite() : null;
+        for (const m of (site && site.machines) || []) {
+          if (Math.abs(m.col - cursor.col) <= 1 && Math.abs(m.row - cursor.row) <= 1) markSeat(m.col, m.row, 'contact');
+        }
+      }
     } else {
       if (ghost) ghost.group.visible = false;
       frameMat.color.setHex(HOVER_INK);
@@ -8570,6 +8709,17 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       seamsDirty = true;
       return;
     }
+    if (evt === 'fill') {
+      // A block tamped into a dug cell: the rock instance comes back (un-carve), the cell flashes
+      // the valid-work mint once and sheds a little cast dust. No camera kick: nothing fell.
+      refreshCells([{ col: p.col, row: p.row }]);
+      seamsDirty = true;
+      firePulseRing(p.col, p.row, 0x7cd9a2, 0.5);
+      const { x, y } = centerPx(p.col, p.row);
+      burst({ x, y, count: motionReduce ? 3 : 9, color: '#cfc9bd', life: 0.5, size: 2.6, speed: 40, kind: 'dust', cone: Math.PI * 2 });
+      mark('fill', p.col, p.row);
+      return;
+    }
     if (evt === 'gasVent') {
       // A pocket opened without detonating: mint ring, a sigh of vapor, no fire — and the same
       // permanent seam mark a breach leaves (the tile is vented in the sim either way, law D2).
@@ -8700,6 +8850,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     flashPresentation = worksFlashPresentation(opts);
     const d = readWorksDrillSession(getDrill());
     field = d ? d.field : null;
+    hostStone = worksHostStone(d && d.boreFamily);
     buildDomOverlay();
     resize();
     // clear per-session content
@@ -8825,7 +8976,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     buildRock();
     buildSurface();
     buildSkirt();
-    admitTerrain();
+    if (rockSurfaceReady) admitTerrain();
     // seed ore / gas / half-bored damage for the already-known parts of the field. Damage is
     // seeded from hp on entry so a reloaded site shows every abandoned bore exactly as it was.
     damagedCells.clear();
@@ -9012,7 +9163,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     // A dead battery dims the whole rig, glass included: a lens still glowing under a lamp that is
     // off is a sticker, not a light.
     const powered = !d.energyDepleted;
-    headlight.intensity = powered ? 52 : 12;
+    applyDepthLight(d.avatar ? d.avatar.row : 0, dt, powered);
     if (authoredRoverState.materialSets.lamp.length) {
       setAuthoredMaterials(authoredRoverState.materialSets.lamp, powered ? 0.55 : 0.12);
     } else if (roverBuilt.dyn.lampMat) roverBuilt.dyn.lampMat.emissiveIntensity = powered ? 0.55 : 0.12;
@@ -9098,6 +9249,10 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     seatsUsed = 0;
     seatGeometryForZoom();
     syncCursor(ui);
+    if (ui?.guidedRun) {
+      const tint = ui.guidedRun.kind === 'power' ? 'cableRoute' : 'laneRoute';
+      for (const cell of ui.guidedRun.cells) markSeat(cell.col, cell.row, tint);
+    }
     syncFaces(d, ui, timeS);
     syncCharge(d, timeS);
     flushSeats();
@@ -9111,7 +9266,9 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     stepDom(d, dt);
     // Hold the draw while a context-restore rehydrate is in flight — a bind on emptied
     // payloads is exactly what the consult exists to prevent (W140-G4).
-    if (!contextRestoreConsult) {
+    // Start the first-frame warm on the authored terrain and rig. Queuing it while either
+    // source is still arriving compiles a provisional scene ahead of the parts the pilot needs.
+    if (!contextRestoreConsult && (worksOpeningGate.ready() || (rockSurfaceReady && authoredRoverState.group))) {
       const outcome = runWorksPresentedFrame(worksOpeningGate, () => {
         const before = rendererProgramCacheKeys(renderer);
         bloom.render(scene, camera);

@@ -1,4 +1,4 @@
-// Row 493 (CRAFT-POWERS): the held-key preview. While a power's key is held, every body that
+// The held-key preview. While an aimed power's key is held, every body that
 // letting go will move is outlined in the power's colour, with its predicted path; the shapes the
 // power makes (a well ring, a blast ring, a throw line) are drawn with it. This module resolves
 // that truth; src/render/powerPreview.js draws it.
@@ -14,6 +14,8 @@
 // state), so holding a key cannot change the simulation.
 import { FIELD_DEFS, FIELD_COUPLING, fieldsFlag } from './fields.js';
 import { BOMB_DRIFT, bombDef, resolvedBombDef } from './bombs.js';
+import { faunaSpeciesById } from './alienFauna.js';
+import { faunaSelfTravelBound } from './faunaMotionRead.js';
 import { IMPULSE_CHARGES } from './impulseCharges.js';
 import { GRAVITY_MARK_FIELD_COUPLING } from './combatDefs.js';
 import {
@@ -29,15 +31,17 @@ import {
   activeFieldSnapshot, fieldBodyProfile, fieldEntityIsPrimed, fieldLifecyclePhase, fieldVelocityTermApplies,
   isForceableFieldBody, playerFieldSpec, pullMarkTargetEligible,
 } from '../core/fields/fieldReadModel.js';
-import { massSeedLaunchPlan } from '../systems/massSeed.js';
+import { massSeedLaunchPlan, massSeedStakeTarget } from '../systems/massSeed.js';
 import { swarmFieldRadiusScale } from '../systems/playerModifiers.js';
 import { chargeThrowPlan } from './impulseChargeReadModel.js';
-import { bombDropPlan, proximityTriggerEligible } from '../systems/bombs.js';
+import { bombDropPlan, ordnanceClassVerdict, proximityTriggerEligible } from '../systems/bombs.js';
+import { FURNACE_MITE_KEYS, localFurnaceWorksite } from '../missions/furnaceWorksite.js';
 import {
-  POWER_VERBS, bombUsesCharge, heldPower, playerImpulseCharges, resolveRigTarget,
+  POWER_VERBS, bombUsesCharge, heldPower, playerImpulseCharges, powerUsesReleasePreview, resolveRigTarget,
 } from '../systems/powerVerbs.js';
 import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { readRailModel } from '../ui/powerRail.js';
+import { resolveEntitySelection } from '../ui/sim/stableSelection.js';
 import { planGyreThrow, planCollectorRelease } from './throwForecast.js';
 
 /** Per-power preview tint (05 §7.2 — the same colour the rail and Cluster use). */
@@ -78,18 +82,19 @@ const blastShoveEligible = (e) => !!e && e.physicsBody !== false
   && (isDynamicPhysicsBodyEntity(e) || isAnchoredPhysicalBody(e));
 
 /**
- * The power whose key is held right now, or null. input.js publishes the newest live grip through
+ * The aimed power being previewed right now, or null. input.js publishes the newest live grip through
  * powerVerbs.heldPower; a merged `state.input.actions[p].held` flag is read when no grip is
- * published (an input layer that writes one). The grip lives in the realm input runs in: every
- * player route runs the main lane (simLaneMain.resolveSimLaneFlags), so the renderer sees it; the
- * `?simLane=worker` diagnostic keeps it in the worker and draws no preview.
+ * published (an input or presentation layer that supplies one). The private grip is available
+ * only in the realm that owns input. The shared interaction policy excludes immediate
+ * pulses/toggles and the use-on-press setting: a held Rig key must never draw a pending cone.
  */
 export function powerHeld(state) {
   const grip = heldPower(state);
-  if (grip) return grip;
+  if (grip && powerUsesReleasePreview(state, grip)) return grip;
   const acts = state && state.input && state.input.actions;
   if (!acts) return null;
   for (const p of POWER_VERBS) {
+    if (!powerUsesReleasePreview(state, p)) continue;
     const a = acts[p];
     if (a && (a.held === true || a === true)) return p;
   }
@@ -422,17 +427,31 @@ function planShove(state, player, rail, opts) {
 }
 
 function planPin(state, player, rail) {
+  const slot = rail[3];
+  // R17: cast on a body, Pin stakes it where it is; in empty space it plants a post at the cursor.
+  const stake = massSeedStakeTarget(player, state);
+  if (stake) {
+    return {
+      center: { x: stake.pos.x, z: stake.pos.z }, radius: stake.radius || FIELD_DEFS.seed.radius,
+      areas: [
+        { kind: 'route', role: 'route', points: [player.pos.x, player.pos.z, stake.pos.x, stake.pos.z] },
+        ring('lock', stake.pos.x, stake.pos.z, (stake.radius || 0) + 6),
+      ],
+      moves: [],
+      blocked: slot && slot.state === 'cooling' ? slot.why : null,
+      note: 'Stakes it here — it strains, it cannot leave',
+    };
+  }
   const { spawnPos, lockPos } = massSeedLaunchPlan(player, state);
   const areas = [
     { kind: 'route', role: 'route', points: [spawnPos.x, spawnPos.z, lockPos.x, lockPos.z] },
     ring('lock', lockPos.x, lockPos.z, FIELD_DEFS.seed.radius),
   ];
-  const slot = rail[3];
-  // Pin moves nothing: the seed flies as a ghost and locks into a fixed anchor the Line latches to.
+  // Pin in empty space moves nothing: the bolt locks into a fixed post the Line latches to.
   return {
     center: lockPos, radius: FIELD_DEFS.seed.radius, areas, moves: [],
     blocked: slot && slot.state === 'cooling' ? slot.why : null,
-    note: 'Anchors here — the Line latches to it',
+    note: 'Post here — swing on it with the Line',
   };
 }
 
@@ -530,6 +549,38 @@ function planDriftBomb(state, player, rail) {
   }
   areas.push(ring('blast', m.x, m.z, def.radius));
   if (blocked) return { center, radius: def.radius, areas, moves: [], blocked };
+  if (id === 'bomb_frag' && def.damage > 0) {
+    const clearance = state.missions?.active?.find(job => job?.id === state.ui?.trackedMissionId
+      && localFurnaceWorksite(job, state) && job.objectiveProgress < job.objectiveTarget);
+    if (clearance) {
+      for (const body of indexedTypeScan(state, 'fauna')) {
+        const ecology = body?.data?.ecology;
+        if (!body?.alive || !body.pos || ecology?.siteId !== 'closed_refinery' || ecology.speciesId !== 'casket_worm'
+            || !ordnanceClassVerdict(body).damage) continue;
+        const x = body.pos.x + finite(body.vel?.x) * tDet;
+        const z = body.pos.z + finite(body.vel?.z) * tDet;
+        if (bombSurfaceFalloff(Math.hypot(x - m.x, z - m.z), body.radius, def.radius) > 0) {
+          areas.push(ring('casket-risk', x, z, Math.max(4, finite(body.radius)) + 2));
+        }
+      }
+      const waypoint = state.nav?.waypoint;
+      const mite = waypoint?.kind === 'mission' && waypoint.missionId === clearance.id
+        ? resolveEntitySelection(state, waypoint.stable) : null;
+      const ecology = mite?.data?.ecology;
+      if (mite?.id === waypoint?.targetEntityId && mite?.type === 'fauna' && mite.pos
+          && ecology?.siteId === 'closed_refinery' && ecology.speciesId === 'suture_mite'
+          && FURNACE_MITE_KEYS.includes(ecology.faunaKey)) {
+        // The ecology owner walks its kinematic bodies directly. Their zero `vel` is
+        // not a stationary prediction, and future pilot proximity can change the drive.
+        const reach = faunaSelfTravelBound(faunaSpeciesById(ecology.speciesId), tDet);
+        const distance = Math.hypot(mite.pos.x - m.x, mite.pos.z - m.z);
+        const edge = def.radius + Math.max(0, finite(mite.radius));
+        if (distance < edge && distance + reach >= edge) {
+          areas.push({ ...ring('mite-motion', mite.pos.x, mite.pos.z, mite.radius + 7), reach });
+        }
+      }
+    }
+  }
   const moves = [];
   for (const k of blastKicks(state, player, {
     x: m.x, z: m.z, radius: def.radius, impulse: def.impulse, falloff: 'surface', t: tDet,
@@ -548,7 +599,7 @@ function planRig(state, player, rail, opts) {
   const spec = playerFieldSpec(kind, player, state);
   const slot = rail[5];
   if (slot && slot.state === 'armed') {
-    // A rig that is on folds first: the release turns it off and moves nothing.
+    // An explicit inspection plan can show Rig; it folds on its next press and moves nothing.
     return { center: spec.center, radius: spec.radius, areas: [fieldArea('fold', spec)], moves: [], blocked: null, note: slot.why };
   }
   const drift = { x: finite(player.vel && player.vel.x), z: finite(player.vel && player.vel.z) };

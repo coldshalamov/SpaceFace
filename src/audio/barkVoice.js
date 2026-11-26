@@ -156,7 +156,7 @@ export const MAERA_VOICE_REGISTER = register('contact_maera_vols', 'Captain Maer
 // Representative instructor lines. The register WAV body is rendered from the first; every tutorial
 // line rides it through rate/pitch shaping, exactly like the faction registers.
 export const INSTRUCTOR_LINES = Object.freeze([
-  'Contract 47-A: the manifest says one mass — your instruments say another.',
+  'Papers say one weight. Your scale says another.',
   'The Kestrel is armed: fire the Pulse Laser S, then let the heat clear.',
 ]);
 

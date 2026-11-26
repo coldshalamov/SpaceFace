@@ -10,7 +10,9 @@ import { livedOverlayFor } from '../data/livedSectorOverlays.js';
 import { zoneAt } from '../data/sectorZones.js';
 import { globalToSectorLocalForSector } from '../data/sectorCoordinates.js';
 import { isRacingCorridorSession } from '../world/racingCorridor.js';
-import { isGuidedOnboardingActive } from '../onboarding/opportunityAdmission.js';
+import { isOpeningSettling } from '../onboarding/opportunityAdmission.js';
+import { ALIEN_SITES } from '../data/alienEcology.js';
+import { localFurnaceWorksite } from '../missions/furnaceWorksite.js';
 
 import { STRUCK_BELL_ID, struckBellAnchor } from './struckBellRuntime.js';
 
@@ -170,7 +172,9 @@ export function tickLivedVignettes(runtime) {
   if (isRacingCorridorSession(state)) return;
   if (state.ui && state.ui.docked) return;
   if (state.player && state.player.flags && state.player.flags.docked) return;
-  if (isGuidedOnboardingActive(state)) return;
+  // The first job after the opening gets the harbour to itself (a timed patrol hail used to land
+  // twenty seconds after the first undock).
+  if (isOpeningSettling(state)) return;
   if (survivalLive(state)) return;
   const now = Number(state.simTime) || 0;
   if (runtime._livedScanAt != null && now < runtime._livedScanAt) return;
@@ -189,6 +193,11 @@ export function tickLivedVignettes(runtime) {
   const local = globalToSectorLocalForSector(player.pos, sectorId);
   if (!local) return;
   const authoredZone = zoneAt(sectorId, local.x, local.z);
+  if (authoredZone?.id === ALIEN_SITES.closed_refinery.zoneId) {
+    const focused = state.missions?.active?.find(mission => mission.id === state.ui?.trackedMissionId);
+    // Keep new optional scenes available for a later visit while the pilot works this objective.
+    if (localFurnaceWorksite(focused, state)) return;
+  }
   const bellAnchor = struckBellAnchor(state, player);
   const bellNearby = !!bellAnchor;
   const sweepNearby = sweepWindowAdmission(state, runtime.registry, player);

@@ -25,6 +25,7 @@ export const BINDINGS = Object.freeze({
   techTree: { key: 't', code: 'KeyT', label: 'T' },
   missionLog: { key: 'j', code: 'KeyJ', label: 'J' },
   drill: { key: 'b', code: 'KeyB', label: 'B' },
+  fieldBuild: { key: 'B', code: 'KeyB', label: 'Shift+B', shift: true },
   // U (was C): the C key is the flight-verb SCANNER PULSE in the 2.0 input contract (GDD §7.1);
   // claim-base is a rare contextual action and yields the prime key.
   claimBase: { key: 'u', code: 'KeyU', label: 'U' },

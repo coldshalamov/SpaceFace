@@ -315,6 +315,10 @@ async function runShoveArm(seed, { weaponId, direction, tag, eventTrace, straigh
     spec.data.ai.spawnContext = 'zone_hostile';
     spec.data.intent = emptyIntent();
     spec.data.combat = spec.data.combat || {};
+    // Ordinary Swarm ships fly the shared pack brain (a19025d7f6); a bare zone-hostile stamp
+    // leaves this hull on the legacy stack, which no longer closes for a lone wasp — the
+    // has-not-fired clause was uninstrumentable because the CONTROL arm never fired either.
+    spec.data.runCohort = 'survival';
     if (host.state.playerId) spec.data.combat.targetId = host.state.playerId;
     const victim = host.runtime.spawn(spec);
 

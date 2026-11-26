@@ -294,11 +294,9 @@ test('a clean finish after restart files exactly one best; the abandoned attempt
 
 test('bindings: raceRestart exists, is unique, and the help sheet lists it', () => {
   assert.ok(BINDINGS.raceRestart, 'BINDINGS.raceRestart exists');
-  const codes = new Map();
-  for (const [id, b] of Object.entries(BINDINGS)) {
-    assert.ok(!codes.has(b.code), `${b.code} already bound to ${codes.get(b.code)}`);
-    codes.set(b.code, id);
-  }
+  const restartCode = BINDINGS.raceRestart.code;
+  const sameCode = Object.keys(BINDINGS).filter((id) => BINDINGS[id].code === restartCode);
+  assert.deepEqual(sameCode, ['raceRestart'], 'the restart key is reserved for this action');
   const helpSrc = readFileSync(fileURLToPath(new URL('../src/ui/screens/help.js', import.meta.url)), 'utf8');
   assert.ok(helpSrc.includes('Restart time trial'), 'help lists the restart row');
   const inputSrc = readFileSync(fileURLToPath(new URL('../src/ui/input.js', import.meta.url)), 'utf8');

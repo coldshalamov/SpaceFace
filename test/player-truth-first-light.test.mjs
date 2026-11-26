@@ -40,14 +40,14 @@ function introSnapshotCallbackSource() {
 }
 
 test('the public settings actor only accepts the known First light choices', () => {
-  assert.equal(isFirstLightPrompt('First light','Keep my settings'),true);
-  assert.equal(isFirstLightPrompt(' First light ','KEEP MY SETTINGS\n'),true);
-  assert.equal(isFirstLightPrompt('First light','Keep my settingsESC'),true);
-  assert.equal(isFirstLightPrompt('First light','Keep my settings ESC'),true);
-  assert.equal(isFirstLightPrompt('First light','Use first light ESC','Play'),true);
-  assert.equal(isFirstLightPrompt('First light','Use first light ESC','Buy'),false);
+  assert.equal(isFirstLightPrompt('Comfort preset','Keep my settings'),true);
+  assert.equal(isFirstLightPrompt(' Comfort preset ','KEEP MY SETTINGS\n'),true);
+  assert.equal(isFirstLightPrompt('Comfort preset','Keep my settingsESC'),true);
+  assert.equal(isFirstLightPrompt('Comfort preset','Keep my settings ESC'),true);
+  assert.equal(isFirstLightPrompt('Comfort preset','Turn on comfort preset ESC','Play'),true);
+  assert.equal(isFirstLightPrompt('Comfort preset','Turn on comfort preset ESC','Buy'),false);
   assert.equal(isFirstLightPrompt('Abandon the ship?','Keep my settings'),false);
-  assert.equal(isFirstLightPrompt('First light','Confirm purchase'),false);
+  assert.equal(isFirstLightPrompt('Comfort preset','Confirm purchase'),false);
 });
 
 test('the actual intro DOM predicate keeps an unrelated root confirmation blocking Space', () => {
@@ -76,6 +76,7 @@ test('the actual intro DOM predicate keeps an unrelated root confirmation blocki
   const splash = {
     id: 'cinematic-splash',
     hidden: false,
+    classList: { contains: (name) => name === 'is-closing' },
     getBoundingClientRect: () => ({ width: 1000, height: 700 }),
   };
   const result = runInNewContext(`(${introSnapshotCallbackSource()})()`, {
@@ -86,16 +87,17 @@ test('the actual intro DOM predicate keeps an unrelated root confirmation blocki
     getComputedStyle: () => ({ display: 'block', visibility: 'visible' }),
   });
   assert.equal(result.splashVisible, true);
+  assert.equal(result.splashClosing, true);
   assert.equal(result.firstLightDialogPresent, false);
   assert.equal(result.otherModalActive, true);
   assert.equal(result.otherModalTitle, 'Confirm purchase');
 });
 
-function fixture({ title = 'First light', visible = true, cancel = 'Use first light', confirm = 'Play',
+function fixture({ title = 'Comfort preset', visible = true, cancel = 'Turn on comfort preset', confirm = 'Play',
   cancelVisible = true, confirmText = confirm, clickError = null, reenterHandlerDuringPlay = false,
   closePageOnClickError = false, introVisible = false, promptAfterFirstSpace = false,
   supersedeOnPlay = false, delayedPromptOpening = false, replacementDuringOpeningWait = false,
-  cinematicAriaModal = false, conditionReturn = 'handle',
+  cinematicAriaModal = false, introClosing = false, conditionReturn = 'handle',
   dismissSplashOnPromptCleanup = false, dismissBeforePlayBounds = false } = {}) {
   const clicks = [], events = [];
   const locatorClicks = [], mouseClicks = [];
@@ -178,21 +180,22 @@ function fixture({ title = 'First light', visible = true, cancel = 'Use first li
     async evaluate(fn) {
       if (String(fn).includes('cinematic-splash')) {
         const excludesCinematic = String(fn).includes("node.id === 'cinematic-splash'");
-        return { splashVisible, firstLightVisible: active && title.trim() === 'First light',
+        return { splashVisible, splashClosing: splashVisible && introClosing,
+          firstLightVisible: active && title.trim() === 'Comfort preset',
           firstLightDialogPresent: dialogPresent && !otherDialogTitle,
           otherModalActive: !!otherDialogTitle || (modalFence && !active && (!dialogPresent || !!otherDialogTitle))
             || (cinematicAriaModal && !excludesCinematic),
           otherModalTitle: otherDialogTitle || null };
       }
       if (String(fn).includes('dialogPresent')) return {
-        active: active && title.trim() === 'First light',
-        dialogPresent: dialogPresent && title.trim() === 'First light' && !otherDialogTitle,
+        active: active && title.trim() === 'Comfort preset',
+        dialogPresent: dialogPresent && title.trim() === 'Comfort preset' && !otherDialogTitle,
       };
-      return active && title.trim() === 'First light';
+      return active && title.trim() === 'Comfort preset';
     },
     getByRole(role, options) {
       assert.equal(role, 'dialog');
-      assert.deepEqual(options, { name: 'First light', exact: true });
+      assert.deepEqual(options, { name: 'Comfort preset', exact: true });
       return dialog;
     },
     mouse: { async click(x, y) {
@@ -214,12 +217,13 @@ function fixture({ title = 'First light', visible = true, cancel = 'Use first li
       }
       else splashVisible = false;
     } },
-    async waitForFunction(fn, _arg, _options) {
+    async waitForFunction(fn, arg, _options) {
       if (String(fn).includes('cinematic-splash')) {
         if (cinematicAriaModal) assert.ok(String(fn).includes("node.id === 'cinematic-splash'"),
           'the intro dialog is excluded from unrelated-modal checks');
-        assert.ok(!splashVisible || dialogPresent || (active && title.trim() === 'First light') || otherDialogTitle,
-          'intro polling wakes when Space dismisses the splash or First light interrupts it');
+        if (arg === true && introClosing) splashVisible = false;
+        assert.ok(!splashVisible || dialogPresent || (active && title.trim() === 'Comfort preset') || otherDialogTitle,
+          'intro polling wakes when Space dismisses the splash or the comfort preset interrupts it');
         return true;
       } else if (String(fn).includes("root.classList.contains('sf-confirm--in')")) {
         if (replacementDuringOpeningWait) {
@@ -345,7 +349,7 @@ test('a late First light interrupts intro Space, is answered, then intro receive
     'the answer waits past class removal until the dialog DOM and input fence are actually released');
   assert.equal(f.handleJsonCalls, 0, 'the CSP-safe raw value is consumed without a Playwright JSHandle');
   assert.equal(f.events.at(-1)[0], 'intro-dismissed');
-  assert.match(f.events.at(-1)[2], /after 1 First light interruption/i);
+  assert.match(f.events.at(-1)[2], /after 1 comfort preset interruption/i);
 });
 
 test('a mounted First light is observed through its delayed opening frame before it is answered', async () => {
@@ -358,11 +362,19 @@ test('a mounted First light is observed through its delayed opening frame before
   assert.equal(f.otherDialogTitle, '', 'the expected First light prompt remains the dialog owner');
 });
 
+test('a cinematic already fading off the menu finishes without sending Space to the newly focused menu', async () => {
+  const f = fixture({ visible: false, introVisible: true, introClosing: true });
+  const result = await f.dismissIntro();
+  assert.deepEqual(result, { shown: true, spacePresses: 0, promptAnswers: 0 });
+  assert.equal(f.events.at(-1)[0], 'intro-dismissed');
+  assert.match(f.events.at(-1)[2], /cinematic finished/i);
+});
+
 test('a replacement modal during the First light opening wait blocks any further intro Space', async () => {
   const f = fixture({ visible: false, introVisible: true, promptAfterFirstSpace: true,
     delayedPromptOpening: true, replacementDuringOpeningWait: true, conditionReturn: 'raw' });
   await f.install();
-  await assert.rejects(f.dismissIntro(), /First light was superseded.*Confirm purchase/);
+  await assert.rejects(f.dismissIntro(), /comfort preset prompt was superseded.*Confirm purchase/);
   assert.equal(f.spacePresses, 1, 'no Space reaches the replacement confirmation');
   assert.deepEqual(f.clicks, [], 'the unrelated replacement is preserved without interaction');
   assert.equal(f.otherDialogTitle, 'Confirm purchase');
@@ -384,13 +396,13 @@ test('intro cleanup finishing at the deadline is judged from a fresh visible-spl
   }
   assert.deepEqual(f.clicks, ['Play']);
   assert.equal(f.events.at(-1)[0], 'intro-dismissed');
-  assert.match(f.events.at(-1)[2], /after 1 First light interruption/i);
+  assert.match(f.events.at(-1)[2], /after 1 comfort preset interruption/i);
 });
 
 test('a superseding dialog is preserved and never receives an intro Space press', async () => {
   const f = fixture({ visible: false, introVisible: true, promptAfterFirstSpace: true, supersedeOnPlay: true });
   await f.install();
-  await assert.rejects(f.dismissIntro(), /First light was superseded.*Confirm purchase/);
+  await assert.rejects(f.dismissIntro(), /comfort preset prompt was superseded.*Confirm purchase/);
   assert.equal(f.spacePresses, 1, 'no second Space is sent after the superseding modal appears');
   assert.equal(f.cleanupWaitObservations.length, 1);
   assert.equal(f.otherDialogTitle, 'Confirm purchase', 'the new dialog remains the owner');
@@ -423,7 +435,7 @@ test('Play takes precedence when legacy Keep my settings is also present', async
 });
 
 test('legacy Keep my settings is clicked by its accessible name despite the ESC keycap', async () => {
-  const f = fixture({ cancel: 'Keep my settings', confirm: 'Use first light' });
+  const f = fixture({ cancel: 'Keep my settings', confirm: 'Turn on comfort preset' });
   await f.install(); await f.answer();
   assert.deepEqual(f.clicks, ['Keep my settings']);
   assert.match(f.events[0][2], /Keep my settings.*shipped settings/);
@@ -444,7 +456,7 @@ test('an absent prompt is left alone', async () => {
 test('unsupported controls on a visible known dialog fail explicitly', async () => {
   const f = fixture({ cancel: 'Cancel', confirm: 'Buy' });
   await f.install();
-  await assert.rejects(f.answer(), /First light.*supported.*Play.*Keep my settings/);
+  await assert.rejects(f.answer(), /comfort preset prompt.*supported.*Play.*Keep my settings/);
   assert.deepEqual(f.clicks, []);
   assert.deepEqual(f.events, [], 'no false successful answer');
 });

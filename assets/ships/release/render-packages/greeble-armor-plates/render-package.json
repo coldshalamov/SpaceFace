@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "b55427df965e86fb28d4e2f5846c2f6286a3bc5e87481de47dd68917269d99aa",
+  "contentHash": "6730aa74dcb2057e9926ece8cc27d20176da4948c4d28b6756eac27b6bd3b93b",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -262,22 +262,28 @@
       "uri": "greeble_armor_plates.glb"
     },
     "sourceManifest": {
-      "bytes": 4241,
-      "sha256": "c9bf34b6a242114de2638ac88f0ea23cfe74b9a29c8c3171de36989c351a1476",
+      "bytes": 4389,
+      "sha256": "7d612fd36b62ca6b917ceb85d06c6c8028397be4660e827c7254551013129c31",
       "uri": "assets/ships/render-packages/inputs/greeble-armor-plates.json"
     }
   },
   "render": {
-    "bytes": 51500,
+    "bytes": 47072,
     "resources": [
       {
         "bytes": 209600,
         "mimeType": "image/ktx2",
         "sha256": "830f03af281802085a1ccabfb9abdb7cb736c593a0bafb0ac595d153613867dd",
         "uri": "../_shared/images/830f03af281802085a1ccabfb9abdb7cb736c593a0bafb0ac595d153613867dd.ktx2"
+      },
+      {
+        "bytes": 4453,
+        "mimeType": "image/ktx2",
+        "sha256": "c83d93e155a49edddc5c3ffccba87aff7963f04502375c743fa8d5acd464ebba",
+        "uri": "../_shared/images/c83d93e155a49edddc5c3ffccba87aff7963f04502375c743fa8d5acd464ebba.ktx2"
       }
     ],
-    "sha256": "038b6e5e1426cb0ae063d50b779cc62643be009fc66d271aea5a89c724e264c5",
+    "sha256": "04a8520e3b8f618f6d31573b446c9945d968a399cf55b5f0afd69f9fa44ab2b5",
     "uri": "render.glb"
   },
   "runtime": {
@@ -381,7 +387,7 @@
     "slot": "greeble",
     "url": "assets/ships/release/parts/greebles/greeble_armor_plates.glb"
   },
-  "runtimeHash": "6b83c5b88c337501509f3feecf31a00f3f8d6e8ce1e0bd102fd0d791bc2ba1f5",
+  "runtimeHash": "5719a264800bd0aba4ecdafb7bde592897b1618dd980f616b0dea843fa99b466",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

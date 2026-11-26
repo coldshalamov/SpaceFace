@@ -3,7 +3,9 @@ import assert from 'node:assert/strict';
 import { mkdirSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { spawn } from 'node:child_process';
-import { chromium } from 'playwright';
+import { chromium as rawChromium } from 'playwright';
+import { quietChromium } from './lib/quietLaunch.mjs';
+const chromium = quietChromium(rawChromium);
 
 const ROOT = process.cwd();
 const SHOT_DIR = '.devshots/sector-law';

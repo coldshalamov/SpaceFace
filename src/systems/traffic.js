@@ -73,6 +73,7 @@ import {
 import { getAsteroidFieldRock, promoteAsteroidFieldRock } from '../world/asteroidField.js';
 import { asteroidColliderRadius } from '../data/asteroidColliders.js';
 import { getFarActor } from '../world/farActorTable.js';
+import { resolveClearSpawnPos } from './spawnClearance.js';
 import { fittingsFromDefaultModules, makeShipEntitySpec } from './ships.js';
 import { CombatDoctrineId } from '../ai/combatDoctrine.js';
 import { drawSeeded, hash32 } from '../core/rng.js';
@@ -200,6 +201,8 @@ const SPEED = 28;              // wu/s — slow, reads as a heavy freighter
 export const DOCK_RANGE = 60;         // how close before "docking" (trading)
 export const TRADE_INTERVAL_S = 8;    // min seconds between trades per freighter (staggered)
 const POCKET_CLUSTER_R = 420;  // first freighters cluster near a pocket station for sensor density
+// R16: no ambient hull is seated this close to the player (station seats mirror to the far apron).
+const TRAFFIC_PLAYER_CLEAR_WU = 400;
 
 // SEED-PC-01 — a hull the player is watching does not materialize or vanish inside this
 // radius. Arrival wears an existing burn profile; departure wears the spine wake. Both
@@ -1741,9 +1744,14 @@ export const traffic = {
     this._coldburnRey?.destroy();
     clearCeresWorkfleetControls(this.state);
     unregisterMachineryReconciliation(this.state, this);
+    for (const off of this._unsubs || []) if (typeof off === 'function') off();
+    this._unsubs = [];
   },
 
   init(ctx) {
+    // drop stale handlers from a previous init on a live bus
+    for (const unsub of this._unsubs || []) { try { unsub(); } catch (_) {} }
+    this._unsubs = [];
     this.state = ctx.state;
     registerMachineryReconciliation(this.state, this);
     this.bus = ctx.bus;
@@ -1831,9 +1839,9 @@ export const traffic = {
     this._initWake(ctx);
     this._initScramblePlant(ctx);
 
-    this.bus.on('sector:enter', (p) => this._onSectorEnter(p));
-    this.bus.on('endgame:chosen', () => this._materializeEndingWorldPresence());
-    this.bus.on('save:loaded', () => this._materializeEndingWorldPresence());
+    this._unsubs.push(this.bus.on('sector:enter', (p) => this._onSectorEnter(p)));
+    this._unsubs.push(this.bus.on('endgame:chosen', () => this._materializeEndingWorldPresence()));
+    this._unsubs.push(this.bus.on('save:loaded', () => this._materializeEndingWorldPresence()));
     // Census arm: ambient traffic materialization lands inside the sector cook
     // deterministically (the handler falls back to world.currentSectorId itself). The cook
     // drives the chunked twin across the census's slice clock — the emit listener drains
@@ -1851,73 +1859,73 @@ export const traffic = {
     // The listeners fire on the events; nothing here emits per tick.
     if (!this._richSeamGlintBound && this.bus && typeof this.bus.on === 'function') {
       this._richSeamGlintBound = true;
-      this.bus.on('field:richSeamOpened', (payload) => admitRichSeamGlint(this.state, payload || {}));
-      this.bus.on('field:richSeamWorked', (payload) => endRichSeamGlint(this.state, payload || {}));
+      this._unsubs.push(this.bus.on('field:richSeamOpened', (payload) => admitRichSeamGlint(this.state, payload || {})));
+      this._unsubs.push(this.bus.on('field:richSeamWorked', (payload) => endRichSeamGlint(this.state, payload || {})));
     }
     // Canonical seam is sector:exit (world never emits sector:leave). Continuous handoffs prune
     // dead tracking only; hard exits fully clean up freighters.
-    this.bus.on('sector:exit', (p) => this._onSectorExit(p));
+    this._unsubs.push(this.bus.on('sector:exit', (p) => this._onSectorExit(p)));
     // ECON-P2: freighter loss → owner-safe scarcity intents + named news (no wallet writes).
-    this.bus.on('entity:killed', (p) => this._onEntityKilled(p));
+    this._unsubs.push(this.bus.on('entity:killed', (p) => this._onEntityKilled(p)));
     this._initApplausePlantListeners?.();
     // Despawn is not a kill. A cutter removed by sector exit, residency demotion, or TTL holds
     // its wreck/payload reservation forever unless the destroy receipt releases it too.
-    this.bus.on('entity:destroyed', (p) => this._onEntityDestroyed(p));
+    this._unsubs.push(this.bus.on('entity:destroyed', (p) => this._onEntityDestroyed(p)));
     // A living barge can lose the counted hold without dying: the opening raid's robbed
     // outcome is the raider leaving with the ore. Destruction closes the same row when the
     // kill path never saw this manifest id.
-    this.bus.on('encounter:resolved', (p) => this._onOpeningRaidFreightResolved(p || {}));
-    this.bus.on('world:farActorShelved', (p) => this._onFarActorShelved(p || {}));
-    this.bus.on('world:farActorRestored', (p) => this._onFarActorRestored(p || {}));
+    this._unsubs.push(this.bus.on('encounter:resolved', (p) => this._onOpeningRaidFreightResolved(p || {})));
+    this._unsubs.push(this.bus.on('world:farActorShelved', (p) => this._onFarActorShelved(p || {})));
+    this._unsubs.push(this.bus.on('world:farActorRestored', (p) => this._onFarActorRestored(p || {})));
     // Working freight is driven by npcJobsRuntime, so the ambient traffic stepper never reaches
     // its own work/dock branches. Consume only materialized kernel intents here and keep field and
     // economy authority on their existing event seams.
-    this.bus.on('npcjobs:work', (p) => this._onNpcJobWork(p || {}));
-    this.bus.on('npcjobs:load', (p) => this._onNpcJobLoad(p || {}));
-    this.bus.on('npcjobs:unload', (p) => this._onNpcJobUnload(p || {}));
-    this.bus.on('npcjobs:hold', (p) => this._onNpcJobHold(p || {}));
+    this._unsubs.push(this.bus.on('npcjobs:work', (p) => this._onNpcJobWork(p || {})));
+    this._unsubs.push(this.bus.on('npcjobs:load', (p) => this._onNpcJobLoad(p || {})));
+    this._unsubs.push(this.bus.on('npcjobs:unload', (p) => this._onNpcJobUnload(p || {})));
+    this._unsubs.push(this.bus.on('npcjobs:hold', (p) => this._onNpcJobHold(p || {})));
     // A held worker's route-hold mayday must reach the rescue fleet even when no shot was ever
     // fired: reshape it into the standard lastDistressCall and the ordinary dispatch path answers.
-    this.bus.on('npcjobs:distress', (p) => this._onNpcJobDistress(p || {}));
+    this._unsubs.push(this.bus.on('npcjobs:distress', (p) => this._onNpcJobDistress(p || {})));
     // HELP is an explicit player hail intent. Traffic reserves the finite opportunity for the
     // answering seam miner; physical WORK below remains the sole rich-load/depletion writer.
-    this.bus.on('contactHail:response', (p) => this._onContactHailResponse(p || {}));
-    this.bus.on('surrender:tethered', (p) => this._onCeresDisabledHaulerPlayerClaim(p || {}));
-    this.bus.on('surrender:secured', (p) => this._onCeresDisabledHaulerPlayerClaim(p || {}));
-    this.bus.on('freight:recovery', (p) => this._onCeresDisabledHaulerRecovery(p || {}));
-    this.bus.on('freight:recoveryAbandoned', (p) => this._onCeresDisabledHaulerAbandoned(p || {}));
-    this.bus.on('save:loaded', () => bindRestoredCharonSupply(this));
-    this.bus.on('npcjobs:cycle', p => charonSupplyRoundBoundary(this, p));
-    this.bus.on('npcjobs:cycle', p => finishSweeperCycle(this, p));
-    this.bus.on('npcjobs:complete', p => charonSupplyRoundBoundary(this, p));
-    this.bus.on('pickup:collected', p => winnowPickupReceipt(this, p || {}));
-    this.bus.on('pickup:collected', p => acceptSweeperPickup(this, p));
-    this.bus.on('freight:cargoSpilled', p => winnowSpillReceipt(this, p || {}));
-    this.bus.on('loot:manifestPayload', p => winnowSpillReceipt(this, p || {}));
-    this.bus.on('entity:killed', p => winnowKilledReceipt(this, p || {}));
-    this.bus.on('entity:destroyed', p => winnowDestroyedReceipt(this, p || {}));
-    this.bus.on('pickup:collected', p => charonSupplyPickupReceipt(this, p || {}));
-    this.bus.on('freight:cargoSpilled', p => charonSupplySpillReceipt(this, p || {}));
-    this.bus.on('loot:manifestPayload', p => charonSupplySpillReceipt(this, p || {}));
-    this.bus.on('entity:destroyed', p => charonSupplyDestroyed(this, p || {}));
-    this.bus.on('pickup:collected', (p) => this._onCeresDisabledHaulerPickup(p || {}));
-    this.bus.on('pickup:collected', (p) => this._onCeresClampPodPickup(p || {}));
-    this.bus.on('freight:cargoSpilled', (p) => this._onFreightCargoSpilled(p || {}));
+    this._unsubs.push(this.bus.on('contactHail:response', (p) => this._onContactHailResponse(p || {})));
+    this._unsubs.push(this.bus.on('surrender:tethered', (p) => this._onCeresDisabledHaulerPlayerClaim(p || {})));
+    this._unsubs.push(this.bus.on('surrender:secured', (p) => this._onCeresDisabledHaulerPlayerClaim(p || {})));
+    this._unsubs.push(this.bus.on('freight:recovery', (p) => this._onCeresDisabledHaulerRecovery(p || {})));
+    this._unsubs.push(this.bus.on('freight:recoveryAbandoned', (p) => this._onCeresDisabledHaulerAbandoned(p || {})));
+    this._unsubs.push(this.bus.on('save:loaded', () => bindRestoredCharonSupply(this)));
+    this._unsubs.push(this.bus.on('npcjobs:cycle', p => charonSupplyRoundBoundary(this, p)));
+    this._unsubs.push(this.bus.on('npcjobs:cycle', p => finishSweeperCycle(this, p)));
+    this._unsubs.push(this.bus.on('npcjobs:complete', p => charonSupplyRoundBoundary(this, p)));
+    this._unsubs.push(this.bus.on('pickup:collected', p => winnowPickupReceipt(this, p || {})));
+    this._unsubs.push(this.bus.on('pickup:collected', p => acceptSweeperPickup(this, p)));
+    this._unsubs.push(this.bus.on('freight:cargoSpilled', p => winnowSpillReceipt(this, p || {})));
+    this._unsubs.push(this.bus.on('loot:manifestPayload', p => winnowSpillReceipt(this, p || {})));
+    this._unsubs.push(this.bus.on('entity:killed', p => winnowKilledReceipt(this, p || {})));
+    this._unsubs.push(this.bus.on('entity:destroyed', p => winnowDestroyedReceipt(this, p || {})));
+    this._unsubs.push(this.bus.on('pickup:collected', p => charonSupplyPickupReceipt(this, p || {})));
+    this._unsubs.push(this.bus.on('freight:cargoSpilled', p => charonSupplySpillReceipt(this, p || {})));
+    this._unsubs.push(this.bus.on('loot:manifestPayload', p => charonSupplySpillReceipt(this, p || {})));
+    this._unsubs.push(this.bus.on('entity:destroyed', p => charonSupplyDestroyed(this, p || {})));
+    this._unsubs.push(this.bus.on('pickup:collected', (p) => this._onCeresDisabledHaulerPickup(p || {})));
+    this._unsubs.push(this.bus.on('pickup:collected', (p) => this._onCeresClampPodPickup(p || {})));
+    this._unsubs.push(this.bus.on('freight:cargoSpilled', (p) => this._onFreightCargoSpilled(p || {})));
     // Spill vultures: a violence-spilled pod is a contest, not free loot on the floor.
-    this.bus.on('freight:cargoSpilled', p => spillVulturesSpillReceipt(this, p || {}));
-    this.bus.on('pickup:collected', p => spillVulturesPickupReceipt(this, p || {}));
-    this.bus.on('entity:destroyed', p => spillVulturesDestroyed(this, p || {}));
+    this._unsubs.push(this.bus.on('freight:cargoSpilled', p => spillVulturesSpillReceipt(this, p || {})));
+    this._unsubs.push(this.bus.on('pickup:collected', p => spillVulturesPickupReceipt(this, p || {})));
+    this._unsubs.push(this.bus.on('entity:destroyed', p => spillVulturesDestroyed(this, p || {})));
     // Gratitude parcel: the hauler you saved owes a gift pod on its next close pass.
-    this.bus.on('freight:arrival', p => gratitudeParcelArrivalReceipt(this, p || {}));
-    this.bus.on('well:haulerDragged', (p) => this._onWellHaulerDragged(p || {}));
-    this.bus.on('uniqueWreck:resolved', (p) => this._onCeresTenderWreckResolved(p || {}));
-    this.bus.on('survivorPod:boarded', (p) => this._onSurvivorPodRescued(p || {}));
+    this._unsubs.push(this.bus.on('freight:arrival', p => gratitudeParcelArrivalReceipt(this, p || {})));
+    this._unsubs.push(this.bus.on('well:haulerDragged', (p) => this._onWellHaulerDragged(p || {})));
+    this._unsubs.push(this.bus.on('uniqueWreck:resolved', (p) => this._onCeresTenderWreckResolved(p || {})));
+    this._unsubs.push(this.bus.on('survivorPod:boarded', (p) => this._onSurvivorPodRescued(p || {})));
     // Nearby violence: production hits, aimed ship-to-ship combat:fire (Ambush first shots often
     // apply 0), and opened incidents. Bare/mining fire without a live ship victim is ignored.
-    this.bus.on('combat:damage', (p) => this._onCombatDamage(p || {}));
-    this.bus.on('combat:fire', (p) => this._onCombatFire(p || {}));
-    this.bus.on('law:incidentOpened', (p) => this._onLawIncidentOpened(p || {}));
-    this.bus.on('save:restoring', () => {
+    this._unsubs.push(this.bus.on('combat:damage', (p) => this._onCombatDamage(p || {})));
+    this._unsubs.push(this.bus.on('combat:fire', (p) => this._onCombatFire(p || {})));
+    this._unsubs.push(this.bus.on('law:incidentOpened', (p) => this._onLawIncidentOpened(p || {})));
+    this._unsubs.push(this.bus.on('save:restoring', () => {
       captureCeresWorkfleetHardware(this);clearCeresWorkfleetControls(this.state);
       invalidateMachineryPresentation(this.state);
       // Invalidate before the save owner starts destructive restore. Old synchronous owner stacks
@@ -1928,8 +1936,8 @@ export const traffic = {
       this._active = [];
       this._ceresDisabledHaulerRestorePending = true;
       this._invalidateCausalRunEpoch();
-    });
-    this.bus.on('save:error', (p) => {
+    }));
+    this._unsubs.push(this.bus.on('save:error', (p) => {
       // A restore that dies mid-chunk never emits save:loaded — without this the epoch latch
       // would starve every ambient top-up guard for the rest of the session. Only
       // restore-lifecycle failures clear it: an unrelated write error arriving mid-restore
@@ -1943,11 +1951,11 @@ export const traffic = {
       if (this._ceresDisabledHaulerRestorePending === true) {
         this._ceresDisabledHaulerRestorePending = false;
       }
-    });
+    }));
     // Adjacent listeners, economy-slice style: registration order preserves the original
     // sequence exactly, but the emit-slice drain can cut between units at the deadline —
     // the two O(hooks × freighters) sort passes stop riding one atomic brick.
-    this.bus.on('save:loaded', () => {
+    this._unsubs.push(this.bus.on('save:loaded', () => {
       // Real restores already invalidated at save:restoring. Standalone fixture/compat signals still
       // form an authoritative boundary, so fail closed once without double-invalidating a real load.
       if (this._restoreEpochPending === true) this._restoreEpochPending = false;
@@ -1972,8 +1980,8 @@ export const traffic = {
       this._clearCivilianViolenceMemory();
       this._resetCeresCausalChain('save_loaded');
       this._adoptLegacyCeresActivityTargetRefs();
-    });
-    this.bus.on('save:loaded', () => {
+    }));
+    this._unsubs.push(this.bus.on('save:loaded', () => {
       const sectorId = this.state.world && this.state.world.currentSectorId;
       // Persistent general cutters materialize after world.enterSector, so the sector-enter
       // adoption pass cannot see them. Re-adopt here before the next traffic tick can refresh a
@@ -1982,39 +1990,39 @@ export const traffic = {
       // lawSecurity is session-only. A saved predeparture delay cannot remain asserted after its
       // raw incident map has gone away, while a saved physical diversion remains intact.
       this._clearStalePassengerLinerDelays();
-    });
-    this.bus.on('save:loaded', () => {
+    }));
+    this._unsubs.push(this.bus.on('save:loaded', () => {
       this._applyWorldSiteTrafficHooks(this.state.world && this.state.world.currentSectorId);
-    });
-    this.bus.on('save:loaded', () => {
+    }));
+    this._unsubs.push(this.bus.on('save:loaded', () => {
       const sectorId = this.state.world && this.state.world.currentSectorId;
       this._applyClaimTravelHooks(sectorId);
       if (SECTOR_CAUSAL_CHAINS.has(sectorId)) this._ensureCeresCausalChain('save_loaded');
-    });
+    }));
     const refreshClaimTravel = () => this._applyClaimTravelHooks(
       this.state.world && this.state.world.currentSectorId,
     );
-    this.bus.on('claim:infrastructureActive', refreshClaimTravel);
-    this.bus.on('claim:infrastructureStatus', refreshClaimTravel);
-    this.bus.on('claim:claimed', () => this._maintainClaimDepotTraffic());
+    this._unsubs.push(this.bus.on('claim:infrastructureActive', refreshClaimTravel));
+    this._unsubs.push(this.bus.on('claim:infrastructureStatus', refreshClaimTravel));
+    this._unsubs.push(this.bus.on('claim:claimed', () => this._maintainClaimDepotTraffic()));
     // Claims abandons a manifested leg (release/teardown edge) — retire the carrier here so no
     // ownerless convoy hull ever lingers in the sector.
-    this.bus.on('claim:convoyAbandoned', (p) => this._teardownClaimConvoy(p || {}));
-    this.bus.on('encounter:resolved', ({ encounterId } = {}) => {
+    this._unsubs.push(this.bus.on('claim:convoyAbandoned', (p) => this._teardownClaimConvoy(p || {})));
+    this._unsubs.push(this.bus.on('encounter:resolved', ({ encounterId } = {}) => {
       for (const service of this.state.traffic?.depotServices || []) {
         if (encounterId === `depot-watch:${service.bodyId}`) service.watchResolved = true;
       }
-    });
-    this.bus.on('worldSite:operationReceipt', ({ siteId, receipt } = {}) => {
+    }));
+    this._unsubs.push(this.bus.on('worldSite:operationReceipt', ({ siteId, receipt } = {}) => {
       // Held tools publish progress every fixed tick. Traffic topology changes only on completion;
       // projecting all sites and scanning freighters for every partial tick is pure hot-path waste.
       if (receipt?.complete !== true) return;
       syncCeresWorkfleetHardware(this);
       const record = siteId && this.state.sites && this.state.sites.worldById && this.state.sites.worldById[siteId];
       this._applyWorldSiteTrafficHooks(record && record.sectorId);
-    });
+    }));
     // A full hangar depot or a jammed aperture asks for one haul. The job kernel flies it.
-    this.bus.on('industry:haulRequested', (p) => this._onIndustryHaulRequested(p || {}));
+    this._unsubs.push(this.bus.on('industry:haulRequested', (p) => this._onIndustryHaulRequested(p || {})));
   },
 
   _reconcileCeresWorkfleetPresentation() { reconcileCeresWorkfleetPresentation(this); },
@@ -2085,6 +2093,22 @@ export const traffic = {
   // Chunked cook-provider twin: yields between atomic spawn units so the sliced sector
   // census can interleave presentation between hulls. Dedupe stamps mint in the first
   // synchronous step (pre-loop); a yield never separates spawnEntity from its record link.
+  /**
+   * R16 seat rule for every station-launched hull (roster, yard tugs, salvors): the seat at
+   * (angle, radius) around the station, mirrored to the station's far side when the near one would
+   * put the hull inside the player's clear radius. Same draws, same count; no RNG consumed here.
+   */
+  _apronSeatAwayFromPlayer(anchor, ang, r) {
+    const pos = { x: anchor.x + Math.cos(ang) * r, z: anchor.z + Math.sin(ang) * r };
+    const player = this.state.playerId != null && this.state.entities
+      ? this.state.entities.get(this.state.playerId) : null;
+    if (player && player.pos
+      && Math.hypot(pos.x - player.pos.x, pos.z - player.pos.z) < TRAFFIC_PLAYER_CLEAR_WU) {
+      return { x: anchor.x - Math.cos(ang) * r, z: anchor.z - Math.sin(ang) * r };
+    }
+    return pos;
+  },
+
   *_onSectorEnterSteps(p) {
     if (this.state.run?.kind === 'survival' && this.state.run.phase !== 'inactive') return;
     // A standalone circuit has its own grid and scripted crossings. Campaign freighters
@@ -2265,22 +2289,17 @@ export const traffic = {
         station = stations.find((candidate) => this._leftoverStationOpenForTopUp(candidate, leftoverDisrupted)) || null;
         if (!station) continue;
       }
-      // Arrival greeting: the first two hulls anchor on the player's materialized position —
-      // the placed arrival point on boot/jump, the live pose on continuous handoff — so the
-      // sector opens with traffic in sensor range, not a silent sky over the gate.
-      const playerEnt = this.state.playerId != null && this.state.entities
-        ? this.state.entities.get(this.state.playerId) : null;
-      const arrivalPos = playerEnt && playerEnt.pos;
-      const anchor = (i < Math.min(2, need)
-        && arrivalPos && sectorMembershipAtGlobal(arrivalPos) === sectorId)
-        ? arrivalPos
-        : station.pos;
-      // spawn near the anchor but offset so they don't overlap it
+      // FIRST HOUR / R16 (2026-11-21): traffic lives at stations and on lanes, never on the player.
+      // (The old "arrival greeting" anchored the first two hulls on the player's own position, so
+      // ships appeared out of nothing beside the pilot and drifted onto them.) A hull whose station
+      // seat would land inside the player's clear radius takes the mirrored seat on the station's
+      // far side — same draws, same count, just the apron the player is not sitting on.
+      const anchor = station.pos;
       const ang = this._rng() * Math.PI * 2;
       const r = clustered
         ? (90 + this._rng() * (POCKET_CLUSTER_R * 0.45))
         : (140 + this._rng() * 120);
-      const pos = { x: anchor.x + Math.cos(ang) * r, z: anchor.z + Math.sin(ang) * r };
+      const pos = this._apronSeatAwayFromPlayer(anchor, ang, r);
       const aiSpec = {
         archetype: def.archetype,
         passive: true, // traffic never opens fire on a clean player
@@ -2299,6 +2318,7 @@ export const traffic = {
         pos,
         ai: aiSpec,
       });
+      this._resolveSpawnClearance(spec);
       this._stageHeliosCutterSpawn(spec, station, sectorId, role);
       const ent = this.helpers.spawnEntity(spec);
       if (!ent) continue;
@@ -2669,7 +2689,10 @@ export const traffic = {
       canonicalSpec.homeSectorId = CERES_ACTIVITY_SECTOR_ID;
 
       const wasFresh = !entity;
-      if (wasFresh) entity = this.helpers.spawnEntity(canonicalSpec);
+      if (wasFresh) {
+        this._resolveSpawnClearance(canonicalSpec);
+        entity = this.helpers.spawnEntity(canonicalSpec);
+      }
       if (!entity) continue;
       if (wasFresh) {
         // spawnEntity(makeShipEntitySpec(...)) already installed the canonical static, derived,
@@ -2872,7 +2895,10 @@ export const traffic = {
         canonicalSpec.homeSectorId = sectorId;
 
         const wasFresh = !entity;
-        if (wasFresh) entity = this.helpers.spawnEntity(canonicalSpec);
+        if (wasFresh) {
+          this._resolveSpawnClearance(canonicalSpec);
+          entity = this.helpers.spawnEntity(canonicalSpec);
+        }
         if (!entity) continue;
         if (wasFresh) spawned += 1;
         if (!ownsWinnowRecoveryHull(this.state, entity) && !ownsCharonSupplyHull(this.state, entity)) {
@@ -3217,6 +3243,7 @@ export const traffic = {
         contact.ship || factionHullFor(def.ship, laneFaction, () => this._rng()),
         { team: def.team, factionId: laneFaction, pos, ai: aiSpec },
       );
+      this._resolveSpawnClearance(spec);
       ent = this.helpers.spawnEntity(spec);
       if (!ent) return;
       this._stampTrafficDurableIdentity(ent, sectorId, role, def, list.length);
@@ -3262,7 +3289,7 @@ export const traffic = {
     const seed = (this.state.meta && this.state.meta.seed) || 1;
     const ang = ((hash32(seed, 'helios_arclight_spawn', sectorId) >>> 0) / 0xffffffff) * Math.PI * 2;
     const r = 168;
-    const pos = { x: station.pos.x + Math.cos(ang) * r, z: station.pos.z + Math.sin(ang) * r };
+    const pos = this._apronSeatAwayFromPlayer(station.pos, ang, r); // R16
     const laneFaction = (sector && sector.factionId) || 'faction_free';
     const spec = makeShipEntitySpec(def.ship, {
       team: def.team,
@@ -3274,6 +3301,7 @@ export const traffic = {
         spawnContext: 'convoy_civilian',
       },
     });
+    this._resolveSpawnClearance(spec);
     const ent = this.helpers.spawnEntity(spec);
     if (!ent) return;
     this._stampTrafficDurableIdentity(ent, sectorId, 'arclight', def, 700);
@@ -3316,7 +3344,7 @@ export const traffic = {
     const seed = (this.state.meta && this.state.meta.seed) || 1;
     const ang = ((hash32(seed, 'helios_tanker_spawn', sectorId) >>> 0) / 0xffffffff) * Math.PI * 2;
     const r = 220;
-    const pos = { x: station.pos.x + Math.cos(ang) * r, z: station.pos.z + Math.sin(ang) * r };
+    const pos = this._apronSeatAwayFromPlayer(station.pos, ang, r); // R16
     const laneFaction = (sector && sector.factionId) || 'faction_free';
     const spec = makeShipEntitySpec(def.ship, {
       team: def.team,
@@ -3328,6 +3356,7 @@ export const traffic = {
         spawnContext: 'convoy_civilian',
       },
     });
+    this._resolveSpawnClearance(spec);
     const ent = this.helpers.spawnEntity(spec);
     if (!ent) return;
     this._stampTrafficDurableIdentity(ent, sectorId, 'tanker', def, 710);
@@ -3370,7 +3399,7 @@ export const traffic = {
     const seed = (this.state.meta && this.state.meta.seed) || 1;
     const ang = ((hash32(seed, 'helios_customs_spawn', sectorId) >>> 0) / 0xffffffff) * Math.PI * 2;
     const r = 125;
-    const pos = { x: station.pos.x + Math.cos(ang) * r, z: station.pos.z + Math.sin(ang) * r };
+    const pos = this._apronSeatAwayFromPlayer(station.pos, ang, r);
     const laneFaction = (sector && sector.factionId) || 'faction_free';
     const spec = makeShipEntitySpec(def.ship, {
       team: def.team,
@@ -3382,6 +3411,7 @@ export const traffic = {
         spawnContext: 'convoy_civilian',
       },
     });
+    this._resolveSpawnClearance(spec);
     const ent = this.helpers.spawnEntity(spec);
     if (!ent) return;
     this._stampTrafficDurableIdentity(ent, sectorId, 'customs', def, 720);
@@ -3426,13 +3456,14 @@ export const traffic = {
       pos,
       ai: { archetype: def.archetype, passive: true, spawnContext: 'convoy_civilian' },
     });
+    this._resolveSpawnClearance(spec);
     const ent = this.helpers.spawnEntity(spec);
     if (!ent) return;
     this._stampTrafficDurableIdentity(ent, sectorId, 'tourist', def, 4242);
     ent.data.trafficRole = 'tourist';
     ent.data.tourist = true;
     ent.data.trafficLabel = def.label;
-    ent.pos = pos;
+    ent.pos = spec.pos;
     if (!this._active) this._active = [];
     this._active.push(ent.id);
     const station = (stations && stations[0]) || null;
@@ -3693,6 +3724,16 @@ export const traffic = {
 
   _pickStation(stations) {
     return stations[Math.floor(this._rng() * stations.length)] || stations[0];
+  },
+
+  /**
+   * R11 admission for a computed traffic spec: the ring draw keeps its seat when clear of
+   * live bodies and their 2 s predicted paths, otherwise the shared contract walks a
+   * bounded deterministic retry through this system's own stream. When every candidate
+   * fails the spec keeps its drawn point — never a worse seat than today's unchecked one.
+   */
+  _resolveSpawnClearance(spec) {
+    resolveClearSpawnPos(this.state, spec, { rng: () => this._rng() });
   },
 
   _pickExpressDestination(stations, origin) {

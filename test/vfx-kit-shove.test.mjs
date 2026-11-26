@@ -1,0 +1,257 @@
+// The VFX kit and Shove (2026-11-20 VFX rebuild). The rule: a power is LIGHT, MATTER and a FRONT
+// that reaches the field's true edge — never semi-opaque cloth ribbons hugging the hull. Energy
+// draws additive or premultiplied (it adds light), and the effect's timing has a frame-0 peak.
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import * as THREE from 'three';
+import { PowerFx, shoveFrontDelay, SHOVE_FRONT_S, POWER_FIELD_MAX_RADIUS } from '../src/render/vfx/kit/powerFx.js';
+import { SparkField, sparkSpec } from '../src/render/vfx/kit/sparkField.js';
+import { ShockShell } from '../src/render/vfx/kit/shockShell.js';
+import { FieldForcePresentation } from '../src/render/forceLanguage/fieldForcePresentation.js';
+
+function host() {
+  const calls = { light: [], distortion: [] };
+  return {
+    calls,
+    toLocal: (x, z, out) => { out.x = x; out.z = z; return out; },
+    flashLight: (pos, color, peak, decay, dist) => { calls.light.push({ pos, color, peak, decay, dist }); return true; },
+    distortion: (spec) => { calls.distortion.push(spec); },
+  };
+}
+function state(extra = {}) {
+  return { simTime: 1, playerId: 1, settings: { video: {}, accessibility: {} }, fields: { active: [] }, entityList: [], ...extra };
+}
+
+test('kit energy adds light: sparks are premultiplied (ONE, ONE_MINUS_SRC_ALPHA), fronts additive — never normal-blended cloth', () => {
+  const sparks = new SparkField(new THREE.Scene(), { capacity: 8 });
+  const shells = new ShockShell(new THREE.Scene(), { capacity: 4 });
+  assert.equal(sparks.material.blending, THREE.CustomBlending);
+  assert.equal(sparks.material.blendSrc, THREE.OneFactor);
+  assert.equal(sparks.material.blendDst, THREE.OneMinusSrcAlphaFactor);
+  assert.equal(shells.material.blending, THREE.CustomBlending);
+  assert.equal(shells.material.blendSrc, THREE.OneFactor, 'fronts add their full colour (not scaled by a zero alpha)');
+  assert.equal(shells.material.blendDst, THREE.OneFactor);
+  assert.equal(sparks.material.depthWrite, false);
+  sparks.dispose(); shells.dispose();
+});
+
+test('Shove casts a ring-free front to the TRUE field edge with a frame-0 peak, sparks, kicked dust and one light (no rings around things, owner 2026-11-23)', () => {
+  const h = host();
+  const fx = new PowerFx(new THREE.Scene(), h);
+  const s = state();
+  fx.update(0, s);
+  fx.onFieldDeployed({ fieldId: 'f1', kind: 'repulsor', center: { x: 50, z: -20 }, radius: 170 }, s);
+  assert.equal(fx.stats.casts, 1);
+  assert.equal(fx.stats.shells, 0, 'no rings around things, owner 2026-11-23');
+  assert.ok(fx.stats.particles > 120 && fx.stats.particles < 420, `particles within the per-cast budget (${fx.stats.particles})`);
+  assert.equal(h.calls.light.length, 1, 'one HeroLight per cast');
+  assert.ok(h.calls.light[0].peak >= 8, 'the cast spike is a real flash, not a glow');
+  assert.equal(h.calls.distortion.length, 1);
+  // Frame 0: the core flash is born at the cast instant (no smoothstep fade-in).
+  const A = fx.sparks.arrays[0];
+  assert.equal(A[3], fx.time, 'core flash birth is the cast frame');
+  fx.dispose();
+});
+
+test('a body in the field gets its contact burst exactly when the front reaches it', () => {
+  const h = host();
+  const fx = new PowerFx(new THREE.Scene(), h);
+  const rock = { id: 7, type: 'asteroid', alive: true, pos: { x: 100, z: 0 }, radius: 10 };
+  const s = state({ entityList: [{ id: 1, type: 'ship', isPlayer: true, alive: true, pos: { x: 0, z: 0 }, radius: 12 }, rock] });
+  fx.update(0, s);
+  fx.onFieldDeployed({ fieldId: 'f2', kind: 'repulsor', center: { x: 0, z: 0 }, radius: 170 }, s);
+  const expected = fx.time + shoveFrontDelay(90, 170);
+  const A = fx.sparks.arrays[0];
+  let found = false;
+  for (let i = 0; i < fx.sparks.highWater; i++) if (Math.abs(A[i * 4 + 3] - expected) < 1e-6 && A[i * 4] > 80) { found = true; break; }
+  assert.ok(found, 'a burst is born at the front arrival time on the facing side of the rock');
+  assert.ok(shoveFrontDelay(170, 170) <= SHOVE_FRONT_S + 1e-9 && shoveFrontDelay(0, 170) === 0);
+  fx.dispose();
+});
+
+test('arena machinery repulsors are not casts and draw no floor circles (no rings around things, owner 2026-11-23)', () => {
+  const fx = new PowerFx(new THREE.Scene(), host());
+  const s = state();
+  fx.onFieldDeployed({ fieldId: 'arena', kind: 'repulsor', center: { x: 0, z: 0 }, radius: POWER_FIELD_MAX_RADIUS + 140, planted: true }, s);
+  assert.equal(fx.stats.casts, 0);
+  s.fields.active = [{ id: 'arena', kind: 'repulsor', center: { x: 0, z: 0 }, radius: 360 }];
+  fx.update(0.016, s);
+  assert.equal(fx.shells.held.size, 0, 'no rings around things, owner 2026-11-23');
+  assert.ok(fx.stats.particles > 0, 'planted repulsor emits directional flow sparks instead of a ring');
+  s.fields.active = [];
+  s.simTime += 0.016; fx.update(0.016, s);
+  assert.equal(fx.shells.held.size, 0);
+  fx.dispose();
+});
+
+test('Shove no longer draws cloth: the field presenter emits no ribbons for a repulsor', () => {
+  const owner = new FieldForcePresentation(new THREE.Scene());
+  const s = { simTime: 0, settings: { video: {}, accessibility: {} }, massSeed: null,
+    fields: { active: [{ id: 'r', kind: 'repulsor', center: { x: 0, z: 0 }, dir: { x: 1, z: 0 }, radius: 170, engaged: false }] } };
+  owner.update(0, s); s.simTime = 0.5; owner.update(0.5, s);
+  assert.equal(owner.stats.active, 1, 'the field is still tracked (its light and lifecycle stay)');
+  assert.equal(owner.batch.count, 0, 'but no folded cloth surface is drawn for it');
+  owner.dispose();
+});
+
+test('origin rebase moves live particles and echoes together', () => {
+  const fx = new PowerFx(new THREE.Scene(), host());
+  const s = state();
+  fx.onFieldDeployed({ fieldId: 'f3', kind: 'repulsor', center: { x: 10, z: 10 }, radius: 120 }, s);
+  const x0 = fx.sparks.arrays[0][0];
+  fx.reproject(-500, 250);
+  assert.equal(fx.sparks.arrays[0][0], x0 - 500);
+  assert.equal(fx.echoes.get('f3').x, 10 - 500);
+  fx.dispose();
+});
+
+test('reduced motion halves the matter and drops the refraction punch', () => {
+  const full = new PowerFx(new THREE.Scene(), host());
+  full.onFieldDeployed({ fieldId: 'a', kind: 'repulsor', center: { x: 0, z: 0 }, radius: 170 }, state());
+  const h = host();
+  const calm = new PowerFx(new THREE.Scene(), h);
+  calm.onFieldDeployed({ fieldId: 'b', kind: 'repulsor', center: { x: 0, z: 0 }, radius: 170 },
+    state({ settings: { video: { motionReduce: true }, accessibility: {} } }));
+  assert.ok(calm.stats.particles < full.stats.particles * 0.6);
+  assert.equal(h.calls.distortion.length, 0);
+  full.dispose(); calm.dispose();
+});
+
+test('Pull drains toward a point with inward spiral motes and no contracting rings (no rings around things, owner 2026-11-23)', () => {
+  const h = host();
+  const fx = new PowerFx(new THREE.Scene(), h);
+  const s = state();
+  fx.update(0, s);
+  fx.onFieldDeployed({ fieldId: 'w1', kind: 'well', center: { x: 0, z: 0 }, radius: 190 }, s);
+  assert.equal(fx.stats.shells, 0, 'no rings around things, owner 2026-11-23');
+  let inward = 0;
+  const F = fx.sparks.arrays[5];
+  for (let i = 0; i < fx.sparks.highWater; i++) if (F[i * 4 + 2] > 0) inward++;
+  assert.ok(inward >= 60, `rim motes fall inward along spiral streamlines (${inward})`);
+  assert.equal(h.calls.light.length, 1);
+  s.fields.active = [{ id: 'w1', kind: 'well', center: { x: 0, z: 0 }, radius: 190 }];
+  for (let i = 0; i < 40; i++) { s.simTime += 0.05; fx.update(0.05, s); }
+  assert.equal(fx.wells.size, 1, 'sustained while the field lives');
+  s.fields.active = [];
+  s.simTime += 0.05; fx.update(0.05, s);
+  assert.equal(fx.wells.size, 0, 'released with an implosion when the field ends');
+  fx.dispose();
+});
+
+test('Bomb is a blast, not a puff: one-frame flash, fireball that cools to soot, front, sparks, one room light', () => {
+  const h = host();
+  const fx = new PowerFx(new THREE.Scene(), h);
+  fx.update(0, state());
+  fx.bomb(0, 0, 30, 'c1');
+  const C1 = fx.sparks.arrays[4];
+  let soot = 0;
+  let light = 0;
+  for (let i = 0; i < fx.sparks.highWater; i++) { if (C1[i * 4 + 3] >= 0.8) soot++; else if (C1[i * 4 + 3] <= 0.2) light++; }
+  assert.ok(soot >= 8, 'dark soot that darkens what is behind it (alpha matter)');
+  assert.ok(light >= 60, 'additive fire, sparks and embers');
+  let flash = false; let scorch = false;
+  for (let i = 0; i < fx.sparks.highWater; i++) {
+    const life = fx.sparks.arrays[1][i * 4 + 3];
+    if (life <= 0.12 && fx.sparks.arrays[3][i * 4] >= 12) flash = true;
+    if (life >= 3 && C1[i * 4 + 3] >= 0.99) scorch = true;
+  }
+  assert.ok(flash, 'a white-hot core for the first frames, not a fade-in');
+  assert.ok(scorch, 'a scorch mark that lingers on the deck for seconds');
+  assert.equal(h.calls.light.length, 1);
+  assert.ok(h.calls.light[0].dist >= 100, 'the flash lights the room, not a 20 WU dot');
+  fx.dispose();
+});
+
+test('the hose and the cannon look as different as they play: pin-pricks vs a wallop with a ring', () => {
+  const h = host();
+  const fx = new PowerFx(new THREE.Scene(), h);
+  fx.update(0, state());
+  fx.gunImpact('hose', 0, 0, 1, 0, false, false);
+  const hose = fx.stats.particles;
+  assert.ok(hose <= 6, `a hose round is a fizz (${hose} particles)`);
+  assert.equal(fx.stats.shells, 0);
+  assert.equal(h.calls.light.length, 0, 'no light per hose round');
+  fx.gunImpact('thump', 0, 0, 1, 0, false, false);
+  assert.ok(fx.stats.particles - hose >= 30, 'the cannon throws a real burst');
+  assert.equal(h.calls.light.length, 0, 'the hit receipt owns the contact light; the kit adds the ring, sparks and chips');
+  fx.dispose();
+});
+
+test('Pin on a body: a bolt travels the real path, and a taut cable is redrawn from the body to its stake', () => {
+  const fx = new PowerFx(new THREE.Scene(), host());
+  const body = { id: 9, type: 'ship', alive: true, pos: { x: 100, z: 0 }, radius: 10 };
+  const s = state({ entities: new Map([[9, body]]), massSeedStakes: { list: [] } });
+  fx.update(0, s);
+  fx.stakeCast({ targetId: 9, from: { x: 0, z: 0 }, to: { x: 100, z: 0 }, startAt: 1, endAt: 1.11 }, s);
+  const A = fx.sparks.arrays[0];
+  let last = 0;
+  for (let i = 0; i < fx.sparks.highWater; i++) last = Math.max(last, A[i * 4 + 3]);
+  assert.ok(Math.abs(last - (fx.time + 0.11)) < 1e-4, 'the bolt head reaches the body when the sim says it lands');
+  fx.staked({ targetId: 9, pos: { x: 100, z: 40 } }, s);
+  s.massSeedStakes.list = [{ targetId: 9, pos: { x: 100, z: 40 }, started: true }];
+  const before = fx.stats.particles;
+  s.simTime += 0.016; fx.update(0.016, s);
+  assert.ok(fx.stats.particles - before >= 6, 'the cable is drawn between the body and the stake point');
+  fx.dispose();
+});
+
+test('Plow: straight flank rails, bow-to-rock crackling arcs, and no rings (no rings around things, owner 2026-11-23)', () => {
+  const h = host();
+  const fx = new PowerFx(new THREE.Scene(), h);
+  const me = { id: 1, type: 'ship', alive: true, pos: { x: 0, z: 0 }, radius: 10, rot: 0 };
+  const rock = { id: 5, type: 'asteroid', alive: true, pos: { x: 60, z: 10 }, radius: 8 };
+  const s = state({ entities: new Map([[1, me], [5, rock]]), entityList: [me, rock] });
+  s.fields.active = [{ id: 'cone', kind: 'cone', center: { x: 0, z: 0 }, dir: { x: 1, z: 0 }, radius: 260, halfAngleRad: 0.56 }];
+  s.fields.plow = { held: [{ id: 5, f: 60, l: 10 }] };
+  fx.update(0.016, s);
+  assert.equal(fx.shells.held.size, 0, 'no concentric arcs or per-rock rings, owner 2026-11-23');
+  assert.ok(fx.stats.particles > 10, 'flank rails and crackling bow-to-rock arcs emit sparks');
+  s.fields.plow.held = []; s.fields.active = [];
+  s.simTime += 0.016; fx.update(0.016, s);
+  assert.equal(fx.shells.held.size, 0);
+  fx.plowLaunched({ count: 1, ids: [5], dir: { x: 1, z: 0 } }, s);
+  assert.equal(h.calls.light.length, 1, 'the launch is a bang with light');
+  fx.dispose();
+});
+
+test('enemy tells by job: a Burst dart draws a dive lane that grows; a Reach sniper a line to its target', () => {
+  const fx = new PowerFx(new THREE.Scene(), host());
+  const me = { id: 1, type: 'ship', alive: true, pos: { x: 0, z: 0 }, radius: 10 };
+  const dart = { id: 2, type: 'ship', alive: true, pos: { x: 200, z: 0 }, radius: 6, rot: Math.PI, data: { enemyTypeId: 'detonator_dart' } };
+  const sniper = { id: 3, type: 'ship', alive: true, pos: { x: 0, z: 300 }, radius: 8, data: { enemyTypeId: 'lancer_sniper' } };
+  const s = state({ entities: new Map([[1, me], [2, dart], [3, sniper]]) });
+  fx.update(0, s);
+  fx.telegraph({ entityId: 2, targetId: 1, durationTicks: 60 }, s);
+  fx.telegraph({ entityId: 3, targetId: 1, durationTicks: 90 }, s);
+  assert.equal(fx.tells.size, 2);
+  const before = fx.stats.particles;
+  s.simTime += 0.5; fx.update(0.5, s);
+  assert.ok(fx.stats.particles - before >= 8, 'both lanes are drawn this frame');
+  for (let i = 0; i < 20; i++) { s.simTime += 0.1; fx.update(0.1, s); }
+  assert.equal(fx.tells.size, 0, 'tells end with their wind-up');
+  fx.dispose();
+});
+
+test('split guns hit with their own grammar, not the autocannon look', () => {
+  const fx = new PowerFx(new THREE.Scene(), host());
+  const s = state(); fx.update(0, s);
+  for (const id of ['wpn_bank_stream_m', 'wpn_disc_launcher_m', 'wpn_glaive_s', 'wpn_singularity_mortar_m', 'wpn_debris_orbit_s', 'wpn_tumbler_m']) {
+    assert.equal(fx._signatureImpact(id, 0, 0, 1, 0, false, null), true, id + ' has a signature hit');
+  }
+  assert.equal(fx._signatureImpact('wpn_autocannon_s', 0, 0, 1, 0, false, null), false);
+  // The mortar pops a short beat after its pull.
+  const before = fx.stats.particles;
+  for (let i = 0; i < 6; i++) { s.simTime += 0.1; fx.update(0.1, s); }
+  assert.ok(fx.stats.particles > before, 'the mortar pull ends in a pop');
+  // No rings around things (owner 2026-11-23): tells, level-up, node pick, pin, and thump emit zero ShockShell rings.
+  const player = { id: 1, type: 'ship', alive: true, pos: { x: 0, z: 0 }, radius: 10, rot: 0 };
+  const s2 = state({ entities: new Map([[1, player]]), entityList: [player] });
+  fx.telegraph({ entityId: 1, targetId: 1, phase: 'incoming_mass', durationTicks: 30 }, s2);
+  fx.levelUp({ entityId: 1 }, s2);
+  fx.nodeTaken({ entityId: 1, branch: 'gunner', kind: 'capstone' }, s2);
+  fx.pinLanding({ seedId: 1, pos: { x: 40, z: 0 } }, false);
+  fx.pinLanding({ seedId: 1, pos: { x: 40, z: 0 } }, true);
+  fx.gunImpact('thump', 20, 0, 1, 0, false, true);
+  assert.equal(fx.shells.highWater, 0, 'no rings around things, owner 2026-11-23');
+  fx.dispose();
+});

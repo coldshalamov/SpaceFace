@@ -5,6 +5,7 @@
 // Renderer attachments are kept in a WeakMap compatibility membrane, outside the authoritative
 // entity graph. Legacy render code may still address entity.mesh/entity.view while it migrates to
 // its own id -> view registry, but those references are never enumerable, cloneable, or serializable.
+import { simCoreFlag } from './simCoreFlags.js';
 
 export const EntityTypes = ['ship', 'asteroid', 'station', 'projectile', 'pickup', 'drone', 'payload', 'wreck', 'fx'];
 
@@ -188,13 +189,20 @@ export function stampOccupantGeneration(state, entity) {
   if (!state || typeof state !== 'object' || !entity || typeof entity !== 'object') return null;
   let next = state.nextOccupantGeneration;
   if (!Number.isSafeInteger(next) || next < 1) next = 1;
-  if (Object.prototype.hasOwnProperty.call(entity, 'occupantGeneration')) delete entity.occupantGeneration;
-  Object.defineProperty(entity, 'occupantGeneration', {
-    value: next,
-    writable: true,
-    configurable: true,
-    enumerable: false,
-  });
+  const existing = Object.getOwnPropertyDescriptor(entity, 'occupantGeneration');
+  // A predeclared non-enumerable slot is a store. Deleting an own key is what flips the
+  // body into dictionary mode, so a restamp of that slot must not delete it.
+  if (existing && 'value' in existing && existing.writable && existing.configurable && existing.enumerable === false) {
+    entity.occupantGeneration = next;
+  } else {
+    if (Object.prototype.hasOwnProperty.call(entity, 'occupantGeneration')) delete entity.occupantGeneration;
+    Object.defineProperty(entity, 'occupantGeneration', {
+      value: next,
+      writable: true,
+      configurable: true,
+      enumerable: false,
+    });
+  }
   state.nextOccupantGeneration = next + 1;
   return next;
 }
@@ -229,9 +237,85 @@ export function stampAttackSource(state, entity) {
   };
 }
 
+/**
+ * Numeric entity fields a restored spec may not carry wrong-typed. makeEntity copies spec
+ * fields verbatim, so a crafted or corrupted save record with hull:"junk" spawns an immortal
+ * body (hull <= 0 never true) and rot:"junk" feeds NaN into interpolation/trig.
+ */
+export const RESTORED_NUMERIC_SPEC_FIELDS = [
+  'rot', 'angVel', 'bank', 'pitch', 'radius', 'mass',
+  'hull', 'hullMax', 'armorHp', 'armorMax', 'armorFlat',
+  'shield', 'shieldMax', 'shieldRegenRate', 'shieldRegenDelay',
+  'cap', 'capMax', 'capRegen', 'thrust', 'turnRate', 'maxSpeed', 'drag',
+  'ttl', 'collisionMask', 'lastDamageT', 'team',
+];
+
+/** Drop any restored-spec numeric field that isn't a finite number so makeEntity defaults it. */
+export function scrubRestoredNumericFields(spec) {
+  for (const k of RESTORED_NUMERIC_SPEC_FIELDS) {
+    if (spec[k] != null && !Number.isFinite(spec[k])) delete spec[k];
+  }
+  return spec;
+}
+
 /** Build a fully-formed simulation entity from a partial spec. Does not assign or insert an id. */
 export function makeEntity(spec = {}) {
-  const e = Object.assign(Object.create(ENTITY_PROTO), {
+  // One literal holds every default field. Copying 45 fields onto an empty Object.create() shell
+  // (the legacy shape) tips V8 into dictionary mode, so every `entity.x` read in every system was a
+  // hash-table probe. Re-parenting the literal itself keeps it a fast object whose default fields
+  // live in-object. Same own keys, order, values and prototype either way.
+  // The stable literal also carries the fields the fight writes later. Adding those one at a time
+  // forks the shared map until V8 deprecates it, and the next read of a station migrates the body
+  // to dictionary mode. They have to be born inside the literal, not assigned afterwards.
+  const fast = simCoreFlag('fastEntityShape');
+  const stable = simCoreFlag('fastLiveEntities');
+  const fields = stable ? stableEntityFields(spec) : baseEntityFields(spec);
+  const e = fast
+    ? Object.setPrototypeOf(fields, ENTITY_PROTO)
+    : Object.assign(Object.create(ENTITY_PROTO), fields);
+  for (const k in spec) {
+    if (k === 'pos' || k === 'vel' || k === 'rot') continue;
+    if (k === 'flags' && spec.flags) { Object.assign(e.flags, spec.flags); continue; }
+    e[k] = spec[k];
+  }
+  if (e.collisionMask === 0) e.collisionMask = DEFAULT_MASK[e.type] || 0;
+  e.prevPos.copy(e.pos);
+  e.prevRot = e.rot;
+  e.prevBank = e.bank;
+  e.prevPitch = e.pitch;
+  if (fast) {
+    // The accessor functions are part of the hidden class: fresh closures per entity forbid V8
+    // from sharing the transition and normalize the entity to dictionary mode on the second spawn.
+    Object.defineProperty(e, 'hp', HP_ACCESSOR);
+    Object.defineProperty(e, 'maxHp', MAX_HP_ACCESSOR);
+    if (stable) declareStableHiddenSlots(e);
+    return e;
+  }
+  Object.defineProperty(e, 'hp', {
+    get() { return this.hull; }, set(v) { this.hull = v; }, configurable: true, enumerable: false,
+  });
+  Object.defineProperty(e, 'maxHp', {
+    get() { return this.hullMax; }, set(v) { this.hullMax = v; }, configurable: true, enumerable: false,
+  });
+  if (stable) declareStableHiddenSlots(e);
+  return e;
+}
+
+const HP_ACCESSOR = Object.freeze({
+  get() { return this.hull; }, set(v) { this.hull = v; }, configurable: true, enumerable: false,
+});
+const MAX_HP_ACCESSOR = Object.freeze({
+  get() { return this.hullMax; }, set(v) { this.hullMax = v; }, configurable: true, enumerable: false,
+});
+const ACTIVITY_SLOT = Object.freeze({
+  value: null, writable: true, configurable: true, enumerable: false,
+});
+const OCCUPANT_SLOT = Object.freeze({
+  value: null, writable: true, configurable: true, enumerable: false,
+});
+
+function entityFieldHead(spec) {
+  return {
     id: 0, type: 'fx', alive: true, factionId: null,
     pos: v3(spec.pos), vel: v3(spec.vel), prevPos: new SimVector3(),
     rot: spec.rot || 0, prevRot: spec.rot || 0, angVel: 0,
@@ -246,24 +330,227 @@ export function makeEntity(spec = {}) {
     team: 0, ownerId: null,
     flags: { boosting: false, docked: false, invuln: false, noInterp: false },
     data: null,
-  });
-  for (const k in spec) {
-    if (k === 'pos' || k === 'vel' || k === 'rot') continue;
-    if (k === 'flags' && spec.flags) { Object.assign(e.flags, spec.flags); continue; }
-    e[k] = spec[k];
+  };
+}
+
+function baseEntityFields(spec) {
+  return entityFieldHead(spec);
+}
+
+// A second literal, not assignments onto the first. Post-hoc assigns are transitions, and enough
+// of those deprecate the map: the body still answers HasFastProperties until something reads it,
+// then V8 migrates it to dictionary mode. Undefined here reads the same as a missing key.
+function stableEntityFields(spec) {
+  return {
+    id: 0, type: 'fx', alive: true, factionId: null,
+    pos: v3(spec.pos), vel: v3(spec.vel), prevPos: new SimVector3(),
+    rot: spec.rot || 0, prevRot: spec.rot || 0, angVel: 0,
+    bank: 0, prevBank: 0, bankVel: 0,
+    pitch: 0, prevPitch: 0,
+    radius: 1, mass: defaultEntityMass(spec.type),
+    hull: defaultEntityHull(spec.type), hullMax: defaultEntityHull(spec.type), armorHp: 0, armorMax: 0, armorFlat: 0,
+    shield: 0, shieldMax: 0, shieldRegenRate: 0, shieldRegenDelay: 3, lastDamageT: -1e9,
+    cap: 0, capMax: 0, capRegen: 0,
+    thrust: 0, turnRate: 0, maxSpeed: 0, drag: 0,
+    ttl: Infinity, collides: true, collisionMask: 0,
+    team: 0, ownerId: null,
+    flags: { boosting: false, docked: false, invuln: false, noInterp: false },
+    data: null,
+    physicsBody: undefined,
+    presentationAdmission: undefined,
+    homeSectorId: undefined,
+    physicsSleeping: undefined,
+    physicsIslandId: undefined,
+    isPlayer: undefined,
+    flightClass: undefined,
+    flightModel: undefined,
+    propulsion: undefined,
+    boost: undefined,
+    bankFactor: undefined,
+    _indexSectorKey: undefined,
+    _indexType: undefined,
+    _indexActivityObjectSlotId: undefined,
+    _indexActivityActorSlotId: undefined,
+    _wrIndexStamp: undefined,
+    _collisionProxyResolve: undefined,
+    _physicsPartition: undefined,
+    _wasBoosting: undefined,
+    _nearWorkAlwaysAwake: undefined,
+    _orbitAssistEngage: undefined,
+    _flightFrame: undefined,
+    _killerId: undefined,
+    physicsTelemetryRequested: undefined,
+  };
+}
+
+function declareStableHiddenSlots(e) {
+  Object.defineProperty(e, 'activity', ACTIVITY_SLOT);
+  Object.defineProperty(e, 'occupantGeneration', OCCUPANT_SLOT);
+}
+
+const HEAP_NUM = new Float64Array(1);
+
+// A large object literal locks the first value's representation. A later body that stores a
+// float into a field born as a small integer deprecates that map, and the next property read
+// migrates every station and rock into dictionary mode. Reading the number back out of a
+// Float64Array keeps the field a heap number for every body, so the map stays fast.
+function heapNum(value) {
+  if (typeof value !== 'number') return value;
+  HEAP_NUM[0] = value;
+  return HEAP_NUM[0];
+}
+
+/**
+ * Copy a constructed entity onto one literal so it does not keep makeEntity's map.
+ * No-op unless fastLiveEntities is on. Nested pos/vel/data/flags/physicsBody keep their identity.
+ */
+function nullFactionFields(entity) {
+  return {
+    id: heapNum(entity.id), type: entity.type, alive: entity.alive, factionId: entity.factionId ?? null,
+    pos: entity.pos, vel: entity.vel, prevPos: entity.prevPos,
+    rot: heapNum(entity.rot || 0), prevRot: heapNum(entity.prevRot || 0), angVel: heapNum(entity.angVel || 0),
+    bank: heapNum(entity.bank || 0), prevBank: heapNum(entity.prevBank || 0), bankVel: heapNum(entity.bankVel || 0),
+    pitch: heapNum(entity.pitch || 0), prevPitch: heapNum(entity.prevPitch || 0),
+    radius: heapNum(entity.radius), mass: heapNum(entity.mass),
+    hull: heapNum(entity.hull), hullMax: heapNum(entity.hullMax), armorHp: heapNum(entity.armorHp || 0), armorMax: heapNum(entity.armorMax || 0), armorFlat: heapNum(entity.armorFlat || 0),
+    shield: heapNum(entity.shield || 0), shieldMax: heapNum(entity.shieldMax || 0), shieldRegenRate: heapNum(entity.shieldRegenRate || 0), shieldRegenDelay: heapNum(entity.shieldRegenDelay), lastDamageT: heapNum(entity.lastDamageT),
+    cap: heapNum(entity.cap || 0), capMax: heapNum(entity.capMax || 0), capRegen: heapNum(entity.capRegen || 0),
+    thrust: heapNum(entity.thrust || 0), turnRate: heapNum(entity.turnRate || 0), maxSpeed: heapNum(entity.maxSpeed || 0), drag: heapNum(entity.drag || 0),
+    ttl: heapNum(entity.ttl), collides: entity.collides, collisionMask: heapNum(entity.collisionMask || 0),
+    team: heapNum(entity.team), ownerId: entity.ownerId ?? null,
+    flags: entity.flags, data: entity.data,
+    physicsBody: entity.physicsBody,
+    presentationAdmission: entity.presentationAdmission,
+    homeSectorId: entity.homeSectorId,
+    physicsSleeping: entity.physicsSleeping,
+    physicsIslandId: entity.physicsIslandId,
+    isPlayer: entity.isPlayer,
+    flightClass: entity.flightClass,
+    flightModel: entity.flightModel,
+    propulsion: entity.propulsion,
+    boost: entity.boost,
+    bankFactor: entity.bankFactor,
+    _indexSectorKey: entity._indexSectorKey,
+    _indexType: entity._indexType,
+    _indexActivityObjectSlotId: entity._indexActivityObjectSlotId,
+    _indexActivityActorSlotId: entity._indexActivityActorSlotId,
+    _wrIndexStamp: entity._wrIndexStamp,
+    _collisionProxyResolve: entity._collisionProxyResolve,
+    _physicsPartition: entity._physicsPartition,
+    _wasBoosting: entity._wasBoosting,
+    _nearWorkAlwaysAwake: entity._nearWorkAlwaysAwake,
+    _orbitAssistEngage: entity._orbitAssistEngage,
+    _flightFrame: entity._flightFrame,
+    _killerId: entity._killerId,
+    physicsTelemetryRequested: entity.physicsTelemetryRequested,
+  };
+}
+
+// The player picks up flight fields (bank snaps, boost, a run-up counter) that the other
+// faction ships never store. Sharing their map uses up its transitions and the next store
+// normalizes the player to dictionary mode. This literal is only the player's.
+function playerFields(entity) {
+  return {
+    id: heapNum(entity.id), type: entity.type, alive: entity.alive, factionId: entity.factionId,
+    pos: entity.pos, vel: entity.vel, prevPos: entity.prevPos,
+    rot: heapNum(entity.rot || 0), prevRot: heapNum(entity.prevRot || 0), angVel: heapNum(entity.angVel || 0),
+    bank: heapNum(entity.bank || 0), prevBank: heapNum(entity.prevBank || 0), bankVel: heapNum(entity.bankVel || 0),
+    pitch: heapNum(entity.pitch || 0), prevPitch: heapNum(entity.prevPitch || 0),
+    radius: heapNum(entity.radius), mass: heapNum(entity.mass),
+    hull: heapNum(entity.hull), hullMax: heapNum(entity.hullMax), armorHp: heapNum(entity.armorHp || 0), armorMax: heapNum(entity.armorMax || 0), armorFlat: heapNum(entity.armorFlat || 0),
+    shield: heapNum(entity.shield || 0), shieldMax: heapNum(entity.shieldMax || 0), shieldRegenRate: heapNum(entity.shieldRegenRate || 0), shieldRegenDelay: heapNum(entity.shieldRegenDelay), lastDamageT: heapNum(entity.lastDamageT),
+    cap: heapNum(entity.cap || 0), capMax: heapNum(entity.capMax || 0), capRegen: heapNum(entity.capRegen || 0),
+    thrust: heapNum(entity.thrust || 0), turnRate: heapNum(entity.turnRate || 0), maxSpeed: heapNum(entity.maxSpeed || 0), drag: heapNum(entity.drag || 0),
+    ttl: heapNum(entity.ttl), collides: entity.collides, collisionMask: heapNum(entity.collisionMask || 0),
+    team: heapNum(entity.team), ownerId: entity.ownerId ?? null,
+    flags: entity.flags, data: entity.data,
+    physicsBody: entity.physicsBody,
+    presentationAdmission: entity.presentationAdmission,
+    homeSectorId: entity.homeSectorId,
+    physicsSleeping: entity.physicsSleeping,
+    physicsIslandId: entity.physicsIslandId,
+    isPlayer: entity.isPlayer,
+    flightClass: entity.flightClass,
+    flightModel: entity.flightModel,
+    propulsion: entity.propulsion,
+    boost: entity.boost,
+    bankFactor: entity.bankFactor,
+    _indexSectorKey: entity._indexSectorKey,
+    _indexType: entity._indexType,
+    _indexActivityObjectSlotId: entity._indexActivityObjectSlotId,
+    _indexActivityActorSlotId: entity._indexActivityActorSlotId,
+    _wrIndexStamp: entity._wrIndexStamp,
+    _collisionProxyResolve: entity._collisionProxyResolve,
+    _physicsPartition: entity._physicsPartition,
+    _wasBoosting: entity._wasBoosting,
+    _nearWorkAlwaysAwake: entity._nearWorkAlwaysAwake,
+    _orbitAssistEngage: entity._orbitAssistEngage,
+    _flightFrame: entity._flightFrame,
+    _killerId: entity._killerId,
+    physicsTelemetryRequested: entity.physicsTelemetryRequested,
+    _playerSeal: 1,
+  };
+}
+
+function stringFactionFields(entity) {
+  return {
+    id: heapNum(entity.id), type: entity.type, alive: entity.alive, factionId: entity.factionId,
+    pos: entity.pos, vel: entity.vel, prevPos: entity.prevPos,
+    rot: heapNum(entity.rot || 0), prevRot: heapNum(entity.prevRot || 0), angVel: heapNum(entity.angVel || 0),
+    bank: heapNum(entity.bank || 0), prevBank: heapNum(entity.prevBank || 0), bankVel: heapNum(entity.bankVel || 0),
+    pitch: heapNum(entity.pitch || 0), prevPitch: heapNum(entity.prevPitch || 0),
+    radius: heapNum(entity.radius), mass: heapNum(entity.mass),
+    hull: heapNum(entity.hull), hullMax: heapNum(entity.hullMax), armorHp: heapNum(entity.armorHp || 0), armorMax: heapNum(entity.armorMax || 0), armorFlat: heapNum(entity.armorFlat || 0),
+    shield: heapNum(entity.shield || 0), shieldMax: heapNum(entity.shieldMax || 0), shieldRegenRate: heapNum(entity.shieldRegenRate || 0), shieldRegenDelay: heapNum(entity.shieldRegenDelay), lastDamageT: heapNum(entity.lastDamageT),
+    cap: heapNum(entity.cap || 0), capMax: heapNum(entity.capMax || 0), capRegen: heapNum(entity.capRegen || 0),
+    thrust: heapNum(entity.thrust || 0), turnRate: heapNum(entity.turnRate || 0), maxSpeed: heapNum(entity.maxSpeed || 0), drag: heapNum(entity.drag || 0),
+    ttl: heapNum(entity.ttl), collides: entity.collides, collisionMask: heapNum(entity.collisionMask || 0),
+    team: heapNum(entity.team), ownerId: entity.ownerId ?? null,
+    flags: entity.flags, data: entity.data,
+    physicsBody: entity.physicsBody,
+    presentationAdmission: entity.presentationAdmission,
+    homeSectorId: entity.homeSectorId,
+    physicsSleeping: entity.physicsSleeping,
+    physicsIslandId: entity.physicsIslandId,
+    isPlayer: entity.isPlayer,
+    flightClass: entity.flightClass,
+    flightModel: entity.flightModel,
+    propulsion: entity.propulsion,
+    boost: entity.boost,
+    bankFactor: entity.bankFactor,
+    _indexSectorKey: entity._indexSectorKey,
+    _indexType: entity._indexType,
+    _indexActivityObjectSlotId: entity._indexActivityObjectSlotId,
+    _indexActivityActorSlotId: entity._indexActivityActorSlotId,
+    _wrIndexStamp: entity._wrIndexStamp,
+    _collisionProxyResolve: entity._collisionProxyResolve,
+    _physicsPartition: entity._physicsPartition,
+    _wasBoosting: entity._wasBoosting,
+    _nearWorkAlwaysAwake: entity._nearWorkAlwaysAwake,
+    _orbitAssistEngage: entity._orbitAssistEngage,
+    _flightFrame: entity._flightFrame,
+    _killerId: entity._killerId,
+    physicsTelemetryRequested: entity.physicsTelemetryRequested,
+    _factionSeal: 1,
+  };
+}
+
+export function sealFastEntity(entity) {
+  if (!simCoreFlag('fastLiveEntities') || !entity || typeof entity !== 'object') return entity;
+  const sealed = (entity.isPlayer === true
+    ? playerFields
+    : (typeof entity.factionId === 'string' ? stringFactionFields : nullFactionFields))(entity);
+  for (const key of Object.keys(entity)) {
+    if (!Object.prototype.hasOwnProperty.call(sealed, key)) sealed[key] = entity[key];
   }
-  if (e.collisionMask === 0) e.collisionMask = DEFAULT_MASK[e.type] || 0;
-  e.prevPos.copy(e.pos);
-  e.prevRot = e.rot;
-  e.prevBank = e.bank;
-  e.prevPitch = e.pitch;
-  Object.defineProperty(e, 'hp', {
-    get() { return this.hull; }, set(v) { this.hull = v; }, configurable: true, enumerable: false,
-  });
-  Object.defineProperty(e, 'maxHp', {
-    get() { return this.hullMax; }, set(v) { this.hullMax = v; }, configurable: true, enumerable: false,
-  });
-  return e;
+  Object.setPrototypeOf(sealed, ENTITY_PROTO);
+  Object.defineProperty(sealed, 'hp', HP_ACCESSOR);
+  Object.defineProperty(sealed, 'maxHp', MAX_HP_ACCESSOR);
+  Object.defineProperty(sealed, 'activity', ACTIVITY_SLOT);
+  sealed.activity = entity.activity ?? null;
+  Object.defineProperty(sealed, 'occupantGeneration', OCCUPANT_SLOT);
+  sealed.occupantGeneration = heapNum(entity.occupantGeneration ?? null);
+  return sealed;
 }
 
 function defaultEntityMass(type) {

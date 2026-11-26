@@ -20,8 +20,12 @@ test('ordinary pickup meshes cull offscreen and return with current motion and g
     const entity = { id: amount, type: 'pickup', radius: 2, pos: { x: 0, z: 0 },
       data: { commodityId: 'cmdty_ore_iron', amount } };
     const root = factory.build(entity);
-    const meshes = [root.userData.gem, root.userData.pickupHalo, root.userData.worthBand].filter(Boolean);
-    assert.equal(meshes.length, amount === 1 ? 2 : 3);
+    // The gem carries the whole read now: no beacon ring or worth band rides beside it
+    // (no rings around things, owner 2026-11-23).
+    assert.equal(root.userData.pickupHalo, null);
+    assert.equal(root.userData.worthBand, undefined);
+    const meshes = [root.userData.gem].filter(Boolean);
+    assert.equal(meshes.length, 1);
     assert.ok(meshes.every((mesh) => mesh.frustumCulled));
     const pose = (x, time) => {
       root.position.x = x;
@@ -30,13 +34,15 @@ test('ordinary pickup meshes cull offscreen and return with current motion and g
       return meshes.map((mesh) => frustum.intersectsObject(mesh));
     };
     assert.ok(pose(20.1, 0).every(Boolean), 'partially visible edge meshes remain submitted');
-    const initialScale = root.userData.pickupHalo.scale.x;
-    let changedScale = false;
+    const gem = root.userData.gem;
+    const initialPose = [gem.rotation.x, gem.rotation.y, gem.position.y, gem.scale.x];
+    let changedPose = false;
     for (let step = 1; step <= 20; step++) {
       assert.ok(pose(60, step * 0.3).every((visible) => !visible), 'all meshes are outside');
-      changedScale ||= root.userData.pickupHalo.scale.x !== initialScale;
+      const now = [gem.rotation.x, gem.rotation.y, gem.position.y, gem.scale.x];
+      changedPose ||= now.some((v, i) => v !== initialPose[i]);
     }
-    assert.ok(changedScale, 'motion updates the bound transform');
+    assert.ok(changedPose, 'motion updates the bound transform');
     assert.ok(pose(0, 6.3).every(Boolean), 'all meshes return when the pickup re-enters');
     setFactoryPresentationNow(6.3);
     root.userData.gem.onBeforeRender();

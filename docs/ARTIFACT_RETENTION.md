@@ -23,9 +23,15 @@ because it is large or machine-generated.
 
 ## Promotion rule
 
-Generated output becomes durable only when a maintained document or acceptance record names it,
-records why it matters, and provides enough provenance to reproduce or validate it. Otherwise keep
-it outside the repository or under an ignored path.
+Generated output becomes durable when a maintained document or acceptance record names it,
+records why it matters, and provides enough provenance to reproduce or validate it.
+Report the exact route, source identity, result, and the smallest retained capture or trace.
+
+Use the shared checkout for game work. A test that needs historical source should read the exact Git
+revision or use an existing source overlay. When temporary staging is required, reuse the harness's
+owned stage, keep its lifetime tied to the run, and remove its rebuildable working files after the
+result is recorded. Keep one dependency install. Preserve current evidence, source changes and
+active controller stages until their owner has recorded a recovery path.
 
 ## Cleanup rule
 

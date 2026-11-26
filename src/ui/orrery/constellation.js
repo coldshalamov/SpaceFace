@@ -336,7 +336,7 @@ function assignSlots(nodes, branchOf, depth, maxDepth, branchIds) {
  * per branch (clockwise from the tier spoke at the top, in the order given) and every star's place.
  * `labelOut` is how far a label may stand outside the outermost orbit at the sides.
  */
-export function layoutConstellation(nodes, branches, { width: W, height: H, labelOut = 140, rimOut = 34, avoid = [] } = {}) {
+export function layoutConstellation(nodes, branches, { width: W, height: H, labelOut = 140, rimOut = 34, avoid = [], outward = false } = {}) {
   const list = (nodes || []).filter((n) => n && n.id);
   if (!list.length || !(W > 0) || !(H > 0)) return null;
   const branchIds = [];
@@ -347,7 +347,11 @@ export function layoutConstellation(nodes, branches, { width: W, height: H, labe
   const depth = constellationDepths(list);
   const maxDepth = Math.max(1, ...Object.values(depth));
   const { rows, width, slot } = assignSlots(list, branchOf, depth, maxDepth, branchIds);
-  const rn = Array.from({ length: maxDepth + 1 }, (_, d) => 1 - (d * (1 - R_MIN)) / maxDepth);
+  // Roots on the outermost orbit falling inward (Research), or — `outward` — roots at the core
+  // climbing out to the rim (the Pilot Tree: the capstone stands at the rim).
+  const rn = Array.from({ length: maxDepth + 1 }, (_, d) => (outward
+    ? R_MIN + (d * (1 - R_MIN)) / maxDepth
+    : 1 - (d * (1 - R_MIN)) / maxDepth));
   const used = branchIds.filter((b) => rows.get(b).some((r) => r.length));
   const need = new Map();
   for (const b of used) need.set(b, Math.max(1.6, ...rows.get(b).map((r, d) => r.length / rn[d])));
@@ -614,7 +618,7 @@ export function wordCut(doc, spans, toLocal) {
  * @param {{ onPick?: (id: string, how: string) => void, measure?: (text: string, px: number, face: string) => number,
  *   wrap?: (text: string, maxW: number, px: number) => string[] }} [opts]
  */
-export function createConstellation(host, { onPick = null, measure = null, wrap = null, avoid = null } = {}) {
+export function createConstellation(host, { onPick = null, measure = null, wrap = null, avoid = null, outward = false } = {}) {
   const doc = host && host.ownerDocument ? host.ownerDocument : globalThis.document;
   const inert = { el: host, set() {}, choose() {}, focusChosen() {}, sweepInto() {}, relayout() {}, arrive() {}, button: () => null, dispose() {} };
   if (!host || !doc || typeof doc.createElementNS !== 'function' || typeof host.getBoundingClientRect !== 'function') return inert;
@@ -820,7 +824,8 @@ export function createConstellation(host, { onPick = null, measure = null, wrap 
     const n = data.nodes.find((x) => x.id === best);
     const st = stateOf(best);
     const ready = st === 'available' && !!(data.ready && data.ready[best]);
-    const word = st === 'researched' ? 'researched' : st === 'available' ? (ready ? 'ready' : 'open') : 'locked';
+    const words = (data && data.words) || {};
+    const word = st === 'researched' ? (words.researched || 'researched') : st === 'available' ? (ready ? 'ready' : 'open') : 'locked';
     const cost = st === 'researched' ? '' : String((data.costs && data.costs[best]) || '');
     lensName.textContent = (n && n.name) || best;
     lensSub.textContent = cost ? `${word} · ${cost}` : word;
@@ -1061,7 +1066,7 @@ export function createConstellation(host, { onPick = null, measure = null, wrap 
     const key = `${W}x${H}|${px}|${avoidSig}|${data.nodes.map((n) => n.id + ':' + stateOf(n.id) + ':' + (data.costs && data.costs[n.id] || '')).join(',')}`;
     if (key === drawnKey) return;
     drawnKey = key;
-    geo = layoutConstellation(data.nodes, data.branches, { width: W, height: H, labelOut, avoid: avoidRects });
+    geo = layoutConstellation(data.nodes, data.branches, { width: W, height: H, labelOut, avoid: avoidRects, outward });
     host.style.setProperty('--con-mask-top', `${Math.round(Math.max(0, ...avoidRects.map((r) => r.y + r.h - 6)))}px`);
     if (geo) geo.avoid = avoidRects;
     if (!geo) { standDown(); return; }
@@ -1176,7 +1181,8 @@ export function createConstellation(host, { onPick = null, measure = null, wrap 
       const count = `${s.ids.filter((id) => stateOf(id) === 'researched').length}/${s.ids.length}`;
       const textLen = (word.length + count.length + 2) * rimPx * 0.98;
       const spanDeg = (textLen / nameR) * (180 / Math.PI);
-      const roots = s.ids.filter((id) => stars[id] && stars[id].depth === 0).map((id) => stars[id].bearing);
+      const rimDepth = outward ? geo.maxDepth : 0;
+      const roots = s.ids.filter((id) => stars[id] && stars[id].depth === rimDepth).map((id) => stars[id].bearing);
       const clearOf = (lo) => Math.min(99, ...roots.map((b) => (b < lo ? lo - b : b > lo + spanDeg ? b - lo - spanDeg : 0)));
       let lo = s.a0 + 1.5;
       for (let t = s.a0 + 1.5; t <= s.a1 - 1.5 - spanDeg; t += 0.5) if (clearOf(t) > clearOf(lo) + 0.25) lo = t;
@@ -1517,7 +1523,8 @@ export function createConstellation(host, { onPick = null, measure = null, wrap 
         b.classList.toggle('is-chosen', id === chosen);
         if (id === chosen) b.setAttribute('aria-current', 'true'); else b.removeAttribute('aria-current');
         const name = (data.nodes.find((n) => n.id === id) || {}).name || id;
-        const word = st === 'researched' ? 'researched' : st === 'available' ? (ready ? 'ready to research' : 'open') : 'locked';
+        const words = data.words || {};
+        const word = st === 'researched' ? (words.researched || 'researched') : st === 'available' ? (ready ? (words.ready || 'ready to research') : 'open') : 'locked';
         const cost = st === 'researched' ? '' : String((data.costs && data.costs[id]) || '');
         b.setAttribute('aria-label', `${name}, ${word}${cost ? ', ' + cost : ''}`);
       }

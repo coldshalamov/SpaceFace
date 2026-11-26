@@ -92,14 +92,16 @@ test('4242: forced interdiction warns at jump start and the arrival hulls use th
   assert.equal(state.jump._interdiction, null);
 });
 
-test('4242: all visual keys resolve real sectors, Bolus has its own profile, and the named landmark selects background art', () => {
+test('4242: all visual keys resolve real sectors, Bolus has its own profile, and sector backdrops carry no ship/mast ghost cards', () => {
   for (const [id, profile] of PROFILE_BY_ID) { assert.ok(SECTORS.some(s => s.id === id)); assert.ok(profile); }
   const bolus = resolveSectorVisualProfile({ id: 'sector_the_bolus' });
   assert.equal(bolus.id, 'viscera'); assert.equal(bolus.background.composition.planetChance, 0);
   const recipe = resolveDeepFieldStructureRecipe({ recipeId: 'helios_orbital_void' });
+  assert.deepEqual(recipe.structures, [], 'Helios backdrop drops top-down ship/mast cutout cards');
   const ceres = withSectorLandmark(recipe, 'sector_ceres_belt'), tethys = withSectorLandmark(recipe, 'sector_tethys_junction');
-  assert.deepEqual(ceres.structures.slice(0, recipe.structures.length), recipe.structures, 'existing authored composition is retained');
-  assert.match(ceres.landmarkSource, /Cathedral/); assert.equal(ceres.structures.at(-1).art.kind, 'derelict_hauler');
-  assert.match(tethys.landmarkSource, /Trade Hub/); assert.equal(tethys.structures.at(-1).art.kind, 'relay_mast');
+  assert.match(ceres.landmarkSource, /Cathedral/);
+  assert.deepEqual(ceres.structures, [], 'way-of-life landmark identity does not stamp flat ship-scale cards into the sky');
+  assert.match(tethys.landmarkSource, /Trade Hub/);
+  assert.deepEqual(tethys.structures, [], 'way-of-life landmark identity does not stamp flat mast cards into the sky');
   assert.equal(withSectorLandmark(recipe, 'sector_ceres_belt'), ceres, 'one retained recipe per sector/profile');
 });

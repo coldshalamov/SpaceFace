@@ -80,7 +80,7 @@ test('a hollow Ashfall core cuts output and the claim says so on the first watch
   const status = sys._runtime(site).status[core.id];
   assert.equal(status.state, 'overheat');
   assert.equal(status.limit, 'thermal');
-  const line = 'Massline Core overheated — output is cut until it cools.';
+  const line = 'Line Core overheated — output is cut until it cools.';
   assert.equal(toasts.filter((t) => t.text === line).length, 1);
   assert.equal(site.ledger.some((entry) => entry.text === line), true);
   const lens = machineStatusRow(status);

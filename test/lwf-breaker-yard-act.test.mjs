@@ -298,31 +298,17 @@ function waveHarness(wave) {
   return h;
 }
 
-test('sim: the act materializes its specialists and honors the authored fire cap', () => {
+test('sim: the act materializes its specialists and every live hull may fire (no shooter cap)', () => {
   const h34 = waveHarness(34);
   try {
-    h34.tick(900); // opening burst + both staged pairs land, then the 2.5 s arm grace
+    h34.tick(900);
     const ids = new Set(h34.spawned.map((e) => e.data && e.data.lootTableId));
     for (const enemyId of ['warden_escort', 'field_anchor_controller', 'mine_layer_jackal', 'tether_control_raider']) {
       assert.ok(ids.has(enemyId), `wave 34 actually fields its staged ${enemyId}`);
     }
-    assert.ok(h34.liveCohort().length > 3, 'the room holds more hulls than the cap');
-    const released = h34.shooters().length;
-    assert.equal(released, 3, `wave 34 holds fire to the authored cap (got ${released})`);
-    // Deterministic across a replay: the same plan, the same living room, the same cap.
-    assert.equal(h34.plan.swarm.shooterCap, 3);
+    const live = h34.liveCohort().length;
+    assert.ok(live > 3, 'the room holds a real cast');
+    // Owner 2026-11-20: no rule freezes some enemies while others attack.
+    assert.equal(h34.shooters().length, live, `every live hull is free to fire (${h34.shooters().length}/${live})`);
   } finally { h34.close(); }
-
-  const h33 = waveHarness(33);
-  try {
-    h33.tick(900);
-    const ids = new Set(h33.spawned.map((e) => e.data && e.data.lootTableId));
-    for (const enemyId of ['mine_layer_jackal', 'bruiser_brawler']) {
-      assert.ok(ids.has(enemyId), `wave 33 actually fields its staged ${enemyId}`);
-    }
-    assert.ok(h33.liveCohort().length > 8, 'the uncapped room is full enough to read the difference');
-    const released = h33.shooters().length;
-    assert.ok(released > 3, `wave 33 without the field uses the wave table (got ${released})`);
-    assert.ok(released <= 8, `wave 33 never exceeds the wave table cap (got ${released})`);
-  } finally { h33.close(); }
 });

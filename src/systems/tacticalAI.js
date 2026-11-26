@@ -44,6 +44,8 @@ import {
   createFodderCohortDirector,
 } from '../ai/fodderCohort.js';
 import { ensureActivityClassified, entityNeedsAiThink } from '../world/activityRuntime.js';
+import { getSimStepProfiler, nowNs } from '../core/simStepProfiler.js';
+import { simCoreFlag } from '../core/simCoreFlags.js';
 import { indexedShipLikeScan, indexedShipLikeOrEntitiesScan, entityIndexVersion } from '../world/livingWorldViews.js';
 import { applySpecialistCounterplay } from '../ai/specialistCounterplay.js';
 import { specialistPlanByEnemyId, BODY_LAUNCH, bodyLaunchStep, bodyLauncherWeaponId,
@@ -71,6 +73,8 @@ import { recordImpulseProvenance } from '../combat/impulseKernel.js';
 import { isTumbling } from '../combat/tumbleStatus.js';
 import { selectIncomingMassCue, INCOMING_MASS_CUE_KIND, INCOMING_MASS_CUE_TICKS } from '../render/incomingMassCue.js';
 import { driveCounterplay, isCounterplayOwned, rebindCounterplayCast } from '../ai/counterplay/live.js';
+import { PackBrain } from '../ai/pack/packBrain.js';
+import { bindPlayerAwareness, updatePlayerAwareness } from '../ai/playerAwareness.js';
 import { placeCounterplayAdventure, clearCounterplayAdventure } from '../ai/counterplay/adventure.js';
 
 // Set when this module body runs. The doctrine arena must stay false.
@@ -314,6 +318,12 @@ export function getTacticalAiQuietLatchForBench() {
   return TACTICAL_AI_QUIET_LATCH !== false;
 }
 
+/** Bench A/B: production default ON. Ordinary Swarm ships fly the shared pack brain. */
+let PACK_BRAIN_ENABLED = true;
+export function setPackBrainEnabledForBench(enabled) {
+  PACK_BRAIN_ENABLED = enabled !== false;
+}
+
 function anyNonPlayerNeedsAiThink(state, shipLikeList) {
   const list = shipLikeList || indexedShipLikeScan(state);
   if (!list || !list.length) return false;
@@ -329,6 +339,27 @@ function anyNonPlayerNeedsAiThink(state, shipLikeList) {
 function publishTacticalAiQuiet(state, latched) {
   const rt = state.tacticalAiRuntime || (state.tacticalAiRuntime = {});
   rt.quietLatched = !!latched;
+}
+
+// CW-AI item 9 — the doctrine already computes one `pressure_break` outcome when a hurt or
+// heat-soaked hull decides to disengage. Announce that decision through the existing ai:flee
+// surface (VFX vent, bark, presentation withdraw); one event per break, never one per tick.
+function announcePressureBreak(ctxRef, entity, doctrine, announced, tick) {
+  if (!entity || !doctrine || doctrine.outcome !== 'pressure_break') return false;
+  const key = `${doctrine.doctrineId}:${doctrine.cycle}:${doctrine.phaseStartedTick}`;
+  if (announced.get(entity) === key) return false;
+  announced.set(entity, key);
+  const bus = ctxRef && ctxRef.bus;
+  if (!bus || typeof bus.emit !== 'function') return false;
+  bus.emit('ai:flee', {
+    entityId: entity.id,
+    reason: 'pressure_break',
+    doctrineId: doctrine.doctrineId,
+    phase: doctrine.phase,
+    targetId: doctrine.targetId == null ? null : doctrine.targetId,
+    tick,
+  });
+  return true;
 }
 
 export function createTacticalAISystem({
@@ -355,7 +386,9 @@ export function createTacticalAISystem({
     ...config,
     runtime: {
       ...defaultRuntime,
-      decisionIntervalTicks: productionPortDefaults ? 2 : 1,
+      // ENGINE job 6: 20 Hz decisions on a fixed tick cadence (never load-dependent); the last
+      // maneuver is replayed on every other tick so thrust stays continuous.
+      decisionIntervalTicks: productionPortDefaults ? 3 : 1,
       ...runtime,
     },
     trace: config.trace === undefined ? defaultTraceConfig() : config.trace,
@@ -371,6 +404,9 @@ export function createTacticalAISystem({
   // Presentation-only: a sent lane cue needs one cancellation if its doctrine disappears
   // without a phaseChanged receipt (notably when the target leaves sensor coverage).
   let committedLaneCues = new WeakMap();
+  // CW-AI item 9 — a pressure break is one decision, announced once. Keyed by entity (WeakMap)
+  // with the doctrine cycle/phase so a cached decision cannot re-emit on a skipped think tick.
+  const pressureBreakAnnounced = new WeakMap();
   // Committed-corridor telegraphs suppressed by a live fire hold. entity -> the frozen
   // doctrine.telegraph object whose emit is still owed; identity expires with the phase.
   let heldLaneTelegraphs = new WeakMap();
@@ -381,6 +417,13 @@ export function createTacticalAISystem({
   const decisionIntervalTicks = runtimeDecisionInterval(runtimeConfig);
   let quietLatch = null;
   let counterplayBindingVersion = -1;
+  // Reused filtered-lane buffer for update()'s counterplay strip — never exposed while
+  // hasCounterplay is false (shipLikeList stays the live index lane, same as before).
+  const shipLikeScratch = [];
+  // The pack brain (src/ai/pack/packBrain.js): one shared pass for every ordinary Swarm ship.
+  // Production only — injected-port fixtures keep their historical stack-only behavior.
+  let pack = null;
+  const packCtx = { bus: null, maneuverPort: null };
 
   function ensureStack(state) {
     if (stack) return stack;
@@ -474,6 +517,8 @@ export function createTacticalAISystem({
     lastDecisionEntityRefs.clear();
     quietLatch = null;
     counterplayBindingVersion = -1;
+    shipLikeScratch.length = 0;
+    if (pack) pack.reset();
     resetFirstSessionAttackerOwnership(ctxRef && ctxRef.state);
   }
 
@@ -638,7 +683,7 @@ export function createTacticalAISystem({
       helpers.inspectAIContract = () => handleInspection({ method: 'ai.contract' });
       if (ctx.bus && typeof ctx.bus.on === 'function') {
         listenLifecycle(ctx.bus, 'game:started', () => {
-          if (ctxRef && ctxRef.state) delete ctxRef.state.enemyMind;
+          if (ctxRef && ctxRef.state) { delete ctxRef.state.enemyMind; delete ctxRef.state.aiAwareness; }
           resetRuntime();
         });
         listenLifecycle(ctx.bus, 'save:loaded', restoreRuntime);
@@ -647,6 +692,8 @@ export function createTacticalAISystem({
         listenLifecycle(ctx.bus, 'entity:destroyed', invalidateDestroyedLifecycleEntity);
         listenLifecycle(ctx.bus, 'combat:tumbled', handleShoveTumble);
         listenLifecycle(ctx.bus, 'weapons:vent', handleVentPress);
+        // A cloaked player's shot or a collision on its hull reveals it (src/ai/playerAwareness.js).
+        for (const off of bindPlayerAwareness(ctx.bus, () => ctxRef && ctxRef.state)) lifecycleUnsubscribes.push(off);
       }
     },
 
@@ -665,6 +712,12 @@ export function createTacticalAISystem({
     },
 
     update(_dt, state) {
+      // Sub-phase attribution for the step profiler: one boolean read per tick when it is off.
+      const ph = getSimStepProfiler();
+      const phOn = ph.active;
+      let phT = phOn ? nowNs() : 0;
+      // The shared "where is the player" fix every brain reads this tick (cloak, reveals, timeout).
+      updatePlayerAwareness(state);
       emitIncomingMassCue(state, ctxRef && ctxRef.bus);
       if (productionPortDefaults) placeCounterplayAdventure(ctxRef);
       const bindingVersion = entityIndexVersion(state);
@@ -672,7 +725,9 @@ export function createTacticalAISystem({
         rebindCounterplayCast(state, state.entityList);
         counterplayBindingVersion = bindingVersion;
       }
+      if (phOn) { ph.record('tacticalAI.pre', nowNs() - phT); phT = nowNs(); }
       ensureActivityClassified(state);
+      if (phOn) { ph.record('tacticalAI.classify', nowNs() - phT); phT = nowNs(); }
       // Quiet latch: no non-player needs AI think → skip cohort stamp, squad/fodder steps, stack
       // update, and maneuver replay. Probe think interest every tick (nextEventAtT / pins can flip
       // without membership). Injected-port fixtures keep every-tick cadence; production quiet
@@ -681,8 +736,31 @@ export function createTacticalAISystem({
       // is fetched once here and threaded through instead of re-scanning (and re-classifying each
       // entity) four to six times per fixed step.
       const allShipLike = indexedShipLikeScan(state);
-      const hasCounterplay = allShipLike.some((entity) => isCounterplayOwned(entity, state));
-      const shipLikeList = hasCounterplay ? allShipLike.filter((entity) => !isCounterplayOwned(entity, state)) : allShipLike;
+      // One classified pass replaces `.some` + `.filter`: counterplay ownership is stamped
+      // entirely on entity.data (counterplayDoctrineId on the actor, counterplayControllerId
+      // on cast mates), so an unstamped entity can never be owned and the map-lookup predicate
+      // only runs on stamped candidates. The first owned hull flips the pass into fill mode —
+      // a no-counterplay tick (the common case) does zero pushes, allocates nothing, and keeps
+      // the live index lane exactly as before; a counterplay tick fills the scratch with the
+      // same order `.filter` produced.
+      let hasCounterplay = false;
+      let shipLikeList = allShipLike;
+      for (let i = 0; i < allShipLike.length; i++) {
+        const entity = allShipLike[i];
+        const data = entity && entity.data;
+        if (!data || (data.counterplayControllerId == null
+          && (!data.ai || data.ai.counterplayDoctrineId == null))
+          || !isCounterplayOwned(entity, state)) {
+          if (hasCounterplay) shipLikeScratch.push(entity);
+          continue;
+        }
+        if (!hasCounterplay) {
+          hasCounterplay = true;
+          shipLikeScratch.length = 0;
+          for (let j = 0; j < i; j++) shipLikeScratch.push(allShipLike[j]);
+          shipLikeList = shipLikeScratch;
+        }
+      }
       if (hasCounterplay) driveCounterplay({ ctx: ctxRef, entities: allShipLike,
         sensorPort: sensors || ctxRef.helpers.aiSensors,
         maneuverPort: heavyAwareManeuverPort(maneuver || ctxRef.helpers.aiManeuver, () => state) });
@@ -707,6 +785,15 @@ export function createTacticalAISystem({
       } else if (state && state.tacticalAiRuntime) {
         state.tacticalAiRuntime.quietLatched = false;
       }
+      if (productionPortDefaults && PACK_BRAIN_ENABLED) {
+        if (!pack) pack = new PackBrain({ seed: (state && state.meta && state.meta.seed) || 1 });
+        packCtx.bus = ctxRef && ctxRef.bus;
+        packCtx.maneuverPort = maneuver || (ctxRef && ctxRef.helpers && ctxRef.helpers.aiManeuver) || null;
+        pack.step(state, packCtx, shipLikeList, Number.isInteger(state && state.tick) ? state.tick : 0);
+      } else if (pack) {
+        pack.releaseAll();
+      }
+      if (phOn) { ph.record('tacticalAI.pack', nowNs() - phT); phT = nowNs(); }
       markCheapCohortMembers(state, shipLikeList);
       stampManeuverIdentities(state, shipLikeList);
       restoreShovePanics(state, shipLikeList);
@@ -718,7 +805,13 @@ export function createTacticalAISystem({
       assignAutoSquadRecipes(state, shipLikeList, liveStack.seed);
       stepSquadFrames(liveStack, state, tick, dt, shipLikeList);
       stepFodderCohorts(liveStack, state, tick, dt, shipLikeList);
-      if (tick - lastDecisionTick < decisionIntervalTicks) {
+      if (phOn) { ph.record('tacticalAI.squads', nowNs() - phT); phT = nowNs(); }
+      // aiPhasedThink (default on): the stack runs every fixed tick and each hull's full think
+      // lands on its own stagger slot, so the ~10 ms all-hulls think spreads across the interval.
+      // The inter-think lane below still serves the legacy schedule (flag off) verbatim; a
+      // one-tick interval never skips either way.
+      const phasedThink = decisionIntervalTicks > 1 && simCoreFlag('aiPhasedThink');
+      if (!phasedThink && tick - lastDecisionTick < decisionIntervalTicks) {
         maintainFirstSessionAttackerOwnership(state);
         if (lastManeuverRequests.length) replayLastManeuvers(liveStack, tick, state);
         driveChoreographyMembers(liveStack, state, tick, null, shipLikeList);
@@ -727,6 +820,7 @@ export function createTacticalAISystem({
         applySquadTokenFireGate(liveStack, state, shipLikeList);
         applyCapitalBossFireGate(state, shipLikeList, clearAIFiringIntent);
         stepHostileBodyLaunches(state, ctxRef.bus, bodyLaunchRt, liveStack.combatDoctrine);
+        if (phOn) ph.record('tacticalAI.between', nowNs() - phT);
         return;
       }
       const authored = typeof authoredEncounter === 'function'
@@ -742,7 +836,13 @@ export function createTacticalAISystem({
         ? { ...authored, pendingReinforcements }
         : authored;
       const result = liveStack.update(tick, authoredForStack);
+      if (phOn) { ph.record('tacticalAI.think', nowNs() - phT); phT = nowNs(); }
       lastDecisionEntityRefs.clear();
+      // Under the phased schedule only the members in the stack's due set actually thought this
+      // tick — the rest replay their last decision — so the one-shot think verbs below (counter-
+      // play, mines, field deploys, fresh choreography plans) run for the due set only, keeping
+      // the same per-hull cadence the single think tick gave them.
+      const dueMembers = phasedThink ? liveStack.lastDueMembers : null;
       if (tick - lastOwnershipRefreshTick >= OWNERSHIP_REFRESH_TICKS) {
         refreshFirstSessionAttackerOwnership(state, result.decisions || []);
         lastOwnershipRefreshTick = tick;
@@ -753,6 +853,7 @@ export function createTacticalAISystem({
       lastManeuverRequests.length = 0;
       for (const sourceDecision of result.decisions || []) {
         const decision = kilnbackDecision(sourceDecision, state);
+        const due = dueMembers == null || dueMembers.has(decision.entityId);
         if (decision !== sourceDecision && decision.maneuver) liveStack.ports.maneuver.request(decision.maneuver);
         const entity = state && state.entities && decision && decision.entityId != null
           && typeof state.entities.get === 'function'
@@ -760,7 +861,25 @@ export function createTacticalAISystem({
           : null;
         if (entity) lastDecisionEntityRefs.set(decision.entityId, entity);
         if (decision && decision.maneuver) lastManeuverRequests.push(decision.maneuver);
+        if (!due) {
+          // Off-slot members take the same light lane the inter-think ticks ran through
+          // revalidateCachedAIFiringIntents: the firing intent is revalidated against the live
+          // entity — a dead target's volley still revokes at 60 Hz — and nothing else runs,
+          // because everything below is a think-tick effect for this member.
+          if (entity && entityNeedsAiThink(entity, state) === false) continue;
+          if (isCounterplayOwned(entity, state)) continue;
+          const intentDecision = palletJackDecision(decision, state);
+          if (intentDecision !== decision && intentDecision.maneuver) {
+            liveStack.ports.maneuver.request(intentDecision.maneuver);
+          }
+          applyMindAwareFiringIntent(intentDecision, state);
+          applyNemesisFireGate(entity, state);
+          applyShovePanicFireGate(entity, state);
+          applyEliteChargeTell(entity, intentDecision, state, tick, ctxRef && ctxRef.bus);
+          continue;
+        }
         const doctrine = decision && decision.combatDoctrine;
+        announcePressureBreak(ctxRef, entity, doctrine, pressureBreakAnnounced, tick);
         const priorLane = entity && committedLaneCues.get(entity);
         const aim = doctrine?.aimCommit;
         const targetGeneration = state.entities?.get?.(doctrine?.targetId)?.occupantGeneration;
@@ -887,13 +1006,14 @@ export function createTacticalAISystem({
         }
         if (entity && fieldsSys && !capitalBossOrder(state, entity.id)?.suppressStockFire && nemesisFireAllowed(entity, state)) applyNpcFieldDeploy(entity, state, fieldsSys);
       }
-      driveChoreographyMembers(liveStack, state, tick, result.decisions || [], shipLikeList);
+      driveChoreographyMembers(liveStack, state, tick, result.decisions || [], shipLikeList, dueMembers);
       driveCohortMembers(liveStack, state, tick, shipLikeList);
       applySquadTokenFireGate(liveStack, state, shipLikeList);
       // Runs after the mind veto and the Nemesis denial gate: those vetoes still close fire, and a
       // score-owned capital/wing must not double-fire its authored attacks through stock intent.
       applyCapitalBossFireGate(state, shipLikeList, clearAIFiringIntent);
       stepHostileBodyLaunches(state, ctxRef.bus, bodyLaunchRt, liveStack.combatDoctrine);
+      if (phOn) ph.record('tacticalAI.apply', nowNs() - phT);
     },
 
     inspect(query = {}) {
@@ -907,6 +1027,7 @@ export function createTacticalAISystem({
     },
 
     get stack() { return stack; },
+    get pack() { return pack; },
     get decisionIntervalTicks() { return decisionIntervalTicks; },
   };
 }
@@ -1077,8 +1198,6 @@ export function committedLaneFireHeld(entity, decision, state, liveStack) {
   const ai = data.ai;
   const now = Number.isFinite(state && state.simTime) ? state.simTime
     : (Number.isFinite(state && state.tick) ? state.tick / 60 : 0);
-  const swarmHoldUntil = Number(ai && ai.swarmFireHoldUntil);
-  if (Number.isFinite(swarmHoldUntil) && now < swarmHoldUntil) return 'swarm_fire_hold';
   const arrivalHoldUntil = Number(ai && ai.arrivalHoldUntil);
   if (Number.isFinite(arrivalHoldUntil) && now < arrivalHoldUntil) return 'arrival_hold';
   const director = liveStack && liveStack.maneuver && liveStack.maneuver.squadFrames;
@@ -1331,7 +1450,7 @@ function autoSquadKeyFor(ai) {
 function autoSquadEligible(entity, state) {
   if (!entity || entity.alive === false || entity.id === (state && state.playerId)) return false;
   const ai = entity.data && entity.data.ai;
-  if (!ai || ai.passive === true) return false;
+  if (!ai || ai.passive === true || ai.packBrain === true) return false;
   if (ai.squadRecipe && ai.autoSquadRecipe !== true) return false;
   if (ai.cohortRecipe) return false;
   if (ai.roe !== 'weapons_free') return false;
@@ -1629,12 +1748,17 @@ export function gatherRecipeSquads(state, shipLikeList = indexedShipLikeScan(sta
 
 const choreographyPlannedScratch = new Set();
 
-function driveChoreographyMembers(liveStack, state, tick, decisions, shipLikeList = indexedShipLikeScan(state)) {
+function driveChoreographyMembers(liveStack, state, tick, decisions, shipLikeList = indexedShipLikeScan(state), dueMembers = null) {
   const director = liveStack && liveStack.maneuver && liveStack.maneuver.squadFrames;
   if (!director || director.activeSquadCount() === 0) return;
   const planned = choreographyPlannedScratch;
   planned.clear();
-  if (Array.isArray(decisions)) {
+  if (dueMembers) {
+    // Phased think: only the members that actually thought this tick count as stack-planned —
+    // everyone else gets the fresh choreography plan, the same authority split the old
+    // inter-think ticks had.
+    for (const id of dueMembers) planned.add(id);
+  } else if (Array.isArray(decisions)) {
     for (const decision of decisions) {
       if (decision && decision.entityId != null) planned.add(decision.entityId);
     }

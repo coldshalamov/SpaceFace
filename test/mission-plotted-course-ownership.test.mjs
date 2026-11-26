@@ -4,6 +4,8 @@ import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
 import { missions as missionOwner, CONTRACT_47A_B1_TAG } from '../src/systems/missions.js';
 import { world as worldOwner } from '../src/systems/world.js';
+import { emitGalaxyMapPrimaryAction, getSearchTargets, resolveGalaxyMapPrimaryAction } from '../src/ui/galaxyMap.js';
+import { captureEntitySelection } from '../src/ui/sim/stableSelection.js';
 
 function fixture(storyTag = CONTRACT_47A_B1_TAG) {
   const state = createGameState(4711), bus = createBus();
@@ -78,5 +80,66 @@ test('mission and forced story refresh preserve an explicit local station approa
     assert.equal(autopilot.active, true);
     assert.equal(state.nav.route, null);
     assert.deepEqual(orders, []);
+  }
+});
+
+function movingGoal() {
+  const f = fixture();
+  const { state, mission } = f;
+  state.world.currentSectorId = 'sector_ceres_belt';
+  mission.storyTag = 'campaign47a:b1:infested';
+  mission.destSectorId = state.world.currentSectorId;
+  const mite = { id: 91, type: 'fauna', name: 'Marked mite', alive: true, occupantGeneration: 4,
+    pos: { x: -10617, z: 9983 }, data: {} };
+  state.entities.set(mite.id, mite);
+  const marker = state.nav.waypoint = { kind: 'mission', missionId: mission.id, missionTitle: mission.title,
+    label: 'Refinery hauler — repair-mite clearance', reason: 'Clear four marked repair-mite sites with frag blasts.',
+    sectorId: state.world.currentSectorId, pos: { ...mite.pos }, targetEntityId: mite.id,
+    stable: captureEntitySelection(mite) };
+  mite.pos.x += 1;
+  const goal = getSearchTargets(state, 'local', state.world.currentSectorId).find(row => row.id === 'active-map-goal');
+  const action = resolveGalaxyMapPrimaryAction(state, goal);
+  assert.equal(action.label, 'Track Waypoint');
+  return { ...f, mite, marker, action };
+}
+
+test('tracking a moving mission goal keeps its guidance and uses the current body pose', () => {
+  const { state, bus, mission, mite, marker, action } = movingGoal();
+  assert.equal(action.coursePayload.missionId, mission.id);
+  mite.pos.x += 3;
+  assert.ok(emitGalaxyMapPrimaryAction(bus, action));
+  assert.equal(state.nav.waypoint.kind, 'mission');
+  assert.equal(state.nav.waypoint.missionId, mission.id);
+  assert.equal(state.nav.waypoint.missionTitle, marker.missionTitle);
+  assert.equal(state.nav.waypoint.reason, marker.reason);
+  assert.deepEqual(state.nav.waypoint.pos, mite.pos);
+  assert.equal(state.nav.autopilot.active, true);
+  assert.equal(state.nav.autopilot.targetEntityId, mite.id);
+  assert.deepEqual(state.nav.autopilot.target, mite.pos);
+});
+
+test('a local detour, another body, and a reused id cannot inherit moving mission guidance', () => {
+  for (const changed of ['detour', 'other body', 'new generation']) {
+    const { state, bus, owner, mite, action } = movingGoal();
+    const payload = { ...action.coursePayload };
+    if (changed === 'detour') {
+      payload.pos = { x: payload.pos.x + 160, z: payload.pos.z };
+      delete payload.targetEntityId;
+      delete payload.stable;
+    } else {
+      const other = { ...mite, id: changed === 'other body' ? 92 : mite.id, occupantGeneration: 5 };
+      state.entities.set(other.id, other);
+      if (changed === 'other body') {
+        payload.targetEntityId = other.id;
+        payload.stable = captureEntitySelection(other);
+      }
+    }
+    bus.emit('ui:setCourse', payload);
+    const detour = state.nav.waypoint;
+    assert.equal(detour.kind, 'local', changed);
+    assert.equal(detour.missionId, undefined, changed);
+    if (changed === 'new generation') assert.equal(state.nav.autopilot.targetEntityId, null);
+    owner._refreshNavigation({ silent: true });
+    assert.equal(state.nav.waypoint, detour, changed);
   }
 });

@@ -40,7 +40,6 @@ import {
   swarmPressureIsHolding,
   swarmPressureSuppressing,
   swarmCourseQuota,
-  swarmQuota,
 } from '../src/data/swarmMode.js';
 import { swarmArena } from '../src/systems/swarmArena.js';
 
@@ -331,17 +330,32 @@ test('a clamp-refused batch is owed on a short retry — the quota is met withou
 
   // Room frees: the owed batch lands on its retry tick, not whenever the stream got to it.
   for (const id of fillers) killId(h, id);
-  for (let i = 0; i < SWARM_SPAWN_RETRY_TICKS + 30 && survivalWave._pending.length > 0; i++) tick(h, 1);
+  // DEMO-SWARM-BUDGET-1 — the smaller approved round-2 budget (16, was 19) sits exactly one
+  // SWARM_CLEAR_KILLS (3) below the ladder's margin floor (concurrent 11 + 8 = 19), so this
+  // fixture's six-body filler clear is a third of the round's whole quota and moves quota
+  // progress far enough to arm a lawful breath that holds the retry four seconds before it
+  // lands. Wait out that breath: the batch is still owed, never dropped, and the watchdog
+  // window (9 s) is never reached — but pin the hold to ONE breath (4 s), so a regression
+  // that stretches the hold toward the watchdog is caught here, not shipped.
+  let heldTicks = 0;
+  for (; heldTicks < SWARM_SPAWN_RETRY_TICKS + SWARM_BREATH_TICKS + 60
+    && survivalWave._pending.length > 0; heldTicks++) tick(h, 1);
   assert.equal(survivalWave._pending.length, 0, 'the owed batch delivered on its retry');
-  assert.equal(survivalWave._admittedTotal, 10, 'both opening groups are in the room now');
+  assert.ok(heldTicks <= SWARM_SPAWN_RETRY_TICKS + SWARM_BREATH_TICKS,
+    `the breath held the retry only its own four seconds (${heldTicks} ticks waited)`
+      + ' — approved round budgets in swarmCourseCast.js (director 2026-11-20)');
+  assert.equal(survivalWave._admittedTotal, 11,
+    'both opening groups are in the room now, plus the one-body patch the smaller budget\'s '
+    + 'pressure target admits — approved round budgets in swarmCourseCast.js (director 2026-11-20)');
 
   for (let i = 0; i < 12000 && !cleared; i++) {
     if (i % 5 === 0 && h.state.run.phase === 'active') killOne(h);
     tick(h, 1);
   }
   assert.ok(cleared && cleared.wave === 2, 'the wave still cleared');
-  assert.equal(cleared.killed, swarmQuota(2) + fillers.length,
-    'every cohort body resolved — none lost to the clamp');
+  assert.equal(cleared.killed, swarmCourseQuota(2) + fillers.length,
+    'every cohort body resolved — none lost to the clamp '
+    + '(approved round budgets in swarmCourseCast.js, director 2026-11-20)');
   assert.equal(releases.length, 0, 'no starvation ever reached the watchdog');
   teardown(h);
 });

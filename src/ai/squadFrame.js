@@ -85,7 +85,8 @@ export function isSquadFrameMutationForced() {
 
 export function recipeIdFromEntity(entity) {
   const ai = entity && entity.data && entity.data.ai;
-  if (!ai) return null;
+  // A pack-brain hull steers itself (src/ai/pack/packBrain.js); no frame may also drive it.
+  if (!ai || ai.packBrain === true) return null;
   const id = ai.squadRecipe || ai.choreographyRecipe;
   return getSquadRecipe(id) ? id : null;
 }

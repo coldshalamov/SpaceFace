@@ -10,6 +10,7 @@ import { ensureWorldRecords, captureEntityRecord, upsertRecord, serializeRecords
 import { missionObjectiveOps } from '../src/systems/missionObjectiveOps.js';
 import { missionSpawningOps } from '../src/systems/missionSpawningOps.js';
 import { registryContactReadout } from '../src/ui/sim/missionRecap.js';
+import { tetherReachScale } from '../src/combat/attachments.js'; // PT-FIX-C: the one rigger_long_reel reach scale
 import { story } from '../src/systems/story.js';
 import { createGameState } from '../src/core/gameState.js';
 import { createBus } from '../src/core/eventBus.js';
@@ -24,7 +25,7 @@ const rating=fs.readFileSync(process.env.NEST_LINE_RATING_SOURCE || new URL('../
 function fn(s,n){const a=s.search(new RegExp('(?:export )?function '+n+'\\(')),b=s.indexOf('\n}',a);assert(a>=0&&b>a,n);return s.slice(a,b+2).replace(/^export /,'');}
 function method(s,n){const a=s.indexOf('\n  '+n+'('),b=s.indexOf('\n  },',a);assert(a>=0&&b>a,n);return s.slice(a+3,b+4);}
 const no=n=>()=>{throw Error('Unexercised port '+n)};
-const ctx=vm.createContext({console,ROCK_SIZE_CLASSES,modelTruthRopeEnd,isDynamicPhysicsBodyEntity,
+const ctx=vm.createContext({console,ROCK_SIZE_CLASSES,modelTruthRopeEnd,isDynamicPhysicsBodyEntity,tetherReachScale,
  isBlackFlagAdventure:()=>true,openingBeforeClaim:()=>false,vesselForEntity:no('drive-disabled vessel'),peekShipjack:no('drive-disabled parley'),hasRecoveryTowConsent:no('drive-disabled consent'),isSurrenderedContact:no('surrender'),
  occupantGenerationOf:e=>e?.occupantGeneration,survivalRoundWreckLatchLegal:()=>false,isMassSeedTetherEligible:no('MassSeed'),
  commandAcquireCandidates:(state,player,max,scratch)=>[...state.entities.values()].filter(e=>e.id!==player.id&&e.data?.candidate===true),

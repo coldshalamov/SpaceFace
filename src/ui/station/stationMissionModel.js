@@ -30,11 +30,19 @@ function missionRiskTier(m) {
   return Number.isFinite(risk) ? Math.max(0, Math.round(risk)) : 0;
 }
 
+/** Live jobs the pilot took from a desk: the opening's own story contract (47-A) is installed at
+ *  cold start, not taken, so it never makes a new pilot read as already employed. */
+export function deskJobCount(state) {
+  const active = state && state.missions && Array.isArray(state.missions.active) ? state.missions.active : [];
+  return active.filter((m) => m && (m.status == null || m.status === 'active')
+    && !(typeof m.storyTag === 'string' && m.storyTag.startsWith('campaign47a:'))).length;
+}
+
 function firstLoopNeedsSafeWork(state) {
   const ob = state && state.onboarding;
   if (!ob || ob.finished === true) return false;
   const beatDoneAt = ob.beatDoneAt || {};
-  return beatDoneAt.choice == null && activeMissionCount(state) === 0;
+  return beatDoneAt.choice == null && deskJobCount(state) === 0;
 }
 
 function missionDestName(m) {
@@ -158,9 +166,11 @@ export function recommendMissionBoardOffer(slots = [], state = {}) {
     };
   }
   // A live spine with no posted journey row keeps the board quiet. Procedural work stays
-  // available as rows; it just does not claim the one recommendation badge.
-  if (liveSpineBeat(state)) return null;
+  // available as rows; it just does not claim the one recommendation badge. The exception is the
+  // first-hour loop before the pilot's first job: a stranger's first dock has one obvious next
+  // action, so the safest ready job is still recommended (and the board selects it).
   const firstLoopSafeWork = firstLoopNeedsSafeWork(state);
+  if (liveSpineBeat(state) && !firstLoopSafeWork) return null;
   let candidates = (Array.isArray(slots) ? slots : [])
     .map((mission, index) => {
       if (!mission) return null;

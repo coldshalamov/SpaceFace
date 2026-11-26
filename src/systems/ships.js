@@ -16,9 +16,14 @@ import { MODULES } from '../data/modules.js';
 import { TECH_NODES, techDisplayName } from '../data/tech.js';
 import { BEAMS } from '../data/mining.js';
 import { NEW_GAME } from '../data/newGameDefaults.js';
+import { slotCountForCargoCap } from '../data/cargoSlots.js';
+import { slotsNeededForHold } from './cargo.js';
 import { SECTORS } from '../data/sectors.js';
 import { sableShipworksAvailable } from '../data/sableVenn.js';
 import { LINE_HEAD_BY_ID, lineHeadBehavior, lineMetaEarned, normalizeModuleProvenance, PROVENANCE_TIERS } from '../data/lineProgression.js';
+// PORT-PRO-FIVE KINETIC CATALYSTS: recovered relics fit once, from their held instance.
+import { findCatalystFitConflict } from '../features/kineticCatalysts/fitting.js';
+import { resolveCatalyst } from '../features/kineticCatalysts/catalog.js';
 import {
   describeHullRole,
   flightClassForHull,
@@ -881,6 +886,17 @@ export function dryRunLoadoutPresetApply({
         text: 'Unfit ' + conflictingDef.name + ' before fitting another head',
       });
     }
+    const conflictingCatalyst = findCatalystFitConflict(afterFittings, slotIndex, def);
+    if (conflictingCatalyst) {
+      slotBlockers.push({
+        reason: 'catalyst_conflict',
+        defId,
+        name: def.name,
+        slotIndex,
+        conflictDefId: conflictingCatalyst.id,
+        text: 'Unfit ' + conflictingCatalyst.name + ' before fitting another catalyst',
+      });
+    }
   }
   const currentCounts = countDefIds(asFittingsArray(currentFittings, slots.length) || []);
   const targetCounts = countDefIds(afterFittings);
@@ -933,9 +949,12 @@ export function dryRunLoadoutPresetApply({
   const budgetBlocker = outfitBudgetBlocker(shipDef, afterFittings);
   if (budgetBlocker) return { ok: false, ...budgetBlocker };
   if (enforceCargo) {
-    const usedVolume = Math.max(0, Number(player && player.cargo && player.cargo.usedVolume) || 0);
+    const hold = player && player.cargo;
+    const needed = Array.isArray(hold && hold.slots) && hold.slots.length
+      ? slotsNeededForHold(player ? { player } : null, hold)
+      : Math.ceil(Math.max(0, Number(hold && hold.usedVolume) || 0) / 20);
     const targetDerived = getDerivedStats(shipDef.id, afterFittings, player);
-    if (usedVolume > targetDerived.cargoCap) {
+    if (needed > slotCountForCargoCap(targetDerived.cargoCap)) {
       return { ok: false, reason: 'cargo_overflow', text: 'Cargo would overflow — jettison first' };
     }
   }
@@ -1718,6 +1737,7 @@ function computeDerivedStats(defId, fittings = [], player = null) {
     hullRepairOOC,
     droneBayCount,
     cargoCap,
+    cargoSlots: slotCountForCargoCap(cargoCap),
     maxWeaponRange,
     controlWeaponCount,
     chaffCount,
@@ -1750,7 +1770,7 @@ export function getShipRoleIdentity(defId) {
 }
 
 /** Resolve equipped weapon modules into the data.weapons[] runtime list (§ shared shape). */
-export function buildWeaponList(shipDef, fittings, isPlayer, derivedStats = null) {
+export function buildWeaponList(shipDef, fittings, isPlayer, derivedStats = null, legacyWeaponFallback = true) {
   const { slots, equipped } = resolveFittings(shipDef, fittings);
   const weapons = [];
   for (let i = 0; i < equipped.length; i++) {
@@ -1778,7 +1798,7 @@ export function buildWeaponList(shipDef, fittings, isPlayer, derivedStats = null
   }
   // Legacy player saves before the explicit NEW_GAME weapon may still have no weapon fitted. Prefer
   // a front-facing slot so the fallback starter gun never fires backward or as an unturreted mount.
-  if (weapons.length === 0 && isPlayer) {
+  if (weapons.length === 0 && isPlayer && legacyWeaponFallback) {
     const wslot = slots.find((s) => s.type === 'weapon' && (s.facing === 'front' || !s.facing))
                || slots.find((s) => s.type === 'weapon');
     const w = WEAPON_BY_ID.get(STARTER_WEAPON_ID);
@@ -1880,10 +1900,10 @@ function buildMiningBeam(shipDef, fittings, isPlayer) {
  * makeShipEntitySpec(defId, opts) -> a spawnEntity spec (type:'ship') with the derived stat fields
  * copied onto the top level AND a full data block per the shared shape (§3.4.1).
  */
-export function makeShipEntitySpec(defId, { team = 0, factionId = null, fittings = [], appearance = null, livingHull = null, isPlayer = false, player = null, pos = null, rot = 0, ai = null } = {}) {
+export function makeShipEntitySpec(defId, { team = 0, factionId = null, fittings = [], appearance = null, livingHull = null, isPlayer = false, player = null, pos = null, rot = 0, ai = null, legacyWeaponFallback = true } = {}) {
   const shipDef = SHIP_BY_ID.get(defId) || SHIP_BY_ID.get('ship_kestrel');
   const derived = getDerivedStats(shipDef.id, fittings, player);
-  const weapons = buildWeaponList(shipDef, fittings, isPlayer, derived || null);
+  const weapons = buildWeaponList(shipDef, fittings, isPlayer, derived || null, legacyWeaponFallback);
   const miningBeam = buildMiningBeam(shipDef, fittings, isPlayer);
 
   return {
@@ -2531,7 +2551,9 @@ export const ships = {
     // visible change (hull def or loadout) and ask the render track to rebuild the mesh.
     const shipDef = SHIP_BY_ID.get(defId) || SHIP_BY_ID.get('ship_kestrel');
     const prevAppearance = e.data._appearance || '';
-    const newWeapons = buildWeaponList(shipDef, fit, isPlayer, derived || null);
+    const swarm = this.state.run?.kind === 'survival' && this.state.run.ruleset === SWARM_RULESET;
+    const legacyWeaponFallback = !swarm && ownedForQuirk?.legacyWeaponFallback !== false;
+    const newWeapons = buildWeaponList(shipDef, fit, isPlayer, derived || null, legacyWeaponFallback);
     if (ownedForQuirk?.shipjackNoLegacyWeapon && !fit.some(id => WEAPON_BY_ID.has(id))) {
       // A physically stripped socket is empty. The pre-fitting legacy-save starter gun is
       // compatibility, never an equipment replenishment service for captured hulls.
@@ -2572,6 +2594,7 @@ export const ships = {
     if (!options.quiet) {
       this.bus.emit('ship:statsChanged', { shipId: e.id, derived });
       this.bus.emit('ship:cargoCapChanged', { shipId: e.id, cargoCap: derived.cargoCap });
+      this.bus.emit('ship:slotsChanged', { shipId: e.id, slots: derived.cargoSlots });
     }
     // Appearance changed (hull swap or loadout change) → render track rebuilds the mesh so visible
     // weapons/engines/tier reflect the current ship. Emitted only on an actual change to avoid
@@ -2718,7 +2741,7 @@ export const ships = {
 
   /** Purchase a module or weapon by defId. Validates tech, credits, then deducts credits and
    *  pushes a new instance into moduleInventory. Returns true on success. */
-  buyModule({ defId, fitSlotIndex = null, shipIndex = null, expectedPrice = null, hullDefId = null }) {
+  buyModule({ defId, fitSlotIndex = null, shipIndex = null, expectedPrice = null, hullDefId = null, expectedOccupantDefId }) {
     const refuse = (reason) => {
       this.bus.emit('module:fitRefused', {
         shipIndex,
@@ -2736,6 +2759,12 @@ export const ships = {
     if (def.id === SCARRED_RAM_PLATE_DEF_ID) {
       this.bus.emit('toast', { text: 'A Scarred Ram Plate is earned by the hull that did the rams — it is not for sale.', kind: 'error', ttl: 4 });
       return refuse('hull_history_required');
+    }
+    // PORT-PRO-FIVE KINETIC CATALYSTS — recovered relics are issued once by the
+    // field trial; price 0 with no tech gate would otherwise free-mint a copy.
+    if (resolveCatalyst(def.id)) {
+      this.bus.emit('toast', { text: 'Kinetic catalysts are recovered relics, never sold.', kind: 'error', ttl: 3 });
+      return refuse('salvage_instance_required');
     }
     if (!this.isUnlocked(def)) {
       this.bus.emit('toast', { text: defLockReasonText(def), kind: 'error', ttl: 3 });
@@ -2768,6 +2797,12 @@ export const ships = {
     }
     const shouldFit = Number.isInteger(fitSlotIndex);
     if (shouldFit) {
+      const fittedDefId = this.ownedShip(shipIndex)?.fittings?.[fitSlotIndex] || null;
+      // An explicit null quotes an open hardpoint. Callers without a quote omit this field.
+      if (expectedOccupantDefId !== undefined && expectedOccupantDefId !== fittedDefId) {
+        this.bus.emit('toast', { text: 'Hardpoint changed since confirmation. Review the replacement and confirm again.', kind: 'error', ttl: 3 });
+        return refuse('hardpoint_changed');
+      }
       const blocker = this.moduleFitBlocker({ shipIndex, slotIndex: fitSlotIndex, def });
       if (blocker) {
         if (blocker.text) this.bus.emit('toast', { text: blocker.text, kind: 'error', ttl: 3 });
@@ -3106,7 +3141,10 @@ export const ships = {
       }
     }
     const cargo = p.cargo || {};
-    if ((cargo.usedVolume || 0) > target.cargoCap) {
+    const neededSlots = Array.isArray(cargo.slots) && cargo.slots.length
+      ? slotsNeededForHold(this.state, cargo)
+      : Math.ceil(Math.max(0, Number(cargo.usedVolume) || 0) / 20);
+    if (neededSlots > slotCountForCargoCap(target.cargoCap)) {
       this.bus.emit('toast', { text: 'Cargo would overflow — jettison first', kind: 'error', ttl: 3 });
       return false;
     }
@@ -3269,6 +3307,13 @@ export const ships = {
         text: 'Unfit ' + conflictingDef.name + ' before fitting another head',
       };
     }
+    const conflictingCatalyst = findCatalystFitConflict(owned.fittings, slotIndex, def);
+    if (conflictingCatalyst) {
+      return {
+        reason: 'catalyst_conflict',
+        text: 'Unfit ' + conflictingCatalyst.name + ' before fitting another catalyst',
+      };
+    }
     const prospective = { ...owned, fittings: (owned.fittings || []).slice() };
     prospective.fittings[slotIndex] = def.id;
     const budgetBlocker = outfitBudgetBlocker(shipDef, prospective.fittings);
@@ -3343,6 +3388,12 @@ export const ships = {
       def = defById(defId);
     }
     if (!def) return refuse('unknown_module');
+    // PORT-PRO-FIVE KINETIC CATALYSTS — recovered relics exist exactly once: the
+    // defId-only mint path must never conjure one; only the held instance fits.
+    if (resolveCatalyst(def.id) && invIdx < 0) {
+      this.bus.emit('toast', { text: 'Fit the recovered catalyst instance from inventory.', kind: 'error', ttl: 3 });
+      return refuse('salvage_instance_required');
+    }
     const blocker = this.moduleFitBlocker({ shipIndex, slotIndex, def, swarmGrant });
     if (blocker) {
       if (blocker.text) this.bus.emit('toast', { text: blocker.text, kind: 'error', ttl: 3 });
@@ -3737,7 +3788,10 @@ export const ships = {
     const cargo = this.state.player.cargo;
     if (!cargo) return false;
     const derived = getDerivedStats(owned.defId, prospectiveFittings || owned.fittings, this.state.player);
-    return (cargo.usedVolume || 0) > derived.cargoCap;
+    const needed = Array.isArray(cargo.slots) && cargo.slots.length
+      ? slotsNeededForHold(this.state, cargo)
+      : Math.ceil(Math.max(0, Number(cargo.usedVolume) || 0) / 20);
+    return needed > slotCountForCargoCap(derived.cargoCap);
   },
 
   recomputeIfActive(shipIndex, fittings) {
@@ -3780,13 +3834,16 @@ export const ships = {
   /** Populate ship/fitting/research state from NEW_GAME defaults (§4.5 player save-key). Called by
    *  the save system's newGame(); also safe to call directly. Does NOT spawn the entity — the
    *  caller spawns it via makeShipEntitySpec + helpers.spawnEntity. */
-  newGame() {
+  newGame({ unfittedHullId } = {}) {
     const p = this.state.player;
+    const bare = SHIP_BY_ID.has(unfittedHullId);
+    const hullId = bare ? unfittedHullId : NEW_GAME.shipId;
     delete p.combatProfile;
     p.ownedShips = [{
-      defId: NEW_GAME.shipId,
-      fittings: this.fittingsFromDefaults(NEW_GAME.shipId, NEW_GAME.fittedModules || []),
-      appearance: defaultShipAppearance(NEW_GAME.shipId),
+      defId: hullId,
+      fittings: this.fittingsFromDefaults(hullId, bare ? [] : NEW_GAME.fittedModules || []),
+      ...(bare ? { legacyWeaponFallback: false } : {}),
+      appearance: defaultShipAppearance(hullId),
       livingHull: defaultLivingHull(this.state.simTime || 0),
     }];
     p.activeShipIndex = 0;

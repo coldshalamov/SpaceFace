@@ -325,8 +325,9 @@ export const sectorSim = {
     const ss = this._ensureState();
     const simT = Number(this.state.simTime) || 0;
     const sinceLast = Math.max(0, simT - (Number(ss.meta.lastTickSimT) || 0));
-    const payloadDays = p && Number.isFinite(p.elapsed) ? p.elapsed
-      : p && Number.isFinite(p.days) ? p.days : 1;
+    // `days` in the payload is the absolute calendar index, never a delta — only `elapsed`
+    // carries the advance, so it is the sole fallback before the default.
+    const payloadDays = p && Number.isFinite(p.elapsed) ? p.elapsed : 1;
     const days = sinceLast > 1e-6 ? sinceLast / DAY_SECONDS : Math.max(0, payloadDays);
     const result = this._advanceModel(days, 'day_tick');
     ss.meta.lastTickSimT = sinceLast > 1e-6 ? simT : (Number(ss.meta.lastTickSimT) || 0) + days * DAY_SECONDS;

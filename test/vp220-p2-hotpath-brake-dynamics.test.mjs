@@ -809,16 +809,20 @@ test('production fleet same-family ships get distinct faction instance RGB', () 
     + Math.abs(s1.factionG - s2.factionG)
     + Math.abs(s1.factionB - s2.factionB);
   assert.ok(shipDelta > 0.2, `ship faction RGB must differ (delta=${shipDelta})`);
-  // Same-family plume batch carries distinct instance colors for sheath role.
-  // Player plasma owns the hero jet, so only the two NPCs write card instances.
+  // Ordinary NPC fleets run the compact production tier (26c18a24b8): core + inner cards
+  // only, while the player's hero jet is the separate plasma stream. The compact set still
+  // carries the per-faction tint, and the sheath layer stays unwritten at this tier.
   const plume = fleet.familyPlume('engine_ion_small');
   const sheath = plume.layerBatches.find((b) => b.role === 'sheath');
-  assert.ok(sheath && sheath.writeCount >= 2, 'both NPC ships write sheath instances');
-  const c0 = [sheath.color[0], sheath.color[1], sheath.color[2]];
-  const c1 = [sheath.color[3], sheath.color[4], sheath.color[5]];
+  assert.equal(sheath ? sheath.writeCount : -1, 0,
+    'NPC fleet jets draw the compact tier: no sheath cards for ordinary fleets');
+  const inner = plume.layerBatches.find((b) => b.role === 'inner');
+  assert.ok(inner && inner.writeCount >= 2, 'both NPC ships write inner cards at the compact tier');
+  const c0 = [inner.color[0], inner.color[1], inner.color[2]];
+  const c1 = [inner.color[3], inner.color[4], inner.color[5]];
   const instDelta = Math.abs(c0[0] - c1[0]) + Math.abs(c0[1] - c1[1]) + Math.abs(c0[2] - c1[2]);
   assert.ok(instDelta > 0.05,
-    `same-family production instances must differ by faction (delta=${instDelta})`);
+    `same-family compact-tier instances must differ by faction (delta=${instDelta})`);
   system._disposeEnergy();
 });
 

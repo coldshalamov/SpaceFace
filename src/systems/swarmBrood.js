@@ -53,7 +53,7 @@ import { PHYSICS_MATERIALS } from '../data/physicsMaterials.js';
 import { readRecentImpulseProvenance } from '../combat/impulseKernel.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
 import { indexedShipLikeScan, indexedTypeScan, entityIndexLaneVersion } from '../world/livingWorldViews.js';
-import { validateRunState } from '../core/runState.js';
+import { validateRunStateForTick } from '../core/runState.js';
 import { SWARM_FORTIFY_SCHEMA_VERSION } from '../data/swarmFortify.js';
 import { isSwarmRuleset } from './survivalSwarm.js';
 import { dominoDeltaVelocity } from './swarmLegendaries.js';
@@ -229,7 +229,7 @@ function liveSwarmRun(state) {
   if (run.kind !== 'survival') return null;
   if (run.phase === 'inactive') return null;
   if (!isSwarmRuleset(run.ruleset)) return null;
-  if (!validateRunState(run).ok) return null;
+  if (!validateRunStateForTick(run, state.tick).ok) return null;
   return run;
 }
 

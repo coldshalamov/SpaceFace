@@ -21,7 +21,7 @@ export function manifestDeedCards(state) {
   const c = state?.player?.stationContactCounters || {}, out = [];
   if (c['mara.debt'] > 0) out.push({ id: 'medical_priority', kind: 'permit', name: 'Medical Priority', note: 'Earned by a delivered survivor pod.' });
   if (c['senna.names'] > 0) out.push({ id: 'restored_registry', kind: 'audit', name: 'Restored Registry', note: 'Earned by resolving a named wreck.' });
-  if (c['yune.trust'] > 0) out.push({ id: 'clean_seal', kind: 'permit', name: 'Clean Seal', note: 'Earned by clean Helios freight.' });
+  if (c['yune.trust'] > 0) out.push({ id: 'clean_seal', kind: 'permit', name: 'Clean Seal', note: 'Earned by freight that cleared her seals.' });
   if (c['zell.work'] > 0) out.push({ id: 'workshop_favor', kind: 'bribe', name: 'Workshop Favor', note: 'Earned by an illegal installation.' });
   if (Array.isArray(state?.missions?.completed) && state.missions.completed.length > 0) out.push({ id: 'paid_invoice', kind: 'cargo', value: 5, sealed: true, name: 'Paid Invoice', note: 'Earned by completed contract work.' });
   if (Object.values(state?.player?.stationContacts || {}).some(r => r?.flags?.manifest_won)) {

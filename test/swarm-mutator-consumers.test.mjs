@@ -164,7 +164,8 @@ function arenaBoot() {
   return { state, bus, emitted, spawned, fields, player };
 }
 
-function swarmRun(mutators, wave = 2) {
+function swarmRun(mutators, wave = 10) {
+  // Tests follow d4db73990f: the armory opens at the Bench, every tenth round (04_SWARM.md §2).
   return { kind: 'survival', ruleset: SWARM, seed: SEED, arenaId: ARENA, wave, arenaMutators: mutators };
 }
 
@@ -362,7 +363,7 @@ test('wreck_ballast: the debris field materializes dead hulls, not rock', () => 
 
 test('no_reroll: the queued pact folds into arenaMutators and the re-roll bench is refused', () => {
   const h = draftBoot();
-  waveArmory(h, ['no_reroll'], 1);
+  waveArmory(h, ['no_reroll'], 10);
   assert.deepEqual(h.state.run.arenaMutators, ['no_reroll'], 'the queued pact reached the run');
   assert.ok(named(h, 'run:draftOffered')[0].payload.offers.length > 0, 'the shelf still deals');
 
@@ -410,7 +411,7 @@ test('shutter_alternating: the pact room law reaches the swarm plan — ordinary
 
 test('physics_only: the dealt shelf holds physics verbs only — dealt and re-dealt alike', () => {
   const h = draftBoot();
-  waveArmory(h, ['physics_only'], 1);
+  waveArmory(h, ['physics_only'], 10);
   assert.deepEqual(h.state.run.arenaMutators, ['physics_only']);
   const dealt = named(h, 'run:draftOffered');
   assert.equal(dealt.length, 1);
@@ -442,7 +443,7 @@ test('physics_only: the dealt shelf holds physics verbs only — dealt and re-de
 
 test('one_hull: the cradle shelves no other hull mid-run — the launch hull is the hull', () => {
   const h = draftBoot();
-  waveArmory(h, ['one_hull'], 1);
+  waveArmory(h, ['one_hull'], 10);
   assert.deepEqual(h.state.run.arenaMutators, ['one_hull']);
   const shelf = survivalDraft.currentOffers();
   assert.ok(shelf.length > 0, 'the armory still deals fittings');
@@ -453,7 +454,7 @@ test('one_hull: the cradle shelves no other hull mid-run — the launch hull is 
 
   // The control armory still sells the cradle — the mutator, not the shelf, is what closed it.
   const h2 = draftBoot();
-  waveArmory(h2, [], 1);
+  waveArmory(h2, [], 10);
   assert.ok(
     survivalDraft.currentOffers().some((row) => row.kind === SWARM_HULL_OFFER_KIND),
     'a plain armory lists the ship cradle',

@@ -12,7 +12,6 @@ import { isOrchardFrame, ORCHARD_FRAME_FILE } from '../data/anvilOrchardIdentity
 import { isLatchActor } from './latchNineVisuals.js';
 import { isTallyThreeAssessor } from './tallyThreeVisuals.js';
 import { isBorrowedVoiceRing } from '../data/borrowedVoiceBody.js';
-import { SWARM_THREAT_MARK_SCALE } from '../data/swarmThreatMark.js';
 import { isCeresWorkfleetPlace, ceresWorkfleetPlaceFile } from './ceresWorkfleetVisuals.js';
 import { CERES_SHIPBREAK_FILES, isCeresShipbreakSection } from './ceresShipbreakVisuals.js';
 import { LAST_SHIFT, lastShiftBodyKey } from '../data/lastShift.js';
@@ -58,6 +57,7 @@ import {
   COMMON_ROCK_UV_TRANSFORMS,
   COMMON_ROCK_VARIANTS,
   displacementScalar as geologyDisplacement,
+  familySilhouette as geologyFamilySilhouette,
   silhouetteRadius as geologySilhouetteRadius,
   surfaceResponse as geologySurfaceResponse,
 } from './objectSpaceGeology.js';
@@ -77,6 +77,7 @@ import {
   makeHullNormalMap, makeGreebleDetailTexture, makeDecalSheet,
   makeGrimeTexture, makePatchTexture, makeNoseArtTexture,
 } from './canvasTextures.js';
+import { hydrateCanvasTextures, persistCanvasTexture, storeStats } from './canvasTextureStore.js';
 import { FACTION_PALETTES, SHIP_RECIPES, paintProfileFor, paintDecalForPersonality, PLAYER_NOSE_ART } from '../data/palettes.js';
 import { paletteWithShipAppearance, resolveShipDecal } from '../core/shipAppearance.js';
 import { SHIPS } from '../data/ships.js';
@@ -97,7 +98,7 @@ import { applyProjectedDetailLod, attachStationHlod, isFarDetailSurface } from '
 import { attachLodState } from './lod.js';
 import { loadAuthoredPart } from './assetLoader.js';
 import { attachAuthoredMotionDriver, bindInstanceMotion, bindInstanceMotionSteps } from './authoredMotion.js';
-import { createReadyPackagedBodyCache } from './readyPackagedBodies.js';
+import { createReadyPackagedBodyCache, readyBodyMaterialSource } from './readyPackagedBodies.js';
 import { getAssetResidency } from './assetResidency.js';
 import { primeDrawnCullStamps } from './visualCullRadius.js';
 import {
@@ -289,6 +290,19 @@ const _mat = new Map();
 const _extTex = new Map(); // external jpg assets from our visual generation pipeline (B-*, ore_*, fx_*, ship_*, ui_*)
 const _pendingVolatileMaterials = new Set();
 
+// Procedural-texture persistence (B5): the store hydrates while the loading screens play and
+// getTexture serves from it; any key that loses the race (or the first boot ever) builds and
+// backfills. Same pixels by construction — the store keeps lossless PNG of the seeded build.
+let _storedTex = new Map();
+hydrateCanvasTextures().then((stored) => {
+  // Keys already built this boot (they raced hydration) keep their fresh texture; the rest
+  // waits in the store map for getTexture to serve them.
+  for (const [key, texture] of stored) {
+    if (_tex.has(key)) continue;
+    if (!_storedTex.has(key)) _storedTex.set(key, texture);
+  }
+}).catch(() => { /* an unreadable store behaves like an empty one */ });
+
 function noDispose(obj) { obj.dispose = () => {}; return obj; }
 
 // Simple cached external texture loader for the beautiful generated assets (Bibles, ores, FX, ships, UI, cinematics stills).
@@ -327,6 +341,63 @@ export function setFactoryPresentationNow(seconds) {
 export function factoryPresentationNow() {
   return _presentationNow;
 }
+
+// The render layer reports facts the simulation must own instead of writing them
+// into entity.data (snapshotEntity hashes data; worker-lane entities are read-only
+// mirrors). 'wreck:ruptureFired' is forwarded to the sim lane, where
+// aftermathWrecks stamps the durable latch that wreck markers persist.
+let eventBus = null;
+export function setFactoryEventBus(bus) {
+  eventBus = bus && typeof bus.emit === 'function' ? bus : null;
+}
+
+// Local suppression for the sim-stamped latch's transit: the durable truth is
+// entity.data.fractureRuptureFired (sim-owned), but the worker lane only ships
+// data at spawn — a live piece that re-admits before a respawn must still skip a
+// second kick. Records key on id + occupantGeneration so a recycled id cannot
+// inherit a dead occupant's latch, and the root stamp covers same-root retries.
+const ruptureClipFiredById = new Map();
+
+function ruptureClipAlreadyFired(entity, root) {
+  const data = entity && entity.data;
+  if (data && data.fractureRuptureFired === true) return true;
+  if (root && root.userData && root.userData.fractureRuptureFired === true) return true;
+  const generation = entity && entity.occupantGeneration;
+  return generation != null && ruptureClipFiredById.get(entity.id) === generation;
+}
+
+function stampRuptureClipFired(entity, root) {
+  const generation = entity && entity.occupantGeneration;
+  if (entity && generation != null) ruptureClipFiredById.set(entity.id, generation);
+  if (root && root.userData) root.userData.fractureRuptureFired = true;
+  if (eventBus) {
+    eventBus.emit('wreck:ruptureFired', {
+      id: entity && entity.id,
+      entityId: entity && entity.id,
+      occupantGeneration: generation ?? null,
+      fired: true,
+    });
+  }
+}
+
+// The orphaned-commit path restores the latch so a later admission of the same
+// piece re-fires its kick: unwind the local stamps and report the reversal —
+// the sim clears its durable flag so marker write-back never saw a false fire.
+function unstampRuptureClipFired(entity, root) {
+  const generation = entity && entity.occupantGeneration;
+  if (entity && generation != null && ruptureClipFiredById.get(entity.id) === generation) {
+    ruptureClipFiredById.delete(entity.id);
+  }
+  if (root && root.userData) root.userData.fractureRuptureFired = false;
+  if (eventBus) {
+    eventBus.emit('wreck:ruptureFired', {
+      id: entity && entity.id,
+      entityId: entity && entity.id,
+      occupantGeneration: generation ?? null,
+      fired: false,
+    });
+  }
+}
 function nowSec() {
   if (_presentationNow != null) return _presentationNow;
   const n = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
@@ -346,8 +417,19 @@ function recipeFor(defId) {
 }
 
 function getTexture(key, build) {
-  let t = _tex.get(key);
-  if (!t) { t = build(); _tex.set(key, t); }
+  let t = _storedTex.get(key);
+  if (t) {
+    _storedTex.delete(key);
+    storeStats.served += 1;
+  } else {
+    t = _tex.get(key);
+  }
+  if (!t) {
+    t = build();
+    storeStats.built += 1;
+    persistCanvasTexture(key, t);
+  }
+  _tex.set(key, t);
   return t;
 }
 
@@ -780,6 +862,22 @@ function emissiveMaterial(color, intensity = 1.6, role = SHARED_MATERIAL_ROLE.HU
   }), role));
 }
 
+// Shaded signal for surfaces big enough to fill a pixel block (warheads, rings, stripes).
+// A near-black base with emissiveIntensity above ~1 tone-maps to a flat white polygon.
+function hotSurface(color, intensity = 0.46) {
+  const key = `hot:${color}:${intensity}`;
+  return getMaterial(key, () => {
+    const base = new THREE.Color(color);
+    return stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+      color: base.clone().multiplyScalar(0.34),
+      emissive: base,
+      emissiveIntensity: intensity,
+      roughness: 0.48,
+      metalness: 0.2,
+    }), SHARED_MATERIAL_ROLE.HULL);
+  });
+}
+
 // Cockpit glass: dark tinted, semi-transparent, with a soft interior glow (the lit flight deck) and
 // a glossy low-roughness surface so it reads as a reflective canopy rather than an opaque emissive
 // blob. The emissive is kept modest so it doesn't blow out to white through bloom.
@@ -809,7 +907,7 @@ function additiveGlowMaterial(color, opacity = 0.75) {
 }
 
 // Hot lamp as a fixture: metal cup + emissive lens. Bloom comes from the surface, not a sprite.
-function lampFixture(color, scale, intensity = 3.2) {
+function lampFixture(color, scale, intensity = 1.15) {
   const root = new THREE.Group();
   const cup = new THREE.Mesh(
     getGeometry('lamp:cup', () => new THREE.CylinderGeometry(0.38, 0.52, 0.28, 8)),
@@ -892,7 +990,7 @@ function engineGlow(pal, x, z, scale) {
   // bright nozzle ring at the hull
   const nozzle = new THREE.Mesh(
     getGeometry('eng:nozzle', () => new THREE.CylinderGeometry(0.34, 0.22, 0.32, 12).rotateZ(Math.PI / 2)),
-    emissiveMaterial(pal.thruster, 2.4, SHARED_MATERIAL_ROLE.PLUME),
+    emissiveMaterial(pal.thruster, 0.85, SHARED_MATERIAL_ROLE.PLUME),
   );
   nozzle.scale.setScalar(scale);
   nozzle.userData.spacefaceTags = { vfxRole: 'driveNozzleGlow' };
@@ -989,15 +1087,23 @@ function canopyGeo() { return getGeometry('ship:canopy', () => new THREE.SphereG
 // canopy reads as a real recessed cockpit with depth, not a flat glass blob.
 function recessedCanopy(ctx, px, py, pz, sx, sy, sz) {
   const { g, pal, cockpit } = ctx;
+  // The dome is a unit hemisphere. sx/sz are its half-extents. Clamp them to the
+  // fuselage half-width the builder measured, so the bubble cannot be wider than the hull.
+  const cap = ctx.fit && ctx.fit.canopyHalf != null ? ctx.fit.canopyHalf * ctx.R : null;
+  if (cap > 0) {
+    sz = Math.min(sz, cap * 0.78);
+    sx = Math.min(sx, cap * 1.05);
+    sy = Math.min(sy, cap * 0.72);
+  }
   const glass = new THREE.Mesh(canopyGeo(), cockpit);
   glass.scale.set(sx, sy, sz); glass.position.set(px, py, pz); g.add(glass);
   // dark interior deck (a squat box just below the glass) — gives the canopy depth
   const deck = new THREE.Mesh(getGeometry('ship:canopydeck', () => new THREE.BoxGeometry(0.6, 0.1, 0.5)),
-    emissiveMaterial(pal.accent, 0.8));
-  deck.scale.set(sx, sy, sz); deck.position.set(px, py - sy * 0.12, pz); g.add(deck);
+    emissiveMaterial(pal.accent, 0.35));
+  deck.scale.set(sx * 0.72, sy, sz * 0.72); deck.position.set(px, py - sy * 0.08, pz); g.add(deck);
   // frame ring around the canopy base (accent emissive, reads as a canopy seal)
   const frame = new THREE.Mesh(getGeometry('ship:canopyframe', () => new THREE.TorusGeometry(0.5, 0.04, 6, 14)),
-    emissiveMaterial(pal.accent, 1.4));
+    emissiveMaterial(pal.accent, 0.5));
   frame.rotation.x = Math.PI / 2; frame.scale.set(sx, sz, sz); frame.position.set(px, py - sy * 0.02, pz); g.add(frame);
 }
 
@@ -1110,7 +1216,7 @@ function weaponProp(wdefId, facing, size, pal, R, tier) {
   barrel.userData.animated = true;
   const port = new THREE.Mesh(
     getGeometry('wpn:port', () => new THREE.CylinderGeometry(0.07, 0.05, 0.09, 10).rotateZ(Math.PI / 2)),
-    emissiveMaterial(pal.accent, 2.8),
+    emissiveMaterial(pal.accent, 0.9),
   );
   port.position.x = 0.6 * s;
   port.scale.setScalar(s);
@@ -1140,7 +1246,7 @@ function engineProp(pal, R, scaleK, engineClass) {
   const g = new THREE.Group();
   const s = R * 0.22 * scaleK * (0.85 + Math.min(0.5, (engineClass || 60) / 240));
   const housingMat = hullMaterial(pal, 8);
-  const nozzleMat = emissiveMaterial(pal.thruster, 2.4, SHARED_MATERIAL_ROLE.PLUME);
+  const nozzleMat = emissiveMaterial(pal.thruster, 0.85, SHARED_MATERIAL_ROLE.PLUME);
   const darkMat = getMaterial('eng:dark', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
     color: 0x0c1016, roughness: 0.72, metalness: 0.68,
   }), SHARED_MATERIAL_ROLE.HULL));
@@ -1180,7 +1286,20 @@ function engineProp(pal, R, scaleK, engineClass) {
   g.userData.plumePose = flame.userData.plume ? kit.captureDrivePose(flame.userData.plume) : null;
   g.userData.plumeBase = flame.userData.plume ? { x: flame.userData.plume.scale.x, y: flame.userData.plume.scale.y, z: flame.userData.plume.scale.z } : null;
   g.userData.trailSocketOffset = new THREE.Vector3(-0.55 * s, 0, 0);
+  g.userData.nacelleScale = s;
   return g;
+}
+
+// Pull a nozzle onto the hull's aft face. Authored mount fractions are measured on the
+// packaged mesh and land behind the procedural stern, which reads as a floating engine.
+function seatEngineOnHull(engine, ctx) {
+  const fit = ctx.fit;
+  const s = engine.userData && engine.userData.nacelleScale;
+  if (!fit || fit.aftX == null || !(s > 0) || !(ctx.R > 0)) return;
+  const aft = fit.aftX * ctx.R;
+  // Nozzle ring is at local x = -0.34*s. Sit that ring just proud of the aft face.
+  const seatedX = aft + 0.32 * s;
+  if (engine.position.x < seatedX) engine.position.x = seatedX;
 }
 
 function addShipSocket(parent, name, position, role, forward = [1, 0, 0]) {
@@ -1218,33 +1337,29 @@ function miningProp(pal, R, tier) {
   g.userData.animated = true;
   bit.userData.animated = true;
   // glowing emitter tip (ore-cutter laser)
-  const tip = new THREE.Mesh(getGeometry('mine:tip2', () => new THREE.OctahedronGeometry(0.14, 0)), emissiveMaterial('#ffb347', 2.2));
+  const tip = new THREE.Mesh(getGeometry('mine:tip2', () => new THREE.OctahedronGeometry(0.14, 0)), emissiveMaterial('#ffb347', 0.7));
   tip.position.x = 1.0 * s; tip.scale.setScalar(s); g.add(tip);
   return g;
 }
 
-// ---- shield emitter ring ---------------------------------------------------------------------
-// A faint torus around the hull's perimeter, present only when a shield module is fitted.
-function shieldRingProp(pal, R, halfWidth, height, tier) {
-  const g = new THREE.Group();
-  const rad = R * Math.max(halfWidth, 0.4) * 2.0;
-  const ring = new THREE.Mesh(
-    getGeometry(`shield:ring:${q(rad)}`, () => new THREE.TorusGeometry(rad, R * 0.025 * (1 + (tier || 1) * 0.05), 8, 28)),
-    additiveGlowMaterial(pal.accent, 0.28),
-  );
-  ring.rotation.x = Math.PI / 2; ring.scale.y = 1 + height; g.add(ring);
-  return g;
+// ---- shield emitter mount (no perimeter halo ring — owner 2026-11-23) ------------------------
+function shieldRingProp() {
+  return new THREE.Group();
 }
 
 // ---- nav blinkers (port green / starboard red aerospace cueing) ------------------------------
-function addNavBlinkers(g, R, halfWidth, length, blinkers) {
+function addNavBlinkers(g, R, halfWidth, length, blinkers, fit) {
   // Aerospace nav-light convention: green on PORT (+Z here), red on STARBOARD (-Z), white stern at
-  // the rear center. Sized up so they read as distinct point lights (they'll bloom brightly in-game).
-  const z = R * halfWidth * 1.05;
-  const xMid = 0;
-  const gr = blinkerFixture('#3dff7a', R * 0.055, 0.0, blinkers); gr.position.set(xMid, R * 0.05, z); g.add(gr);
-  const rd = blinkerFixture('#ff4040', R * 0.055, 0.5, blinkers); rd.position.set(xMid, R * 0.05, -z); g.add(rd);
-  const stern = blinkerFixture('#eaf2ff', R * 0.048, 0.25, blinkers); stern.position.set(-R * length * 0.48, R * 0.06, 0); g.add(stern);
+  // the rear center. Seat them on the fuselage skin. halfWidth is the whole-ship beam and
+  // puts the lamps in empty space beside a narrower body.
+  const halfZ = fit && fit.beam != null ? fit.beam * 0.5 * R * 0.9 : R * halfWidth * 0.72;
+  const y = fit && fit.deckY != null ? fit.deckY * R * 0.55 : R * 0.05;
+  const xMid = fit && fit.centerX != null ? fit.centerX * R : 0;
+  const sternX = fit && fit.aftX != null ? fit.aftX * R + R * 0.03 : -R * length * 0.42;
+  const lamp = Math.min(R * 0.045, Math.max(R * 0.02, halfZ * 0.16));
+  const gr = blinkerFixture('#3dff7a', lamp, 0.0, blinkers); gr.position.set(xMid, y, halfZ); g.add(gr);
+  const rd = blinkerFixture('#ff4040', lamp, 0.5, blinkers); rd.position.set(xMid, y, -halfZ); g.add(rd);
+  const stern = blinkerFixture('#eaf2ff', lamp * 0.85, 0.25, blinkers); stern.position.set(sternX, y, 0); g.add(stern);
 }
 
 // =============================================================================================
@@ -1259,7 +1374,9 @@ function addNavBlinkers(g, R, halfWidth, length, blinkers) {
 
 function surfaceDetail(ctx) {
   const { g, R, pal, hm, vis, hints, seed } = ctx;
-  const L = vis.length, W = vis.halfWidth, H = vis.height;
+  const L = vis.length, H = vis.height;
+  // Scatter on the fuselage, not out at the wing tips.
+  const W = ctx.fit && ctx.fit.beam != null ? ctx.fit.beam * 0.5 : vis.halfWidth;
   const density = hints.greeble != null ? hints.greeble : 0.5;       // 0..1
   const armored = hints.plating === 'armored';
   const rnd = mulberryLite(seed ^ 0x9e37);
@@ -1268,7 +1385,7 @@ function surfaceDetail(ctx) {
   const span = xMax - xMin;
   const cellsX = Math.max(3, Math.round(span * 6));                  // grid resolution along X
   const cellsZ = Math.max(2, Math.round(W * 2 * 6));
-  const deckY = H * 0.5 * R;                                          // top surface height
+  const deckY = (ctx.fit && ctx.fit.deckY != null ? ctx.fit.deckY : H * 0.5) * R;
 
   // shared cached geos
   const ventGeo = getGeometry('greeb:vent', () => new THREE.BoxGeometry(0.12, 0.03, 0.06));
@@ -1353,9 +1470,11 @@ function surfaceDetail(ctx) {
 // ---- decal overlay shell ---------------------------------------------------------------------
 // A slightly-larger transparent shell carrying the greeble-detail + livery decals over the hull's
 // dominant faces. Only added on higher tiers / larger hulls to keep small craft clean.
-function addDecalShell(g, pal, R, lx, ly, lz, kind) {
+function addDecalShell(g, pal, R, lx, ly, lz, kind, centerX = 0) {
   const shell = new THREE.Mesh(hullSlabGeo(lx * 1.02, ly * 1.02, lz * 1.02), decalMaterial(pal, kind));
-  shell.scale.setScalar(R); g.add(shell);
+  shell.scale.setScalar(R);
+  shell.position.x = centerX * R;
+  g.add(shell);
 }
 
 // =============================================================================================
@@ -1375,6 +1494,16 @@ function applyPaintProfile(ctx, e) {
   const profile = (pal && pal.profile) || null;
   if (!profile) return;
   const L = vis.length, W = vis.halfWidth, H = vis.height;
+  const fit = ctx.fit || null;
+  // Shells and flank decals use the fuselage cross-section (fit.beam is the full
+  // width of that slab), not 1.5× the wing span.
+  const ext = {
+    lx: fit ? fit.length : L * 0.7,
+    ly: fit ? fit.height : H,
+    lz: fit ? fit.beam : W * 1.05,
+    x: fit ? (fit.centerX || 0) : 0,
+    deck: fit ? fit.deckY : H * 0.4,
+  };
   const defId = e.data && e.data.defId;
 
   // --- CHROME: authority hulls mirror the scene. We bump the existing hull material's metalness
@@ -1392,8 +1521,8 @@ function applyPaintProfile(ctx, e) {
       });
       return stampSharedMaterialRole(m, SHARED_MATERIAL_ROLE.HULL);
     });
-    const foil = new THREE.Mesh(hullSlabGeo(L, H, W * 1.5), foilMat);
-    foil.scale.setScalar(R); g.add(foil);
+    const foil = new THREE.Mesh(hullSlabGeo(ext.lx, ext.ly, ext.lz), foilMat);
+    foil.scale.setScalar(R); foil.position.x = ext.x * R; g.add(foil);
   }
 
   // --- GRIME: transparent overlay with oil/rust/soot/dust. Skipped entirely for clean authority.
@@ -1406,8 +1535,8 @@ function applyPaintProfile(ctx, e) {
         color: 0xffffff, roughness: 0.9, metalness: 0.0,
       }), SHARED_MATERIAL_ROLE.HULL);
     });
-    const grime = new THREE.Mesh(hullSlabGeo(L * 1.01, H * 1.01, W * 1.51), grimeMat);
-    grime.scale.setScalar(R); g.add(grime);
+    const grime = new THREE.Mesh(hullSlabGeo(ext.lx * 1.02, ext.ly * 1.02, ext.lz * 1.02), grimeMat);
+    grime.scale.setScalar(R); grime.position.x = ext.x * R; g.add(grime);
   }
 
   // --- REPAIR PATCHES: bolted plates over old battle damage (scarred veterans).
@@ -1420,8 +1549,8 @@ function applyPaintProfile(ctx, e) {
         color: 0xffffff, roughness: 0.85, metalness: 0.3,
       }), SHARED_MATERIAL_ROLE.HULL);
     });
-    const patch = new THREE.Mesh(hullSlabGeo(L, H, W * 1.5), patchMat);
-    patch.scale.setScalar(R); g.add(patch);
+    const patch = new THREE.Mesh(hullSlabGeo(ext.lx, ext.ly, ext.lz), patchMat);
+    patch.scale.setScalar(R); patch.position.x = ext.x * R; g.add(patch);
   }
 
   // --- NOSE-ART: a decal panel on each flank. A Kestrel with the personal decal keeps its
@@ -1447,13 +1576,17 @@ function applyPaintProfile(ctx, e) {
         side: THREE.DoubleSide,
       }), SHARED_MATERIAL_ROLE.HULL);
     });
-    // place a flank decal panel on each side, facing outward (±Z), roughly amidships
-    const panelGeo = getGeometry('nose:panel', () => new THREE.PlaneGeometry(0.5, 0.32));
+    // Flank decal, lying on the fuselage skin (plane normal ±Z). A 90° yaw turns the
+    // card edge-on and sticks its width out past the taper.
+    const panelGeo = getGeometry('nose:panel', () => new THREE.PlaneGeometry(1, 1));
+    const along = Math.min(ext.lx * R * 0.34, ext.ly * R * 1.4);
+    const tall = Math.min(ext.ly * R * 0.62, ext.lx * R * 0.4);
+    const halfZ = ext.lz * 0.5 * R;
     for (const sgn of [1, -1]) {
       const panel = new THREE.Mesh(panelGeo, naMat);
-      panel.position.set(0, H * 0.3 * R, sgn * W * 1.52 * R);
-      panel.rotation.y = sgn * Math.PI / 2;   // face outward along ±Z
-      panel.scale.setScalar(R);
+      panel.position.set(ext.x * R, ext.deck * R * 0.35, sgn * halfZ * 0.995);
+      panel.rotation.y = sgn > 0 ? 0 : Math.PI;
+      panel.scale.set(Math.max(0.08 * R, along), Math.max(0.06 * R, tall), 1);
       g.add(panel);
     }
   }
@@ -1470,17 +1603,22 @@ function applyPaintProfile(ctx, e) {
 function buildScout(ctx) {
   const { g, R, pal, hm, cockpit, vis, hints } = ctx;
   const L = vis.length, W = vis.halfWidth, H = vis.height;
+  // Fore slab is the narrow body the canopy, grime and lamps must fit. The aft slab is wider.
+  ctx.fit = {
+    beam: W * 0.8, height: H * 0.8, length: L * 0.62, centerX: L * 0.02,
+    aftX: -L * 0.45, deckY: H * 0.4, canopyX: L * 0.18, canopyHalf: W * 0.4,
+  };
   // forward fuselage (tapered) + aft hull slab + cheek fins
   const aft = new THREE.Mesh(hullSlabGeo(L * 0.6, H, W * 1.4), hm); aft.scale.setScalar(R); aft.position.x = -L * 0.15 * R; g.add(aft);
   const fore = new THREE.Mesh(hullSlabGeo(L * 0.35, H * 0.8, W * 0.8), hm); fore.scale.setScalar(R); fore.position.x = L * 0.32 * R; g.add(fore);
-  const nose = new THREE.Mesh(noseConeGeo(W * 0.7, L * 0.32, 8), hm); nose.position.x = L * 0.62 * R; nose.scale.setScalar(R); g.add(nose);
-  // cockpit canopy (recessed glass)
-  recessedCanopy(ctx, L * 0.18 * R, H * 0.55 * R, 0, R * 0.32, R * 0.22, R * 0.22);
+  const nose = new THREE.Mesh(noseConeGeo(W * 0.36, L * 0.28, 10), hm); nose.position.x = L * 0.58 * R; nose.scale.setScalar(R); g.add(nose);
+  // cockpit canopy (recessed glass) — width clamped to the fore fuselage
+  recessedCanopy(ctx, L * 0.18 * R, H * 0.42 * R, 0, R * 0.22, R * 0.14, R * 0.14);
   // cheek fins (tier-gated)
   const finCount = hints.finCount || 0;
   for (let i = 0; i < finCount; i++) {
     for (const sgn of [1, -1]) {
-      const fin = new THREE.Mesh(getGeometry(`scout:fin${i}`, () => new THREE.BoxGeometry(0.3, 0.22, 0.12)), hm);
+      const fin = new THREE.Mesh(hullSlabGeo(0.3, 0.18, 0.1), hm);
       fin.position.set(-L * 0.25 * R, H * (0.3 + i * 0.2) * R, sgn * W * (1.1 + i * 0.1) * R); fin.scale.setScalar(R); g.add(fin);
     }
   }
@@ -1495,36 +1633,40 @@ function buildFighter(ctx) {
   const { g, R, pal, hm, cockpit, vis, hints } = ctx;
   const L = vis.length, W = vis.halfWidth, H = vis.height;
   const sweep = hints.wingSweep || 0.6;
+  ctx.fit = {
+    beam: W * 0.5, height: H, length: L * 0.55, centerX: 0,
+    aftX: -L * 0.275, deckY: H * 0.5, canopyX: L * 0.05, canopyHalf: W * 0.25,
+  };
   // central fuselage (long, narrow) + nose
   const fus = new THREE.Mesh(hullSlabGeo(L * 0.55, H, W * 0.5), hm); fus.scale.setScalar(R); g.add(fus);
-  const nose = new THREE.Mesh(noseConeGeo(W * 0.45, L * 0.45, 8), hm); nose.position.x = L * 0.45 * R; nose.scale.setScalar(R); g.add(nose);
-  // swept delta wings (the signature silhouette)
+  const nose = new THREE.Mesh(noseConeGeo(W * 0.22, L * 0.36, 10), hm); nose.position.x = L * 0.42 * R; nose.scale.setScalar(R); g.add(nose);
+  // swept delta wings (the signature silhouette) — beveled so the planform isn't a plank
   for (const sgn of [1, -1]) {
-    const wing = new THREE.Mesh(getGeometry('fighter:wing', () => new THREE.BoxGeometry(0.8, 0.07, 0.9)), hm);
+    const wing = new THREE.Mesh(hullSlabGeo(0.82, 0.05, 0.78), hm);
     wing.position.set(-L * 0.08 * R, 0, sgn * W * 0.7 * R); wing.rotation.y = sgn * sweep;
     wing.scale.set(R, R, R); g.add(wing);
     // wingtip rail
-    const rail = new THREE.Mesh(getGeometry('fighter:rail', () => new THREE.BoxGeometry(0.18, 0.05, 0.06)), hm);
-    rail.position.set(L * 0.18 * R, 0, sgn * W * 1.1 * R); rail.scale.setScalar(R); g.add(rail);
+    const rail = new THREE.Mesh(hullSlabGeo(0.16, 0.04, 0.05), hm);
+    rail.position.set(L * 0.18 * R, 0, sgn * W * 1.05 * R); rail.scale.setScalar(R); g.add(rail);
   }
   // canard foreplanes (tier-gated) near the nose
   if (hints.canard) {
     for (const sgn of [1, -1]) {
-      const can = new THREE.Mesh(getGeometry('fighter:canard', () => new THREE.BoxGeometry(0.22, 0.05, 0.3)), hm);
+      const can = new THREE.Mesh(hullSlabGeo(0.2, 0.035, 0.22), hm);
       can.position.set(L * 0.22 * R, 0, sgn * W * 0.35 * R); can.rotation.y = sgn * 0.3; can.scale.setScalar(R); g.add(can);
     }
   }
   // cockpit
-  recessedCanopy(ctx, L * 0.05 * R, H * 0.5 * R, 0, R * 0.36, R * 0.22, R * 0.2);
+  recessedCanopy(ctx, L * 0.05 * R, H * 0.5 * R, 0, R * 0.2, R * 0.12, R * 0.12);
   // vertical stabilizer (tier Mk.II+)
   if ((hints.plating === 'paneled') || (hints.plating === 'armored')) {
-    const stab = new THREE.Mesh(getGeometry('fighter:stab', () => new THREE.BoxGeometry(0.3, 0.3, 0.05)), hm);
+    const stab = new THREE.Mesh(hullSlabGeo(0.26, 0.24, 0.04), hm);
     stab.position.set(-L * 0.2 * R, H * 0.7 * R, 0); stab.scale.setScalar(R); g.add(stab);
   }
   // armored cheek plates (Mk.III)
   if (hints.plating === 'armored') {
     for (const sgn of [1, -1]) {
-      const plate = new THREE.Mesh(getGeometry('fighter:plate', () => new THREE.BoxGeometry(0.5, 0.12, 0.18)), hm);
+      const plate = new THREE.Mesh(hullSlabGeo(0.4, 0.08, 0.12), hm);
       plate.position.set(L * 0.1 * R, -H * 0.2 * R, sgn * W * 0.3 * R); plate.scale.setScalar(R); g.add(plate);
     }
   }
@@ -1533,12 +1675,16 @@ function buildFighter(ctx) {
 function buildFreighter(ctx) {
   const { g, R, pal, hm, cockpit, vis, hints } = ctx;
   const L = vis.length, W = vis.halfWidth, H = vis.height;
+  ctx.fit = {
+    beam: W * 0.9, height: H * 0.7, length: L * 0.8, centerX: -L * 0.05,
+    aftX: -L * 0.45, deckY: H * 0.35, canopyX: L * 0.32, canopyHalf: W * 0.28,
+  };
   // long boxy spine + upswept bow
   const spine = new THREE.Mesh(hullSlabGeo(L * 0.8, H * 0.7, W * 0.9), hm); spine.scale.setScalar(R); spine.position.x = -L * 0.05 * R; g.add(spine);
   const bow = new THREE.Mesh(hullSlabGeo(L * 0.22, H * 0.6, W * 0.8), hm); bow.position.x = L * 0.4 * R; bow.scale.setScalar(R); g.add(bow);
   // bridge superstructure up front (the "cab")
   const bridge = new THREE.Mesh(hullSlabGeo(L * 0.18, H * 0.7, W * 0.5), hm); bridge.position.set(L * 0.32 * R, H * 0.7 * R, 0); bridge.scale.setScalar(R); g.add(bridge);
-  const cab = new THREE.Mesh(getGeometry('frt:cab', () => new THREE.BoxGeometry(0.06, 0.14, 0.42)), cockpitGlassMaterial(pal)); cab.position.set(L * 0.42 * R, H * 0.95 * R, 0); cab.scale.setScalar(R); g.add(cab);
+  const cab = new THREE.Mesh(getGeometry('frt:cab', () => new THREE.BoxGeometry(0.035, 0.07, 0.2)), cockpitGlassMaterial(pal)); cab.position.set(L * 0.4 * R, H * 0.78 * R, 0); cab.scale.setScalar(R); g.add(cab);
   // stacked cargo pods along the spine (count scales with tier hints)
   const cols = hints.podCols || 1, rows = hints.podRows || 2;
   const podMat = hullMaterial(pal, 16);
@@ -1550,154 +1696,172 @@ function buildFreighter(ctx) {
         const py = (r - (rows - 1) / 2) * 0.4 * R;
         pod.position.set(px, py, sgn * W * 0.55 * R); pod.scale.setScalar(R); g.add(pod);
         // pod end cap glow
-        const cap = new THREE.Mesh(getGeometry('frt:cap', () => new THREE.CircleGeometry(0.1, 8)), emissiveMaterial(pal.accent, 1.0));
+        const cap = new THREE.Mesh(getGeometry('frt:cap', () => new THREE.CircleGeometry(0.08, 10)), emissiveMaterial(pal.accent, 0.4));
         cap.position.set(px - 0.17 * R, py, sgn * W * 0.55 * R); cap.rotation.y = -Math.PI / 2; cap.scale.setScalar(R); g.add(cap);
       }
     }
   }
   // spine accent strip
-  const stripMat = emissiveMaterial(pal.accent, 1.4);
-  const strip = new THREE.Mesh(getGeometry('frt:strip', () => new THREE.BoxGeometry(L, 0.05, 0.05)), stripMat);
-  strip.position.set(0, H * 0.4 * R, W * 0.5 * R); strip.scale.setScalar(R); g.add(strip);
+  const stripMat = emissiveMaterial(pal.accent, 0.36);
+  const strip = new THREE.Mesh(getGeometry('frt:strip', () => new THREE.BoxGeometry(L * 0.62, 0.025, 0.03)), stripMat);
+  strip.position.set(-L * 0.05 * R, H * 0.34 * R, 0); strip.scale.setScalar(R); g.add(strip);
 }
 
 function buildMiner(ctx) {
   const { g, R, pal, hm, cockpit, vis, hints } = ctx;
   const L = vis.length, W = vis.halfWidth, H = vis.height;
+  ctx.fit = {
+    beam: W * 1.1, height: H, length: L * 0.55, centerX: -L * 0.05,
+    aftX: -L * 0.325, deckY: H * 0.5, canopyX: L * 0.05, canopyHalf: W * 0.55,
+  };
+  ctx.hasDrill = true;
   // wide industrial body (chunky, tall)
   const body = new THREE.Mesh(hullSlabGeo(L * 0.55, H, W * 1.1), hm); body.scale.setScalar(R); body.position.x = -L * 0.05 * R; g.add(body);
   const bow = new THREE.Mesh(hullSlabGeo(L * 0.2, H * 0.8, W * 0.8), hm); bow.position.x = L * 0.32 * R; bow.scale.setScalar(R); g.add(bow);
   // reinforced drill prow mount (always present — miners are defined by their head)
-  const drillMount = new THREE.Mesh(getGeometry('miner:mount', () => new THREE.CylinderGeometry(0.34, 0.4, 0.4, 8).rotateZ(Math.PI / 2)), hm);
-  drillMount.position.x = L * 0.42 * R; drillMount.scale.setScalar(R); g.add(drillMount);
+  const drillMount = new THREE.Mesh(getGeometry('miner:mount', () => new THREE.CylinderGeometry(0.28, 0.34, 0.36, 12).rotateZ(Math.PI / 2)), hm);
+  drillMount.position.x = L * 0.4 * R; drillMount.scale.setScalar(R); g.add(drillMount);
+  const bit = new THREE.Mesh(noseConeGeo(0.2, 0.48, 10), hm);
+  bit.position.x = (L * 0.4 + 0.36) * R; bit.scale.setScalar(R); g.add(bit);
   // industrial side arms / scoop frames (count scales with tier)
   const armCount = hints.armCount || 2;
   const armMat = hullMaterial(pal, 8);
   for (let a = 0; a < armCount / 2; a++) {
     for (const sgn of [1, -1]) {
-      const arm = new THREE.Mesh(getGeometry(`miner:arm${a}`, () => new THREE.BoxGeometry(0.5, 0.1, 0.14)), armMat);
+      const arm = new THREE.Mesh(hullSlabGeo(0.42, 0.08, 0.12), armMat);
       arm.position.set((L * 0.05 - a * 0.18) * R, H * (0.2 - a * 0.15) * R, sgn * W * (1.0 + a * 0.12) * R); arm.scale.setScalar(R); g.add(arm);
       // scoop bucket at the arm end
-      const scoop = new THREE.Mesh(getGeometry('miner:scoop', () => new THREE.BoxGeometry(0.18, 0.18, 0.16)), armMat);
+      const scoop = new THREE.Mesh(hullSlabGeo(0.16, 0.14, 0.14), armMat);
       scoop.position.set((L * 0.05 - a * 0.18) * R, H * (0.2 - a * 0.15) * R, sgn * W * (1.15 + a * 0.12) * R); scoop.scale.setScalar(R); g.add(scoop);
     }
   }
   // cockpit (raised, overlooking the drill)
-  recessedCanopy(ctx, L * 0.05 * R, H * 0.7 * R, 0, R * 0.3, R * 0.2, R * 0.24);
+  recessedCanopy(ctx, L * 0.05 * R, H * 0.55 * R, 0, R * 0.2, R * 0.12, R * 0.16);
   // dorsal machinery block
-  const mach = new THREE.Mesh(getGeometry('miner:mach', () => new THREE.BoxGeometry(0.4, 0.3, 0.5)), hm);
+  const mach = new THREE.Mesh(hullSlabGeo(0.36, 0.22, 0.4), hm);
   mach.position.set(-L * 0.15 * R, H * 0.6 * R, 0); mach.scale.setScalar(R); g.add(mach);
 }
 
 function buildFrigate(ctx) {
   const { g, R, pal, hm, cockpit, vis, hints } = ctx;
   const L = vis.length, W = vis.halfWidth, H = vis.height;
+  ctx.fit = {
+    beam: W * 1.0, height: H, length: L * 0.7, centerX: -L * 0.05,
+    aftX: -L * 0.4, deckY: H * 0.5, canopyHalf: W * 0.42,
+  };
   // wedge hull: wide aft, narrowing forward
   const hull = new THREE.Mesh(hullSlabGeo(L * 0.7, H, W * 1.0), hm); hull.scale.setScalar(R); hull.position.x = -L * 0.05 * R; g.add(hull);
-  const prow = new THREE.Mesh(noseConeGeo(W * 0.55, L * 0.35, 6), hm); prow.position.x = L * 0.45 * R; prow.scale.setScalar(R); g.add(prow);
+  const prow = new THREE.Mesh(noseConeGeo(W * 0.42, L * 0.32, 8), hm); prow.position.x = L * 0.42 * R; prow.scale.setScalar(R); g.add(prow);
   // tiered bridge tower (a warship's command island)
   const towerTiers = hints.towerTiers || 1;
   for (let t = 0; t < towerTiers; t++) {
     const tw = W * (0.45 - t * 0.12);
-    const tower = new THREE.Mesh(getGeometry(`frig:tower${t}`, () => new THREE.BoxGeometry(0.32, 0.22, tw)), hm);
-    tower.position.set(L * 0.12 * R, (H * 0.6 + t * 0.22) * R, 0); tower.scale.setScalar(R); g.add(tower);
-    // tower window strip
-    const win = new THREE.Mesh(getGeometry('frig:win', () => new THREE.BoxGeometry(0.3, 0.03, tw * 0.7)), emissiveMaterial('#ffd98a', 1.2));
-    win.position.set(L * 0.12 * R, (H * 0.6 + t * 0.22 + 0.05) * R, 0); win.scale.setScalar(R); g.add(win);
+    const tower = new THREE.Mesh(hullSlabGeo(0.3, 0.18, Math.max(0.08, tw)), hm);
+    tower.position.set(L * 0.12 * R, (H * 0.55 + t * 0.2) * R, 0); tower.scale.setScalar(R); g.add(tower);
+    // tower window strip — a lit slit, not a white bar
+    const win = new THREE.Mesh(getGeometry('frig:win', () => new THREE.BoxGeometry(0.04, 0.025, 0.2)), emissiveMaterial('#ffd98a', 0.45));
+    win.position.set((L * 0.12 + 0.16) * R, (H * 0.55 + t * 0.2) * R, 0); win.scale.setScalar(R); g.add(win);
   }
   // broadside gun sponsons (the side battery bulges)
   const broadside = hints.broadsideGuns || 1;
   for (const sgn of [1, -1]) {
     for (let b = 0; b < broadside; b++) {
-      const spon = new THREE.Mesh(getGeometry(`frig:spon${b}`, () => new THREE.BoxGeometry(0.22, 0.18, 0.18)), hm);
-      spon.position.set((L * 0.05 - b * 0.22) * R, H * 0.25 * R, sgn * W * (0.95 + b * 0.05) * R); spon.scale.setScalar(R); g.add(spon);
+      const spon = new THREE.Mesh(hullSlabGeo(0.2, 0.14, 0.14), hm);
+      spon.position.set((L * 0.05 - b * 0.22) * R, H * 0.1 * R, sgn * W * (0.46 + b * 0.04) * R); spon.scale.setScalar(R); g.add(spon);
     }
   }
   // armored belt strip along the waterline-equivalent
-  const belt = new THREE.Mesh(getGeometry('frig:belt', () => new THREE.BoxGeometry(L * 0.7, 0.08, 0.06)), emissiveMaterial(pal.accent, 0.9));
-  belt.position.set(-L * 0.05 * R, 0, W * 0.9 * R); belt.scale.setScalar(R); g.add(belt);
-  const belt2 = belt.clone(); belt2.position.z = -W * 0.9 * R; g.add(belt2);
+  const belt = new THREE.Mesh(getGeometry('frig:belt', () => new THREE.BoxGeometry(L * 0.58, 0.04, 0.03)), emissiveMaterial(pal.accent, 0.34));
+  belt.position.set(-L * 0.05 * R, 0, W * 0.46 * R); belt.scale.setScalar(R); g.add(belt);
+  const belt2 = belt.clone(); belt2.position.z = -W * 0.46 * R; g.add(belt2);
 }
 
 function buildCapital(ctx) {
   const { g, R, pal, hm, cockpit, vis, hints } = ctx;
   const L = vis.length, W = vis.halfWidth, H = vis.height;
+  ctx.fit = {
+    beam: W * 0.85, height: H * 0.85, length: L * 0.6, centerX: -L * 0.12,
+    aftX: -L * 0.455, deckY: H * 0.42, canopyHalf: W * 0.32,
+  };
   // massive multi-block spine (fore / mid / aft) — the leviathan silhouette
   const aft = new THREE.Mesh(hullSlabGeo(L * 0.35, H, W * 1.0), hm); aft.position.x = -L * 0.28 * R; aft.scale.setScalar(R); g.add(aft);
   const mid = new THREE.Mesh(hullSlabGeo(L * 0.3, H * 0.85, W * 0.85), hm); mid.scale.setScalar(R); g.add(mid);
   const fore = new THREE.Mesh(hullSlabGeo(L * 0.2, H * 0.7, W * 0.7), hm); fore.position.x = L * 0.3 * R; fore.scale.setScalar(R); g.add(fore);
-  const prow = new THREE.Mesh(noseConeGeo(W * 0.5, L * 0.22, 6), hm); prow.position.x = L * 0.48 * R; prow.scale.setScalar(R); g.add(prow);
-  // command tower cluster (multiple tiers + sensor mast)
+  const prow = new THREE.Mesh(noseConeGeo(W * 0.3, L * 0.2, 8), hm); prow.position.x = L * 0.46 * R; prow.scale.setScalar(R); g.add(prow);
+  // command tower cluster (beveled tiers, each narrower than the one under it)
   const towerTiers = hints.towerTiers || 2;
   for (let t = 0; t < towerTiers; t++) {
-    const tw = W * (0.5 - t * 0.1);
-    const tower = new THREE.Mesh(getGeometry(`cap:tower${t}`, () => new THREE.BoxGeometry(0.4, 0.3, tw)), hm);
-    tower.position.set(L * 0.08 * R, (H * 0.65 + t * 0.3) * R, 0); tower.scale.setScalar(R); g.add(tower);
-    // lit window decks (3 rows per tier)
-    for (let w = 0; w < 3; w++) {
-      const win = new THREE.Mesh(getGeometry(`cap:win${t}:${w}`, () => new THREE.BoxGeometry(0.36, 0.025, tw * 0.6)), emissiveMaterial('#ffd98a', 1.3));
-      win.position.set(L * 0.08 * R, (H * 0.65 + t * 0.3 - 0.08 + w * 0.06) * R, 0); win.scale.setScalar(R); g.add(win);
-    }
+    const tw = Math.max(0.08, W * (0.42 - t * 0.1));
+    const tower = new THREE.Mesh(hullSlabGeo(0.34, 0.22, tw), hm);
+    tower.position.set(L * 0.08 * R, (H * 0.5 + t * 0.24) * R, 0); tower.scale.setScalar(R); g.add(tower);
+    const win = new THREE.Mesh(getGeometry(`cap:win${t}`, () => new THREE.BoxGeometry(0.03, 0.02, 0.16)), emissiveMaterial('#ffd98a', 0.42));
+    win.position.set((L * 0.08 + 0.18) * R, (H * 0.5 + t * 0.24) * R, 0); win.scale.setScalar(R); g.add(win);
   }
-  // fin arrays (the dorsal radiator/fin clusters that grow with tier)
+  // fin arrays grow from the flank, not from empty air beside it
   const finArrays = hints.finArrays || 1;
   for (let f = 0; f < finArrays; f++) {
     for (const sgn of [1, -1]) {
-      const fin = new THREE.Mesh(getGeometry(`cap:fin${f}`, () => new THREE.BoxGeometry(0.5, 0.4, 0.08)), hm);
-      fin.position.set((-L * 0.1 - f * 0.2) * R, H * (0.5 + f * 0.1) * R, sgn * W * (0.9 + f * 0.05) * R); fin.scale.setScalar(R); g.add(fin);
+      const fin = new THREE.Mesh(hullSlabGeo(0.4, 0.28, 0.05), hm);
+      fin.position.set((-L * 0.1 - f * 0.18) * R, H * (0.35 + f * 0.08) * R, sgn * W * (0.4 + f * 0.04) * R); fin.scale.setScalar(R); g.add(fin);
     }
   }
-  // sensor ring (rotating, animated by the engine driver later)
-  // Geometry is authored in normalized hull space and the mesh is scaled by R below. Multiplying
-  // the tube by R here as well made the Leviathan's eight-sided ring render as an opaque cyan
-  // sphere-like mass that hid the ship. Rotation alone does not remove that geometry; any later
-  // disappearance is an independent authored-preview transition and is traced at the mount boundary.
+  // Collar around the top tier only. A hull-radius ring sliced through the tower.
+  // Tube radius stays in normalized units; the mesh scale applies R once.
+  const top = Math.max(0, towerTiers - 1);
+  const collar = Math.max(0.06, W * (0.42 - top * 0.1) * 0.62);
   const ring = new THREE.Mesh(
-    getGeometry(`cap:ring:${q(W)}`, () => new THREE.TorusGeometry(W * 0.6, Math.max(0.012, W * 0.018), 8, 48)),
-    getMaterial(`cap:ring-mat:${pal.accent}`, () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
-      color: new THREE.Color(pal.accent),
+    getGeometry(`cap:ring:${q(collar)}`, () => new THREE.TorusGeometry(collar, Math.max(0.008, collar * 0.12), 6, 28)),
+    getMaterial(`cap:ring-mat:${pal.accent}:soft`, () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+      color: new THREE.Color(pal.accent).multiplyScalar(0.35),
       emissive: new THREE.Color(pal.accent),
-      emissiveIntensity: 0.78,
-      metalness: 0.18,
-      roughness: 0.42,
+      emissiveIntensity: 0.4,
+      metalness: 0.2,
+      roughness: 0.4,
       transparent: true,
-      opacity: 0.72,
+      opacity: 0.82,
       depthWrite: false,
     }), SHARED_MATERIAL_ROLE.HULL)),
   );
-  ring.rotation.x = Math.PI / 2; ring.position.set(L * 0.08 * R, H * 0.9 * R, 0); ring.scale.setScalar(R); g.add(ring);
+  ring.rotation.x = Math.PI / 2;
+  ring.position.set(L * 0.08 * R, (H * 0.5 + top * 0.24 + 0.16) * R, 0);
+  ring.scale.setScalar(R); g.add(ring);
   ctx.sensorRing = ring;
-  // ventral hangar bay (a recessed box underneath)
-  const hangar = new THREE.Mesh(getGeometry('cap:hangar', () => new THREE.BoxGeometry(0.5, 0.12, 0.4)), hm);
-  hangar.position.set(-L * 0.05 * R, -H * 0.5 * R, 0); hangar.scale.setScalar(R); g.add(hangar);
+  const hangar = new THREE.Mesh(hullSlabGeo(0.42, 0.08, 0.32), hm);
+  hangar.position.set(-L * 0.05 * R, -H * 0.4 * R, 0); hangar.scale.setScalar(R); g.add(hangar);
 }
 
 function buildMultirole(ctx) {
   const { g, R, pal, hm, cockpit, vis, hints } = ctx;
   const L = vis.length, W = vis.halfWidth, H = vis.height;
+  ctx.fit = {
+    beam: W * 1.0, height: Math.max(H, W), length: L * 0.6, centerX: 0,
+    aftX: -L * 0.3, deckY: W * 0.5, canopyX: L * 0.12, canopyHalf: W * 0.48,
+  };
   // cylindrical fuselage + nose + winglets (the balanced explorer/drifter shape)
-  const fus = new THREE.Mesh(getGeometry('mul:fus', () => new THREE.CylinderGeometry(W * 0.5, W * 0.7, L * 0.6, 8).rotateZ(Math.PI / 2)), hm);
+  const fus = new THREE.Mesh(getGeometry('mul:fus', () => new THREE.CylinderGeometry(W * 0.46, W * 0.62, L * 0.6, 16).rotateZ(Math.PI / 2)), hm);
   fus.scale.setScalar(R); g.add(fus);
-  const nose = new THREE.Mesh(noseConeGeo(W * 0.5, L * 0.4, 8), hm); nose.position.x = L * 0.45 * R; nose.scale.setScalar(R); g.add(nose);
-  // engine nacelles on pylons (count scales with tier)
+  const nose = new THREE.Mesh(noseConeGeo(W * 0.4, L * 0.32, 12), hm); nose.position.x = L * 0.42 * R; nose.scale.setScalar(R); g.add(nose);
+  // engine nacelles on pylons (count scales with tier). Open-ish bells hide the flat end cap.
   const nacelles = hints.nacelles || 2;
   for (let n = 0; n < nacelles / 2; n++) {
     for (const sgn of [1, -1]) {
-      const pylon = new THREE.Mesh(getGeometry(`mul:pylon${n}`, () => new THREE.BoxGeometry(0.3, 0.06, 0.1)), hm);
-      pylon.position.set(-L * 0.15 * R, -H * 0.1 * R, sgn * W * (0.7 + n * 0.15) * R); pylon.scale.setScalar(R); g.add(pylon);
-      const nacelle = new THREE.Mesh(getGeometry(`mul:nacelle${n}`, () => new THREE.CylinderGeometry(0.16, 0.18, 0.6, 8).rotateZ(Math.PI / 2)), hm);
-      nacelle.position.set(-L * 0.2 * R, -H * 0.15 * R, sgn * W * (0.85 + n * 0.15) * R); nacelle.scale.setScalar(R); g.add(nacelle);
+      const pz = sgn * W * (0.72 + n * 0.12) * R;
+      const pylon = new THREE.Mesh(hullSlabGeo(0.26, 0.05, 0.08), hm);
+      pylon.position.set(-L * 0.12 * R, -H * 0.05 * R, pz * 0.72); pylon.scale.setScalar(R); g.add(pylon);
+      const nacelle = new THREE.Mesh(getGeometry(`mul:nacelle${n}`, () => new THREE.CylinderGeometry(0.13, 0.15, 0.48, 16).rotateZ(Math.PI / 2)), hm);
+      nacelle.position.set(-L * 0.16 * R, -H * 0.12 * R, pz); nacelle.scale.setScalar(R); g.add(nacelle);
+      const bell = new THREE.Mesh(getGeometry('mul:bell', () => new THREE.CylinderGeometry(0.17, 0.1, 0.14, 16).rotateZ(Math.PI / 2)), hm);
+      bell.position.set((-L * 0.16 - 0.28) * R, -H * 0.12 * R, pz); bell.scale.setScalar(R); g.add(bell);
     }
   }
   // winglets
   if (hints.winglets) {
     for (const sgn of [1, -1]) {
-      const wl = new THREE.Mesh(getGeometry('mul:winglet', () => new THREE.BoxGeometry(0.4, 0.04, 0.2)), hm);
-      wl.position.set(L * 0.05 * R, -H * 0.05 * R, sgn * W * 0.9 * R); wl.rotation.y = sgn * 0.3; wl.scale.setScalar(R); g.add(wl);
+      const wl = new THREE.Mesh(hullSlabGeo(0.32, 0.03, 0.14), hm);
+      wl.position.set(L * 0.02 * R, -H * 0.02 * R, sgn * W * 0.7 * R); wl.rotation.y = sgn * 0.25; wl.scale.setScalar(R); g.add(wl);
     }
   }
-  // cockpit
-  recessedCanopy(ctx, L * 0.15 * R, H * 0.5 * R, 0, R * 0.34, R * 0.22, R * 0.22);
+  recessedCanopy(ctx, L * 0.12 * R, W * 0.42 * R, 0, R * 0.16, R * 0.1, R * 0.12);
 }
 
 // =============================================================================================
@@ -1715,18 +1879,30 @@ function buildDroneSwarm(ctx) {
   const { g, R, hm, accent, vis } = ctx;
   const s = (vis.length || 1.0) * 0.7;
   const body = new THREE.Mesh(getGeometry('edr:droneBody', () => new THREE.OctahedronGeometry(0.55, 0)), hm);
-  body.scale.set(s * R, s * R * 0.6, s * R); body.rotation.y = Math.PI / 4; g.add(body);
-  const spikeGeo = () => getGeometry('edr:spike', () => new THREE.ConeGeometry(0.12, 0.7, 5));
-  const front = new THREE.Mesh(spikeGeo(), hm); front.rotation.x = Math.PI / 2;
-  front.position.set(0, 0, s * R * 0.8); front.scale.setScalar(R); g.add(front);
-  const lSpike = new THREE.Mesh(spikeGeo(), hm); lSpike.rotation.set(Math.PI / 2, 0, 0.6);
-  lSpike.position.set(-s * R * 0.6, 0, -s * R * 0.1); lSpike.scale.setScalar(R * 0.7); g.add(lSpike);
-  const rSpike = new THREE.Mesh(spikeGeo(), hm); rSpike.rotation.set(Math.PI / 2, 0, -0.6);
-  rSpike.position.set(s * R * 0.6, 0, -s * R * 0.1); rSpike.scale.setScalar(R * 0.7); g.add(rSpike);
-  const noz = new THREE.Mesh(getGeometry('edr:droneNoz', () => new THREE.CylinderGeometry(0.14, 0.2, 0.3, 6)), hm);
-  noz.rotation.x = Math.PI / 2; noz.position.set(0, 0, -s * R * 0.6); noz.scale.setScalar(R); g.add(noz);
-  const glow = new THREE.Mesh(getGeometry('edr:droneGlow', () => new THREE.CircleGeometry(0.13, 12)), accent);
-  glow.position.set(0, 0, -s * R * 0.78); glow.scale.setScalar(R); g.add(glow);
+  body.scale.set(s * R, s * R * 0.62, s * R); body.rotation.y = Math.PI / 4; g.add(body);
+  const reach = 0.55 * s;
+  const spike = getGeometry('edr:spike', () => new THREE.ConeGeometry(0.12, 0.62, 6));
+  const front = new THREE.Mesh(spike, hm);
+  front.rotation.x = Math.PI / 2;
+  // Cone half-length is 0.31*R. Base sits inside the forward vertex; apex clears it.
+  front.position.set(0, 0, reach * 0.42 * R + 0.31 * R);
+  front.scale.setScalar(R); g.add(front);
+  const lSpike = new THREE.Mesh(spike, hm);
+  lSpike.rotation.set(Math.PI / 2, 0, 0.85);
+  lSpike.position.set(-reach * 0.28 * R, 0, -reach * 0.05 * R);
+  lSpike.scale.setScalar(R * 0.62); g.add(lSpike);
+  const rSpike = new THREE.Mesh(spike, hm);
+  rSpike.rotation.set(Math.PI / 2, 0, -0.85);
+  rSpike.position.set(reach * 0.28 * R, 0, -reach * 0.05 * R);
+  rSpike.scale.setScalar(R * 0.62); g.add(rSpike);
+  const nozLen = 0.24;
+  const noz = new THREE.Mesh(getGeometry('edr:droneNoz', () => new THREE.CylinderGeometry(0.1, 0.16, nozLen, 10).rotateX(Math.PI / 2)), hm);
+  const aft = -reach * 0.55 * R;
+  noz.position.set(0, 0, aft - nozLen * 0.22 * R);
+  noz.scale.setScalar(R); g.add(noz);
+  const glow = new THREE.Mesh(getGeometry('edr:droneGlow', () => new THREE.CircleGeometry(0.09, 12)), accent);
+  glow.position.set(0, 0, noz.position.z - 0.1 * R);
+  glow.scale.setScalar(R * 0.7); g.add(glow);
 }
 
 // sniper_lance — Lancer Sniper. Slim needle, very long barrel, exposed cooling fins. Reads: keep distance.
@@ -1737,11 +1913,15 @@ function buildSniperLance(ctx) {
   // (rotation.z would lay it sideways along X — wrong.)
   const fuse = new THREE.Mesh(getGeometry('edr:lanceFuse', () => new THREE.CapsuleGeometry(0.18, 0.9, 4, 8)), hm);
   fuse.rotation.x = Math.PI / 2; fuse.scale.set(R * 0.9, R, R * 0.9); g.add(fuse);
-  const lance = new THREE.Mesh(getGeometry('edr:lance', () => new THREE.CylinderGeometry(0.06, 0.1, 1.1, 6)), hm);
-  lance.rotation.x = Math.PI / 2; lance.position.set(0, 0, L * R * 0.65); lance.scale.setScalar(R); g.add(lance);
-  const lanceTip = new THREE.Mesh(getGeometry('edr:lanceTip', () => new THREE.ConeGeometry(0.07, 0.18, 6)), accent);
-  lanceTip.rotation.x = Math.PI / 2; lanceTip.position.set(0, 0, L * R * 1.15); lanceTip.scale.setScalar(R); g.add(lanceTip);
-  const finGeo = () => getGeometry('edr:radiator', () => new THREE.BoxGeometry(0.04, 0.4, 0.5));
+  const lanceLen = 1.05;
+  const lance = new THREE.Mesh(getGeometry('edr:lance', () => new THREE.CylinderGeometry(0.05, 0.09, lanceLen, 8)), hm);
+  lance.rotation.x = Math.PI / 2; lance.position.set(0, 0, L * R * 0.55); lance.scale.setScalar(R); g.add(lance);
+  const lanceTip = new THREE.Mesh(getGeometry('edr:lanceTip', () => new THREE.ConeGeometry(0.055, 0.16, 8)), accent);
+  lanceTip.rotation.x = Math.PI / 2;
+  // Base of the tip meets the muzzle. Apex is +Z after the X rotation.
+  lanceTip.position.set(0, 0, L * R * 0.55 + lanceLen * 0.5 * R + 0.05 * R);
+  lanceTip.scale.setScalar(R); g.add(lanceTip);
+  const finGeo = () => getGeometry('edr:radiator', () => hullSlabGeo(0.035, 0.32, 0.36).clone());
   for (let i = 0; i < 4; i++) {
     const a = (i / 4) * Math.PI * 2;
     const fin = new THREE.Mesh(finGeo(), hm);
@@ -1749,8 +1929,8 @@ function buildSniperLance(ctx) {
     fin.rotation.z = a; fin.scale.setScalar(R); g.add(fin);
   }
   for (const dx of [-0.12, 0.12]) {
-    const n = new THREE.Mesh(getGeometry('edr:lanceNoz', () => new THREE.CylinderGeometry(0.07, 0.1, 0.22, 6)), hm);
-    n.rotation.x = Math.PI / 2; n.position.set(dx * R, 0, -L * R * 0.55); n.scale.setScalar(R); g.add(n);
+    const n = new THREE.Mesh(getGeometry('edr:lanceNoz', () => new THREE.CylinderGeometry(0.06, 0.09, 0.2, 8).rotateX(Math.PI / 2)), hm);
+    n.position.set(dx * R, 0, -0.66 * R); n.scale.setScalar(R); g.add(n);
   }
 }
 
@@ -1761,22 +1941,22 @@ function buildBruiserArmor(ctx) {
   // CylinderGeometry(radiusTop, radiusBottom, height) is along Y. Rotate around X → height maps
   // to Z (forward). So local Y (height) must carry the ship length L; radii (local X,Z) carry the
   // beam/height profile. Scale order: (radiusX=W, height=L, radiusZ=profile).
-  const body = new THREE.Mesh(getGeometry('edr:bruiserBody', () => new THREE.CylinderGeometry(0.55, 0.65, 1.0, 6)), hm);
+  const body = new THREE.Mesh(getGeometry('edr:bruiserBody', () => new THREE.CylinderGeometry(0.55, 0.65, 1.0, 12)), hm);
   body.rotation.x = Math.PI / 2; body.scale.set(W * 1.3 * R, L * R, R); g.add(body);
   const armorMat = hm.clone(); armorMat.color.multiplyScalar(0.55);
   for (let i = 0; i < 3; i++) {
-    const plate = new THREE.Mesh(getGeometry(`edr:plate${i}`, () => new THREE.BoxGeometry(1.3, 0.12, 0.4)), armorMat);
-    plate.position.set(0, R * (0.18 + i * 0.06), L * R * (0.15 - i * 0.18)); plate.scale.setScalar(R); g.add(plate);
+    const plate = new THREE.Mesh(hullSlabGeo(0.46, 0.06, 0.26), armorMat);
+    plate.position.set(0, R * (0.38 + i * 0.045), L * R * (0.12 - i * 0.16)); plate.scale.setScalar(R); g.add(plate);
   }
   for (const dx of [-0.7, 0.7]) {
     const nace = new THREE.Mesh(getGeometry('edr:turretNace', () => new THREE.CylinderGeometry(0.16, 0.2, 0.3, 8)), hm);
     nace.position.set(dx * W * R, R * 0.15, 0); nace.scale.setScalar(R); g.add(nace);
-    const barbette = new THREE.Mesh(getGeometry('edr:barbette', () => new THREE.CylinderGeometry(0.05, 0.05, 0.4, 6)), accent);
+    const barbette = new THREE.Mesh(getGeometry('edr:barbette', () => new THREE.CylinderGeometry(0.04, 0.05, 0.32, 8)), accent);
     barbette.rotation.x = Math.PI / 2; barbette.position.set(dx * W * R, R * 0.15, R * 0.3); barbette.scale.setScalar(R); g.add(barbette);
   }
   for (let i = -1; i <= 1; i++) {
-    const n = new THREE.Mesh(getGeometry('edr:bruiserNoz', () => new THREE.CylinderGeometry(0.14, 0.18, 0.28, 8)), hm);
-    n.rotation.x = Math.PI / 2; n.position.set(i * 0.25 * R, 0, -L * R * 0.55); n.scale.setScalar(R); g.add(n);
+    const n = new THREE.Mesh(getGeometry('edr:bruiserNoz', () => new THREE.CylinderGeometry(0.12, 0.17, 0.26, 10).rotateX(Math.PI / 2)), hm);
+    n.position.set(i * 0.22 * R, 0, -L * R * 0.5 - 0.06 * R); n.scale.setScalar(R); g.add(n);
   }
 }
 
@@ -1790,13 +1970,15 @@ function buildTraderHaul(ctx) {
   cock.scale.setScalar(R); cock.position.set(0, R * 0.1, L * R * 0.45); g.add(cock);
   const contMat = hm.clone(); contMat.color.multiplyScalar(0.75);
   for (let i = 0; i < 3; i++) {
-    const c = new THREE.Mesh(getGeometry(`edr:cont${i}`, () => new THREE.BoxGeometry(0.5, 0.3, 0.35)), contMat);
-    c.position.set(0, R * (0.32 + i * 0.02), L * R * (0.15 - i * 0.22)); c.scale.setScalar(R); g.add(c);
+    const c = new THREE.Mesh(hullSlabGeo(0.36, 0.18, 0.26), contMat);
+    c.position.set((i - 1) * 0.22 * R, 0.34 * R, L * R * (0.02 - i * 0.1)); c.scale.setScalar(R); g.add(c);
   }
+  const aftPole = -L * R * 0.05 - 0.5 * L * R * 0.85;
   for (let i = 0; i < 4; i++) {
-    const dx = (i % 2 === 0 ? -1 : 1) * (0.18 + Math.floor(i / 2) * 0.05);
-    const n = new THREE.Mesh(getGeometry('edr:traderNoz', () => new THREE.CylinderGeometry(0.1, 0.13, 0.24, 8)), hm);
-    n.rotation.x = Math.PI / 2; n.position.set(dx * R, 0, -L * R * 0.55); n.scale.setScalar(R); g.add(n);
+    const dx = (i % 2 === 0 ? -1 : 1) * (0.12 + Math.floor(i / 2) * 0.08);
+    const dy = Math.floor(i / 2) === 0 ? -0.08 : 0.1;
+    const n = new THREE.Mesh(getGeometry('edr:traderNoz', () => new THREE.CylinderGeometry(0.08, 0.12, 0.22, 10).rotateX(Math.PI / 2)), hm);
+    n.position.set(dx * R, dy * R, aftPole - 0.04 * R); n.scale.setScalar(R); g.add(n);
   }
 }
 
@@ -1817,17 +1999,17 @@ function buildPirateSwoop(ctx) {
   const swoopX = [-0.40, -0.15, 0.10, 0.28, 0.42];
   const swoopZ = [0.20, -0.25, 0.15, -0.10, 0.30];
   for (let i = 0; i < 5; i++) {
-    const box = new THREE.Mesh(getGeometry('edr:swoopBolt', () => new THREE.BoxGeometry(0.14, 0.12, 0.16)), hm);
-    box.position.set(swoopX[i] * W * R, R * 0.2, swoopZ[i] * L * R);
+    const box = new THREE.Mesh(hullSlabGeo(0.12, 0.08, 0.12), hm);
+    box.position.set(swoopX[i] * W * R, R * 0.16, swoopZ[i] * L * R);
     box.scale.setScalar(R); g.add(box);
   }
   const sizes = [0.16, 0.11, 0.13];
   for (let i = 0; i < 3; i++) {
-    const n = new THREE.Mesh(getGeometry(`edr:swoopNoz${i}`, () => new THREE.CylinderGeometry(sizes[i] * 0.8, sizes[i], 0.22, 6)), hm);
-    n.rotation.x = Math.PI / 2; n.position.set((i - 1) * 0.22 * R, 0, -L * R * 0.45); n.scale.setScalar(R); g.add(n);
+    const n = new THREE.Mesh(getGeometry(`edr:swoopNoz${i}`, () => new THREE.CylinderGeometry(sizes[i] * 0.7, sizes[i], 0.2, 8).rotateX(Math.PI / 2)), hm);
+    n.position.set((i - 1) * 0.16 * R, -0.04 * R, -L * R * 0.42); n.scale.setScalar(R); g.add(n);
   }
-  const stripe = new THREE.Mesh(getGeometry('edr:stripe', () => new THREE.BoxGeometry(W * 1.6, 0.04, 0.08)), accent);
-  stripe.position.set(0, R * 0.22, L * R * 0.2); stripe.scale.setScalar(R); g.add(stripe);
+  const stripe = new THREE.Mesh(getGeometry('edr:stripe', () => new THREE.BoxGeometry(W * 0.9, 0.025, 0.05)), accent);
+  stripe.position.set(0, R * 0.16, L * R * 0.08); stripe.scale.setScalar(R); g.add(stripe);
 }
 
 // corsair_blade — Corsair Raider. Sharp angular blade wings, swept, elite pirate. Reads: fast, dangerous, elite.
@@ -1842,18 +2024,19 @@ function buildCorsairBlade(ctx) {
     wingShape.lineTo(dx * W * 0.7, -L * 0.35); wingShape.lineTo(0, -L * 0.1); wingShape.closePath();
     // ExtrudeGeometry lies in the XY plane (shape) extruded along +Z. For a top-down ship the wing
     // must be flat in the XZ plane, so rotate -90° around X: shape-Y → world -Z (forward), extrude-Z → world Y (thin).
-    const wingGeo = getGeometry(`edr:bladeWing${dx}`, () => new THREE.ExtrudeGeometry(wingShape, { depth: 0.08, bevelEnabled: false }));
+    const wingGeo = getGeometry(`edr:bladeWing${dx}`, () => new THREE.ExtrudeGeometry(wingShape, { depth: 0.07, bevelEnabled: true, bevelThickness: 0.015, bevelSize: 0.02, bevelSegments: 1 }));
     wingGeo.center();
     const wing = new THREE.Mesh(wingGeo, hm);
     wing.rotation.x = -Math.PI / 2; wing.scale.setScalar(R); g.add(wing);
   }
   for (const dx of [-1, 1]) {
-    const tip = lampFixture('#ff4a3a', R * 0.055, 3.6);
-    tip.position.set(dx * W * R * 0.95, 0, -L * R * 0.22); g.add(tip);
+    // Wing geometry is centered, so the outer tip lands near ±W/2, not at the uncentered shape point.
+    const tip = lampFixture('#ff4a3a', R * 0.035, 1.05);
+    tip.position.set(dx * W * 0.5 * R, 0.05 * R, 0.02 * L * R); g.add(tip);
   }
   for (const dx of [-0.18, 0.18]) {
-    const n = new THREE.Mesh(getGeometry('edr:bladeNoz', () => new THREE.CylinderGeometry(0.1, 0.13, 0.28, 8)), hm);
-    n.rotation.x = Math.PI / 2; n.position.set(dx * R, 0, -L * R * 0.5); n.scale.setScalar(R); g.add(n);
+    const n = new THREE.Mesh(getGeometry('edr:bladeNoz', () => new THREE.CylinderGeometry(0.09, 0.13, 0.24, 10).rotateX(Math.PI / 2)), hm);
+    n.position.set(dx * R, 0, -L * 0.35 * R - 0.05 * R); n.scale.setScalar(R); g.add(n);
   }
 }
 
@@ -1865,18 +2048,19 @@ function buildPatrolInterdict(ctx) {
   const fuse = new THREE.Mesh(getGeometry('edr:interdictFuse', () => new THREE.CapsuleGeometry(0.22, 1.0, 4, 10)), hm);
   fuse.rotation.x = Math.PI / 2; fuse.scale.set(R * 0.85, R, R * 0.85); g.add(fuse);
   for (const dx of [-1, 1]) {
-    const web = new THREE.Mesh(getGeometry(`edr:web${dx}`, () => new THREE.RingGeometry(0.2, 0.4, 6, 1)), hm);
-    web.position.set(dx * W * R * 1.0, 0, -L * R * 0.1); web.scale.setScalar(R); g.add(web);
-    const glow = lampFixture('#3aa0ff', R * 0.05, 3.2);
-    glow.position.set(dx * W * R * 1.0, 0, -L * R * 0.1); g.add(glow);
+    // Horizontal vane. A RingGeometry stands in XY and disappears edge-on from the chase camera.
+    const web = new THREE.Mesh(hullSlabGeo(0.55, 0.04, 0.42), hm);
+    web.position.set(dx * 0.42 * R, 0, -0.08 * R); web.scale.setScalar(R); g.add(web);
+    const glow = lampFixture('#3aa0ff', R * 0.036, 1.05);
+    glow.position.set(dx * 0.62 * R, 0.02 * R, -0.08 * R); g.add(glow);
   }
   for (const dx of [-1, 1]) {
-    const light = lampFixture('#3aa0ff', R * 0.038, 2.8);
-    light.position.set(dx * W * R * 0.9, 0, L * R * 0.4); g.add(light);
+    const light = lampFixture('#3aa0ff', R * 0.03, 1.0);
+    light.position.set(dx * 0.16 * R, 0.16 * R, 0.42 * R); g.add(light);
   }
-  for (const dx of [-0.16, 0.16]) {
-    const n = new THREE.Mesh(getGeometry('edr:interdictNoz', () => new THREE.CylinderGeometry(0.1, 0.12, 0.26, 8)), hm);
-    n.rotation.x = Math.PI / 2; n.position.set(dx * R, 0, -L * R * 0.55); n.scale.setScalar(R); g.add(n);
+  for (const dx of [-0.14, 0.14]) {
+    const n = new THREE.Mesh(getGeometry('edr:interdictNoz', () => new THREE.CylinderGeometry(0.08, 0.11, 0.22, 10).rotateX(Math.PI / 2)), hm);
+    n.position.set(dx * R, 0, -0.7 * R); n.scale.setScalar(R); g.add(n);
   }
 }
 
@@ -1888,16 +2072,16 @@ function buildDreadnoughtEnemy(ctx) {
   const towerTiers = hints.towerTiers || 3;
   const fore = new THREE.Mesh(getGeometry('edr:dreadFore', () => new THREE.CylinderGeometry(0.35, 0.5, 0.9, 8)), hm);
   fore.rotation.x = Math.PI / 2; fore.scale.set(R, R, R); fore.position.set(0, 0, L * R * 0.3); g.add(fore);
-  const mid = new THREE.Mesh(getGeometry('edr:dreadMid', () => new THREE.BoxGeometry(1.4, 0.5, 1.2)), hm);
+  const mid = new THREE.Mesh(hullSlabGeo(1.15, 0.42, 1.0), hm);
   mid.scale.setScalar(R); g.add(mid);
   const aft = new THREE.Mesh(getGeometry('edr:dreadAft', () => new THREE.CylinderGeometry(0.55, 0.4, 0.8, 8)), hm);
   aft.rotation.x = Math.PI / 2; aft.scale.set(R, R, R); aft.position.set(0, 0, -L * R * 0.35); g.add(aft);
   for (let i = 0; i < towerTiers; i++) {
     const tw = 0.4 - i * 0.08;
-    const tier = new THREE.Mesh(getGeometry(`edr:tower${i}`, () => new THREE.BoxGeometry(tw, 0.18, tw)), hm);
+    const tier = new THREE.Mesh(hullSlabGeo(Math.max(0.12, tw), 0.14, Math.max(0.12, tw)), hm);
     tier.position.set(0, R * (0.3 + i * 0.2), L * R * 0.05); tier.scale.setScalar(R); g.add(tier);
   }
-  const ring = new THREE.Mesh(getGeometry('edr:dreadRing', () => new THREE.TorusGeometry(0.55, 0.05, 6, 20)), accent);
+  const ring = new THREE.Mesh(getGeometry('edr:dreadRing', () => new THREE.TorusGeometry(0.42, 0.028, 8, 24)), hm);
   ring.rotation.x = Math.PI / 2; ring.position.set(0, R * 0.5, -L * R * 0.1); ring.scale.setScalar(R); g.add(ring);
   const turretN = 4 + (hints.greeble > 0.8 ? 2 : 0);
   for (let i = 0; i < turretN; i++) {
@@ -1910,8 +2094,8 @@ function buildDreadnoughtEnemy(ctx) {
   }
   for (let i = 0; i < 4; i++) {
     const dx = (i % 2 === 0 ? -1 : 1) * (0.2 + Math.floor(i / 2) * 0.08);
-    const n = new THREE.Mesh(getGeometry(`edr:dreadNoz${i}`, () => new THREE.CylinderGeometry(0.13, 0.16, 0.32, 8)), hm);
-    n.rotation.x = Math.PI / 2; n.position.set(dx * R, 0, -L * R * 0.6); n.scale.setScalar(R); g.add(n);
+    const n = new THREE.Mesh(getGeometry(`edr:dreadNoz${i}`, () => new THREE.CylinderGeometry(0.11, 0.15, 0.28, 10).rotateX(Math.PI / 2)), hm);
+    n.position.set(dx * R, 0, -L * R * 0.35 - 0.48 * R); n.scale.setScalar(R); g.add(n);
   }
   // signature split prow — the "iron maw" that names the boss.
   for (const dx of [-1, 1]) {
@@ -1926,27 +2110,29 @@ function buildDetonatorDart(ctx) {
   const { g, R, hm, accent, vis } = ctx;
   const L = vis.length || 1.1;
   // The payload is most of the silhouette — the hull is a bomb first and a ship second.
-  const warhead = new THREE.Mesh(getGeometry('edr:dartWarhead', () => new THREE.SphereGeometry(0.42, 12, 8)), accent);
-  warhead.scale.set(R * 0.95, R * 0.8, R * 0.95); warhead.position.set(0, 0, L * R * 0.35); g.add(warhead);
+  const warhead = new THREE.Mesh(getGeometry('edr:dartWarhead', () => new THREE.SphereGeometry(0.42, 16, 12)), hm);
+  warhead.scale.set(R * 0.95, R * 0.8, R * 0.95); warhead.position.set(0, 0, 0.22 * R); g.add(warhead);
+  const band = new THREE.Mesh(getGeometry('edr:dartBand', () => new THREE.TorusGeometry(0.4, 0.028, 6, 18)), accent);
+  band.scale.set(R * 0.95, R * 0.8, R * 0.95); band.position.set(0, 0, 0.22 * R); g.add(band);
   const cap = new THREE.Mesh(getGeometry('edr:dartCap', () => new THREE.ConeGeometry(0.16, 0.3, 8)), hm);
-  cap.rotation.x = Math.PI / 2; cap.position.set(0, 0, L * R * 0.74); cap.scale.setScalar(R); g.add(cap);
+  cap.rotation.x = Math.PI / 2; cap.position.set(0, 0, 0.68 * R); cap.scale.setScalar(R); g.add(cap);
   const neck = new THREE.Mesh(getGeometry('edr:dartNeck', () => new THREE.CylinderGeometry(0.14, 0.2, 0.55, 8)), hm);
   neck.rotation.x = Math.PI / 2; neck.position.set(0, 0, -L * R * 0.12); neck.scale.setScalar(R); g.add(neck);
   // Cruciform tail fins: the flying-bomb planform — no other hostile silhouette carries them.
-  const finGeo = getGeometry('edr:dartFin', () => new THREE.BoxGeometry(0.34, 0.05, 0.26));
+  const finGeo = getGeometry('edr:dartFin', () => hullSlabGeo(0.3, 0.04, 0.22).clone());
   for (let i = 0; i < 4; i++) {
     const a = (i / 4) * Math.PI * 2;
     const fin = new THREE.Mesh(finGeo, hm);
-    fin.position.set(Math.cos(a) * 0.24 * R, Math.sin(a) * 0.24 * R, -L * R * 0.42);
+    fin.position.set(Math.cos(a) * 0.2 * R, Math.sin(a) * 0.2 * R, -L * R * 0.12 - 0.06 * R);
     fin.rotation.z = a; fin.scale.setScalar(R); g.add(fin);
   }
-  const noz = new THREE.Mesh(getGeometry('edr:dartNoz', () => new THREE.CylinderGeometry(0.12, 0.2, 0.26, 8)), hm);
-  noz.rotation.x = Math.PI / 2; noz.position.set(0, 0, -L * R * 0.62); noz.scale.setScalar(R); g.add(noz);
-  const glow = new THREE.Mesh(getGeometry('edr:dartGlow', () => new THREE.CircleGeometry(0.1, 10)), accent);
-  glow.position.set(0, 0, -L * R * 0.78); glow.scale.setScalar(R); g.add(glow);
+  const noz = new THREE.Mesh(getGeometry('edr:dartNoz', () => new THREE.CylinderGeometry(0.1, 0.16, 0.24, 10).rotateX(Math.PI / 2)), hm);
+  noz.position.set(0, 0, -L * R * 0.12 - 0.34 * R); noz.scale.setScalar(R); g.add(noz);
+  const glow = new THREE.Mesh(getGeometry('edr:dartGlow', () => new THREE.CircleGeometry(0.08, 10)), accent);
+  glow.position.set(0, 0, noz.position.z - 0.1 * R); glow.scale.setScalar(R * 0.75); g.add(glow);
   // The lit fuse lamp above the warhead: the one light on this hull that means "running".
-  const fuse = lampFixture('#ff5030', R * 0.05, 3.4);
-  fuse.position.set(0, R * 0.34, L * R * 0.35); g.add(fuse);
+  const fuse = lampFixture('#ff5030', R * 0.04, 1.1);
+  fuse.position.set(0, 0.4 * R, 0.22 * R); g.add(fuse);
 }
 
 const ENEMY_FAMILY_BUILDERS = {
@@ -1975,6 +2161,16 @@ const FAMILY_BUILDERS = {
 // =============================================================================================
 // ORCHESTRATOR
 // =============================================================================================
+// These silhouettes are authored +Z forward. The orchestrator grafts (canopy, grime slab,
+// engines, dish, blinkers, nose art) are +X parts measured on the packaged ship. Putting
+// them on a +Z body cuts a Kestrel across the beam. Role-variant fallbacks stay +X and
+// still receive the grafts.
+const Z_FORWARD_SILHOUETTES = new Set([
+  'drone_swarm', 'sniper_lance', 'bruiser_armor', 'trader_haul', 'pirate_swoop',
+  'corsair_blade', 'patrol_interdict', 'dreadnought_enemy', 'detonator_dart',
+  'last_argument', 'kilnback', 'mothlight', 'pallet_jack',
+]);
+
 function buildShipMesh(e, pal) {
   const R = e.radius || 12;
   const defId = (e.data && e.data.defId) || 'ship_kestrel';
@@ -1994,7 +2190,7 @@ function buildShipMesh(e, pal) {
   const blinkers = [];
 
   const hm = hullMaterial(pal, recipe.panelCount);
-  const accent = emissiveMaterial(pal.accent, 1.7);
+  const accent = hotSurface(pal.accent, 0.46);
   const cockpit = cockpitGlassMaterial(pal);
 
   // Two-layer structure for banking: `g` is rolled by the renderer; `outer` holds yaw+position.
@@ -2011,12 +2207,18 @@ function buildShipMesh(e, pal) {
   //    ENEMY_FAMILY_BUILDERS (graphics spec Workstream D: enemies render as their own hostile forms).
   const builder = isEnemyFamily ? ENEMY_FAMILY_BUILDERS[family] : (FAMILY_BUILDERS[family] || buildMultirole);
   builder(ctx);
+  // +Z hostile silhouettes already carry their own nozzles, lamps and planform.
+  const zForwardEnemy = isEnemyFamily && Z_FORWARD_SILHOUETTES.has(family);
 
+  if (!zForwardEnemy) {
   // 2) armor panel shell (tier Mk.II paneled / Mk.III armored): a slightly-larger shell with denser
-  //    plating + decals so upgraded ships visibly read as reinforced.
+  //    plating + decals so upgraded ships visibly read as reinforced. Sized to the fuselage.
   if (hints.plating === 'paneled' || hints.plating === 'armored') {
-    const L = ctx.vis.length, W = ctx.vis.halfWidth, H = ctx.vis.height;
-    addDecalShell(g, pal, R, L, H, W * 1.5, hints.plating === 'armored' ? 'greeble' : 'decal');
+    const fit = ctx.fit;
+    const L = fit ? fit.length : ctx.vis.length;
+    const beam = fit ? fit.beam : ctx.vis.halfWidth;
+    const H = fit ? fit.height : ctx.vis.height;
+    addDecalShell(g, pal, R, L, H, beam, hints.plating === 'armored' ? 'greeble' : 'decal', fit ? fit.centerX || 0 : 0);
   }
 
   // 2b) PROCEDURAL SURFACE DETAIL — scatter greeble clusters (vents, hatches, ribs, pipes, RCS jets,
@@ -2025,10 +2227,8 @@ function buildShipMesh(e, pal) {
   //     bespoke detail in their family builders, so skip them here.
   if (!isEnemyFamily) surfaceDetail(ctx);
 
-  // 2c) PAINT PROFILE — the art direction: grime overlay, chrome env-map, nose-art decal, repair
-  //     patches. All driven by the faction personality so the dirty-outlaw vs clean-authority contrast
-  //     applies itself to every ship (player = haunted ex-gangster runner; Concord/Meridian = chrome;
-  //     pirates = filthy tagged). Enemies get their own faction look too.
+  // 2c) PAINT PROFILE — grime, chrome, nose-art and patches, measured against ctx.fit so the
+  //     shell cannot be wider than the fuselage that was just built.
   applyPaintProfile(ctx, e);
 
   // 3) cockpit/bridge glass if the hull authored a position (fighters/scout/multirole use cockpit,
@@ -2058,12 +2258,14 @@ function buildShipMesh(e, pal) {
     }
   }
 
-  // 5) ENGINES — nozzles+plumes at authored engineMounts, sized by fitted engine class.
+  // 5) ENGINES — nozzles+plumes at authored engineMounts, sized by fitted engine class,
+  //    then pulled forward onto the procedural aft face when the mount hangs in space.
   const mounts = modelTruthMountFractions(def && def.id, 'SOCKET_Engine_');
   for (let i = 0; i < mounts.length; i++) {
     const m = mounts[i];
     const en = engineProp(pal, R, m.scaleK || 1, loadout.engineClass || 60);
     en.position.set((m.pos[0] || 0) * R, (m.pos[1] || 0) * R, (m.pos[2] || 0) * R);
+    seatEngineOnHull(en, ctx);
     g.add(en);
     addEngineTrailSocket(g, en, i);
     outer.userData.engines.push(en);
@@ -2071,15 +2273,19 @@ function buildShipMesh(e, pal) {
   // fallback: if no mounts authored, place a pair by recipe (back-compat for defs lacking visuals)
   if (!mounts.length) {
     const n = Math.max(1, Math.min(6, recipe.engineCount || 2));
+    const halfZ = ctx.fit ? ctx.fit.beam * 0.5 * R * 0.55 : R * 0.2;
     for (let i = 0; i < n; i++) {
-      const z = n === 1 ? 0 : (-(n - 1) / 2 + i) * 0.24 * 2;
+      const z = n === 1 ? 0 : ((i / Math.max(1, n - 1)) - 0.5) * 2 * halfZ;
       const en = engineProp(pal, R, 0.9, loadout.engineClass || 60);
-      en.position.set(-0.7 * R, 0, z * R); g.add(en); addEngineTrailSocket(g, en, i); outer.userData.engines.push(en);
+      en.position.set((ctx.fit && ctx.fit.aftX != null ? ctx.fit.aftX * R : -0.7 * R), 0, z);
+      seatEngineOnHull(en, ctx);
+      g.add(en); addEngineTrailSocket(g, en, i); outer.userData.engines.push(en);
     }
   }
 
   // 6) MINING drill/emitter when a mining module or beam is fitted.
-  if (loadout.hasMining && vis.drill) {
+  //    Miners already wear a prow bit; a second prop would stack on it.
+  if (loadout.hasMining && vis.drill && !ctx.hasDrill) {
     const drill = miningProp(pal, R, loadout.miningTier);
     drill.position.set(vis.drill[0] * R, vis.drill[1] * R, vis.drill[2] * R);
     g.add(drill);
@@ -2088,33 +2294,39 @@ function buildShipMesh(e, pal) {
 
   // 7) SHIELD emitter ring when a shield module is fitted.
   if (loadout.hasShield && vis.proportions) {
-    const ring = shieldRingProp(pal, R, ctx.vis.halfWidth, ctx.vis.height, loadout.shieldClass);
+    const ringHalf = ctx.fit ? ctx.fit.beam * 0.5 : ctx.vis.halfWidth;
+    const ring = shieldRingProp(pal, R, ringHalf, ctx.vis.height, loadout.shieldClass);
     g.add(ring);
   }
 
-  // 8) SENSOR/UTILITY masts — antennas + dishes near the authored sensor anchor, count from loadout.
+  // 8) SENSOR — one short mast and a dish that fit the fuselage, aft of the canopy.
   if (vis.sensor) {
-    const n = Math.max(1, Math.min(5, (loadout.utilityCount || 1) + Math.round((hints.greeble || 0) * 2)));
-    for (let i = 0; i < n; i++) {
-      const ant = new THREE.Mesh(getGeometry('ship:antenna', () => new THREE.CylinderGeometry(0.015, 0.025, 0.45, 4)), hm);
-      ant.position.set(
-        vis.sensor[0] * R + (i - (n - 1) / 2) * R * 0.08,
-        vis.sensor[1] * R,
-        0,
-      );
-      ant.scale.setScalar(R); g.add(ant);
-      const tip = lampFixture(pal.accent, R * 0.032, 2.6);
-      tip.position.set(ant.position.x, vis.sensor[1] * R + R * 0.32, ant.position.z); g.add(tip);
-      if (i % 2 === 0) {
-        const dish = new THREE.Mesh(getGeometry('ship:dish', () => new THREE.SphereGeometry(0.12, 8, 4, 0, Math.PI * 2, 0, Math.PI / 2)), hm);
-        dish.position.set(vis.sensor[0] * R, vis.sensor[1] * R + R * 0.18, (i - 1) * R * 0.06);
-        dish.scale.setScalar(R); g.add(dish);
-      }
+    const fit = ctx.fit;
+    const halfZ = fit ? fit.beam * 0.5 * R : ctx.vis.halfWidth * R * 0.45;
+    const deck = fit ? fit.deckY * R : vis.sensor[1] * R;
+    const mastH = Math.min(R * 0.14, Math.max(R * 0.05, (fit ? fit.height : ctx.vis.height) * R * 0.28));
+    const dishR = Math.min(R * 0.06, halfZ * 0.28);
+    let sx = vis.sensor[0] * R;
+    if (fit && fit.canopyX != null && fit.canopyHalf != null) {
+      const canopyRear = (fit.canopyX - fit.canopyHalf * 1.15) * R;
+      if (sx > canopyRear) sx = canopyRear;
     }
+    const mastScale = mastH / 0.45;
+    const ant = new THREE.Mesh(getGeometry('ship:antenna', () => new THREE.CylinderGeometry(0.02, 0.03, 0.45, 6)), hm);
+    ant.position.set(sx, deck + mastH * 0.5, 0);
+    ant.scale.setScalar(mastScale); g.add(ant);
+    const tip = lampFixture(pal.accent, Math.min(R * 0.028, dishR * 0.55), 1.05);
+    tip.position.set(sx, deck + mastH, 0); g.add(tip);
+    const dish = new THREE.Mesh(getGeometry('ship:dish', () => new THREE.SphereGeometry(0.12, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2)), hm);
+    dish.position.set(sx, deck + mastH * 0.72, 0);
+    dish.scale.setScalar(dishR / 0.12); g.add(dish);
   }
 
-  // 9) NAV BLINKERS (port green / starboard red / white stern) for real aerospace cueing.
-  addNavBlinkers(g, R, ctx.vis.halfWidth, ctx.vis.length, blinkers);
+  // 9) NAV BLINKERS (port green / starboard red / white stern) seated on the fuselage.
+  addNavBlinkers(g, R, ctx.vis.halfWidth, ctx.vis.length, blinkers, ctx.fit);
+  } else if (!outer.userData.weapons) {
+    outer.userData.weapons = [];
+  }
 
   // 10) self-animation: engine plume throb + fan spin + nav blinker pulse + capital sensor ring
   //     spin + turret-head idle sweep. The driver must live on a renderable child (Three only fires
@@ -2143,7 +2355,7 @@ function buildShipMesh(e, pal) {
       for (let i = 0; i < blinkers.length; i++) {
         const bl = blinkers[i], bd = bl.userData.blink;
         const on = ((((t * (bd.hz || 0.6)) + bd.phase) % 1) + 1) % 1 > 0.5 ? 1 : 0.25;
-        bl.material.emissiveIntensity = (bd.base || 3.4) * (0.18 + 0.82 * on);
+        bl.material.emissiveIntensity = (bd.base || 1.25) * (0.18 + 0.82 * on);
       }
       if (ctx.sensorRing) ctx.sensorRing.rotation.z = t * 0.3;
       // turret heads sweep ±35° seeking a target — sells the "auto-tracking" read even when idle
@@ -2198,18 +2410,19 @@ function mulberryLite(seed) {
 }
 
 // ---------------------------------------------------------------------------------------------
-// ASTEROIDS — noise-displaced icospheres, per-type tint/roughness + crystal/metal variants.
+// ASTEROIDS — fractured geological silhouettes with rough stone + selective ore/crystal accents.
 // ---------------------------------------------------------------------------------------------
 const AST_TYPE = {
-  // colors pushed toward the cyberpunk-noir neon palette: valuable ores glow in saturated magenta/
-  // cyan/violet so they read as prizes against the moody backdrop. Common rock stays dull grey to
-  // maximize the value contrast (a neon crystal cluster is instantly "that's the good stuff").
-  ast_common_rock: { color: 0xffffff, rough: 0.86, metal: 0.04, emissive: 0x000000, ei: 0,    detail: 2, displace: 0.20, flat: false, variant: 'rock' },
-  ast_metallic:    { color: 0x5a6470, rough: 0.45, metal: 0.7,  emissive: 0x183040, ei: 0.18, detail: 1, displace: 0.30, flat: true,  variant: 'metal', veinColor: '#3fd0ff' },
-  ast_icy:         { color: 0x8fd8f0, rough: 0.18, metal: 0.12, emissive: 0x105080, ei: 0.45, detail: 1, displace: 0.28, flat: false, variant: 'ice',  veinColor: '#5fe0ff' },
-  ast_crystalline: { color: 0x5a3aa0, rough: 0.22, metal: 0.25, emissive: 0x9030e0, ei: 0.85, detail: 1, displace: 0.45, flat: true,  variant: 'crystal', veinColor: '#c060ff' },
-  ast_gas_cloud:   { color: 0x2a5a4a, rough: 1.0,  metal: 0,    emissive: 0x10a060, ei: 0.55, detail: 1, displace: 0.40, flat: true,  variant: 'gas' },
-  ast_rare_exotic: { color: 0x282038, rough: 0.6,  metal: 0.5,  emissive: 0x7030d0, ei: 0.8,  detail: 2, displace: 0.32, flat: true,  variant: 'exotic', veinColor: '#ff40c0' },
+  // Every procedural family builds broken fracture-plane silhouettes at sensible hero detail
+  // (500–720 tris) and rough, low-metal stone surfaces. Only worn iron ridges and protruding
+  // crystal faces catch bright speculars or controlled inner glow — never mirror-chrome balls
+  // or neon-blanketed icospheres.
+  ast_common_rock: { color: 0xffffff, rough: 0.88, metal: 0.02, emissive: 0x000000, ei: 0, detail: 4, displace: 0.24, flat: false, variant: 'rock' },
+  ast_metallic:    { color: 0x56606c, rough: 0.86, metal: 0.06, emissive: 0x000000, ei: 0, detail: 4, displace: 0.22, flat: false, variant: 'metal' },
+  ast_icy:         { color: 0x8fd8f0, rough: 0.46, metal: 0.00, emissive: 0x000000, ei: 0, detail: 4, displace: 0.18, flat: false, variant: 'ice' },
+  ast_crystalline: { color: 0x3b3448, rough: 0.84, metal: 0.04, emissive: 0x000000, ei: 0, detail: 4, displace: 0.24, flat: false, variant: 'crystal' },
+  ast_gas_cloud:   { color: 0x2f433e, rough: 0.92, metal: 0.00, emissive: 0x000000, ei: 0, detail: 3, displace: 0.22, flat: false, variant: 'gas' },
+  ast_rare_exotic: { color: 0x2a2434, rough: 0.84, metal: 0.06, emissive: 0x000000, ei: 0, detail: 4, displace: 0.24, flat: false, variant: 'exotic' },
 };
 
 // Legacy/alias ids used by live spawners. `ast_rock` is what src/main.js seeds the opening belt with,
@@ -2292,14 +2505,14 @@ function transformCommonRockUvs(geometry, variantIdx) {
 }
 
 function astDisplacedGeometry(typeId, def, variantIdx) {
-  const key = `ast:geology-v6:${typeId}:${variantIdx}`;
+  const key = `ast:geology-v7:${typeId}:${variantIdx}`;
   return getGeometry(key, () => {
     const geo = new THREE.IcosahedronGeometry(1, def.detail + 1);
     const pos = geo.attributes.position;
     const normal = geo.attributes.normal;
     const isCommonRock = typeId === 'ast_common_rock';
     const isIce = typeId === 'ast_icy';
-    const colors = (isCommonRock || isIce) ? new Float32Array(pos.count * 3) : null;
+    const colors = isCommonRock ? new Float32Array(pos.count * 3) : null;
     const geologyPbr = isCommonRock ? new Float32Array(pos.count * 4) : null;
     const dominantRoleCounts = { matrix: 0, fracture: 0, regolith: 0, ferrite: 0 };
     const responseRanges = {
@@ -2316,7 +2529,7 @@ function astDisplacedGeometry(typeId, def, variantIdx) {
     const ox = rnd() * 100, oy = rnd() * 100, oz = rnd() * 100;
     for (let i = 0; i < pos.count; i++) {
       v.fromBufferAttribute(pos, i);
-      // Micro-breakup stays subordinate to the common rocks' object-space strata and joint fields.
+      // Micro-breakup stays subordinate to the object-space fracture planes and strata fields.
       surfaceNormal.copy(v).normalize();
       let d = 0, amp = 1, f = 1.7;
       for (let o = 0; o < 3; o++) {
@@ -2327,12 +2540,12 @@ function astDisplacedGeometry(typeId, def, variantIdx) {
       }
       const silhouetteRadius = isCommonRock
         ? geologySilhouetteRadius(surfaceNormal.x, surfaceNormal.y, surfaceNormal.z, variantIdx)
-        : 1;
+        : geologyFamilySilhouette(surfaceNormal.x, surfaceNormal.y, surfaceNormal.z, def.variant, variantIdx);
       const scale = isCommonRock
         ? silhouetteRadius
           + geologyDisplacement(surfaceNormal.x, surfaceNormal.y, surfaceNormal.z, variantIdx) * 1.9
-          + def.displace * d * 0.18
-        : 1 + def.displace * d;
+          + def.displace * d * 0.16
+        : silhouetteRadius + def.displace * d * 0.14;
       v.multiplyScalar(Math.max(0.5, scale));
       pos.setXYZ(i, v.x, v.y, v.z);
       // Keep an intermediate radial normal for deterministic geology tone sampling. Final normals
@@ -2366,13 +2579,6 @@ function astDisplacedGeometry(typeId, def, variantIdx) {
           responseRanges[field][0] = Math.min(responseRanges[field][0], value);
           responseRanges[field][1] = Math.max(responseRanges[field][1], value);
         }
-      } else if (isIce) {
-        // Subtle crevice-to-ridge tonal depth (deep cobalt-slate recesses, frosted pale ridges)
-        // keeps opaque glacial ice readable instead of a flat monochrome block.
-        const t = Math.max(0, Math.min(1, (scale - 0.72) / 0.56));
-        colors[i * 3] = 0.64 + 0.30 * t;
-        colors[i * 3 + 1] = 0.80 + 0.18 * t;
-        colors[i * 3 + 2] = 0.96 + 0.06 * t;
       }
     }
     normal.needsUpdate = true;
@@ -2387,8 +2593,8 @@ function astDisplacedGeometry(typeId, def, variantIdx) {
     const uvTransform = isCommonRock ? transformCommonRockUvs(geo, variantIdx) : null;
     if (isCommonRock) {
       // toCreasedNormals merges exclusively on quantized position, preserving smooth intra-plane
-      // normals across UV projection boundaries as well as crisp 42-degree geological breaks.
-      const denseSmooth = toCreasedNormals(geo, THREE.MathUtils.degToRad(42));
+      // normals across UV projection boundaries as well as crisp 34-degree geological fracture breaks.
+      const denseSmooth = toCreasedNormals(geo, THREE.MathUtils.degToRad(34));
       denseSmooth.computeBoundingSphere();
       denseSmooth.userData.spacefaceGeology = {
         schema: 'spaceface.commonRockGeology.v4',
@@ -2402,11 +2608,11 @@ function astDisplacedGeometry(typeId, def, variantIdx) {
         deterministic: true,
         pbrAttribute: 'sfGeologyPbr',
         pbrAttributeChannels: ['ao', 'roughness', 'metalness', 'normalStrength'],
-        normalPolicy: '42-degree selective crease with smooth intra-plane normals',
+        normalPolicy: '34-degree selective crease with smooth intra-plane normals',
       };
       return denseSmooth;
     }
-    const creaseDegrees = isIce ? 52 : (def.flat ? 34 : 48);
+    const creaseDegrees = isIce ? 30 : (def.variant === 'metal' || def.variant === 'exotic' ? 32 : def.variant === 'crystal' ? 34 : 38);
     const surfaced = toCreasedNormals(geo, THREE.MathUtils.degToRad(creaseDegrees));
     surfaced.computeBoundingSphere();
     surfaced.userData.spacefaceGeology = {
@@ -2476,9 +2682,10 @@ function configureCommonRockPbr(material) {
       '#include <map_fragment>',
       [
         '#include <map_fragment>',
-        '// Retain the scanned substrate while letting broad authored geology lead the read.',
+        '// Neutralize muddy brown scan bias toward cut weathered grey/slate stone and lift lit contrast.',
         'float sfRockLuma = dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722));',
-        'diffuseColor.rgb = mix(diffuseColor.rgb, vec3(sfRockLuma), 0.28);',
+        'vec3 sfStoneNeutral = mix(diffuseColor.rgb, vec3(sfRockLuma) * vec3(0.92, 0.96, 1.04), 0.86);',
+        'diffuseColor.rgb = max((sfStoneNeutral - 0.07) * 1.48 + 0.12, vec3(0.035));',
         'float sfMineralExposure = smoothstep(0.10, 0.55, vSfGeologyPbr.b);',
         `diffuseColor.rgb = mix(diffuseColor.rgb, vec3(sfRockLuma) * vec3(${COMMON_ROCK_MINERAL_SHEEN.join(', ')}), sfMineralExposure * 0.68);`,
       ].join('\n'),
@@ -2583,32 +2790,58 @@ function makeIceNormalTexture() {
   return tex;
 }
 
-// ROCK-03: field ores (Metallic Asteroid, Helios field rocks, crystals, exotics) ride the shared
-// object-space triplanar family — the same program the authored place_rock bodies wear — by
-// substance: metallic → metal ore, crystalline/exotic → crystal. No per-rock materials; one
-// cached material per type still serves the whole instanced pool.
-const AST_VARIANT_TRIPLANAR = Object.freeze({ metal: 'metal', crystal: 'crystal', exotic: 'crystal' });
+// ROCK-03: every non-common procedural asteroid AND every tinted/substance-tagged common rock
+// rides the shared object-space triplanar family — the same shader program the authored place_rock
+// bodies wear — so no rock ever falls through to a flat untextured plastic sphere or glowing ball.
+const AST_VARIANT_TRIPLANAR = Object.freeze({
+  metal: 'metal', crystal: 'crystal', exotic: 'exotic', ice: 'ice', gas: 'gas',
+});
+const TINTED_SUBSTANCE_TRIPLANAR = Object.freeze({
+  silicate: 'silicate', calcite: 'silicate', rock: 'silicate',
+  slag: 'slag', cooked_rock: 'cooked', volatile: 'cooked',
+  metallic_ore: 'metal', reef_metal: 'metal', metal: 'metal',
+  ice: 'ice', cryo: 'ice', crystal: 'crystal',
+  junk: 'junk', debris: 'junk',
+});
 
-function astMaterial(typeId, def, tint, variantIdx = 0) {
-  const wantsCommonSurface = typeId === 'ast_common_rock' && tint == null;
+const SPECIALIZED_SUBSTANCE_TRIPLANAR = Object.freeze({
+  slag: 'slag', cooked_rock: 'cooked',
+  metallic_ore: 'metal', reef_metal: 'metal',
+  ice: 'ice', crystal: 'crystal', junk: 'junk',
+});
+
+function resolveTintedRockTriplanar(substance, envMaterial) {
+  const s = typeof substance === 'string' ? substance.toLowerCase() : '';
+  if (s && TINTED_SUBSTANCE_TRIPLANAR[s]) return TINTED_SUBSTANCE_TRIPLANAR[s];
+  const m = typeof envMaterial === 'string' ? envMaterial.toLowerCase() : '';
+  if (m && TINTED_SUBSTANCE_TRIPLANAR[m]) return TINTED_SUBSTANCE_TRIPLANAR[m];
+  return 'silicate';
+}
+
+function resolveCommonRockTriplanar(tint, substance, envMaterial) {
+  if (tint != null) return resolveTintedRockTriplanar(substance, envMaterial);
+  const s = typeof substance === 'string' ? substance.toLowerCase() : '';
+  return (s && SPECIALIZED_SUBSTANCE_TRIPLANAR[s]) || null;
+}
+
+function astMaterial(typeId, def, tint, variantIdx = 0, substance = null, envMaterial = null) {
+  const tpFamily = typeId === 'ast_common_rock'
+    ? resolveCommonRockTriplanar(tint, substance, envMaterial)
+    : (AST_VARIANT_TRIPLANAR[def.variant] || null);
+  const wantsCommonSurface = typeId === 'ast_common_rock' && !tpFamily;
   const commonSurfaceReady = wantsCommonSurface ? getReadyRockSurfaceTextures() : null;
   const bare = wantsCommonSurface && !commonSurfaceReady;
   // PIC-02: each displacement variant answers the shared maps with its own tint/ORM response so
-  // the five pooled chunks are not one texture painted five times. The library spec owns the
-  // numbers; this key keeps one cached material per variant.
+  // the five pooled chunks are not one texture painted five times.
   const variantSpec = commonSurfaceReady ? rockSurfaceVariantSpec(variantIdx) : null;
   const variantKey = variantSpec ? `:v${ROCK_SURFACE_VARIANTS.indexOf(variantSpec)}` : '';
-  // ROCK-03: variants on the triplanar map skip the UV family path entirely — it decoded late or
-  // never in flight and left the rocks as smooth flat icosahedra. A triplanar material needs no
-  // decoded map to hold the right program: the shared sfTpOn uniform flips it on when the set lands.
-  const tpFamily = typeId === 'ast_common_rock' ? null : (AST_VARIANT_TRIPLANAR[def.variant] || null);
   const family = (typeId === 'ast_common_rock' || tpFamily) ? null : rockFamilyFor(def.variant);
-  const key = `astmat:${typeId}:${tint || 'def'}${variantKey}${bare ? ':bare' : ''}${family ? ':fam' : ''}${tpFamily ? ':tp' : ''}`;
+  const tpKey = tpFamily ? `:tp:${tpFamily}` : '';
+  const key = `astmat:${typeId}:${tint || 'def'}${variantKey}${bare ? ':bare' : ''}${family ? ':fam' : ''}${tpKey}`;
   return getMaterial(key, () => {
     const commonSurface = commonSurfaceReady;
     let color = tint != null ? new THREE.Color(tint) : new THREE.Color(def.color);
     if (variantSpec) color.multiply(new THREE.Color(...variantSpec.tint));
-    // The texture carries the surface, so the type colour only tints it rather than multiplying it dark.
     if (family) color = new THREE.Color(0xffffff).lerp(color, ROCK_FAMILY_TINT_MIX[def.variant] ?? 0.25);
     const skipRoughNoise = !!commonSurface || !!tpFamily || def.variant === 'crystal' || def.variant === 'ice';
     const rough = skipRoughNoise
@@ -2616,43 +2849,9 @@ function astMaterial(typeId, def, tint, variantIdx = 0) {
       : getTexture('noise:astrough', () =>
         makeNoiseTexture({ size: 256, seed: 41, octaves: 4, baseCells: 6, contrast: 1.4, brightness: -0.05 }));
 
-    // Procedural surfaces only. (The generated ore_*_hero.jpg assets are LABELLED contact-sheet
-    // references — multiple views + caption text — and were being emissive-mapped onto crystals, so
-    // valuable rocks literally glowed reference text. Valuable ores still pop via emissive colour +
-    // the crystal shards added in buildAsteroid.)
-    let eiBoost = def.ei;
-    const t = (typeId || '').toLowerCase();
-    if (t.includes('luminite') || t.includes('crystal') || def.variant === 'crystal') eiBoost = Math.max(eiBoost, 0.9);
-    else if (t.includes('xenium') || t.includes('exotic') || def.variant === 'exotic') eiBoost = Math.max(eiBoost, 0.75);
-
-    if (def.variant === 'ice') {
-      // LOOK-04 (owner 2026-11-13: "why do they wash out white like that?"): ordinary world ice was a see-through,
-      // mirror-smooth, clear-coated body reflecting the environment at full strength — on screen a pale blue-white
-      // blob brighter than any ship, sorted as a transparent with depthWrite off. Ice is now stylised and opaque: a
-      // cool blue-grey stone with a satin sheen and a faint cold glow, so it reads as ice beside tan rock, sits in the
-      // terrain value band (bible LOOK §3: terrain 25–50 lit) and draws as an ordinary opaque rock.
-      const iceColor = color.clone().lerp(new THREE.Color('#5d8aa6'), 0.55);
-      const hasCanvas = typeof document !== 'undefined';
-      const iceRough = hasCanvas
-        ? getTexture('ast:icerough', () =>
-          makeNoiseTexture({ size: 256, seed: 73, octaves: 4, baseCells: 5, contrast: 1.5, brightness: 0.14 }))
-        : null;
-      const iceNormal = hasCanvas ? getTexture('ast:icenormal', makeIceNormalTexture) : null;
-      const material = new THREE.MeshStandardMaterial({
-        color: iceColor,
-        normalMap: iceNormal,
-        normalScale: new THREE.Vector2(0.55, 0.55),
-        roughnessMap: iceRough,
-        roughness: 0.48,
-        metalness: 0.0,
-        vertexColors: true,
-        emissive: new THREE.Color(def.emissive || '#2a5f80'),
-        emissiveIntensity: Math.min(eiBoost, 0.10),
-        envMapIntensity: 0.55,
-        fog: true,
-      });
-      return stampSharedMaterialRole(material, SHARED_MATERIAL_ROLE.ROCK);
-    }
+    // Keep host rock bodies non-emissive when using triplanar surfacing: crystals and exotic seams
+    // glow through their dedicated shard meshes and fissure masks, never as a whole-body neon lamp.
+    const eiBoost = tpFamily ? 0 : def.ei;
 
     const material = new THREE.MeshStandardMaterial({
       color,
@@ -2670,8 +2869,7 @@ function astMaterial(typeId, def, tint, variantIdx = 0) {
         || (def.variant === 'crystal' ? null : rough),
       metalnessMap: commonSurface && commonSurface.orm || null,
       vertexColors: !!commonSurface,
-      emissive: new THREE.Color(def.emissive),
-      // A glow map confines the glow to the crystals / veins, so the intensity is lifted to keep them readable.
+      emissive: new THREE.Color(tpFamily ? 0x000000 : def.emissive),
       emissiveIntensity: family && family.emissive ? Math.min(3.2, eiBoost * ROCK_FAMILY_EMISSIVE_LIFT) : eiBoost,
       flatShading: def.flat,
     });
@@ -2685,10 +2883,6 @@ function astMaterial(typeId, def, tint, variantIdx = 0) {
     // which is exactly the order the shared family is built for — the Look's governor, rim and
     // rock fill keep working on top of the substance surface.
     if (tpFamily) installTriplanarRock(material, tpFamily);
-    // Non-common rocks built before their family maps decode keep the procedural tint/noise
-    // material. Tag them so the family-ready continuation can re-material them onto the decoded
-    // maps; without this an old rock sits on the poorer surface AND on a program the family
-    // warm never links, so its first draw pays the whole illustrated-surface link in flight.
     if (!family && !tpFamily && typeId !== 'ast_common_rock' && def.variant !== 'ice') {
       material.userData = {
         ...(material.userData || {}),
@@ -2804,24 +2998,64 @@ function pickUniqueAsteroidFaces(geo, count, rnd) {
   return chosen;
 }
 
+function buildCrystalShardMaterial(key, colorHex, emissiveHex, emissiveIntensity, metalness = 0.12) {
+  return getMaterial(key, () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+    color: new THREE.Color(colorHex),
+    roughness: 0.14,
+    metalness,
+    emissive: new THREE.Color(emissiveHex),
+    emissiveIntensity,
+    envMapIntensity: 1.45,
+    flatShading: true,
+  }), SHARED_MATERIAL_ROLE.ROCK));
+}
+
+function pickCrystalClusterFaces(geo, count, rnd) {
+  const pos = geo.getAttribute('position');
+  const idx = geo.getIndex();
+  const faceCount = Math.floor((idx ? idx.count : (pos ? pos.count : 0)) / 3);
+  if (faceCount <= 0) return [];
+  // Prefer distinct azimuth sectors with upward/equatorial facing so crystal clusters always read
+  // cleanly from the top-down gameplay camera as well as when tumbling.
+  const chosen = [];
+  const used = new Set();
+  const baseYaw = rnd() * Math.PI * 2;
+  for (let slot = 0; slot < count; slot++) {
+    const targetYaw = baseYaw + (slot * (Math.PI * 2)) / count;
+    const tx = Math.cos(targetYaw), tz = Math.sin(targetYaw);
+    let bestFace = -1, bestScore = -Infinity;
+    for (let k = 0; k < 28; k++) {
+      const f = Math.floor(rnd() * faceCount);
+      if (used.has(f)) continue;
+      sampleAsteroidSurfaceFace(geo, f);
+      const horiz = _astNormal.x * tx + _astNormal.z * tz;
+      const upBias = slot < 2 ? _astNormal.y * 1.1 : _astNormal.y * 0.45;
+      const score = horiz + upBias;
+      if (score > bestScore) { bestScore = score; bestFace = f; }
+    }
+    if (bestFace >= 0) { used.add(bestFace); chosen.push(bestFace); }
+  }
+  return chosen;
+}
+
 function buildAsteroid(e) {
   const R = e.radius || 12;
   const typeId = canonicalAstTypeId(e.data && e.data.typeId);
   const def = AST_TYPE[typeId] || AST_TYPE.ast_common_rock;
   const tint = e.data && e.data.tint; // optional sector tint override
+  const substance = e.data && e.data.substance;
+  const envMaterial = e.data && e.data.material;
   const variantIdx = hashId(e.id) % 5; // 5 displacement variants per type
   // Optic lattice cells are tinted asteroids — they ride this same constructor but wear a
-  // dedicated skin (opticCellPresentation.js): matte rock / mirror / clear prism / burned
-  // prism instead of the shared sector-material flat tint.
+  // dedicated skin (opticCellPresentation.js): matte rock / forged iron reflector / clear prism.
   const opticKind = opticCellKindOf(e);
   const geo = (opticKind && opticCellGeometry(opticKind)) || astDisplacedGeometry(typeId, def, variantIdx);
   const mesh = new THREE.Mesh(geo,
-    opticKind ? opticCellBodyMaterial(opticKind, variantIdx) : astMaterial(typeId, def, tint, variantIdx));
+    opticKind
+      ? opticCellBodyMaterial(opticKind, variantIdx)
+      : astMaterial(typeId, def, tint, variantIdx, substance, envMaterial));
   mesh.scale.setScalar(R);
-  // GR-2: large asteroids are shadow receivers (and casters). A ship mining an asteroid should see
-  // its shadow drape across the rock's sunlit side, and the asteroid's own shadow should fall on the
-  // station pad when nearby. Both castShadow and receiveShadow engage the renderer's auto-gated
-  // shadow system (renderer._syncShadowMapEnabled flips the map on only when receivers exist).
+  // GR-2: large asteroids are shadow receivers (and casters).
   mesh.castShadow = true;
   mesh.receiveShadow = true;
 
@@ -2830,53 +3064,94 @@ function buildAsteroid(e) {
   g.userData.asteroidBody = mesh;
   mesh.userData.animated = true;
   g.userData.animated = true;
-  // Every opaque body leaf is an instance-pool candidate now — the pool's keyed buckets
-  // group by the exact shared (geometry, material) pair. Untinted common rocks keep the
-  // dedicated variant chunks via the leaf stamps below.
   g.userData.asteroidInstanceBody = mesh;
-  if (typeId === 'ast_common_rock' && tint == null) {
+  if (typeId === 'ast_common_rock' && !resolveCommonRockTriplanar(tint, substance, envMaterial)) {
     mesh.userData.asteroidInstanceTypeId = 'ast_common_rock';
     mesh.userData.asteroidInstanceVariant = variantIdx;
   }
-  // Optic cells wear their own detail language — neon ore shards, gas hulls and glowing
-  // veins would fight the matte-rock / mirror / prism read (and veins mean "mineral
-  // wealth", which an optic stone is not).
-  if (!opticKind && def.variant === 'crystal') {
+  // Glossy faceted crystal clusters & exotic mineral blades erupting from rough dark host stone.
+  if (!opticKind && (def.variant === 'crystal' || def.variant === 'exotic')) {
     const rnd = mulberryLite(hashId(e.id));
-    const shardMat = emissiveMaterial('#c878ff', 1.1, SHARED_MATERIAL_ROLE.ROCK);
-    const shardFaces = pickUniqueAsteroidFaces(geo, 6, rnd);
-    for (let i = 0; i < shardFaces.length; i++) {
-      const shard = new THREE.Mesh(getGeometry('ast:shard', () => new THREE.OctahedronGeometry(0.18, 0)), shardMat);
-      sampleAsteroidSurfaceFace(geo, shardFaces[i]);
-      const baseScale = 0.55 + rnd() * 0.45;
-      // Seat each crystal spire into its displaced facet so it sprouts outward from the surface.
-      shard.position.copy(_astCenter).addScaledVector(_astNormal, -0.03 * baseScale).multiplyScalar(R);
-      shard.quaternion.setFromUnitVectors(_astUp, _astNormal);
-      shard.rotateX((rnd() - 0.5) * 0.45);
-      shard.rotateZ((rnd() - 0.5) * 0.45);
-      shard.scale.set(R * baseScale, R * baseScale * 1.45, R * baseScale);
-      shard.userData.spacefaceTags = { greeble: true };
-      shard.userData.asteroidInstanceDetail = true;
-      g.add(shard);
+    const isExotic = def.variant === 'exotic';
+    const shardMat = isExotic
+      ? buildCrystalShardMaterial('ast:exotic_shard', 0xd82e86, 0xa41c60, 0.62, 0.25)
+      : buildCrystalShardMaterial('ast:crystal_shard', 0x864cf4, 0x6226d6, 0.58, 0.12);
+    const clusterCount = 3;
+    const perCluster = isExotic ? 3 : 4;
+    const anchorFaces = pickCrystalClusterFaces(geo, clusterCount, rnd);
+    const shardGeo = getGeometry('ast:shard', () => new THREE.OctahedronGeometry(0.18, 0));
+    const _clusterOffset = new THREE.Vector3();
+    for (let c = 0; c < anchorFaces.length; c++) {
+      sampleAsteroidSurfaceFace(geo, anchorFaces[c]);
+      const cx = _astCenter.x, cy = _astCenter.y, cz = _astCenter.z;
+      const nx = _astNormal.x, ny = _astNormal.y, nz = _astNormal.z;
+      const tx = _astTangent.x, ty = _astTangent.y, tz = _astTangent.z;
+      const bx = _astBitangent.x, by = _astBitangent.y, bz = _astBitangent.z;
+      for (let j = 0; j < perCluster; j++) {
+        const shard = new THREE.Mesh(shardGeo, shardMat);
+        const lead = j === 0;
+        const baseScale = lead
+          ? ((isExotic ? 0.92 : 1.02) + rnd() * 0.32)
+          : ((isExotic ? 0.55 : 0.62) + rnd() * 0.36);
+        const spread = lead ? 0 : (0.07 + rnd() * 0.08);
+        const ang = (j * 2.15) + rnd() * 0.8;
+        _clusterOffset.set(
+          tx * Math.cos(ang) * spread + bx * Math.sin(ang) * spread,
+          ty * Math.cos(ang) * spread + by * Math.sin(ang) * spread,
+          tz * Math.cos(ang) * spread + bz * Math.sin(ang) * spread,
+        );
+        // Seat each faceted crystal prism deep into the host fracture crevice so clusters erupt organically.
+        shard.position.set(cx, cy, cz)
+          .add(_clusterOffset)
+          .addScaledVector(_astNormal.set(nx, ny, nz), -0.04 * baseScale)
+          .multiplyScalar(R);
+        shard.quaternion.setFromUnitVectors(_astUp, _astNormal);
+        const splay = lead ? 0.22 : 0.58;
+        shard.rotateX((rnd() - 0.5) * splay);
+        shard.rotateZ((rnd() - 0.5) * splay);
+        shard.scale.set(
+          R * baseScale * (isExotic ? 0.68 : 0.86),
+          R * baseScale * (isExotic ? 2.05 : 1.78),
+          R * baseScale * (isExotic ? 0.68 : 0.86),
+        );
+        shard.userData.spacefaceTags = { greeble: true };
+        shard.userData.asteroidInstanceDetail = true;
+        g.add(shard);
+      }
     }
   } else if (!opticKind && def.variant === 'gas') {
+    // Subtle craggy volatile vapor clinging tightly to the porous core (never a geometric bubble).
+    const shroudGeo = getGeometry('ast:gas_shroud', () => {
+      const s = new THREE.IcosahedronGeometry(1, 2);
+      const p = s.attributes.position;
+      const v = new THREE.Vector3();
+      for (let i = 0; i < p.count; i++) {
+        v.fromBufferAttribute(p, i).normalize();
+        const r = geologyFamilySilhouette(v.x, v.y, v.z, 'gas', 0) * 0.55 + 0.45;
+        v.multiplyScalar(r);
+        p.setXYZ(i, v.x, v.y, v.z);
+      }
+      s.computeVertexNormals();
+      s.computeBoundingSphere();
+      return s;
+    });
     const hull = new THREE.Mesh(
-      geo,
+      shroudGeo,
       getMaterial('ast:gashull', () => {
         const material = new THREE.MeshPhysicalMaterial({
-          color: new THREE.Color('#2d6a52'),
-          roughness: 0.42,
+          color: new THREE.Color('#275f4c'),
+          roughness: 0.85,
           metalness: 0,
           transmission: 0.88,
           ior: 1.04,
-          thickness: 3.6,
+          thickness: 2.0,
           attenuationColor: new THREE.Color('#3dff9a'),
           attenuationDistance: 2.1,
-          emissive: new THREE.Color('#10a060'),
-          emissiveIntensity: 0.28,
+          emissive: new THREE.Color('#127a52'),
+          emissiveIntensity: 0.14,
           transparent: true,
           depthWrite: false,
-          side: THREE.DoubleSide,
+          side: THREE.FrontSide,
           fog: true,
         });
         material.userData.spacefaceTransmissionBudget = {
@@ -2885,11 +3160,11 @@ function buildAsteroid(e) {
             transparent: material.transparent, depthWrite: material.depthWrite },
         };
         material.transmission = 0;
-        material.opacity = Math.min(material.opacity, 0.70);
+        material.opacity = 0.16;
         return stampSharedMaterialRole(material, SHARED_MATERIAL_ROLE.ROCK);
       }),
     );
-    hull.scale.setScalar(R * 1.22);
+    hull.scale.setScalar(R * 1.07);
     hull.userData.spacefaceTags = { greeble: true };
     g.add(hull);
   }
@@ -2929,335 +3204,6 @@ function buildAsteroid(e) {
   };
   attachLodState(g);
   return g;
-}
-
-const _threatPlateQuat = new THREE.Quaternion();
-const _threatPlatePosition = new THREE.Vector3();
-const _threatPlateScale = new THREE.Vector3();
-const _threatCameraQuat = new THREE.Quaternion();
-const _glyphNose = new THREE.Vector3();
-const _glyphInv = new THREE.Quaternion();
-// Child handles live here, one record per hull, so the per-frame sync never searches the subtree
-// for them. A record is reused only while each handle still hangs off the parent it was mounted on
-// (partsLibrary clears a boundary's children on teardown); otherwise that handle is re-resolved.
-const _swarmThreatMarks = new WeakMap();
-// Fraction of body radius. sampleBox reads Chebyshev d ≤ 0.7r. 0.66 keeps a
-// unit-circle silhouette inside that square after any camera tilt, and still
-// covers enough of the square that mean ΔL against a dark field clears 8.
-const SWARM_GLYPH_OF_BODY = 0.66;
-// Nose parallel to the view: plate-local XY of mesh +X collapses, so keep the
-// glyph's nose on plate +X instead of inventing a heading from noise.
-const SWARM_GLYPH_NOSE_PARALLEL = 0.2;
-
-/**
- * Camera-facing fighter in the plate XY plane. Nose is local +X, the same
- * axis the hull uses. Vertices stay inside the unit circle so the mesh-local
- * Chebyshev reach cannot exceed SWARM_GLYPH_OF_BODY × body radius.
- */
-function swarmThreatGlyphGeometry() {
-  const shape = new THREE.Shape();
-  const upper = [
-    [0.98, 0],
-    [0.15, 0.62],
-    [-0.08, 0.94],
-    [-0.40, 0.50],
-    [-0.90, 0.40],
-    [-0.58, 0.16],
-  ];
-  shape.moveTo(upper[0][0], upper[0][1]);
-  for (let i = 1; i < upper.length; i++) shape.lineTo(upper[i][0], upper[i][1]);
-  for (let i = upper.length - 1; i >= 1; i--) shape.lineTo(upper[i][0], -upper[i][1]);
-  shape.closePath();
-  // An OUTLINE, not a filled sticker: the hull's own lit model reads through the fighter, and
-  // the glyph is a crisp contour of it (the shape still says "hostile fighter" without colour).
-  // The hole is the same silhouette inset toward its centre.
-  const INSET = 0.8;
-  const cx = 0.08;
-  const hole = new THREE.Path();
-  hole.moveTo(cx + (upper[0][0] - cx) * INSET, 0);
-  for (let i = upper.length - 1; i >= 1; i--) hole.lineTo(cx + (upper[i][0] - cx) * INSET, -upper[i][1] * INSET);
-  for (let i = 1; i < upper.length; i++) hole.lineTo(cx + (upper[i][0] - cx) * INSET, upper[i][1] * INSET);
-  hole.closePath();
-  shape.holes.push(hole);
-  return new THREE.ShapeGeometry(shape);
-}
-
-/**
- * Point the glyph's +X at the mesh nose projected into the camera plane.
- * plate.quaternion already equals the camera orientation in mesh space
- * (plate world quat = camera world quat). atan2(y, x) is that plane's angle
- * from plate +X; rotateZ applies it in the same plane the shape was built in.
- * A world-yaw formula would disagree once the camera leaves the horizontal.
- */
-function aimSwarmThreatGlyph(glyph, plate) {
-  glyph.quaternion.copy(plate.quaternion);
-  _glyphInv.copy(plate.quaternion).invert();
-  _glyphNose.set(1, 0, 0).applyQuaternion(_glyphInv);
-  if (Math.hypot(_glyphNose.x, _glyphNose.y) < SWARM_GLYPH_NOSE_PARALLEL) return;
-  glyph.rotateZ(Math.atan2(_glyphNose.y, _glyphNose.x));
-}
-
-// Hostility is an ACCENT, never a whole-hull colour: the enemy keeps its authored paint and
-// material, lit like everything else. The thin ring, the outlined fighter glyph and the heading
-// wedge below carry it (shape first, so it reads without colour). An emissive crimson wash and a
-// colour multiply used to paint every hull into a flat red block.
-
-/**
- * Hostile swarm hulls are dark metal on a dark field. A thick reticle, and a
- * filled disc the size of the hull, painted the ship out: enemies read as red
- * coins. Marks are MeshBasic, normal blending, tone-mapped so they do not
- * bloom into a white ring:
- *   - a camera-facing emblem in the 0.7–1.2 sample gap, depthTest off, built as
- *     layered rings so it reads bordered and shaded instead of one flat stroke:
- *     a dark under-plate ring (0.86–1.05) carries the lit crimson rim
- *     (0.92–1.0) and a pale hairline (0.875–0.90). Still a ring family, never
- *     a disc: the hull shows through d < 0.86.
- *   - a heading wedge on the nose, inside the hull sample, along +X
- *     (the renderer yaws with mesh.rotation.y = -entity.rot)
- *   - a camera-facing fighter glyph at SWARM_GLYPH_OF_BODY × body, sharing
- *     the rim material (DoubleSide). It sits in the d ≤ 0.7 sample, which
- *     the rim never reaches. Not named a core, not a circle.
- *   - a small nose lamp, same non-additive material family, on while the
- *     gun is live (ai.swarmFireHeld !== true). Held guns stay marked, dark.
- * The hull keeps its authored material.
- * The rim is capped at SWARM_THREAT_MARK_SCALE × body radius. Created once per boundary.
- * The scale lives in src/data/swarmThreatMark.js, the same leaf the wave owner
- * uses when it stamps swarmMarkRadius. This file does not import survivalWave.
- */
-function hideSwarmThreatMarks(mesh) {
-  let marks = _swarmThreatMarks.get(mesh);
-  if (!marks) {
-    // First time this hull is asked to hide: sweep the legacy filled card once (it is a subtree
-    // search) and remember that the hull carries none of this file's marks. Nothing in the tree
-    // creates `sf-swarm-threat-core` any more; it only ever comes baked into an older boundary.
-    const staleCard = mesh.getObjectByName('sf-swarm-threat-core');
-    if (staleCard) mesh.remove(staleCard);
-    marks = { plate: null, chevron: null, glyph: null, lamp: null };
-    _swarmThreatMarks.set(mesh, marks);
-  }
-  if (marks.plate) marks.plate.visible = false;
-  if (marks.chevron) marks.chevron.visible = false;
-  if (marks.glyph) marks.glyph.visible = false;
-  if (marks.lamp) marks.lamp.visible = false;
-}
-
-/**
- * The handles this hull already wears, or null when the record cannot be trusted.
- * A handle is reused only while it still hangs off the parent it was mounted on: a boundary
- * teardown (`partsLibrary` clears a root) leaves the objects alive but orphaned, and a re-bind
- * then mounts a fresh set on the same boundary — the parent check re-resolves in that case.
- * A record is only trusted when all three mounted children are present; the lamp rides the
- * glyph, so a glyph that predates one simply keeps its cached null (it is never re-searched).
- */
-function swarmThreatHandles(mesh) {
-  if (!mesh || typeof mesh.getObjectByName !== 'function') return null;
-  const cached = _swarmThreatMarks.get(mesh);
-  if (!cached || !cached.plate || cached.plate.parent !== mesh) return null;
-  if (!cached.chevron || cached.chevron.parent !== mesh) return null;
-  if (!cached.glyph || cached.glyph.parent !== mesh) return null;
-  return cached;
-}
-
-/**
- * A hostile wears the 2D emblem only when it is the player's current target or a boss/champion
- * (design/overhaul/07 section 6): every other hull reads by its own silhouette and paint.
- * `playerTargetId === undefined` means the caller does not filter (legacy: every hostile marked).
- */
-export function swarmThreatPlateWanted(entity, playerTargetId) {
-  if (playerTargetId === undefined) return true;
-  if (!entity) return false;
-  if (playerTargetId != null && entity.id === playerTargetId) return true;
-  const data = entity.data;
-  // Same boss test the survival wave uses (src/systems/survivalWave.js), plus the Swarm champion.
-  if (data && (data.isBoss === true || data.swarmChampion === true || data.bossId != null
-    || data.missionTag === 'capital_boss' || data.bossDressing != null)) return true;
-  return !!(entity.flags && entity.flags.boss);
-}
-
-export function syncSwarmThreatPlate(mesh, entity, camera, cameraWorldQuat = null, playerTargetId = undefined) {
-  if (!mesh || typeof mesh.getObjectByName !== 'function') return;
-  if (!entity || entity.type !== 'ship' || entity.team == null || entity.team === 0 || entity.team === 2
-    || (entity.data && entity.data.circuitNode === true)
-    || !swarmThreatPlateWanted(entity, playerTargetId)) {
-    hideSwarmThreatMarks(mesh);
-    return;
-  }
-  // The mark's children are built once per hull. After that they are read straight off the
-  // WeakMap record, so a settled hostile pays no subtree search at all. A record that no longer
-  // matches the tree (a teardown cleared the boundary's children) falls back to the name sweep
-  // below, exactly as the uncached path did, so nothing is ever built twice.
-  const cached = swarmThreatHandles(mesh);
-  let plate;
-  let chevron;
-  let glyph;
-  let lamp;
-  if (cached) {
-    plate = cached.plate;
-    chevron = cached.chevron;
-    glyph = cached.glyph;
-    lamp = cached.lamp;
-  } else {
-    // Cold path: one name sweep per hull (never per frame) — the legacy card, then any mark left
-    // behind by an earlier binding of this same boundary.
-    const staleCard = mesh.getObjectByName('sf-swarm-threat-core');
-    if (staleCard) mesh.remove(staleCard);
-    plate = mesh.getObjectByName('sf-swarm-threat-plate');
-    chevron = mesh.getObjectByName('sf-swarm-threat-chevron');
-    glyph = mesh.getObjectByName('sf-swarm-threat-glyph');
-    lamp = glyph ? glyph.getObjectByName('sf-swarm-threat-lamp') : null;
-  }
-  if (!plate) {
-    // Thin lit stroke over a shaded plate. The bright rim keeps 0.92–1.0, sitting
-    // outside the hull sample and short of the sky; the two children below make it
-    // a bordered emblem instead of a flat stroke. All three share the rim's
-    // contract — MeshBasic, DoubleSide, normal blending, toneMapped, depthTest
-    // off, renderOrder 12 — so no layer feeds the bloom pyramid and the mark
-    // stays readable over the hull. Children ride the plate's camera-facing
-    // quaternion and scale, so the emblem costs nothing per frame.
-    plate = new THREE.Mesh(
-      getGeometry('swarm:threat-rim', () => new THREE.RingGeometry(0.92, 1, 48)),
-      getMaterial('swarm:threat-rim', () => new THREE.MeshBasicMaterial({
-        color: 0xff1a3a,
-        side: THREE.DoubleSide,
-        depthWrite: false,
-        depthTest: false,
-        fog: false,
-        toneMapped: true,
-      })),
-    );
-    plate.name = 'sf-swarm-threat-plate';
-    plate.renderOrder = 12;
-    plate.frustumCulled = true;
-    mesh.add(plate);
-    // Dark desaturated crimson under-plate, wider than the rim on both sides
-    // (0.86–1.05 vs 0.92–1.0), so the rim reads as a lit border over a shaded
-    // body. Its farthest reach is 1.05× the mark cap — 1.176r at the 1.12
-    // bracket, still inside the 1.2r readability background ring. Paint order is
-    // explicit renderOrder, not z position: depth is off, so a backing that
-    // painted after the rim would cover it whole. 11.98 < rim's 12 — the
-    // under-plate always paints first.
-    const under = new THREE.Mesh(
-      getGeometry('swarm:threat-under', () => new THREE.RingGeometry(0.9, 1.03, 48)),
-      getMaterial('swarm:threat-under', () => new THREE.MeshBasicMaterial({
-        color: 0x5a0f18,
-        side: THREE.DoubleSide,
-        depthWrite: false,
-        depthTest: false,
-        fog: false,
-        toneMapped: true,
-      })),
-    );
-    under.name = 'sf-swarm-threat-under';
-    under.renderOrder = 11.98;
-    under.frustumCulled = true;
-    plate.add(under);
-    // Pale hairline on the dark plate, inside the rim: the bordered accent.
-    // 12.02 paints it last of the three ring layers — after rim and backing.
-    const line = new THREE.Mesh(
-      getGeometry('swarm:threat-line', () => new THREE.RingGeometry(0.875, 0.9, 48)),
-      getMaterial('swarm:threat-line', () => new THREE.MeshBasicMaterial({
-        color: 0xff6a70,
-        side: THREE.DoubleSide,
-        depthWrite: false,
-        depthTest: false,
-        fog: false,
-        toneMapped: true,
-      })),
-    );
-    line.name = 'sf-swarm-threat-line';
-    line.renderOrder = 12.02;
-    line.frustumCulled = true;
-    plate.add(line);
-  }
-  // Heading wedge. ConeGeometry's tip is +Y. Hull noses are +X (visualFactory
-  // contract). rotateZ(-PI/2) sends that tip to local +X. Not camera-facing.
-  if (!chevron) {
-    chevron = new THREE.Mesh(
-      getGeometry('swarm:threat-chevron', () => new THREE.ConeGeometry(0.22, 0.46, 3)),
-      plate.material,
-    );
-    chevron.name = 'sf-swarm-threat-chevron';
-    chevron.renderOrder = 12;
-    chevron.frustumCulled = true;
-    chevron.rotation.z = -Math.PI / 2;
-    mesh.add(chevron);
-  }
-  // In-hull silhouette. Shares the rim's DoubleSide material. The lens sits
-  // on plate +Z, so the face it sees is the shape's +Z side. Not a disc, and
-  // not an additive VFX layer (those hid the threat pixels).
-  if (!glyph) {
-    glyph = new THREE.Mesh(
-      getGeometry('swarm:threat-glyph', swarmThreatGlyphGeometry),
-      plate.material,
-    );
-    glyph.name = 'sf-swarm-threat-glyph';
-    glyph.renderOrder = 12;
-    glyph.frustumCulled = true;
-    mesh.add(glyph);
-    lamp = new THREE.Mesh(
-      getGeometry('swarm:threat-lamp', () => new THREE.SphereGeometry(0.11, 10, 8)),
-      getMaterial('swarm:threat-lamp', () => new THREE.MeshBasicMaterial({
-        color: 0xffe4ea,
-        depthWrite: false,
-        depthTest: false,
-        fog: false,
-        toneMapped: true,
-      })),
-    );
-    lamp.name = 'sf-swarm-threat-lamp';
-    lamp.renderOrder = 13;
-    lamp.frustumCulled = true;
-    // 0.72 of the unit glyph, inside the nose, still under the 0.7r sample
-    // once the glyph is scaled by SWARM_GLYPH_OF_BODY.
-    lamp.position.set(0.72, 0, 0.06);
-    glyph.add(lamp);
-  }
-  // Local scale is divided by the parent so a scaled hull cannot inflate the rim
-  // past the ship. The cohort mark may ask for a wider bracket; the cap keeps
-  // the outer edge inside the readability background ring.
-  const bodyR = Math.max(2, Number(entity.radius) || 2);
-  const markAuth = Number(entity.data && entity.data.swarmMarkRadius);
-  const requested = Number.isFinite(markAuth) && markAuth > bodyR ? markAuth : bodyR;
-  const markR = Math.min(requested, bodyR * SWARM_THREAT_MARK_SCALE);
-  mesh.updateWorldMatrix(true, false);
-  mesh.matrixWorld.decompose(_threatPlatePosition, _threatPlateQuat, _threatPlateScale);
-  const inv = (n) => 1 / Math.max(1e-4, Math.abs(n));
-  const bodyScaleX = bodyR * inv(_threatPlateScale.x);
-  const bodyScaleY = bodyR * inv(_threatPlateScale.y);
-  const bodyScaleZ = bodyR * inv(_threatPlateScale.z);
-  const markScaleX = markR * inv(_threatPlateScale.x);
-  const markScaleY = markR * inv(_threatPlateScale.y);
-  const markScaleZ = markR * inv(_threatPlateScale.z);
-  plate.scale.set(markScaleX, markScaleY, markScaleZ);
-  // ConeGeometry(0.22, 0.46) half-height is 0.23. Center at 0.36 of the hull:
-  // tip at 0.59 body radii, tail at 0.13. Both sit inside d ≤ 0.7, so the wedge
-  // lifts the hull sample and does not tint the background ring. Not the bracket.
-  chevron.scale.set(bodyScaleX, bodyScaleY, bodyScaleZ);
-  chevron.position.set(bodyScaleX * 0.36, 0, 0);
-  glyph.scale.set(
-    bodyScaleX * SWARM_GLYPH_OF_BODY,
-    bodyScaleY * SWARM_GLYPH_OF_BODY,
-    bodyScaleZ * SWARM_GLYPH_OF_BODY,
-  );
-  const record = cached || _swarmThreatMarks.get(mesh);
-  if (record) { record.plate = plate; record.chevron = chevron; record.glyph = glyph; record.lamp = lamp; }
-  else _swarmThreatMarks.set(mesh, { plate, chevron, glyph, lamp });
-  plate.visible = true;
-  chevron.visible = true;
-  glyph.visible = true;
-  // Guns live unless this wave has stamped a hold. Gauntlet hulls have no
-  // swarmFireHeld field, so the lamp stays on and the nose still reads armed.
-  const gunsHeld = !!(entity.data && entity.data.ai && entity.data.ai.swarmFireHeld === true);
-  if (lamp) lamp.visible = !gunsHeld;
-  if (camera && camera.quaternion && mesh.quaternion) {
-    // One camera world quaternion serves every hostile on the glass: the caller reads it once per
-    // frame and hands it in. A caller that passes nothing still gets the correct answer.
-    if (cameraWorldQuat) _threatCameraQuat.copy(cameraWorldQuat);
-    else camera.getWorldQuaternion(_threatCameraQuat);
-    _threatPlateQuat.invert().multiply(_threatCameraQuat);
-    plate.quaternion.copy(_threatPlateQuat);
-  }
-  aimSwarmThreatGlyph(glyph, plate);
 }
 
 /** Dark industrial furniture. Matte, no white rings, no hostile-red lamps. */
@@ -3389,10 +3335,10 @@ function blinkerFixture(color, scale, phase, blinkers) {
   );
   const lens = new THREE.Mesh(
     getGeometry('nav:lens', () => new THREE.SphereGeometry(0.36, 12, 10)),
-    emissiveMaterial(color, 3.4).clone(),
+    emissiveMaterial(color, 1.25).clone(),
   );
   lens.position.y = 0.18;
-  lens.userData.blink = { phase: phase || 0, hz: 0.6 + ((phase || 0) % 0.6), base: 3.4 };
+  lens.userData.blink = { phase: phase || 0, hz: 0.6 + ((phase || 0) % 0.6), base: 1.25 };
   lens.userData.spacefaceTags = { damageRole: 'navLight', vfxRole: 'navBlinker' };
   root.add(cup, lens);
   root.scale.setScalar(scale);
@@ -4159,33 +4105,21 @@ function buildSwarmRepairCell(e) {
   body.scale.setScalar(R);
   g.add(body);
 
-  // The takeable ring every scoopable drop carries — mint here, not a commodity tint.
-  const halo = new THREE.Mesh(
-    getGeometry('pickup:halo', () => new THREE.TorusGeometry(1.55, 0.05, 6, 28)),
-    getMaterial(`pickuphalo:${SWARM_REPAIR_GLOW}`, () => new THREE.MeshBasicMaterial({
-      color: new THREE.Color(SWARM_REPAIR_GLOW), transparent: true, opacity: 0.55,
-      blending: THREE.AdditiveBlending, depthWrite: false,
-    })),
-  );
-  halo.material = halo.material.clone();
-  halo.scale.setScalar(R);
-  halo.userData.baseScale = R;
-  g.add(halo);
-
+  // No orbiting halo torus around repair cells (owner 2026-11-23): the upright banded canister,
+  // white-hot weld seam, and pulsing bright mint crown cross carry the read on the body itself.
   g.userData.kind = 'pickup';
   g.userData.interactionKind = 'pickup';
   g.userData.gem = body;
-  g.userData.pickupHalo = halo;
+  g.userData.pickupHalo = null;
   g.userData.pickupShape = 'repair_cell';
   g.userData.pickupVisual = 'swarm_repair';
   g.userData.visualLanguage = 'swarm-repair-cell';
   g.userData.pickupRole = null;
-  // Heal pulse: the cross breathes on the gem's own glint beat, phased per drop so two cells
-  // on one field never pulse in lockstep. Cosmetic wall-clock is fine — this only paints.
+  // Heal pulse: the cross breathes bright on the glint beat, phased per drop.
   const ph = (hashId(e && e.id) % 100) / 100 * Math.PI * 2;
   for (const bar of [barA, barB]) {
     bar.onBeforeRender = () => {
-      cross.emissiveIntensity = 1.8 * (1 + 0.55 * Math.sin(nowSec() * 2.6 + ph));
+      cross.emissiveIntensity = 2.4 * (1 + 0.55 * Math.sin(nowSec() * 2.6 + ph));
     };
   }
   return g;
@@ -4194,8 +4128,7 @@ function buildSwarmRepairCell(e) {
 // ---------------------------------------------------------------------------------------------
 // Swarm drops (src/systems/swarmDrops.js): eight rare pickups that fall out of enemies. Each has
 // its own hue and none of them is the chip's gold, the repair cell's mint or an ore tint: a
-// faceted crystal in a double ring, the hue keyed by drop id, so the pickup reads as "a drop"
-// across the room before the toast names it.
+// bright pulsing faceted crystal (no orbiting rings — owner 2026-11-23), the hue keyed by drop id.
 // ---------------------------------------------------------------------------------------------
 const SWARM_DROP_HUES = Object.freeze({
   full_rack: '#ffd24a', heavy_hands: '#ff5a3d', dead_weight: '#a98bff', magnet: '#4fc3ff',
@@ -4213,45 +4146,34 @@ function buildSwarmDrop(e) {
   const g = new THREE.Group();
   g.name = 'SF_SwarmDrop';
   const crystal = getMaterial(`swarmdrop:crystal:${hue}`, () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
-    color: new THREE.Color(hue).multiplyScalar(0.35), emissive: new THREE.Color(hue), emissiveIntensity: 1.9,
-    metalness: 0.2, roughness: 0.3, flatShading: true,
-  }), SHARED_MATERIAL_ROLE.HULL));
+    color: new THREE.Color(hue).multiplyScalar(0.35), emissive: new THREE.Color(hue), emissiveIntensity: 2.6,
+    metalness: 0.2, roughness: 0.25, flatShading: true,
+  }), SHARED_MATERIAL_ROLE.HULL)).clone();
   const body = new THREE.Mesh(getGeometry('swarmdrop:crystal', () => new THREE.OctahedronGeometry(0.85, 0).scale(0.8, 1.35, 0.8)), crystal);
   body.name = 'SwarmDropCrystal';
   body.scale.setScalar(R);
   g.add(body);
-  const ringMat = (opacity) => getMaterial(`swarmdrop:ring:${hue}:${opacity}`, () => new THREE.MeshBasicMaterial({
-    color: new THREE.Color(hue), transparent: true, opacity,
-    blending: THREE.AdditiveBlending, depthWrite: false,
-  }));
-  const halo = new THREE.Mesh(getGeometry('pickup:halo', () => new THREE.TorusGeometry(1.55, 0.05, 6, 28)), ringMat(0.7));
-  halo.material = halo.material.clone();
-  halo.scale.setScalar(R * 1.15);
-  halo.userData.baseScale = R * 1.15;
-  g.add(halo);
-  const outer = new THREE.Mesh(getGeometry('swarmdrop:outer', () => new THREE.TorusGeometry(2.1, 0.035, 6, 36)), ringMat(0.38));
-  outer.scale.setScalar(R * 1.15);
-  g.add(outer);
   g.userData.kind = 'pickup';
   g.userData.interactionKind = 'pickup';
   g.userData.gem = body;
-  g.userData.pickupHalo = halo;
+  g.userData.pickupHalo = null;
   g.userData.pickupShape = 'swarm_drop';
   g.userData.pickupVisual = 'swarm_drop';
   g.userData.visualLanguage = 'swarm-drop';
   g.userData.pickupRole = null;
   const ph = (hashId(e && e.id) % 100) / 100 * Math.PI * 2;
   body.onBeforeRender = () => {
+    const t = nowSec();
+    crystal.emissiveIntensity = g.userData.pickupFlashReduced === true ? 2.4 : 2.6 * (1 + 0.45 * Math.sin(t * 3.1 + ph));
     // The pickup tracker owns the frozen pose under reduced motion; do not overwrite it at draw.
     if (g.userData.swarmDropMotionReduced === true) return;
-    body.rotation.y = nowSec() * 1.6 + ph;
-  };
-  outer.onBeforeRender = () => {
-    if (g.userData.swarmDropMotionReduced === true) return;
-    outer.rotation.x = Math.PI / 2 + 0.35 * Math.sin(nowSec() * 2.1 + ph);
+    body.rotation.y = t * 1.6 + ph;
   };
   return g;
 }
+
+// Pod green: the loot-magnet family colour the custody canister's beacon used to wear as a ring.
+const CUSTODY_POD_BEACON = '#4fbf8f';
 
 function buildPickup(e) {
   // FB-075: a volatile lot in a pickup body is still the hazard bottle — the silhouette carries
@@ -4262,23 +4184,26 @@ function buildPickup(e) {
     canister.userData.kind = 'pickup';
     canister.userData.interactionKind = 'pickup';
     canister.userData.pickupRole = PICKUP_ROLE.POD;
-    // The custody canister is a takeable drop that reads as solid cargo — exactly the
-    // look-alike the beacon ring exists to resolve. Pod green, same loot-magnet family color.
-    const podColor = '#4fbf8f';
-    const halo = new THREE.Mesh(
-      getGeometry('pickup:halo', () => new THREE.TorusGeometry(1.55, 0.05, 6, 28)),
-      getMaterial(`pickuphalo:${podColor}`, () => new THREE.MeshBasicMaterial({
-        color: new THREE.Color(podColor), transparent: true, opacity: 0.55,
-        blending: THREE.AdditiveBlending, depthWrite: false,
-      })),
-    );
-    halo.material = halo.material.clone();
-    const podR = e.radius || 2.2;
-    halo.scale.setScalar(podR);
-    halo.userData.baseScale = podR;
-    halo.frustumCulled = false;
-    canister.add(halo);
-    canister.userData.pickupHalo = halo;
+    canister.userData.pickupHalo = null;
+    // The custody canister reads as solid cargo, so it needs its own "takeable" light now the
+    // beacon ring is gone (no rings around things, owner 2026-11-23): its transponder burns pod
+    // green and breathes, a light no tow crate carries. A per-pod clone; the shared transponder
+    // material every ordinary payload uses is never touched.
+    const lamp = canister.getObjectByName('PayloadTransponder');
+    if (lamp && lamp.material && typeof lamp.material.clone === 'function') {
+      const beacon = lamp.material.clone();
+      if (beacon.color) beacon.color.set(CUSTODY_POD_BEACON);
+      if (beacon.emissive) beacon.emissive.set(CUSTODY_POD_BEACON);
+      beacon.emissiveIntensity = 2.2;
+      lamp.material = beacon;
+      lamp.scale.setScalar(1.6);
+      const ph = (hashId(e.id) % 100) / 100 * Math.PI * 2;
+      lamp.onBeforeRender = () => {
+        beacon.emissiveIntensity = canister.userData.pickupFlashReduced === true
+          ? 2.2 : 2.2 * (1 + 0.5 * Math.sin(nowSec() * 3 + ph));
+      };
+      canister.userData.custodyBeacon = 'transponder';
+    }
     return canister;
   }
   if (isCreditChipEntity(e)) {
@@ -4297,8 +4222,8 @@ function buildPickup(e) {
   // that is not a known commodity keep the original octahedron.
   const shapeName = pickupShapeForCommodity(payloadCommodityId(e.data));
   // inf-pod-worth: the drop's light answers what the lot is worth (pickupWorthRead.js reads
-  // commodityId + amount off the sim's own data). Junk rests dimmer, plain keeps today's read,
-  // rich burns hotter and builds the double band below.
+  // commodityId + amount off the sim's own data). Junk rests dimmer, rich burns hotter (no
+  // orbiting torus halos — owner 2026-11-23).
   const worthTier = worthTierFor(e && e.data);
   const worth = worthReadFor(worthTier);
   const gem = new THREE.Mesh(
@@ -4306,62 +4231,25 @@ function buildPickup(e) {
       ? getGeometry(`pickup:shape:${shapeName}`, () => buildPickupGeometry(shapeName))
       : getGeometry('pickup:gem', () => new THREE.OctahedronGeometry(1, 0)),
     getMaterial(`gemmat:${color}`, () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
-      color: 0x101014, emissive: new THREE.Color(color), emissiveIntensity: 1.5, metalness: 0.9, roughness: 0.15,
+      color: 0x101014, emissive: new THREE.Color(color), emissiveIntensity: 1.9, metalness: 0.9, roughness: 0.15,
     }), SHARED_MATERIAL_ROLE.HULL)),
   );
   gem.scale.setScalar(R);
   gem.material = gem.material.clone();
   g.add(gem);
-  // Collectible beacon ring: the takeable drop answers light no rock, wreck or tow crate does —
-  // a thin commodity-colored band that precesses and kicks on the transponder's double-flash
-  // (posed by pickupMotionPresentation). Authored geometry, not a camera-facing sprite.
-  const halo = new THREE.Mesh(
-    getGeometry('pickup:halo', () => new THREE.TorusGeometry(1.55, 0.05, 6, 28)),
-    getMaterial(`pickuphalo:${color}`, () => new THREE.MeshBasicMaterial({
-      color: new THREE.Color(color), transparent: true, opacity: 0.55,
-      blending: THREE.AdditiveBlending, depthWrite: false,
-    })),
-  );
-  halo.material = halo.material.clone();
-  halo.scale.setScalar(R);
-  halo.userData.baseScale = R;
-  g.add(halo);
-  g.userData.pickupHalo = halo;
+  g.userData.pickupHalo = null;
   g.userData.kind = 'pickup'; g.userData.gem = gem;
   g.userData.pickupShape = shapeName || 'octahedron';
-  // The worth tier rides userData so the pose pass (pickupMotionPresentation) can grade the
-  // ring's floor/kick without re-reading the price table every frame.
   g.userData.worthTier = worthTier;
-  // Rich lots build the double band: a second, tighter ring the eye reads as "that one"
-  // across the field. Posed by pickupMotionPresentation against the outer ring's clock.
-  if (worth.doubleBand) {
-    const band = new THREE.Mesh(
-      getGeometry('pickup:worthband', () => new THREE.TorusGeometry(0.95, 0.03, 6, 24)),
-      getMaterial(`pickupworthband:${color}`, () => new THREE.MeshBasicMaterial({
-        color: new THREE.Color(color), transparent: true, opacity: 0.4,
-        blending: THREE.AdditiveBlending, depthWrite: false,
-      })),
-    );
-    band.material = band.material.clone();
-    band.scale.setScalar(R);
-    band.userData.baseScale = R;
-    g.add(band);
-    g.userData.worthBand = band;
-  }
   // FB-075: the ore role resolves to the kit's faceted block; other categories keep their own
   // kit silhouette. The stamp is the inspectable role identity, the geometry stays authored.
   g.userData.pickupRole = shapeName === 'raw_ore' ? PICKUP_ROLE.ORE
     : (pickupRoleForEntity(e) || null);
   const ph = (hashId(e.id) % 100) / 100 * Math.PI * 2;
-  // Emissive glint only — tumble/bob/vortex/intake transforms are owned by
-  // pickupMotionPresentation (sim-time, tractor-aware). Material is cloned per-gem (line above).
-  // The breathe carries farther than it used to: at flight-camera range the old ±28% never
-  // separated a live drop from dark scenery. The worth read scales the heat: junk rests dim,
-  // rich burns hotter than any plain drop ever did.
   gem.onBeforeRender = () => {
     const t = nowSec();
-    const glint = g.userData.pickupFlashReduced === true ? 1 : 1 + 0.45 * Math.sin(t * 3 + ph);
-    gem.material.emissiveIntensity = 1.6 * worth.glintHeat * glint;
+    const glint = g.userData.pickupFlashReduced === true ? 1 : 1 + 0.5 * Math.sin(t * 3 + ph);
+    gem.material.emissiveIntensity = (worth.doubleBand ? 2.4 : 1.9) * worth.glintHeat * glint;
   };
   return g;
 }
@@ -4787,7 +4675,15 @@ export function asteroidPoolWarmResources() {
       resources.push({
         key: 'd:shard',
         geometry: getGeometry('ast:shard', () => new THREE.OctahedronGeometry(0.18, 0)),
-        material: emissiveMaterial('#c878ff', 1.1, SHARED_MATERIAL_ROLE.ROCK),
+        material: buildCrystalShardMaterial('ast:crystal_shard', 0x864cf4, 0x6226d6, 0.58, 0.12),
+        castShadow: false,
+        receiveShadow: false,
+      });
+    } else if (def.variant === 'exotic') {
+      resources.push({
+        key: 'd:exotic_shard',
+        geometry: getGeometry('ast:shard', () => new THREE.OctahedronGeometry(0.18, 0)),
+        material: buildCrystalShardMaterial('ast:exotic_shard', 0xd82e86, 0xa41c60, 0.62, 0.25),
         castShadow: false,
         receiveShadow: false,
       });
@@ -4822,14 +4718,15 @@ export function asteroidPoolCensusKeys(entity) {
     return keys;
   }
   const typeId = canonicalAstTypeId(data.typeId);
-  if (typeId === 'ast_common_rock' && data.tint == null) return keys;
+  if (typeId === 'ast_common_rock' && !resolveCommonRockTriplanar(data.tint, data.substance, data.material)) return keys;
   const def = AST_TYPE[typeId] || AST_TYPE.ast_common_rock;
   keys.push(`b:${typeId}:${variant}`);
   if (def.veinColor) {
     const veinCount = def.variant === 'crystal' || def.variant === 'exotic' ? 5 : 3;
     for (let i = 0; i < veinCount; i++) keys.push(`v:${def.veinColor}`);
   }
-  if (def.variant === 'crystal') for (let i = 0; i < 6; i++) keys.push('d:shard');
+  if (def.variant === 'crystal') for (let i = 0; i < 12; i++) keys.push('d:shard');
+  if (def.variant === 'exotic') for (let i = 0; i < 9; i++) keys.push('d:exotic_shard');
   return keys;
 }
 
@@ -5244,6 +5141,100 @@ export function hulkEmberIntensityAt(ageS) {
   return HULK_EMBER_PEAK * left * left;
 }
 
+// COLD HULKS SHARE ONE DEAD MATERIAL SET. Each hulk clones its hull's materials so its own ember
+// can cool on its own clock. Six seconds after the kill the ember is spent and every hulk of that
+// hull is in the same state for the rest of its life, but each kept its private clones: in a
+// Foundry fight five wasp hulks on screen were 64 draws through 86 distinct materials (referee
+// census 2026-11-22), a material change on every draw. A spent hulk now hands its leaves to the
+// one cold material shared by every spent hulk cloned from the same live material and drops its
+// own clones, so the draw list sorts those leaves together. Same colours, same programs.
+const HULK_DEAD_SOURCE = new WeakMap(); // dead clone -> the live material it was cloned from
+const COLD_HULK_MATERIAL = new WeakMap(); // live material -> the cold dead material its spent hulks share
+const COLD_HULK_PRIVATE = new WeakMap(); // reversibly settled hulk root -> { ember, slots } (measurement only)
+
+export function hulkEmberSpent(ember, simTime) {
+  return !!ember && (Number(simTime) || 0) - (Number(ember.killedAt) || 0) >= HULK_EMBER_SECONDS;
+}
+
+// Which live material a dead clone stands for. A hulk built through the ready-body cache (every
+// hulk after the first of its kind) clones the cached blueprint's materials instead of running
+// deadenPackagedHulk, so its clones are keyed by that blueprint material: every hulk acquired from
+// one blueprint started from the same dead state.
+function coldHulkSourceOf(material) {
+  if (!material) return null;
+  const dead = HULK_DEAD_SOURCE.get(material);
+  if (dead) return dead;
+  // live body clone -> blueprint (captured) -> the captured hulk's dead clone -> its live material
+  const blueprint = readyBodyMaterialSource(material);
+  if (!blueprint) return null;
+  const captured = readyBodyMaterialSource(blueprint) || blueprint;
+  return HULK_DEAD_SOURCE.get(captured) || captured;
+}
+
+/**
+ * Call once the ember is spent. Returns the number of leaves moved onto shared cold materials.
+ * keepPrivate (an in-run on/off measurement only): the hulk's own clones are kept, not disposed,
+ * so unsettleColdHulk can put them back when the switch flips off.
+ */
+export function settleColdHulk(root, { keepPrivate = false } = {}) {
+  const ember = root && root.userData && root.userData.hulkEmber;
+  if (!ember || !Array.isArray(ember.mats)) return 0;
+  const swap = new Map();
+  for (const material of ember.mats) {
+    const source = coldHulkSourceOf(material);
+    if (!source) continue;
+    let cold = COLD_HULK_MATERIAL.get(source);
+    if (!cold) {
+      // The first spent clone becomes the shared one; teardown skips shared assets.
+      cold = material;
+      cold.emissiveIntensity = 0;
+      cold.userData.spacefaceSharedAsset = true;
+      COLD_HULK_MATERIAL.set(source, cold);
+    }
+    if (cold !== material) swap.set(material, cold);
+  }
+  let moved = 0;
+  const privateSlots = keepPrivate ? [] : null;
+  if (swap.size && typeof root.traverse === 'function') {
+    root.traverse((node) => {
+      if (!node || !node.isMesh || !node.material) return;
+      if (Array.isArray(node.material)) {
+        for (let i = 0; i < node.material.length; i++) {
+          const cold = swap.get(node.material[i]);
+          if (cold) { privateSlots?.push(node, i, node.material[i]); node.material[i] = cold; moved++; }
+        }
+      } else {
+        const cold = swap.get(node.material);
+        if (cold) { privateSlots?.push(node, -1, node.material); node.material = cold; moved++; }
+      }
+    });
+    if (!keepPrivate) {
+      for (const material of swap.keys()) {
+        try { material.dispose(); } catch (_) { /* per-material dispose */ }
+      }
+    }
+  }
+  if (privateSlots) COLD_HULK_PRIVATE.set(root, { ember, slots: privateSlots });
+  root.userData.coldHulk = privateSlots ? 'reversible' : 'settled';
+  root.userData.hulkEmber = null;
+  return moved;
+}
+
+/** Undo settleColdHulk({ keepPrivate: true }): the hulk's own clones return and its ember record with them. */
+export function unsettleColdHulk(root) {
+  const cold = root ? COLD_HULK_PRIVATE.get(root) : null;
+  if (!cold) return false;
+  COLD_HULK_PRIVATE.delete(root);
+  const slots = cold.slots;
+  for (let i = 0; i < slots.length; i += 3) {
+    const node = slots[i]; const index = slots[i + 1]; const material = slots[i + 2];
+    if (index < 0) node.material = material; else if (Array.isArray(node.material)) node.material[index] = material;
+  }
+  root.userData.hulkEmber = cold.ember;
+  root.userData.coldHulk = null;
+  return true;
+}
+
 export function updateHulkEmber(ember, simTime) {
   if (!ember || !ember.mats) return;
   const intensity = hulkEmberIntensityAt((Number(simTime) || 0) - (Number(ember.killedAt) || 0));
@@ -5283,6 +5274,7 @@ export function deadenPackagedHulk(group, options = {}) {
           // should share the live hull's already-linked program.
           clone.onBeforeCompile = m.onBeforeCompile;
           clone.customProgramCacheKey = m.customProgramCacheKey;
+          HULK_DEAD_SOURCE.set(clone, m);
           if (clone.color && typeof clone.color.multiplyScalar === 'function') {
             clone.color.multiplyScalar(HULK_COLOR_SCALE);
           }
@@ -5361,6 +5353,7 @@ export function* deadenPackagedHulkSteps(group, options = {}) {
             // should share the live hull's already-linked program.
             clone.onBeforeCompile = m.onBeforeCompile;
             clone.customProgramCacheKey = m.customProgramCacheKey;
+            HULK_DEAD_SOURCE.set(clone, m);
             if (clone.color && typeof clone.color.multiplyScalar === 'function') {
               clone.color.multiplyScalar(HULK_COLOR_SCALE);
             }
@@ -5473,9 +5466,9 @@ function readyPackagedWreck(cache, relativeFile, entity) {
     const controller = bindInstanceMotion(packaged, ready.motionBank);
     if (controller) {
       attachAuthoredMotionDriver(root, entity, [controller]);
-      if (entity.data?.fracturePiece && entity.data.fractureRuptureFired !== true) {
+      if (entity.data?.fracturePiece && !ruptureClipAlreadyFired(entity, root)) {
         controller.handleEvent?.('wreck:rupture', { pieceId: entity.id }, factoryPresentationNow() ?? 0);
-        entity.data.fractureRuptureFired = true;
+        stampRuptureClipFired(entity, root);
       }
     }
     const emberMats = ready.materials.filter(material => material.userData?.hulkEmberGain != null);
@@ -5627,8 +5620,8 @@ function attachPackagedBody(root, relativeFile, entity, readyBodies = null) {
           releaseReason, mintedAdmissionOptions.admissionEpoch);
         root.userData.authoredAssetState = 'orphaned-before-swap';
         // A rupture re-fired on this commit dies with the disposed subtree — restore the
-        // flag so a later re-admission of the same entity fires its kick again.
-        if (ruptureRefired && entity && entity.data) entity.data.fractureRuptureFired = false;
+        // latch so a later re-admission of the same entity fires its kick again.
+        if (ruptureRefired && entity) unstampRuptureClipFired(entity, root);
         return true;
       };
       // Drives a Steps twin across its own yields — each internal slice debits the
@@ -5723,8 +5716,8 @@ function attachPackagedBody(root, relativeFile, entity, readyBodies = null) {
       // admission lands — so the controller registry was empty at dispatch. Re-fire the
       // rupture here: the flap/mast kick starts as the fragment becomes visible.
       if (motionControllers.length && entity && entity.data && entity.data.fracturePiece
-          && entity.data.fractureRuptureFired !== true) {
-        entity.data.fractureRuptureFired = true;
+          && !ruptureClipAlreadyFired(entity, root)) {
+        stampRuptureClipFired(entity, root);
         ruptureRefired = true;
         const now = factoryPresentationNow() ?? 0;
         for (const controller of motionControllers) {
@@ -6848,24 +6841,55 @@ function buildBomb(e) {
   switch (payloadId) {
     case 'bomb_concussion': {
       const drum = new THREE.Mesh(
-        getGeometry('bomb:conc:drum', () => new THREE.CylinderGeometry(0.58, 0.58, 0.42, 14).rotateZ(Math.PI / 2)),
+        getGeometry('bomb:conc:drum', () => new THREE.CylinderGeometry(0.56, 0.56, 0.4, 14).rotateZ(Math.PI / 2)),
         shell,
       );
       drum.name = 'ConcussionDrum';
       g.add(drum);
       const rim = new THREE.Mesh(
-        getGeometry('bomb:conc:rim', () => new THREE.TorusGeometry(0.56, 0.1, 8, 18).rotateY(Math.PI / 2)),
+        getGeometry('bomb:conc:rim', () => new THREE.TorusGeometry(0.55, 0.08, 6, 16).rotateY(Math.PI / 2)),
         alloy,
       );
       rim.name = 'ConcussionRim';
       g.add(rim);
+      const seam = new THREE.Mesh(
+        getGeometry('bomb:conc:seam', () => new THREE.CylinderGeometry(0.65, 0.65, 0.06, 16).rotateZ(Math.PI / 2)),
+        accentMat,
+      );
+      seam.name = 'ConcussionSeam';
+      g.add(seam);
+      const faceRing = new THREE.Mesh(
+        getGeometry('bomb:conc:face', () => new THREE.CylinderGeometry(0.35, 0.35, 0.45, 14).rotateZ(Math.PI / 2)),
+        accentMat,
+      );
+      faceRing.name = 'ConcussionFaceRing';
+      g.add(faceRing);
       const hub = new THREE.Mesh(
         getGeometry('bomb:conc:hub', () => new THREE.CylinderGeometry(0.2, 0.2, 0.5, 10).rotateZ(Math.PI / 2)),
-        accentMat,
+        alloy,
       );
       hub.name = 'ConcussionHub';
       g.add(hub);
-      pip = hub;
+      const lugGeo = getGeometry('bomb:conc:lug', () => new THREE.BoxGeometry(0.46, 0.09, 0.12));
+      for (let i = 0; i < 4; i++) {
+        const a = (i * Math.PI) / 2 + Math.PI / 4;
+        const lug = new THREE.Mesh(lugGeo, shell);
+        lug.name = `ConcussionLug_${i + 1}`;
+        lug.position.set(0, Math.sin(a) * 0.58, Math.cos(a) * 0.58);
+        lug.rotation.x = -a;
+        g.add(lug);
+      }
+      const fuse = new THREE.Mesh(
+        getGeometry('bomb:conc:fuse', () => new THREE.CylinderGeometry(0.11, 0.14, 0.14, 8)),
+        alloy,
+      );
+      fuse.name = 'ConcussionFuse';
+      fuse.position.y = 0.65;
+      g.add(fuse);
+      pip = new THREE.Mesh(getGeometry('bomb:conc:pip', () => new THREE.CylinderGeometry(0.075, 0.075, 0.07, 8)), dim);
+      pip.name = 'ConcussionPip';
+      pip.position.y = 0.74;
+      g.add(pip);
       break;
     }
     case 'bomb_singularity': {
@@ -7173,22 +7197,18 @@ function buildCircuitNode(e) {
   return g;
 }
 
-// The commander wears the same hull, with a ring so the one ship is obvious.
+// The commander wears a dorsal gold crown diamond above the hull instead of a floor ring
+// (no rings around things, owner 2026-11-23).
 function markCircuitCommander(mesh, e) {
   const R = Math.max(4, (e && e.radius) || 12);
-  const ring = new THREE.Mesh(
-    getGeometry('circuit-commander:ring', () => new THREE.RingGeometry(1.15, 1.32, 48)),
-    (() => {
-      const mat = emissiveMaterial('#ffd27a', 1.8).clone();
-      mat.side = THREE.DoubleSide;
-      return mat;
-    })(),
+  const crown = new THREE.Mesh(
+    getGeometry('circuit-commander:crown', () => new THREE.OctahedronGeometry(0.32, 0).scale(1, 1.5, 1)),
+    emissiveMaterial('#ffd27a', 2.2).clone(),
   );
-  ring.name = 'circuit-commander';
-  ring.rotation.x = -Math.PI / 2;
-  ring.position.y = 0.4;
-  ring.scale.setScalar(R);
-  mesh.add(ring);
+  crown.name = 'circuit-commander';
+  crown.position.y = R * 0.75;
+  crown.scale.setScalar(R);
+  mesh.add(crown);
   return mesh;
 }
 
@@ -7858,6 +7878,7 @@ function buildPayload(e) {
       color: 0x8eeaff, emissive: 0x2abbd8, emissiveIntensity: 0.8, roughness: 0.38, metalness: 0.16,
     }), SHARED_MATERIAL_ROLE.HULL)),
   );
+  transponder.name = 'PayloadTransponder';
   transponder.position.y = 0.47;
   g.add(transponder);
   // inf-jettison-claim: a pod YOU jettisoned holds a brief claim window on its transponder —

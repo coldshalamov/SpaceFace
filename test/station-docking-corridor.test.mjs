@@ -177,10 +177,20 @@ test('default station autopilot finishes inside the manifest berth gate, not the
   assert.equal(target.dockingProxyId, SKIN.id);
 
   const arrivalRadius = resolveAutopilotArrivalRadius(player, autopilot, target);
-  assert.equal(
-    arrivalRadius,
-    SKIN.docking.berth.dockRadius,
-    'the station terminal leg must use the same radius that owns the physical dock prompt',
+  // DEMO-BERTH-1 changed this rule, so this check states the new one. It used to require the
+  // arrival radius to EQUAL the berth's dock radius, which made "autopilot arrived" and "the dock
+  // prompt is up" the same boundary: the computer declared arrival 0.5 wu outside a 20 wu gate,
+  // let go, and the prompt only came up later as the hull drifted in (or never, if it did not).
+  // Arrival must now finish strictly INSIDE the gate — inside enough that the settle carries the
+  // hull through the prompt, not onto its edge.
+  assert.ok(
+    arrivalRadius < SKIN.docking.berth.dockRadius,
+    `the station terminal leg must finish inside the radius that owns the physical dock prompt `
+    + `(got ${arrivalRadius}, gate ${SKIN.docking.berth.dockRadius})`,
+  );
+  assert.ok(
+    arrivalRadius >= SKIN.docking.berth.dockRadius * 0.6,
+    `the terminal leg must not shrink to a touch-down point either (got ${arrivalRadius})`,
   );
   const terminalStop = { x: berth.x + arrivalRadius, z: berth.z };
   const terminal = corridorStateFor(SKIN, station, terminalStop, { x: 0, z: 0 });
@@ -1199,3 +1209,21 @@ test('real authority: the +lat spar-pocket drift recovers and berths (D77)', asy
 function round6(value) {
   return Math.round(value * 1e6) / 1e6;
 }
+
+test('HARMONY-FIX 6: the corridor capture tug defers while the nav autopilot is flying the approach', () => {
+  dockingCorridor.init({ bus: null });
+  const dt = 1 / 60;
+  const mk = () => makeFlightState({ playerPos: skinPos(100, 0), playerVel: { x: 0, z: 0 } });
+  const own = mk();
+  dockingCorridor.update(dt, own.state);
+  assert.ok(own.state.dockingCorridor.assist, 'hand-flown: the corridor assists');
+  consumePhysicsCommand(own.player);
+
+  const piloted = mk();
+  piloted.state.nav = { autopilot: { active: true } };
+  dockingCorridor.update(dt, piloted.state);
+  assert.equal(piloted.state.dockingCorridor.phase, 'capture', 'the corridor still reads the berth');
+  assert.equal(piloted.state.dockingCorridor.assist, null, 'but applies no assist under autopilot');
+  const command = consumePhysicsCommand(piloted.player);
+  assert.ok(!command || command.impulses.length === 0, 'no corridor impulse reaches the membrane');
+});

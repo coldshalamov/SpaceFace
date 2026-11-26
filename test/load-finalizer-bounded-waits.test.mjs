@@ -255,7 +255,11 @@ test('a failed restore retains one visible failure panel with Retry and Back to 
   assert.equal(pane.getAttribute('role'), 'alert');
   assert.equal(overlay.classList.contains('hidden'), false);
   assert.equal(pane.querySelector('.sf-state__head').textContent, 'Startup could not finish');
-  assert.equal(pane.querySelector('.sf-state__detail').textContent, 'required ship.glb missing');
+  assert.match(pane.querySelector('.sf-state__fills').textContent, /Retry to load this flight again/);
+  assert.equal(pane.querySelector('.sf-state__detail'), null);
+  assert.equal(pane.getAttribute('data-startup-code'), 'AUTHORED_LIBRARY_UNAVAILABLE');
+  assert.equal(pane.getAttribute('data-startup-stage'), 'appearance');
+  assert.equal(pane.getAttribute('data-startup-diagnostic'), 'required ship.glb missing');
   const buttons = pane.querySelectorAll('button');
   assert.deepEqual(buttons.map(button => textLines(button).join('')), ['Retry', 'Back to menu']);
   const retries = [];

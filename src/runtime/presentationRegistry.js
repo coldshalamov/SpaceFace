@@ -33,6 +33,7 @@ import { gyreHud } from '../ui/gyreHud.js';
 import { pylonHud } from '../ui/pylonHud.js';
 import { planetHud } from '../ui/planetHud.js';
 import { miningHud } from '../ui/miningHud.js';
+import { sectorArrivalPlate } from '../ui/sectorArrivalPlate.js';
 import { createShipbreakingYardBrowserEntries } from '../features/shipbreakingYard/browser.js';
 import { createSalvageTenderPromptSystem } from '../features/salvageTender/prompts.js';
 import { createCinderglassJobPromptSystem } from '../features/cinderglassJob/presentation.js';
@@ -62,7 +63,7 @@ export function createPresentationRegistry(ctx) {
     ...[lastShiftPrompt, redKitePrompt, ilexArkPrompt, mothlightPrompt, palletJackPrompt,
       towlineTablePrompt, borrowedVoicePrompt, borrowedSunPrompt, masslineHud, massSeedHud,
       fieldHud, gyreHud, pylonHud, planetHud, miningHud, survivalHud, swarmJuiceHud,
-      crucibleFocus, render, vfx, feel, audio, ui].map(system => [system.name, system]),
+      crucibleFocus, sectorArrivalPlate, render, vfx, feel, audio, ui].map(system => [system.name, system]),
   ];
   const lookup = new Map(entries);
   const isPresentation = id => !isNodeSafeSystemId(id) || getSystemCapability(id).phase === 'platform'

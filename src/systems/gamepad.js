@@ -19,30 +19,35 @@ import { classifyWeaponFamily } from '../data/vfxProfiles.js';
 // dumb: it only translates the raw standard-gamepad layout into game actions. Flight behavior is
 // merged in src/systems/input.js; UI navigation is consumed in src/ui/input.js.
 //
-// Standard mapping (Xbox / PlayStation equivalent) — G18-02 "one set of keys":
-//   0  A / Cross      -> boost; UI accept on screens (disjoint contexts)
-//   1  B / Circle      -> cancel / back; RIG power in flight
+// Standard mapping (Xbox / PlayStation equivalent) — CONTROLLER-1 "everything on the pad":
+//   0  A / Cross      -> SHOVE power (the panic seat under the thumb); UI accept on screens
+//   1  B / Circle      -> BOMB power in flight; UI cancel / back on screens
 //   2  X / Square      -> dock / interact when the station prompt is up
-//   3  Y / Triangle    -> hold for the context wheel (aim with a stick, release to choose)
-//   4  LB / L1         -> PULL power; station tab previous
-//   5  RB / R1         -> SHOVE power; station tab next
-//   6  LT / L2         -> the Line — fire / hold / release (same role as RMB)
+//   3  Y / Triangle    -> PULL power
+//   4  LB / L1         -> the shift bumper: hold it and the face/view buttons do their
+//                        second job (LB+X PIN · LB+Y RIG · LB+A countermeasure ·
+//                        LB+B scanner pulse · LB+View chase/overhead); station tab previous
+//   5  RB / R1         -> boost (held); station tab next
+//   6  LT / L2         -> the Line — tap to latch/throw, hold to reel (same grammar as RMB)
 //   7  RT / R2         -> fire (analog)
 //   8  View / Select   -> star map
 //   9  Menu / Start    -> pause
-//  10  L3              -> unbound (free seat)
+//  10  L3              -> brake (full stop)
 //  11  R3              -> cycle target
 //  12  D-pad up        -> UI nav up; auto-target / draw-to-fly toggle in flight
-//  13  D-pad down      -> UI nav down; PIN power
-//  14  D-pad left      -> UI nav left; unbound in flight
-//  15  D-pad right     -> UI nav right; BOMB power
+//  13  D-pad down      -> UI nav down; hold for the context wheel in flight
+//  14  D-pad left      -> UI nav left; hold for the mining beam in flight
+//  15  D-pad right     -> UI nav right
 //  16  Home / Guide    -> codex / journal (see GAMEPAD_DEFAULT_BINDINGS)
 //
-// Everything that is not on the one-set-of-keys table lives on the context wheel — brake,
-// mine, reel, countermeasure, scan/site beams, deploys, bullet time, cloak, gyre, cruise,
-// travel burn, cargo dump, bomb-bay cycling — exactly like Q on the keyboard. Chord names
-// ('<modifier>+<button>') remain fully supported for player remaps: a chorded button's solo
-// verb is suppressed while the modifier holds it; the modifier's own verb keeps working.
+// The three powers a fight reaches for — Shove, Pull, Bomb — sit under the right thumb on
+// A, Y and B; Pin and Rig ride the hold-LB layer, so all five are one press away and never
+// a radial. The Gyre Snare keeps its shipped RB+Y lash — a hold-to-beam verb needs a real
+// button's two edges. Everything else (reel, site beam, deploys, bullet time, cloak,
+// cruise, travel burn, cargo dump, bomb-bay cycling) lives on the context wheel —
+// exactly like Q on the keyboard. Chord names ('<modifier>+<button>') remain fully
+// supported for player remaps: a chorded button's solo verb is suppressed while the
+// modifier holds it; the modifier's own verb keeps working.
 
 const STD = {
   accept: 0,
@@ -89,20 +94,22 @@ export function isGamepadButtonName(name) {
 // This is the default map; Settings may overlay player remaps (PQ-164.01) stored at
 // settings.controls.gamepad.bindings — resolved per tick by resolveGamepadBindings().
 export const GAMEPAD_DEFAULT_BINDINGS = Object.freeze({
-  // G18-02 "one set of keys" — the pad speaks the same layout as WASD + mouse:
-  //   left stick move · right stick aim · RT fire · LT the Line · A boost · bumpers+faces powers
-  //   X interact/dock · View map · hold Y the context wheel (everything off the table).
+  // CONTROLLER-1 — the pad a shipped game expects. Twin-stick is the default scheme
+  // (left stick drives in screen space, right stick aims the reticle and the nose).
+  // The fight powers sit under the right thumb; LB is the shift bumper — hold it and
+  // the face/view buttons take their second seat.
   fire: Object.freeze(['r2']),
-  massline: Object.freeze(['l2']),     // LT is the Line — hold/aim/release, same grammar as RMB
-  boost: Object.freeze(['accept']),    // A boosts in flight; on screens A still confirms
-  brake: Object.freeze([]),            // full stop is a wheel latch
-  // The five powers (owner 2026-10-22, powerVerbs.js) seat on the bumpers and face/d-pad side:
-  pull: Object.freeze(['l1']),         // LB pulls the well
-  shove: Object.freeze(['r1']),        // RB shoves — the repulsor plus ordnance detonation
-  pin: Object.freeze(['dDown']),       // plant the anchor seed
-  bomb: Object.freeze(['dRight']),
-  rig: Object.freeze(['cancel']),      // B rigs in flight; B stays cancel while a screen owns input
-  cycleTarget: Object.freeze(['r3']),
+  massline: Object.freeze(['l2']),     // LT is the Line — tap latch/throw, hold to reel
+  boost: Object.freeze(['r1']),        // RB boosts (held)
+  brake: Object.freeze(['l3']),        // click the drive stick for a full stop
+  // The five powers (owner 2026-10-22, powerVerbs.js): the fight three under the right
+  // thumb, the anchor and the plow one bumper-hold away — never a radial in a fight.
+  pull: Object.freeze(['alt']),        // Y pulls the well at the reticle
+  shove: Object.freeze(['accept']),    // A shoves — the repulsor plus ordnance detonation
+  pin: Object.freeze(['l1+action']),   // LB+X plants the anchor seed
+  bomb: Object.freeze(['cancel']),     // B throws/detonates; B stays cancel on a screen
+  rig: Object.freeze(['l1+alt']),      // LB+Y rigs the plow
+  cycleTarget: Object.freeze(['r3']),  // click the aim stick for the next target
   autoTarget: Object.freeze(['dUp']),
   map: Object.freeze(['view']),
   steeringView: Object.freeze(['l1+view']), // LB+View: chase / overhead without opening the map
@@ -112,16 +119,27 @@ export const GAMEPAD_DEFAULT_BINDINGS = Object.freeze({
   // Dock/interact is X — one airlock muscle-memory in both doors. B keeps its screen cancel.
   dock: Object.freeze(['action']),
   cancel: Object.freeze(['cancel']),
-  contextWheel: Object.freeze(['alt']), // hold Y: the overflow wheel — aim with a stick, release to choose
+  // Hold D-pad down and the overflow wheel opens; the right stick picks the slice and
+  // letting go chooses — the same grammar the keyboard's held Q uses.
+  contextWheel: Object.freeze(['dDown']),
   tabPrev: Object.freeze(['l1']),
   tabNext: Object.freeze(['r1']),
-  // Everything off the one-set table answers to the wheel instead of a dedicated seat; each of
+  // The LB shift layer's spare combat seats — verbs a fight still wants a press for.
+  countermeasure: Object.freeze(['l1+accept']), // LB+A pops the flare
+  scanPulse: Object.freeze(['l1+cancel']),      // LB+B pings the scanner
+  // The mining beam has a real key on the keyboard (G) — it gets a real held seat here too,
+  // not a wheel slice; hold D-pad left to run the beam.
+  mine: Object.freeze(['dLeft']),
+  // The cargo bag is the one free D-pad seat: tap right to open it, tap again
+  // (or B) to close — the keyboard's B row parity, rebindable like every verb.
+  cargo: Object.freeze(['dRight']),
+  // The Gyre Snare keeps its shipped seat: a hold-to-lash beam needs a button that can
+  // express both edges — RB+Y holds the beam open and letting Y go bowls the clump.
+  gyreSnare: Object.freeze(['r1+alt']),
+  // Everything off the table answers to the wheel instead of a dedicated seat; each of
   // these remains rebindable in Settings → Controls.
-  mine: Object.freeze([]),             // the beam is a wheel latch slice
-  countermeasure: Object.freeze([]),
   travelBurn: Object.freeze([]),
   cycleBomb: Object.freeze([]),        // the bay's cycle verb is a wheel tap (BOMB still throws)
-  scanPulse: Object.freeze([]),
   siteBeam: Object.freeze([]),
   bulletTime: Object.freeze([]),
   cloak: Object.freeze([]),
@@ -129,7 +147,6 @@ export const GAMEPAD_DEFAULT_BINDINGS = Object.freeze({
   deployBeacon: Object.freeze([]),
   deployShieldPylon: Object.freeze([]),
   jettisonLot: Object.freeze([]),
-  gyreSnare: Object.freeze([]),
   // The hull burst (Gravity Bumper / Fire Lance / Grip Bumper) has no pad verb (owner principle
   // 2026-09-30): the fitted boost upgrade rides the boost button itself, fired by the hullBurst
   // system polling the player's boost flag. There is nothing to bind.
@@ -309,6 +326,7 @@ const PAD_ACTION_CONTEXT = Object.freeze({
   codex: 'flight',
   fire: 'flight',
   mine: 'flight',
+  cargo: 'flight',
   boost: 'flight',
   brake: 'flight',
   cycleTarget: 'flight',
@@ -339,9 +357,9 @@ const PAD_ACTION_CONTEXT = Object.freeze({
   tabPrev: 'modal',
   tabNext: 'modal',
 });
-// G18-02: A is boost in flight and still UI accept on screens; the massline share survives for
-// old remaps that left the rope on A.
-const PAD_SHARE_PAIRS = new Set(['accept|boost', 'accept|massline']);
+// CONTROLLER-1: A is SHOVE in flight and still UI accept on screens — the same designed
+// arbitration boost and the rope once rode, kept for old remaps that left them on A.
+const PAD_SHARE_PAIRS = new Set(['accept|shove', 'accept|boost', 'accept|massline']);
 
 export function gamepadShareAllowed(a, b) {
   if (a === b) return true;
@@ -543,6 +561,32 @@ export function weaponImpactHaptic(payload, playerId) {
   const classified = classifyWeaponFamily(payload.weaponId);
   const family = classified && classified.family;
   const spec = family ? HAPTIC_WEAPON_FAMILY_PULSES[family] : null;
+  if (!spec) return null;
+  return { family, strong: spec.strong, weak: spec.weak, ms: spec.ms };
+}
+
+// CONTROLLER-1: the trigger pull itself is felt ONLY for heavy mounts — a railgun spike or
+// a missile leaving the rail reads through the hands like the shot's sound does. Rapid-fire
+// families (plasma, kinetic autocannon) are deliberately absent: at ~10 shots/s a per-shot
+// pulse is a continuous buzz, not feedback. The pulse is the lightest in the vocabulary and
+// always yields to a hit/kill pulse arriving the same tick.
+export const HAPTIC_FIRE_FAMILY_PULSES = Object.freeze({
+  missile:    { strong: 0.30, weak: 0.16, ms: 75 },
+  rail:       { strong: 0.26, weak: 0.14, ms: 60 },
+  concussion: { strong: 0.24, weak: 0.12, ms: 55 },
+});
+
+/**
+ * CONTROLLER-1 gate for one `combat:fire` record — the player's own trigger pull on a
+ * heavy mount. NPC fire, beams, deploys and unclassifiable mounts stay silent.
+ */
+export function weaponFireHaptic(payload, playerId) {
+  if (playerId == null || !payload) return null;
+  if (payload.ownerId !== playerId) return null;
+  if (typeof payload.weaponId !== 'string' || payload.weaponId.length === 0) return null;
+  const classified = classifyWeaponFamily(payload.weaponId);
+  const family = classified && classified.family;
+  const spec = family ? HAPTIC_FIRE_FAMILY_PULSES[family] : null;
   if (!spec) return null;
   return { family, strong: spec.strong, weak: spec.weak, ms: spec.ms };
 }
@@ -887,6 +931,7 @@ export function sampleGamepadFrame(captureMode = false) {
 export function createGamepad(ctx, { connectionEvents = true, laneHaptics = false } = {}) {
   const bus = ctx && ctx.bus;
   const state = ctx && ctx.state;
+  const unsubs = [];
 
   // PQ-164.03: latch the strongest recent slam from the physics authority. The pulse decays on sim
   // ticks (never wall time) so the haptic is deterministic and replay-safe. Both impact receipts
@@ -930,6 +975,7 @@ export function createGamepad(ctx, { connectionEvents = true, laneHaptics = fals
   // queues behind a busy gap for up to MOMENT_PENDING_MAX_TICKS. A live moment pulse owns
   // the channel for its whole tail — family candidates wait it out (and so usually drop).
   let pendingFamily = null;
+  let pendingFire = null;         // CONTROLLER-1 heavy-gun trigger pull — lowest priority
   let pendingMoment = null;
   let momentLiveTicks = 0;
   const momentRoots = new Map(); // rootId -> tick; dedupes one trick episode, capped 32
@@ -942,6 +988,7 @@ export function createGamepad(ctx, { connectionEvents = true, laneHaptics = fals
   let feltPulseLive = false;
   const clearPendingFeedback = () => {
     pendingFamily = null;
+    pendingFire = null;
     pendingMoment = null;
     momentLiveTicks = 0;
     momentRoots.clear();
@@ -981,27 +1028,27 @@ export function createGamepad(ctx, { connectionEvents = true, laneHaptics = fals
   };
   const CHARGE_PLAYER_TRIGGERS = new Set(['manual', 'proximity']);
   if (!laneHaptics && bus && typeof bus.on === 'function') {
-    bus.on('physics:impact', onImpact, { presentation: true });
-    bus.on('combat:collisionConsequence', onImpact);
-    bus.on('tether:latched', () => startPulse(HAPTIC_VERB_PULSES['tether:latched'], 'tether:latched'));
-    bus.on('tether:cut', () => startPulse(HAPTIC_VERB_PULSES['tether:cut'], 'tether:cut'));
-    bus.on('tether:releaseRated', (p) => {
+    unsubs.push(bus.on('physics:impact', onImpact, { presentation: true }));
+    unsubs.push(bus.on('combat:collisionConsequence', onImpact));
+    unsubs.push(bus.on('tether:latched', () => startPulse(HAPTIC_VERB_PULSES['tether:latched'], 'tether:latched')));
+    unsubs.push(bus.on('tether:cut', () => startPulse(HAPTIC_VERB_PULSES['tether:cut'], 'tether:cut')));
+    unsubs.push(bus.on('tether:releaseRated', (p) => {
       startPulse(HAPTIC_RELEASE_PULSES[(p && p.classification) || 'messy']
         || HAPTIC_RELEASE_PULSES.messy, 'tether:releaseRated');
-    });
-    bus.on('massline:snareCaught', () => startPulse(HAPTIC_VERB_PULSES['massline:snareCaught'], 'massline:snareCaught'));
-    bus.on('charge:detonated', (p) => {
+    }));
+    unsubs.push(bus.on('massline:snareCaught', () => startPulse(HAPTIC_VERB_PULSES['massline:snareCaught'], 'massline:snareCaught')));
+    unsubs.push(bus.on('charge:detonated', (p) => {
       if (p && CHARGE_PLAYER_TRIGGERS.has(p.trigger)) {
         startPulse(HAPTIC_VERB_PULSES['charge:detonated'], 'charge:detonated');
       }
-    });
-    bus.on('cloak:engaged', () => startPulse(HAPTIC_VERB_PULSES['cloak:engaged'], 'cloak:engaged'));
+    }));
+    unsubs.push(bus.on('cloak:engaged', () => startPulse(HAPTIC_VERB_PULSES['cloak:engaged'], 'cloak:engaged')));
     // FB-009: the cut-BY-an-NPC edge is the player's own line dying under them; the whip snap
     // is the player's own stored release. Both pulse through the same one-live-pulse gate.
-    bus.on('massline:playerLineCut', () => startPulse(HAPTIC_VERB_PULSES['massline:playerLineCut'], 'massline:playerLineCut'));
-    bus.on('tether:whipSnap', () => startPulse(HAPTIC_VERB_PULSES['tether:whipSnap'], 'tether:whipSnap'));
-    bus.on('gyre:beamOn', () => startPulse(HAPTIC_VERB_PULSES['gyre:beamOn'], 'gyre:beamOn'));
-    bus.on('gyre:snagged', (payload) => {
+    unsubs.push(bus.on('massline:playerLineCut', () => startPulse(HAPTIC_VERB_PULSES['massline:playerLineCut'], 'massline:playerLineCut')));
+    unsubs.push(bus.on('tether:whipSnap', () => startPulse(HAPTIC_VERB_PULSES['tether:whipSnap'], 'tether:whipSnap')));
+    unsubs.push(bus.on('gyre:beamOn', () => startPulse(HAPTIC_VERB_PULSES['gyre:beamOn'], 'gyre:beamOn')));
+    unsubs.push(bus.on('gyre:snagged', (payload) => {
       // The grip beat grades by cored mass like the shake and voice do — a 6 t
       // pebble snaps light, a 200 t wreck lands heavy. /200 matches the snag
       // shake's realistic-mass band (2400 is for katamaris, not cores).
@@ -1010,8 +1057,8 @@ export function createGamepad(ctx, { connectionEvents = true, laneHaptics = fals
       const t = Math.min(1, (payload && Number.isFinite(payload.mass) ? payload.mass : 0) / 200);
       const base = HAPTIC_VERB_PULSES['gyre:snagged'];
       startPulse({ strong: base.strong + 0.2 * t, weak: base.weak + 0.15 * t, ms: base.ms + 60 * t }, 'gyre:snagged');
-    });
-    bus.on('gyre:windup', (payload) => {
+    }));
+    unsubs.push(bus.on('gyre:windup', (payload) => {
       // The coil draw grades by payload like the launch it precedes (ballMass /
       // maxClumpMass is the launch cue's own frac) — a capped moon's draw rumbles
       // heavier, matching the bigger pull-back the sim applies.
@@ -1023,8 +1070,8 @@ export function createGamepad(ctx, { connectionEvents = true, laneHaptics = fals
       const w = payload && Number.isFinite(payload.windW01) ? 0.4 + 0.6 * payload.windW01 : 1;
       const base = HAPTIC_VERB_PULSES['gyre:windup'];
       startPulse({ strong: (base.strong + 0.3 * t) * w, weak: (base.weak + 0.15 * t) * w, ms: base.ms + 50 * t }, 'gyre:windup');
-    });
-    bus.on('gyre:thrown', (payload) => {
+    }));
+    unsubs.push(bus.on('gyre:thrown', (payload) => {
       // The throw crack grades by payload like snagged/windup — but on MASS, not
       // speed (a capped moon throws slower; speed-lerping would invert intent).
       // Pebble -> 0.55 crack, capped moon -> the full 0.90 + a longer tail.
@@ -1038,31 +1085,31 @@ export function createGamepad(ctx, { connectionEvents = true, laneHaptics = fals
       // Forced admission replaces the in-flight windup pulse like the audio
       // twin's own layer cut (same class as gyre:launched's gap fix).
       startPulse({ strong: base.strong - 0.35 + 0.35 * t, weak: base.weak - 0.2 + 0.2 * t, ms: base.ms + 60 * t }, 'gyre:thrown', true);
-    });
-    bus.on('gyre:full', () => startPulse(HAPTIC_VERB_PULSES['gyre:full'], 'gyre:full'));
-    bus.on('gyre:fuseLow', () => startPulse(HAPTIC_VERB_PULSES['gyre:fuseLow'], 'gyre:fuseLow'));
-    bus.on('gyre:ballGrave', () => startPulse(HAPTIC_VERB_PULSES['gyre:ballGrave'], 'gyre:ballGrave'));
-    bus.on('gyre:caught', (payload) => {
+    }));
+    unsubs.push(bus.on('gyre:full', () => startPulse(HAPTIC_VERB_PULSES['gyre:full'], 'gyre:full')));
+    unsubs.push(bus.on('gyre:fuseLow', () => startPulse(HAPTIC_VERB_PULSES['gyre:fuseLow'], 'gyre:fuseLow')));
+    unsubs.push(bus.on('gyre:ballGrave', () => startPulse(HAPTIC_VERB_PULSES['gyre:ballGrave'], 'gyre:ballGrave')));
+    unsubs.push(bus.on('gyre:caught', (payload) => {
       // The first fill grades by the meal's heft like snagged/absorbTick — a
       // pebble's net-fill whispers, a 200 t wreck entering lands on the hands.
       // /200 matches the snag band (basin meals are pre-katamari mass).
       const t = Math.min(1, (payload && Number.isFinite(payload.mass) ? payload.mass : 0) / 200);
       const base = HAPTIC_VERB_PULSES['gyre:caught'];
       startPulse({ strong: base.strong + 0.15 * t, weak: base.weak + 0.1 * t, ms: base.ms + 20 * t }, 'gyre:caught');
-    });
+    }));
     // Worldfeel seams: a developed rock, a grazing face, a volatile stage. Own admit book so a
     // held beam cannot turn the pad into a buzz. The pulse still shares the one-live-pulse gate.
     const worldFeelBook = createWorldFeelBook(bus);
     for (const eventName of WORLD_FEEL_SEAM_IDS) {
-      bus.on(eventName, (payload) => {
+      unsubs.push(bus.on(eventName, (payload) => {
         const snap = eventName === 'flight:sweptHull' ? copySweptHullFeel(payload) : payload;
         if (!worldFeelRelevant(state, eventName, snap)) return;
         if (!admitWorldFeelSeam(worldFeelBook, eventName, snap, worldFeelTick(state))) return;
         const spec = worldFeelHaptic(eventName, snap);
         if (spec) startPulse(spec, eventName);
-      });
+      }));
     }
-    bus.on('gyre:absorbTick', (payload) => {
+    unsubs.push(bus.on('gyre:absorbTick', (payload) => {
       // Meal size in the hands: a pebble stays the authored flick, a wreck lands near the
       // drop thud — lerped on min(1, mass/80) so katamari escalation is felt, not just seen.
       // The tick is sim-rate-gated (shares absorbCueMinGapS): a dense feed reads as
@@ -1070,8 +1117,8 @@ export function createGamepad(ctx, { connectionEvents = true, laneHaptics = fals
       const t = Math.min(1, (payload && Number.isFinite(payload.mass) ? payload.mass : 0) / 80);
       const base = HAPTIC_VERB_PULSES['gyre:absorbTick'];
       startPulse({ strong: base.strong + 0.25 * t, weak: base.weak + 0.1 * t, ms: base.ms + 40 * t }, 'gyre:absorbTick');
-    });
-    bus.on('gyre:dropped', (payload) => {
+    }));
+    unsubs.push(bus.on('gyre:dropped', (payload) => {
       // A save/sector boundary drop is a context reset, not a player verb — stay silent like the
       // audio cue does instead of buzzing through a transition. A clump slipping the lash is the
       // full thud; an empty beam closing is a soft flick — audio already splits those voices.
@@ -1085,42 +1132,53 @@ export function createGamepad(ctx, { connectionEvents = true, laneHaptics = fals
       // same glassier voice + snap close it already wears, same pulse in the hands.
       if (payload && (payload.reason === 'strained' || payload.reason === 'core_lost')) spec = 'gyre:torn';
       startPulse(HAPTIC_VERB_PULSES[spec], spec);
-    });
-    bus.on('gyre:strained', () => startPulse(HAPTIC_VERB_PULSES['gyre:strained'], 'gyre:strained'));
+    }));
+    unsubs.push(bus.on('gyre:strained', () => startPulse(HAPTIC_VERB_PULSES['gyre:strained'], 'gyre:strained')));
     // Player beats: a dash, a hit taken, a kill scored, a base dropped. Every payload
     // is world-scoped, so the gate is the player's id — NPC events stay silent. The
     // id must exist first: with no player spawned, an id-less payload (a wave-booked
     // entity:killed carries no killerId) would read `undefined === undefined` true.
-    bus.on('ship:dash', (p) => {
+    unsubs.push(bus.on('ship:dash', (p) => {
       if (state && state.playerId != null && p && p.shipId === state.playerId) startPulse(HAPTIC_VERB_PULSES['ship:dash'], 'ship:dash');
-    });
-    bus.on('projectile:hit', (p) => {
+    }));
+    unsubs.push(bus.on('projectile:hit', (p) => {
       if (state && state.playerId != null && p && p.targetId === state.playerId) startPulse(HAPTIC_VERB_PULSES['projectile:hit'], 'projectile:hit');
-    });
-    bus.on('entity:killed', (p) => {
+    }));
+    unsubs.push(bus.on('entity:killed', (p) => {
       if (state && state.playerId != null && p && p.killerId === state.playerId) startPulse(HAPTIC_VERB_PULSES['entity:killed'], 'entity:killed');
-    });
-    bus.on('combat:baseDestroyed', (p) => {
+    }));
+    unsubs.push(bus.on('combat:baseDestroyed', (p) => {
       if (state && state.playerId != null && p && p.killerId === state.playerId) startPulse(HAPTIC_VERB_PULSES['combat:baseDestroyed'], 'combat:baseDestroyed');
-    });
+    }));
     // RC-FELT: the player's own ACCEPTED attacks pulse by weapon family. `combat:damage`
     // fires per settled packet (never combat:fire — a trigger pull is not a hit felt).
     // The callback only queues; admission happens in _stepHaptics so a same-tick kill
     // keeps the heavier kill pulse. First qualifying impact per tick wins — a bullet
     // stream stays one tap, not a backlog.
-    bus.on('combat:damage', (p) => {
+    unsubs.push(bus.on('combat:damage', (p) => {
       if (!hapticsAcceptingFeedback()) return;
       const spec = weaponImpactHaptic(p, state && state.playerId);
       if (!spec) return;
       const t = currentTick();
       if (pendingFamily && pendingFamily.queuedTick === t) return;
       pendingFamily = { ...spec, queuedTick: t };
-    });
+    }));
+    // CONTROLLER-1: the player's own heavy-gun trigger pull is a light pulse. Queued like
+    // the family candidate and admitted only when nothing heavier wants the slot — a hit
+    // felt always outranks the shot that made it.
+    unsubs.push(bus.on('combat:fire', (p) => {
+      if (!hapticsAcceptingFeedback()) return;
+      const spec = weaponFireHaptic(p, state && state.playerId);
+      if (!spec) return;
+      const t = currentTick();
+      if (pendingFire && pendingFire.queuedTick === t) return;
+      pendingFire = { ...spec, queuedTick: t };
+    }));
     // The authoritative big-moment edge — bulletTime's detector already owns consequence,
     // visibility, cooldown and per-minute suppression; the pad consumes its verdict and
     // never re-detects. `moment:amended` (a rating upgrade inside a live episode) must not
     // replay the pulse, and one rootId queues at most once.
-    bus.on('moment:holyShit', (p) => {
+    unsubs.push(bus.on('moment:holyShit', (p) => {
       if (!hapticsAcceptingFeedback()) return;
       const pid = state && state.playerId;
       if (pid == null || !p || p.actorId !== pid) return;
@@ -1135,11 +1193,11 @@ export function createGamepad(ctx, { connectionEvents = true, laneHaptics = fals
       }
       momentRoots.set(rootId, t);
       pendingMoment = { rootId, queuedTick: t };
-    });
+    }));
     // Queued feedback never crosses a restore/run boundary — a pulse queued before the
     // load describes a world that no longer exists.
     for (const resetEvent of ['save:restoring', 'game:newGame', 'run:started']) {
-      bus.on(resetEvent, clearPendingFeedback);
+      unsubs.push(bus.on(resetEvent, clearPendingFeedback));
     }
   }
 
@@ -1297,15 +1355,15 @@ export function createGamepad(ctx, { connectionEvents = true, laneHaptics = fals
         // Connecting is not a helm gesture and does not bump lastActiveTick. A deliberate
         // reacquire publishes only its new edge; buttons already held stay silent.
         if (connectionEvents && bus && bus.emit) bus.emit('gamepad:connected', { id: this.id });
-        // PQ-164.04: offer the twin-stick scheme once per profile on pad connect — a toast,
-        // never a silent default change; 'drive' stays the shipping pad feel until picked.
+        // CONTROLLER-1: twin-stick is the shipping scheme, so connect needs no upsell —
+        // only a legacy 'drive' profile gets the one-time pointer back to the default.
         const gpSettings = live && live.settings && live.settings.controls
           && live.settings.controls.gamepad;
-        if (connectionEvents && gpSettings && gpSettings.scheme !== 'twinstick' && gpSettings.schemeSuggested !== true) {
+        if (connectionEvents && gpSettings && gpSettings.scheme === 'drive' && gpSettings.schemeSuggested !== true) {
           gpSettings.schemeSuggested = true;
           if (bus && bus.emit) {
             bus.emit('toast', {
-              text: 'Controller connected — twin-stick flight (left stick drives, right stick aims) is available in Settings › Controls › Gamepad.',
+              text: 'Controller connected — twin-stick flight (left stick drives, right stick aims) is the default in Settings › Controls › Gamepad.',
               kind: 'info',
               ttl: 6,
             });
@@ -1571,6 +1629,7 @@ export function createGamepad(ctx, { connectionEvents = true, laneHaptics = fals
       if (level === 'off') {
         // Switching haptics off discards queued feedback; re-enabling replays nothing.
         pendingFamily = null;
+        pendingFire = null;
         pendingMoment = null;
         // An ADMITTED felt pulse is still this slice's feedback — leaving it
         // ticking through 'off' lets the moment resume the instant the level
@@ -1603,6 +1662,18 @@ export function createGamepad(ctx, { connectionEvents = true, laneHaptics = fals
           } else {
             startPulse(pendingFamily, `weaponImpact:${pendingFamily.family}`);
             pendingFamily = null;
+          }
+        }
+        if (pendingFire) {
+          // The trigger pull only ever fills a quiet slot — a hit felt the same tick
+          // owns it, and one tick is the whole shelf life (never a stale shot).
+          const fireAge = hapticTick >= 0 && pendingFire.queuedTick >= 0
+            ? hapticTick - pendingFire.queuedTick : 0;
+          if (fireAge > 1 || pulseGapTicks > 0 || momentLiveTicks > 0) {
+            pendingFire = null;
+          } else {
+            startPulse(pendingFire, `weaponFire:${pendingFire.family}`);
+            pendingFire = null;
           }
         }
       }
@@ -1711,6 +1782,11 @@ export function createGamepad(ctx, { connectionEvents = true, laneHaptics = fals
       lastHapticTick = -1;
       this.lastButton = null;
       this._wasActive = false;
+    },
+
+    destroy() {
+      for (const off of unsubs) if (typeof off === 'function') off();
+      unsubs.length = 0;
     },
   };
 

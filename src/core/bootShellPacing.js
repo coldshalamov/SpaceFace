@@ -31,7 +31,12 @@ try {
     : null;
 } catch { /* media queries unavailable on this host */ }
 
-/** True while the boot overlay is the visible picture and something on it can move. */
+function titleCinematicVisible(doc) {
+  const cinematic = doc.getElementById('cinematic-splash');
+  return !!cinematic && !cinematic.hidden && cinematic.style?.display !== 'none';
+}
+
+/** True while either startup film owns the visible picture and motion is enabled. */
 export function bootShellPacingActive() {
   const doc = globalThis.document;
   if (!doc || typeof doc.getElementById !== 'function') return false;
@@ -39,10 +44,8 @@ export function bootShellPacingActive() {
   if (doc.documentElement?.classList?.contains?.('sf-reduce-motion')) return false;
   if (reducedMotionQuery?.matches) return false;
   const overlay = doc.getElementById('boot-overlay');
-  if (!overlay) return false;
-  if (overlay.classList.contains('hidden')) return false;
-  if (overlay.style?.display === 'none') return false;
-  return true;
+  return (!!overlay && !overlay.classList.contains('hidden') && overlay.style?.display !== 'none')
+    || titleCinematicVisible(doc);
 }
 
 /** Resume in a background task after the compositor asked for a frame (bounded: a starved
@@ -66,27 +69,29 @@ function yieldUntilPresentHandoff() {
 let sliceBudgetMs = START_SLICE_BUDGET_MS;
 let lastHandoffAt = -Infinity;
 
-/** True once the boot overlay is fully retired from the screen: not merely fading (the
- * `hidden` class starts an 0.8 s opacity fade while `display` is still set) but gone
- * (`display: none`), absent, or the document never had one. Deferred one-shot GPU work
- * (PMREM convolve, full-res nebula tiles) waits for THIS, not for the fade start — a
- * ~1 s convolve landing during the fade froze the freshly revealed menu behind it. */export function bootOverlayRetired() {
+/** The native boot veil and the title cinematic each own the picture through their fade.
+ * The title film mounts as the native veil starts fading, so the veil alone cannot release
+ * a one-shot PMREM convolve or nebula bake. */
+export function startupPictureRetired({ allowWorldLoadingVeil = false } = {}) {
   const doc = globalThis.document;
   if (!doc || typeof doc.getElementById !== 'function') return true;
   const overlay = doc.getElementById('boot-overlay');
-  if (!overlay) return true;
-  return overlay.style?.display === 'none';
+  const stage = overlay?.dataset?.loadingStage;
+  // The loading presenter reuses the boot overlay for every world transition.
+  const worldLoadingVeil = allowWorldLoadingVeil && stage && !stage.startsWith('boot-');
+  return (!overlay || overlay.style?.display === 'none' || worldLoadingVeil === true)
+    && !titleCinematicVisible(doc);
 }
 
-/** Resolve once the boot overlay is fully retired (see bootOverlayRetired), bounded so a
- * wedged shell can never park deferred work forever. Hosts without the overlay resolve on
- * the first poll — identical to running the work immediately. */
-export function whenBootOverlayRetired({ timeoutMs = 15000, pollMs = 150, host = globalThis } = {}) {
-  if (bootOverlayRetired()) return Promise.resolve();
+/** Wait for the startup picture to retire, with a bounded wake for callers to recheck ownership. */
+export function whenStartupPictureRetired({ timeoutMs = 15000, pollMs = 150, host = globalThis,
+  allowWorldLoadingVeil = false } = {}) {
+  const pictureRetired = () => startupPictureRetired({ allowWorldLoadingVeil });
+  if (pictureRetired()) return Promise.resolve();
   return new Promise((resolve) => {
     const startedAt = clockNow();
     const timer = host.setInterval(() => {
-      if (bootOverlayRetired() || clockNow() - startedAt >= timeoutMs) {
+      if (pictureRetired() || clockNow() - startedAt >= timeoutMs) {
         host.clearInterval(timer);
         resolve();
       }

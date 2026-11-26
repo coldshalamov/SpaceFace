@@ -158,7 +158,7 @@ test('the scanner lesson uses the existing deck; its only choice and lifecycle c
   try {
     assert.equal(ui.offer({ sourceKey: 'original', lampId: 'lamp_1' }), true);
     assert.equal(offered.choices.length, 1); assert.equal(offered.choices[0].cancel, true);
-    assert.deepEqual(routeDigit([{ ...offered, seq: 1 }], offered.id, '1'),
+    assert.deepEqual(routeDigit([{ ...offered, seq: 1 }], offered.id, '6'),
       { type: 'choose', id: offered.id, choiceId: 'close' });
     offered.onChoose('close'); assert.equal(closed, 1);
     for (const event of ['save:restoring', 'dock:docked', 'sector:exit']) { listeners.get(event)(); }

@@ -1,5 +1,8 @@
 // Authoritative 2D warning/hit geometry. Presentation consumes these SAME world-space shapes.
 // No Three.js objects, world clock, random state, or global scratch.
+import { IRON_MAW } from '../data/encounters/capital-boss/iron-maw.js';
+import { occupantGenerationOf } from '../core/entity.js';
+
 const TAU = Math.PI * 2;
 const EPS = 1e-8;
 export const wrapAngle = a => ((a + Math.PI) % TAU + TAU) % TAU - Math.PI;
@@ -78,4 +81,59 @@ export function bodyIntersectsBossShapes(body, shapes, useSweep=true) {
   return shapes.some(s=> useSweep && body.previousPos
     ? sweptCircleIntersectsBossShape(body.previousPos,body.pos,r,s)
     : circleIntersectsBossShape(body.pos,r,s));
+}
+
+export function liveSwarmIronMaw(state) {
+  const run = state?.run;
+  if (run?.kind !== 'survival' || run.phase !== 'active') return null;
+  const record = state.capitalBossEncounters?.fights?.[`swarm:w${run.wave}`];
+  return record?.encounterId === IRON_MAW.id && !record.terminal && !record.bossKilled
+    ? record : null;
+}
+
+function hasArmedDetonator(state, targetId, generation, isSpent) {
+  if (!Number.isSafeInteger(generation)) return false;
+  const target = state.entities.get(targetId);
+  return !!(target?.alive && target.data?.detonator && occupantGenerationOf(target) === generation
+    && !isSpent?.(target));
+}
+
+/** Shared copy for the live recovery readout and the recovery receipt. */
+export function ironMawRecoveryInstruction(state, isSpent) {
+  const { recoveryThrowInstruction, recoveryLatchInstruction, recoveryHullInstruction } = IRON_MAW.swarmMouth;
+  const tether = state.player?.tether;
+  if (tether?.active) {
+    const line = state.combat?.attachments?.byId?.[tether.attachmentId];
+    return line?.state === 'active' && line.ownerId === state.playerId && line.targetId === tether.targetId
+      && hasArmedDetonator(state, line.targetId, line.targetGeneration, isSpent)
+      ? recoveryThrowInstruction : recoveryHullInstruction;
+  }
+  const preview = state.masslineAcquisition;
+  const selected = preview?.selected;
+  return selected?.status === 'ready' && Number.isFinite(preview.validUntil) && state.simTime <= preview.validUntil
+    && hasArmedDetonator(state, selected.targetId, selected.occupantGeneration, isSpent)
+    ? recoveryLatchInstruction : recoveryHullInstruction;
+}
+
+/** The single bow aperture used by throw prediction, the flight picture and actual intake. */
+export function readIronMawMouth(state, out = {}) {
+  if (state?.run?.wave !== 5) return null;
+  const fight = liveSwarmIronMaw(state);
+  const recovery = fight?.recovery;
+  if (fight?.phase !== 'recovery' || fight.suspended || !recovery
+      || recovery.cancelled || recovery.mawFed) return null;
+  const exposure = IRON_MAW.score.beats.find((beat) => beat.id === recovery.beatId)?.expose;
+  if (!exposure || fight.clock - recovery.startedAt >= exposure.durationTicks) return null;
+  const boss = state.entities.get(fight.bossId);
+  if (!boss?.alive || boss.data?.lootTableId !== 'dreadnought_boss' || !(boss.radius > 0)) return null;
+
+  const { bowOffset, radiusScale } = IRON_MAW.swarmMouth;
+  out.fight = fight;
+  out.boss = boss;
+  out.forwardX = Math.cos(boss.rot || 0);
+  out.forwardZ = Math.sin(boss.rot || 0);
+  out.x = boss.pos.x + out.forwardX * boss.radius * bowOffset;
+  out.z = boss.pos.z + out.forwardZ * boss.radius * bowOffset;
+  out.radius = boss.radius * radiusScale;
+  return out;
 }

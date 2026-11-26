@@ -185,7 +185,6 @@ try {
   }, null, { timeout: 600_000 });
 
   const results = [];
-  await page.bringToFront();
 
   if (!SKIP_CRUCIBLE) {
     const launched = await page.evaluate(async () => {

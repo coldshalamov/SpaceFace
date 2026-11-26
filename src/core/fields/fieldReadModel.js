@@ -6,6 +6,8 @@ import { isDynamicPhysicsBodyEntity } from '../physicsAuthority.js';
 import { indexedTypeScan } from '../../world/livingWorldViews.js';
 import { isHostileToPlayer } from '../../systems/scannerReadModel.js';
 import { maxFittedModuleMod } from '../fittedModules.js';
+import { pilotPowerReachScale } from '../../systems/powerVerbs.js';
+import { pilotHas } from '../../data/pilotTree.js';
 
 export const FIELD_EMITTER_TYPE = 'fieldEmitter';
 // The well's velocity-dependent convergence applies to craft; loose bodies and
@@ -54,15 +56,45 @@ export function radialFieldDeployCenter(kind, player, state) {
   if (kind === 'well') {
     const dir = aimDirection(player, state);
     const aw = state.input && state.input.aimWorld;
-    let dist = def.deployRange;
+    // OVH-01c2 conjurer_wide_bore: the well's throw range reaches as far as the pilot's powers do.
+    const deployRange = pilotReachScaled(def.deployRange, player, state);
+    let dist = deployRange;
     if (aw && Number.isFinite(aw.x) && Number.isFinite(aw.z)) {
-      dist = Math.min(def.deployRange, Math.hypot(aw.x - player.pos.x, aw.z - player.pos.z));
+      dist = Math.min(deployRange, Math.hypot(aw.x - player.pos.x, aw.z - player.pos.z));
     }
     dist = Math.max(finite(player.radius, 6) + def.emitterRadius + def.spawnGap, dist);
     cx = player.pos.x + dir.x * dist;
     cz = player.pos.z + dir.z * dist;
   }
   return { x: cx, z: cz };
+}
+
+// OVH-01c2 conjurer_wide_bore — the player's own powers reach ×1.4 (pilot record only; an NPC
+// caller or a run without the node keeps the authored number). Applied inside playerFieldSpec and
+// the well's deploy center so the deploy and the row-493 preview read one scaled volume, which is
+// this file's own contract.
+function pilotReachScaled(value, player, state) {
+  if (!state || !player || player.id !== state.playerId) return value;
+  return value * pilotPowerReachScale(state);
+}
+
+// Pilot Tree (progression lead 2026-11-20). conjurer_implode — the player's Pull well is half
+// the size and three times as strong: what it catches is crushed into each other.
+// conjurer_heavy_shove — the player's Shove pushes twice as hard (everything flies twice as far).
+// Player deploys only; the preview reads the same spec, so it shows the bent field.
+export const PILOT_IMPLODE_RADIUS = 0.5;
+export const PILOT_IMPLODE_STRENGTH = 3;
+export const PILOT_HEAVY_SHOVE_STRENGTH = 2;
+const UNBENT = Object.freeze({ radius: 1, strength: 1 });
+function pilotRadialShape(kind, player, state) {
+  if (!state || !player || player.id !== state.playerId) return UNBENT;
+  if (kind === 'well' && pilotHas(state, 'conjurer_implode')) {
+    return { radius: PILOT_IMPLODE_RADIUS, strength: PILOT_IMPLODE_STRENGTH };
+  }
+  if (kind === 'repulsor' && pilotHas(state, 'conjurer_heavy_shove')) {
+    return { radius: 1, strength: PILOT_HEAVY_SHOVE_STRENGTH };
+  }
+  return UNBENT;
 }
 
 /**
@@ -81,7 +113,7 @@ export function playerFieldSpec(kind, player, state) {
       volume: fieldVolumeOf(def),
       center: { x: player.pos.x + dir.x * def.originGap, z: player.pos.z + dir.z * def.originGap },
       dir,
-      radius: def.radius,
+      radius: pilotReachScaled(def.radius, player, state),
       halfWidth: def.halfWidth,
       strength: def.strength,
       falloff: def.falloff,
@@ -96,7 +128,7 @@ export function playerFieldSpec(kind, player, state) {
     const dir = { x: Math.cos(rot), z: Math.sin(rot) };
     const center = { x: player.pos.x + dir.x * def.originGap, z: player.pos.z + dir.z * def.originGap };
     return {
-      kind: def.kind, center, dir, radius: def.radius, strength: def.strength,
+      kind: def.kind, center, dir, radius: pilotReachScaled(def.radius, player, state), strength: def.strength,
       falloff: def.falloff, halfAngleRad: def.halfAngleRad, edgeSoftRad: def.edgeSoftRad,
       volume: fieldVolumeOf(def),
       durationS: Infinity, ownerId: player.id, team: player.team,
@@ -106,11 +138,12 @@ export function playerFieldSpec(kind, player, state) {
       filters: { excludeId: player.id },
     };
   }
+  const shape = pilotRadialShape(kind, player, state);
   return {
     kind: def.kind,
     center: radialFieldDeployCenter(kind, player, state),
-    radius: def.radius,
-    strength: def.strength,
+    radius: pilotReachScaled(def.radius, player, state) * shape.radius,
+    strength: def.strength * shape.strength,
     // PQ-137.09 — the deploy path never forwarded the authored damping, so the ONE field record
     // the kernel built for a player-deployed Well or Repulsor always read damping 0 no matter
     // what the data said. Every other register site (the anchor snare, external profiles) does
@@ -208,10 +241,11 @@ export function fieldBodyMembershipProfile(entity, profile) {
  * Target selection is intentionally absent: only an earned combat-status multiplier changes field
  * response, so clicking another contact can neither grant nor transfer Gravity Mark.
  */
-export function fieldBodyProfile(entity, state, out = null) {
+export function fieldBodyProfile(entity, state, out = null, skipMembership = false) {
   const profile = out || {};
-  const runtime = entity && state && state.combat && state.combat.entities
-    ? state.combat.entities[String(entity.id)]
+  const id = entity ? entity.id : null;
+  const runtime = id != null && state && state.combat && state.combat.entities
+    ? state.combat.entities[id]
     : null;
   const fieldResponse = runtime && runtime.multipliers && runtime.multipliers.fieldCoupling;
   const massScale = runtime && runtime.physicsResponse && runtime.physicsResponse.massScale;
@@ -221,8 +255,8 @@ export function fieldBodyProfile(entity, state, out = null) {
     : 0;
   profile.mass = hullMass + hitchMass;
   profile.radius = entity?.radius;
-  fieldBodyMembershipProfile(entity, profile);
-  profile.coated = gooStatus(state, entity) != null;
+  if (!skipMembership) fieldBodyMembershipProfile(entity, profile);
+  profile.coated = state?.combat?.statuses ? gooStatus(state, entity) != null : false;
   const authoredResponse = entity && entity.physicsBody && Number.isFinite(entity.physicsBody.fieldResponseMult)
     ? Math.max(0, entity.physicsBody.fieldResponseMult)
     : 1;
@@ -231,8 +265,8 @@ export function fieldBodyProfile(entity, state, out = null) {
     : (Number.isFinite(fieldResponse) ? Math.max(0, fieldResponse) : 1) * authoredResponse;
   profile.boosting = !!(entity && entity.flags && entity.flags.boosting);
   profile.hitchedTo = null;
-  if (entity && entity.id != null && state && state.fields && state.fields.hitches) {
-    const hitch = state.fields.hitches[entity.id] || state.fields.hitches[String(entity.id)];
+  if (id != null && state && state.fields && state.fields.hitches) {
+    const hitch = state.fields.hitches[id];
     if (hitch && hitch.sourceId != null) profile.hitchedTo = hitch.sourceId;
   }
   // The transient mass/inertia scale the physics owner will solve this body at (Pinned = 6x,

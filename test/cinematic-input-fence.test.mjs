@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 
-import { createCinematicInputFence } from '../src/ui/cinematicInputFence.js';
+import { armCinematicAutoDismiss, createCinematicInputFence } from '../src/ui/cinematicInputFence.js';
 
 function testSingleKeyReleaseFence() {
   const fixture = createFixture();
@@ -172,7 +172,7 @@ function testTeardownDoesNotFinalize() {
   assert.equal(fixture.visibility.listenerCount('visibilitychange'), 0);
 }
 
-function createFixture({ hidden = false, focused = true } = {}) {
+function createFixture({ hidden = false, focused = true, onFinalize = () => {} } = {}) {
   const keyboard = new FakeTarget();
   const visibility = new FakeTarget();
   visibility.hidden = hidden;
@@ -183,7 +183,7 @@ function createFixture({ hidden = false, focused = true } = {}) {
     keyboardTarget: keyboard,
     visibilityTarget: visibility,
     focusOwner: () => { focuses += 1; },
-    onFinalize: (reason) => finalized.push(reason),
+    onFinalize: (reason) => { finalized.push(reason); onFinalize(); },
   });
   return {
     fence,
@@ -230,6 +230,124 @@ function event(init = {}) {
   };
 }
 
+function mediaClock() {
+  let now = 0, nextId = 0;
+  const timers = new Map(), frames = new Map();
+  const host = {
+    performance: { now: () => now },
+    setTimeout(fn, ms) { timers.set(++nextId, { fn, at: now + ms }); return nextId; },
+    clearTimeout(id) { timers.delete(id); },
+  };
+  const video = Object.assign(new FakeTarget(), {
+    readyState: 4, paused: false,
+    requestVideoFrameCallback(fn) { frames.set(++nextId, fn); return nextId; },
+    cancelVideoFrameCallback(id) { frames.delete(id); },
+  });
+  return {
+    host, video, frames, timers,
+    until(at) {
+      for (;;) {
+        const next = [...timers].filter(([, item]) => item.at <= at).sort(([, a], [, b]) => a.at - b.at)[0];
+        if (!next) break;
+        const [id, item] = next;
+        timers.delete(id);
+        now = item.at;
+        item.fn();
+      }
+      now = at;
+    },
+    present() {
+      for (const [id, callback] of [...frames]) {
+        frames.delete(id);
+        callback(now, { presentationTime: now });
+      }
+    },
+  };
+}
+
+function testCinematicPlaybackDeadline() {
+  for (const [firstFrame, visible, end] of [[null, true, 4500], [1000, true, 4500],
+    [4290, false, 4500], [4290, true, 5790]]) {
+    const clock = mediaClock();
+    const elapsed = [];
+    armCinematicAutoDismiss({ ...clock, canPresent: () => visible,
+      onElapsed: () => elapsed.push(clock.host.performance.now()) });
+    if (firstFrame !== null) {
+      clock.until(firstFrame);
+      clock.present();
+      assert.equal(clock.frames.size, visible ? 0 : 1);
+    }
+    clock.until(end - 1);
+    assert.deepEqual(elapsed, []);
+    if (firstFrame !== null) clock.present();
+    clock.until(end);
+    assert.deepEqual(elapsed, [end]);
+    assert.equal(clock.frames.size, 0);
+    assert.equal(clock.timers.size, 0);
+  }
+
+  const preroll = mediaClock();
+  let prerollEnded = false;
+  armCinematicAutoDismiss({ ...preroll, canPresent: () => true, onElapsed: () => { prerollEnded = true; } });
+  preroll.video.paused = true;
+  preroll.until(1000);
+  preroll.present();
+  assert.equal(preroll.frames.size, 1, 'a paused decoded frame does not consume the playback proof');
+  preroll.video.paused = false;
+  preroll.until(4290);
+  preroll.present();
+  preroll.until(5789);
+  assert.equal(prerollEnded, false);
+  preroll.until(5790);
+  assert.equal(prerollEnded, true);
+
+  const legacy = mediaClock();
+  delete legacy.video.requestVideoFrameCallback;
+  let elapsed = 0;
+  armCinematicAutoDismiss({ ...legacy, canPresent: () => true, onElapsed: () => { elapsed += 1; } });
+  legacy.until(4390);
+  legacy.video.dispatch('playing');
+  assert.equal(legacy.video.listenerCount('playing'), 0);
+  legacy.until(5889);
+  assert.equal(elapsed, 0);
+  legacy.until(5890);
+  assert.equal(elapsed, 1);
+}
+
+function testCinematicPlaybackCancellation() {
+  for (const reason of ['pointer', 'keyboard', 'teardown']) {
+    const clock = mediaClock();
+    let cancel;
+    const fixture = createFixture({ onFinalize: () => cancel() });
+    cancel = armCinematicAutoDismiss({ ...clock, canPresent: () => true,
+      onElapsed: () => fixture.fence.requestDismiss('timer') });
+    const staleFrame = clock.frames.values().next().value;
+    clock.until(4290);
+    if (reason === 'pointer') {
+      fixture.fence.requestDismiss('pointer');
+    } else if (reason === 'keyboard') {
+      clock.present();
+      fixture.key('keydown', { code: 'Space', key: ' ' });
+      fixture.key('keyup', { code: 'Space', key: ' ' });
+    } else {
+      fixture.fence.teardown();
+      cancel();
+    }
+    staleFrame(4300, { presentationTime: 4290 });
+    clock.until(6000);
+    assert.equal(clock.timers.size, 0);
+    assert.equal(clock.frames.size, 0);
+    assert.deepEqual(fixture.finalized, reason === 'teardown' ? [] : [reason]);
+    let remounted = false;
+    armCinematicAutoDismiss({ ...clock, video: null, canPresent: () => false,
+      onElapsed: () => { remounted = true; } });
+    clock.until(10499);
+    assert.equal(remounted, false);
+    clock.until(10500);
+    assert.equal(remounted, true);
+  }
+}
+
 testSingleKeyReleaseFence();
 testChordReleaseFence();
 testRepeatAndMismatchedKeyup();
@@ -238,5 +356,7 @@ testBlurAndVisibilityReset();
 testInitialSuspension();
 testFocusRestoreReentryIsBounded();
 testTeardownDoesNotFinalize();
+testCinematicPlaybackDeadline();
+testCinematicPlaybackCancellation();
 
 console.log('PASS cinematic input release fence');

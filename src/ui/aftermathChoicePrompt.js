@@ -84,7 +84,7 @@ export function createAftermathChoicePrompt(ctx = {}) {
     const descriptions = { salvage: 'Wreck available', pursuit: 'Ship recorded fleeing', rescue: 'Survivor available' };
     const contexts = choices.map((choice) => choice?.context || descriptions[choice?.id]).filter(Boolean);
     const spec = {
-      id: DECISION_ID, kind: 'info', sender: 'AFTERMATH', headline: 'FIELD RESPONSE', deadlineAt: null, ttlAt: offerDeadlineAt,
+      id: DECISION_ID, kind: 'info', sender: 'WRECK FOUND', headline: 'CHOOSE A RESPONSE', deadlineAt: null, ttlAt: offerDeadlineAt,
       detail: contexts.length ? contexts.join(' · ') : 'Choose a response. Flight remains active.',
       choices: choices.map((choice) => ({ id: String(choice?.id || ''), label: String(choice?.label || choice?.id || '') })).filter((choice) => choice.id),
       // Retain the exact unresolved choice without claiming keys away from the field.

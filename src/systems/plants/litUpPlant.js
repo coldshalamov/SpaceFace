@@ -85,6 +85,7 @@ export function isRevealCandidate(entity, tuning = LIT_UP_TUNING) {
 }
 
 export const litUpPlant = {
+  modes: ['swarm'],
   name: 'plants115',
 
   init(ctx) {

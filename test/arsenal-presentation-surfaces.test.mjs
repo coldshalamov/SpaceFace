@@ -5,7 +5,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { controlSections } from '../src/ui/screens/help.js';
-import { RAIL_SLOTS, SUPPORT_SLOTS, slotDescription } from '../src/ui/powerRail.js';
+import { RAIL_SLOTS, SUPPORT_SLOTS, slotDescription, FLIGHT_POWER_COPY } from '../src/ui/powerRail.js';
 import { POWER_PAGES } from '../src/systems/mobile/catalog.js';
 import { staticVerbSentence } from '../src/data/arsenalWords.js';
 import { readOrdnanceModel } from '../src/ui/orrery/hudAdapter.js';
@@ -21,8 +21,15 @@ const flightRows = (state) => controlSections(state).find((section) => section[0
 
 test('the rail bank, the Help sheet and the phone deck say the same thing about a power', () => {
   const byAction = Object.fromEntries([...RAIL_SLOTS, ...SUPPORT_SLOTS].map((s) => [s.action, s]));
-  for (const [verb, action] of [['pull', 'pull'], ['shove', 'shove'], ['pin', 'pin'], ['bomb', 'bomb'], ['rig', 'rig'], ['cloak', 'cloak']]) {
-    assert.equal(byAction[action].description, staticVerbSentence(verb), `${verb}: the rail's bank is the arsenal's sentence`);
+  // The six flight sockets bank the canonical one-line caption (FLIGHT_POWER_COPY); the support
+  // verbs bank the arsenal's full sentence. One bank per slot, enumerated — no surface composes prose.
+  for (const idx of [1, 2, 3, 4, 5, 6]) {
+    const slot = RAIL_SLOTS.find((s) => s.index === idx);
+    assert.equal(slot.description, FLIGHT_POWER_COPY[idx].caption, `${slot.action}: the socket's bank is the canonical caption`);
+    assert.equal(slotDescription(idx), FLIGHT_POWER_COPY[idx].caption);
+  }
+  for (const [verb, action] of [['cloak', 'cloak'], ['gyre', 'gyreSnare'], ['travel', 'travelBurn']]) {
+    assert.equal(byAction[action].description, staticVerbSentence(verb), `${verb}: the support bank is the arsenal's sentence`);
     assert.equal(slotDescription(byAction[action].index), staticVerbSentence(verb));
   }
   const rows = new Map(flightRows({ settings: { controls: {}, gameplay: {} } }).map((row) => [row[1], row[0]]));
@@ -49,21 +56,22 @@ test('Help carries the fitted weapon with its compiled changes, and a combinatio
   assert.ok(weapon, 'the fitted weapon is named on the sheet');
   assert.equal(weapon[1], 'fire', 'and rides the Fire key');
   assert.match(weapon[0], /Bounces off up to 1 surface\./, 'the compiled bounce');
-  assert.match(weapon[0], /jumps to up to \d+ more hulls? within \d+ units/, 'the compiled hop rule');
+  assert.match(weapon[0], /jumps to up to \d+ more hulls? within \d+ m/, 'the compiled hop rule');
   const combo = rows.find((row) => row[0].startsWith('Combination — '));
   assert.ok(combo, 'the sheet carries the worked example');
   assert.match(combo[0], /Pull \(1\) drops a well on a pile of loose rocks/);
-  assert.match(combo[0], /Hold Gyre \('\) over the pile/);
-  assert.match(combo[0], /Release Gyre to throw the ball/);
+  assert.match(combo[0], /Hold Gather over the pile/, 'the Gather is unbound by default: no key hint at all');
+  assert.match(combo[0], /Release Gather to throw the ball/);
   assert.match(combo[0], /Solve it any way the room allows/);
-  assert.equal(combo[2], "1 → ' → release");
-  // a remap moves the example; an unbound Gyre is said to be unbound, never taught as a default key
+  assert.equal(combo[2], '(1) →  → release');
+  // a remap moves the example; an unbound Gather shows no key hint — never "unbound", never ()
   state.settings.controls.bindings = { gyreSnare: ['KeyV'], pull: ['KeyZ'] };
-  assert.equal(flightRows(state).find((row) => row[0].startsWith('Combination — '))[2], 'Z → V → release');
+  assert.equal(flightRows(state).find((row) => row[0].startsWith('Combination — '))[2], '(Z) → (V) → release');
   state.settings.controls.bindings = { gyreSnare: [] };
   const unbound = flightRows(state).find((row) => row[0].startsWith('Combination — '));
-  assert.match(unbound[0], /Hold Gyre \(unbound\)/);
-  assert.equal(unbound[2], '1 → unbound → release');
+  assert.match(unbound[0], /Hold Gather over the pile/);
+  assert.doesNotMatch(unbound[0], /unbound|\(\)/);
+  assert.equal(unbound[2], '(1) →  → release');
 });
 
 test('a refusal the matter tools publish becomes one specific toast, once, in the owner\'s own words', () => {
@@ -97,17 +105,21 @@ test('a refusal the matter tools publish becomes one specific toast, once, in th
   assert.equal(currentDenial({ tick: 100 }, 500), null, 'a stale refusal stops explaining the net');
 });
 
-test('the Gyre and Pull tips quote the live refusal while it still explains the net', () => {
+test('the Gather and Pull tips quote the live refusal while it still explains the net', () => {
   const state = previewOrdnanceState();
   state.tick = 6000;
   const denial = { tool: 'gyre', code: 'too-heavy', text: 'Too big to take whole', tick: 5950 };
   const withDenial = readOrdnanceModel(state, null, undefined, { denial });
   assert.match(withDenial['7'].tip, /Ready|Holding a ball/, 'the live state is still there');
   assert.ok(withDenial['7'].tip.endsWith('Too big to take whole'), withDenial['7'].tip);
-  // the Pull collector's refusals ride the Pull socket
+  // the Pull collector's refusals ride the Pull socket while it is ready; a socket in another
+  // state (recharging, cooling) speaks its live reason first
   const pullDenial = readOrdnanceModel(state, null, undefined, { denial: { tool: 'collector', code: 'anchored', text: 'Anchored — it will not move', tick: 5990 } });
-  assert.ok(pullDenial['1'].tip.endsWith('Anchored — it will not move'), pullDenial['1'].tip);
+  assert.doesNotMatch(pullDenial['1'].tip, /Anchored/, 'the cooling Pull reports the recharge, not the refusal');
   assert.doesNotMatch(pullDenial['7'].tip, /Anchored/);
+  state.fields.cooldowns.well = 0;
+  const readyPull = readOrdnanceModel(state, null, undefined, { denial: { tool: 'collector', code: 'anchored', text: 'Anchored — it will not move', tick: 5990 } });
+  assert.ok(readyPull['1'].tip.endsWith('Anchored — it will not move'), readyPull['1'].tip);
   const stale = readOrdnanceModel(state, null, undefined, { denial: { ...denial, tick: 1000 } });
   assert.doesNotMatch(stale['7'].tip, /Too big to take whole/);
   assert.doesNotMatch(readOrdnanceModel(state, null, undefined)['7'].tip, /Too big to take whole/);

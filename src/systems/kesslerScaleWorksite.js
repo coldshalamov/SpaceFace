@@ -1,5 +1,5 @@
 // Scale 4 is the existing Tethys receiver, not a new station or a Tycho alias.
-// Furniture flanks an OPEN measuring volume. No platform crosses the 90 WU ring.
+// Furniture flanks an OPEN measuring volume. No platform crosses the 90 u ring.
 // These are ordinary registered place bodies; the adapter uses the same measured
 // skin/draw-scale owner as world dressing, never a hand-sized ball collider.
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
@@ -15,6 +15,10 @@ export const KESSLER_WORKSITE = Object.freeze([
 
 export function kesslerPadPosition() {
   return sectorLocalToGlobalForSector(KESSLER_SCALE.pad, KESSLER_SCALE.sectorId);
+}
+
+export function kesslerDeliveredCratePosition(pad = kesslerPadPosition()) {
+  return { x: pad.x - 16, z: pad.z + 10 };
 }
 
 export function kesslerWorksiteSpecs() {
@@ -55,6 +59,6 @@ export function kesslerScaleWaypoint(state) {
     kind: 'story', storyBeat: 1, label: 'Scale 4 · weigh the delivered crate',
     sectorId: KESSLER_SCALE.sectorId, sectorName: 'Tethys Junction',
     stationId: null, pos: kesslerPadPosition(),
-    reason: 'The desk kept your delivered alloy crate on Scale 4 — it stays on the plate until the read latches. To weigh your own freight: brake below 2 WU/s inside the ring, then jettison a lot; the calm set-down settles the pod. Freight stays yours.',
+    reason: 'Fly inside the Scale 4 ring to watch the delivered alloy crate being weighed.',
   };
 }

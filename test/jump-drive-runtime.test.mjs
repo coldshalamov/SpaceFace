@@ -61,6 +61,15 @@ function startDriveJump(h) {
   return { charge: h.state.jump.chargeNeeded, fuel: h.state.jump._fuelCost };
 }
 
+// Deferred enter lane: materialization drains a fixed slice per JUMPING tick and
+// the emit tail lands once the producer parks at 'enter-pre-emit' — pump the tick
+// until the tunnel exits (bounded; a parked producer is a real arrival delay).
+function pumpJumping(h, maxTicks = 256) {
+  for (let i = 0; i < maxTicks && h.state.jump.state === 'JUMPING'; i++) {
+    h.world._tickJumping(1.2, h.state);
+  }
+}
+
 function completeJump(h, via) {
   h.bus.emit('world:requestJump', {
     targetSectorId: 'sector_ceres_belt',
@@ -69,7 +78,7 @@ function completeJump(h, via) {
   assert.equal(h.state.jump.state, 'CHARGING');
   h.world._tickCharging(h.state.jump.chargeNeeded, h.state);
   assert.equal(h.state.jump.state, 'JUMPING');
-  h.world._tickJumping(1.2, h.state);
+  pumpJumping(h);
   return h.state.jump.cooldownT;
 }
 
@@ -78,7 +87,7 @@ function completeGateJump(h) {
   h.state.jump.targetSectorId = 'sector_ceres_belt';
   h.state.jump.via = 'gate';
   h.state.jump._jumpT = 0;
-  h.world._tickJumping(1.2, h.state);
+  pumpJumping(h);
   return h.state.jump.cooldownT;
 }
 
@@ -190,7 +199,7 @@ for (const [event, replacementSectorId] of [
     off();
     h.world.enterSector(replacementSectorId);
   });
-  h.world._tickJumping(1.2, h.state);
+  pumpJumping(h);
 
   assert.equal(h.state.world.currentSectorId, replacementSectorId);
   assert.deepEqual(arrivals, [], 'the replacement owns the arrival even when the sector id matches');

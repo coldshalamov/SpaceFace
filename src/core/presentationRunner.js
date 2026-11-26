@@ -14,10 +14,12 @@ import {
 } from './simulationRunner.js';
 import { mustRescheduleAfterFrame } from './frameLiveness.js';
 import { collectJournalPresentationEntities, collectJournalPresentationEntitiesChunked } from '../world/presentationSources.js';
-import { autoPresentationCapFor, resolveFrameCap } from '../render/adaptiveQuality.js';
+import { autoPresentationCapFor, normalizeFrameCap, resolveFrameCap } from '../render/adaptiveQuality.js';
 import { shouldSkipFlightDraw, shouldSkipFullTickSystems } from './presentationFreeze.js';
 import { PRESENTATION_LISTENER_DRAIN_BUDGET, SECTOR_ENTER_DRAIN_BUDGET, SECTOR_ENTER_LISTENER_BUDGET } from './eventBus.js';
 import { syncFocusLossHold } from './focusLossHold.js';
+import { noteFrameRatePresent } from './frameRateLog.js';
+import { setFocusPausePlate } from '../render/focusPausePlate.js';
 import { createTimeEffects, readTimeEffectsRequests } from './timeEffects.js';
 
 // Consecutive failing frames before the loop calls the picture dead. 30 is half a second at 60 Hz:
@@ -793,13 +795,26 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
     synchronizeLifecycle('document-visibility');
   }
 
+  // Every focus-loss edge funnels through here so the hold and its plate can
+  // never disagree. Ruling (owner, 2026-11-21): a hold that stops the world is
+  // always visible — an open screen already says "paused", so the plate only
+  // speaks when flight would otherwise freeze silently.
+  function applyFocusLossHold(blurred) {
+    let outcome = { paused: false, muted: false };
+    try { outcome = syncFocusLossHold(state, blurred); } catch (_) { /* the clock owner reports its own errors */ }
+    const screenSpeaks = !!(state.ui && Array.isArray(state.ui.screenStack)
+      && state.ui.screenStack.length);
+    try { setFocusPausePlate(outcome.paused === true && !screenSpeaks); } catch (_) { /* cosmetic */ }
+    return outcome;
+  }
+
   function onWindowBlur() {
     if (destroyed) return;
     // Once the desktop shell has reported native focus, DOM focus events are
     // only a fallback: their independent delivery order must not re-pause a
     // window the shell has already confirmed focused.
     if (shellSequence > 0) return;
-    try { syncFocusLossHold(state, true); } catch (_) { /* the clock owner reports its own errors */ }
+    applyFocusLossHold(true);
   }
 
   function onWindowFocus() {
@@ -814,7 +829,7 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
     // Browsers can deliver blur without a matching focus on return. Active interaction proves
     // focus even when rAF kept running: otherwise the focus pause freezes the world indefinitely.
     // Clear only that owner's hold; loading, menus and context recovery retain theirs.
-    try { syncFocusLossHold(state, false); } catch (_) { /* resume is idempotent */ }
+    applyFocusLossHold(false);
     if (!suspended) return;
     documentHidden = false;
     diagnostics.visibilityState = 'visible';
@@ -846,9 +861,7 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
       || command.state === LOOP_LIFECYCLE_STATES.FOREGROUND_OCCLUDED) {
       // The accepted native state owns both focus edges, including a missing
       // DOM blur/focus. Other pause sources retain their independent requests.
-      try {
-        syncFocusLossHold(state, command.state === LOOP_LIFECYCLE_STATES.FOREGROUND_OCCLUDED);
-      } catch (_) { /* resume is idempotent */ }
+      applyFocusLossHold(command.state === LOOP_LIFECYCLE_STATES.FOREGROUND_OCCLUDED);
     }
     // Native Electron focus loss can omit the DOM blur/focus pair, so the input
     // owner's own blur release may never fire — and foreground-occluded still
@@ -1392,9 +1405,10 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
     if (destroyed || suspended || !isPresentingState(lifecycleState)) return;
 
     diagnostics.executedFrames++;
-    // Presentation heartbeat: every callback proves the page can still present. If beats stop,
-    // the worker holds authoritative time instead of running ahead into a later jump.
+    // Report presentation liveness and reply progress. Explicit lifecycle transitions own pause.
     try { simulationRunner.heartbeat?.(); } catch (_) { /* heartbeat is best-effort */ }
+    // The worker lane applies replies from the frame while these callbacks keep arriving.
+    try { simulationRunner.noteAnimationFrame?.(); } catch (_) { /* optional */ }
     const restoring = lifecycleState === LOOP_LIFECYCLE_STATES.RESTORING;
     const callbackStart = measureNow();
     let perf = null;
@@ -1513,8 +1527,8 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
       // An integrated GPU on the Auto policy gets a stable 30 Hz presentation cadence. The authored
       // picture is unchanged (bloom, Nocturne and particles all stay); the cap only stops the loop
       // from presenting frames it cannot finish. A Manual preset or any explicit frame cap wins.
-      const autoIntegratedCap = autoPresentationCapFor(state.render && state.render.gpu, video);
-      _frameCapArgs.cap = autoIntegratedCap || video.frameCap;
+      _frameCapArgs.cap = normalizeFrameCap(video.frameCap)
+        || autoPresentationCapFor(state.render && state.render.gpu, video, state.render);
       _frameCapArgs.vsync = video.vsync !== false;
       _frameCapArgs.displayHz = displayHz;
       const effectiveCap = restoring
@@ -1545,6 +1559,8 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
           renderedSnapshot = presentLastCompletedSnapshot(frameDt, restoring, perf, fixedDt, rawFrameDt);
           presentationMs = diagnostics.lastPresentMs;
           completedPresentation = true;
+          // One line every ten live seconds for the launch log (the owner's real frame rate).
+          noteFrameRatePresent(state, now);
         } catch (error) {
           presentationError = error;
           presentationMs = diagnostics.lastPresentMs || 0;
@@ -1665,6 +1681,11 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
       try {
         if (perf && typeof perf.recordFrameCallback === 'function') {
           perf.recordFrameCallback(measureNow() - callbackStart);
+        }
+        // Main-thread time of a callback that presented: the Auto cadence governor's input
+        // (cap-skipped callbacks are short and would hide the real frame cost).
+        if (completedPresentation && state && state.render) {
+          state.render.lastPresentedCallbackMs = measureNow() - callbackStart;
         }
         // E10 frame truth: one preallocated ring row per presented frame. Every probe
         // read here already exists; a missing one records as 0 and never aborts the loop.

@@ -64,7 +64,7 @@ const GAUNTLET = process.argv.includes('--gauntlet');
 const MODE = GAUNTLET ? 'scored' : 'swarm';
 // The door's launch word belongs to step two (Ship & kit) and is the ruleset's own voice:
 // the swarm's verb opens the armory, the arc's enters it.
-const MODE_VERB = GAUNTLET ? 'Enter the Gauntlet' : 'Open armory';
+const MODE_VERB = GAUNTLET ? 'Enter the Gauntlet' : 'Review equipment';
 const pw = await loadPlaywright();
 const { chromium } = pw;
 
@@ -497,10 +497,10 @@ async function main() {
 
   // ── LAUNCH ──────────────────────────────────────────────────────────────────────────────────
   // The door is a two-step preparation (Encounter, then Ship & kit): the hull cards and the
-  // launch word live on step two, so a player clicks through "Choose ship & kit" first. The seed
+  // launch word live on step two, so a player clicks through "Choose ship" first. The seed
   // field sits in the step-one disclosure; writing it stays valid either way.
-  if (!(await clickButton(page, 'Choose ship & kit'))) {
-    throw new Error('door continue control ("Choose ship & kit →") did not click');
+  if (!(await clickButton(page, 'Choose ship'))) {
+    throw new Error('door continue control ("Choose ship →") did not click');
   }
   await page.evaluate(({ seed, starterId }) => {
     const wanted = starterId;
@@ -946,7 +946,7 @@ async function main() {
     null, { timeout: 30000 },
   );
   const resultsView = await page.evaluate(() => {
-    const root = document.querySelector('#screens [data-stamp="CRUCIBLE / FLIGHT RECORD"]')
+    const root = document.querySelector('#screens [data-stamp="SWARM / FLIGHT RECORD"]')
       || document.querySelector('#screens .sf-crucible-results');
     const owner = window.SF.registry.get('survivalResults');
     return {

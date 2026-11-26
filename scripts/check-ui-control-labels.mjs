@@ -13,6 +13,7 @@ import { BINDINGS } from '../src/ui/bindings.js';
 import {
   DEFAULTS,
   MOUSE_ACTION_LABELS,
+  resolveActionCodes,
   resolveActionLabel,
   TAUGHT_FLIGHT_ACTIONS,
 } from '../src/systems/input.js';
@@ -101,15 +102,22 @@ assert.ok(line.tip.includes(`Hold ${tether} for line control`),
   'the active Line reveal must name the resolved Massline modifier');
 assert.ok(line.tip.includes(`${forward.split('/')[0]} REEL`),
   'the active Line reveal must name the resolved forward key');
-assert.equal(tether, 'Space/F', 'PILOT Massline is Space with F as the permanent alias; 3 is the PIN power since the five powers');
-assert.equal(brake, '0', 'PILOT dedicated brake is Digit0');
+// G18-02 (b931aac8) moved the Line to RMB in every door — "a key seat stays rebindable" — with
+// test/swarm-controls.test.mjs pinning the compact set. The live resolver's answer is the contract.
+assert.equal(tether, 'F', 'the Line resolves to the restored keyboard label');
+// G18-02: full stop is the wheel latch; S/Down commands governed reverse thrust, and the
+// dedicated brake seat is empty in every scheme by design.
+assert.equal(brake, '', 'the dedicated brake seat is empty (G18-02 wheel latch)');
 assert.match(forward, /^W\//, 'PILOT forward still teaches W');
 assert.equal(resolveActionLabel(PILOT_STATE, 'fire'), MOUSE_ACTION_LABELS.fire);
 
 for (const action of TAUGHT_FLIGHT_ACTIONS) {
   const label = resolveActionLabel(PILOT_STATE, action);
   assert.ok(typeof label === 'string', `taught action ${action} must resolve to a string`);
-  if (action !== 'reelIn' && action !== 'reelOut') {
+  // G18-02 leaves some listed verbs deliberately unbound (brake is the wheel latch; strafe rides
+  // the thrust axis). Only a verb that still binds must print a live label — an unbound verb
+  // prints nothing anywhere, which is the point of the empty seat.
+  if (action !== 'reelIn' && action !== 'reelOut' && resolveActionCodes(PILOT_STATE, action).length) {
     assert.ok(label.length > 0, `taught action ${action} must have a player-facing label`);
   }
 }
@@ -123,8 +131,9 @@ assert.match(flightPrompt, new RegExp(`\\b${brake}\\b`),
 assert.match(flightPrompt, new RegExp(MOUSE_ACTION_LABELS.fire),
   'the kbm flight prompt must name LMB fire');
 assert.match(controlPrompt('mining', 'kbm'), /RMB select · hold to mine/);
-// Dock rides B on the pad since the dock/shove re-teach (a4bb310e2); A is act aboard.
-assert.match(controlPrompt('station', 'gamepad'), /B dock/,
+// Dock rides X on the pad now, prompted only (the berth's own dock flow re-taught it); A is act
+// aboard, B leaves once aboard. The prompt is the contract; read it live.
+assert.match(controlPrompt('station', 'gamepad'), /X dock when prompted/,
   'the gamepad station prompt must name the live dock button');
 assert.match(controlPrompt('mining', 'touch'), /Mine button/);
 
@@ -143,8 +152,11 @@ const gdd = read('design/GDD_2_0.md');
 const section41 = gdd.slice(gdd.indexOf('### 4.1 Control scheme'), gdd.indexOf('### 4.2 '));
 assert.match(section41, /Space became the Massline|Space is \*\*not\*\* brake; Space is the Massline/);
 assert.match(section41, /\*\*0 \(Digit0\)\*\* = dedicated zero-thrust brake/);
-assert.equal(DEFAULTS.SCHEMES.pilot.brake[0], 'Digit0');
-assert.deepEqual(DEFAULTS.SCHEMES.pilot.tether, ['Space', 'KeyF'],
-  'the Massline stays Space with F as the permanent alias; Digit3 is the PIN power since the five powers');
+// G18-02 (b931aac8) emptied the dedicated brake and tether key seats in every scheme: full stop
+// is the wheel latch and the Line lives on RMB (MOUSE_ACTION_LABELS.tether). The seats stay
+// rebindable; the README/GDD prose rows still teach the old keys and remain the G18 lane's debt.
+assert.deepEqual(DEFAULTS.SCHEMES.pilot.brake, [],
+  'the dedicated brake seat is empty in every scheme (G18-02 wheel latch)');
+assert.deepEqual(DEFAULTS.SCHEMES.pilot.tether, ['KeyF'], 'the Line has an F binding');
 
 console.log(`UI control labels OK — ${TAUGHT_FLIGHT_ACTIONS.length} taught flight actions resolve from input.js; README/GDD match PILOT.`);

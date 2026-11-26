@@ -156,7 +156,6 @@ async function armStationAndTrack(page, helpers, label, { unconditionalEscape = 
       pausedSamples += 1;
       // Condition B deliberately does NOT recover: it must reproduce the journey faithfully.
       if (!recoverPause) { await page.waitForTimeout(SAMPLE_MS); continue; }
-      await page.bringToFront().catch(() => {});
       await page.locator('#gl-canvas').focus().catch(() => {});
       await page.keyboard.press('Escape').catch(() => {});
       await page.waitForTimeout(200);
@@ -234,7 +233,6 @@ try {
   page = await context.newPage();
   page.setDefaultTimeout(30_000);
   await page.goto(rootUrl, { waitUntil: 'domcontentloaded', timeout: 60_000 });
-  await page.bringToFront();
   await bootToAuthoredFlight({ page, outputDir: null, log });
 
   // ---- Condition A: conditional Escape (press it only if the chart is actually still up) ----
@@ -245,7 +243,6 @@ try {
   // A cannot be followed by B in the same run: A ends at Helios, so its world state and camera are
   // no longer comparable. Reload to a fresh public-route New Game before changing the one variable.
   await page.reload({ waitUntil: 'domcontentloaded', timeout: 60_000 });
-  await page.bringToFront();
   await bootToAuthoredFlight({ page, outputDir: null, log });
   const b = await armStationAndTrack(page, TRAVEL_PUBLIC_HELPERS, 'B-historical-unconditional-escape', {
     unconditionalEscape: true,

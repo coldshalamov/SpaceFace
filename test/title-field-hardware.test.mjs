@@ -38,21 +38,20 @@ test('title frame is a Deckplate assembly: frame, drawn logotype, live eyebrow',
   assert.match(frames, /dp-logotype/);
   assert.match(frames, /dp-title__eyebrow/);
   assert.match(frames, /dp-title__rule/);
-  // The contract line moved INTO the eyebrow rather than floating loose near the bottom edge.
-  assert.match(frames, /Contract 47-A remains open/);
+  assert.match(frames, /status\.dataset\.role = 'title-status'/);
   assert.match(frames, /data-fh-register|dataset\.dp/);
 });
 
-test('title verbs are words of light on the ORRERY dial, and the empty decorative rail is gone', () => {
-  // The poster weight: words of light (no plates) over the world.
+test('title verbs are two doors and a small row over the world, at every size (TITLE-02), and the empty decorative rail is gone', () => {
+  // The poster weight: no plates in front of the world; each door is a picture card that names its mode.
   assert.match(menu, /system: 'light'/);
   assert.doesNotMatch(menu, /of-title-rail/, 'the painted-and-empty 64x787 rail must not come back');
   assert.doesNotMatch(menu, /fh-menu-item/);
-  // TITLE-01 (design/game/20_THE_FIRST_HOUR.md): the dial is retired from the title. The same buttons stand
-  // as two doors (ADVENTURE, SWARM), a small row, and a closed More; the sheet only sets them out.
+  // Ledger A11: the dial over the dusk field is retired from the title; the doors are the composition
+  // on desktop and phone alike.
   assert.doesNotMatch(menu, /createArcRail\(/);
-  assert.match(menu, /orr-title--doors/);
-  // the dial's face is drawn in the rail's own line language, not a raster emblem
+  assert.match(menu, /'orr-title--doors'\)/);
+  assert.match(menu, /dressDoor\(bSwarm, TITLE_DOORS\.swarm/);
   assert.match(DECKPLATE_LAYOUT_CSS, /\.dp-menu__item\[aria-disabled="true"\]/);
 });
 

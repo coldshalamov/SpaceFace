@@ -33,7 +33,8 @@ test('ordinary pod pickup atomically delivers the finite lot before cargo observ
 
 for(const refusal of ['full-hold','stale-row'])test(`Orchard collection ${refusal} refusal preserves the live pod and retained lot`,async()=>{
  const h=await released();try{
-  if(refusal==='full-hold')h.sim.state.player.cargo.capVolume=0;
+  // Slot law (CARGO-BUILD-1): a full bag — one slot holding a full foreign stack — refuses.
+  if(refusal==='full-hold'){const c=h.sim.state.player.cargo;c.slotCount=1;c.slots=[{commodityId:'cmdty_ore_iron',qty:20}];}
   else h.sim.state.sites.anvilOrchard=structuredClone(h.sim.state.sites.anvilOrchard);
   const result=mining._collectPickupViaEvent(h.pod,h.worker);
   assert.equal(result.accepted,0);assert.equal(h.pod.alive,true);assert.equal(h.pod.data.amount,4);

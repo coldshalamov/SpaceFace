@@ -4,6 +4,7 @@
 // missionLog.js re-exports objectiveText/continueRecap for its existing screen importers.
 
 import { SECTORS } from '../../data/sectors.js';
+import { worksObjectiveLine } from '../../data/worksContractWords.js';
 import { commodityDisplayName } from '../commodityNames.js';
 import { starterRamSentence } from '../../data/starterJobs.js';
 import { unsatisfiedRequiredConditions } from '../../data/contractClauses.js';
@@ -81,14 +82,14 @@ export function registryContactReadout(m) {
     return {
       objective: 'Registry identified — choose custody or force',
       where,
-      next: 'Civilian maintenance vessel. For custody, tether the living vessel, close within 60 WU and reel the Line to 60 WU or less. A short spool alone is not custody. Or destroy the vessel to resolve by force.',
+      next: 'Civilian maintenance vessel. For custody, tether the living vessel, close within 60 m and reel the Line to 60 m or less. A short spool alone is not custody. Or destroy the vessel to resolve by force.',
     };
   }
   if (p.investigationStage != null) return null;
   return {
     objective: 'Identify the marked vessel — scan before choosing a response',
     where,
-    next: 'Find the marked vessel off Ashfall in Charon Expanse. Select it, move within 1,200 u, and pulse scan to identify it before choosing a response.',
+    next: 'Find the marked vessel off Ashfall in Charon Expanse. Select it, move within 1,200 m, and pulse scan to identify it before choosing a response.',
   };
 }
 
@@ -106,11 +107,43 @@ export function contract47aReadout(m) {
   const recovered = p.sampleRecovered === true;
   const where = recovered
     ? destination + (sector ? ` (${sector})` : '')
-    : `47-A Recovery Site${sector ? ` · ${sector}` : ''} → ${destination}`;
+    : `The marked rock${sector ? ` · ${sector}` : ''} → ${destination}`;
   const objective = recovered
-    ? `Deliver the recovered 47-A assay sample to ${destination}`
-    : `Recover the 47-A assay sample at the marked recovery site${sector ? ` in ${sector}` : ''}, then return it to ${destination}.`;
+    ? `Deliver the 47-A sample to ${destination}`
+    : `Recover the 47-A sample. Dock at ${destination}.`;
   return { objective, where };
+}
+
+const INTERNAL_47A_TITLE = /Contract 47-A:\s*Mass Variance Sample/i;
+
+function isContract47AFiling(m) {
+  if (!m || typeof m !== 'object') return false;
+  if (m.storyTag === CONTRACT_47A_B0_TAG) return true;
+  if (m.params && m.params.contractId === CONTRACT_47A_B0_BODY.contractId) return true;
+  return INTERNAL_47A_TITLE.test(m.title || m.name || '');
+}
+
+/** The name Pause and Load show: the job, not the filing title. */
+export function playerFacingContractTitle(m) {
+  if (isContract47AFiling(m)) {
+    return m.params && m.params.sampleRecovered === true
+      ? 'Deliver the 47-A sample'
+      : 'Recover the 47-A sample';
+  }
+  return (m && (m.title || m.name)) || prettyType(m && m.type) || 'Contract';
+}
+
+/** Rewrite a saved summary line that still carries the filing title.
+ *  New cards already store Recover/Deliver from playerFacingContractTitle; this is only
+ *  the fallback for old cards. Pass the live mission (or true) when the sample is aboard
+ *  so Load can say Deliver. */
+export function playerFacingObjectiveSummary(text, mission = null) {
+  const src = String(text || '');
+  if (!src) return '';
+  if (!INTERNAL_47A_TITLE.test(src)) return src;
+  const recovered = mission === true
+    || (mission && typeof mission === 'object' && mission.params && mission.params.sampleRecovered === true);
+  return src.replace(INTERNAL_47A_TITLE, recovered ? 'Deliver the 47-A sample' : 'Recover the 47-A sample');
 }
 
 /** Build a human-readable objective description from the mission instance. */
@@ -136,7 +169,7 @@ export function objectiveText(m) {
     if (c.outcome === 'clean_delivery') return 'Delivered to Expanse — cylinder clean';
     return c.objective || (c.phase === 'retreat' ? 'Return to the entry refuge together'
       : c.phase === 'delivery' ? 'Escort the charge to Expanse, then dock to settle'
-        : 'Join the charge at the entry refuge — within 420 u, relative speed below 12 u/s');
+        : 'Join the charge at the entry refuge — within 420 m, relative speed below 12 m/s');
   }
   const prog = m.objectiveProgress || 0;
   const tgt = m.objectiveTarget || 1;
@@ -158,7 +191,7 @@ export function objectiveText(m) {
   switch (m.type) {
     case 'cargo_delivery': {
       const serviceClass = `${m.originChoiceId || ''} ${m.title || ''} ${m.mapLabel || ''}`.toLowerCase();
-      const cargo = `${Math.max(1, Number(p.qty) || tgt)}u ${cmdtyName(p.cmdtyId)}`;
+      const cargo = `${Math.max(1, Number(p.qty) || tgt)} units ${cmdtyName(p.cmdtyId)}`;
       if (m.originCareer === 'hauler' && serviceClass.includes('bonded express')) {
         return `EXPRESS · Deliver ${cargo} to ${dest} · short clock · ${m.collateral_cr || 0} cr bond at risk`;
       }
@@ -174,9 +207,11 @@ export function objectiveText(m) {
       return `Sell ${prog}/${tgt} ${cmdtyName(p.cmdtyId)}`;
     // W-TENDER: the desk sale settles the run — name what the desk still needs, where.
     case 'tender_haul':
-      return `Sell ${Math.max(0, tgt - prog)}u ${cmdtyName(p.cmdtyId)} at ${dest}`;
+      return `Sell ${Math.max(0, tgt - prog)} units ${cmdtyName(p.cmdtyId)} at ${dest}`;
     case 'mining_quota':
       return `Mine ${prog}/${tgt} ${cmdtyName(p.cmdtyId)}`;
+    case 'works_contract':
+      return worksObjectiveLine(m);
     case 'bounty_hunt':
       return starterRamSentence(p) || 'Eliminate target';
     case 'patrol_clear':
@@ -220,7 +255,7 @@ export function objectiveText(m) {
       return tgt > 1 ? `Run ${course} in order · ${prog}/${tgt} cleared` : `Run ${course} and finish`;
     }
     case 'bulk_haul':
-      return `Tether-haul ${prog}/${tgt}u bulk ore to ${dest}`;
+      return `Tether-haul ${prog}/${tgt} units bulk ore to ${dest}`;
     case 'capital_boss':
       return `Destroy the capital ship${inSector(m)}`;
     case 'authored_set_piece':

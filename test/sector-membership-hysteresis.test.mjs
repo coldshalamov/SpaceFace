@@ -1,7 +1,13 @@
 // Free-flight membership hysteresis. The Voronoi membership test is a knife edge; a player
 // patrolling rocks on a border used to flip residency every oscillation (measured: 38 continuous
 // enter/exits in one hour). The switch now requires a committed lead + a dwell. Real corridor
-// geometry, stubbed enterSector, no materialization.
+// geometry, stubbed enterSectorChunked, no materialization.
+//
+// Sliced sector enters (owner freeze bug 2026-11-21): membership flips after the settle. A
+// committed crossing no longer calls enterSector synchronously — _tickResidency mints an
+// _activeContinuousEnter drained a few steps per world tick, and the flip lands at the
+// generator's tail. The stub below yields more steps than one in-tick drain covers so the
+// tests exercise exactly that contract.
 
 import assert from 'node:assert/strict';
 import test from 'node:test';
@@ -60,8 +66,16 @@ function makeHarness({ current, probe }) {
   };
   const calls = [];
   const w = Object.create(world);
+  w.state = state;
   w._membershipCandidate = null;
-  w.enterSector = (sectorId, opts) => {
+  w.enterSectorChunked = function* (sectorId, opts) {
+    // Five phase bricks outlast the 3 steps _tickResidency drains in-tick, so the flip
+    // can only land when the test settles the lane — the real generator's atomic tail.
+    yield 'residency:materialized';
+    yield 'residency:materialized';
+    yield 'residency:materialized';
+    yield 'residency:materialized';
+    yield 'residency:materialized';
     calls.push({ sectorId, opts });
     state.world.currentSectorId = sectorId;   // the real enterSector's membership contract
     return {};
@@ -75,6 +89,14 @@ function makeHarness({ current, probe }) {
     w._tickResidency(state);
   }
   return { state, w, calls, from, to, commit, posAt, tickAt, pair };
+}
+
+// Drain the continuous membership handoff to its atomic tail — the same settle the
+// world's own tick loop performs at ENTER_DEFER_STEPS_PER_TICK per update.
+function settleEnters(w) {
+  for (let i = 0; i < 64 && w._activeContinuousEnter; i++) {
+    w._drainContinuousSectorEnter(64);
+  }
 }
 
 test('membership holds deep inside the current cell', () => {
@@ -101,7 +123,11 @@ test('a committed crossing flips exactly once, after the dwell', () => {
   h.tickAt(4, offset);
   assert.equal(h.calls.length, 0, 'no flip before the dwell elapses');
   h.tickAt(8.5, offset);
-  assert.equal(h.calls.length, 1, 'one flip after the dwell');
+  assert.equal(h.calls.length, 0,
+    'dwell arms the handoff — sliced sector enters (owner freeze bug 2026-11-21): '
+    + 'membership flips after the settle');
+  settleEnters(h.w);
+  assert.equal(h.calls.length, 1, 'one flip after the settle');
   assert.equal(h.calls[0].sectorId, h.to);
   assert.equal(h.calls[0].opts.continuous, true, 'free-flight handoff stays continuous');
   assert.equal(h.state.world.currentSectorId, h.to);
@@ -120,7 +146,9 @@ test('a lead that lapses resets the dwell', () => {
   h.tickAt(21, offset);     // fresh commitment restarts the dwell
   assert.equal(h.calls.length, 0, 'lapsed lead must not bank the old dwell');
   h.tickAt(29.5, offset);
-  assert.equal(h.calls.length, 1, 'flip only after the restarted dwell');
+  assert.equal(h.calls.length, 0, 'restarted dwell arms the handoff, no flip until the settle');
+  settleEnters(h.w);
+  assert.equal(h.calls.length, 1, 'flip only after the restarted dwell settles');
 });
 
 test('a border-straddling patrol at the measured loop scale never flips', () => {
@@ -137,5 +165,7 @@ test('a border-straddling patrol at the measured loop scale never flips', () => 
   const committed = h.commit + 60;
   h.tickAt(3700, committed);
   h.tickAt(3712, committed);
+  assert.equal(h.calls.length, 0, 'the committed hold arms the handoff, not a synchronous flip');
+  settleEnters(h.w);
   assert.equal(h.calls.length, 1, 'a genuinely committed transit still switches');
 });

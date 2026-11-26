@@ -16,6 +16,7 @@ import {
   resolveHailVisual,
 } from './commsRadial.js';
 import { getPromptDeck } from './promptDeck.js';
+import { promptAnswerKey, promptAnswerSlot } from '../data/inputContexts.js';
 
 const ROUTE_READING_GRACE_S = 30;
 
@@ -36,6 +37,7 @@ export function createContactHailPrompt(ctx) {
 
   const root = document.createElement('div');
   root.id = 'sf-contact-hail';
+  root.hidden = true;
   root.innerHTML = `
     <button type="button" class="sf-contact-hail__button" data-k="hail" disabled
       aria-label="Hail selected contact">HAIL</button>
@@ -62,8 +64,8 @@ export function createContactHailPrompt(ctx) {
   // way). hud.js's adoptCommsChrome re-parents it into the comms tape on the real route; the
   // self-adoption covers mounts that land after that pass — the fixed corner seat painted over
   // the tracker heading whenever both were up (bench flight-speaker 2026-11-14).
-  const backlogChip = document.getElementById('sf-comm-backlog-btn');
-  const trackerColumn = document.querySelector('.sf-leftcontext');
+  const backlogChip = typeof document.getElementById === 'function' ? document.getElementById('sf-comm-backlog-btn') : null;
+  const trackerColumn = typeof document.querySelector === 'function' ? document.querySelector('.sf-leftcontext') : null;
   if (backlogChip && trackerColumn && trackerColumn.contains(backlogChip)) backlogChip.after(root);
   else if (trackerColumn) trackerColumn.appendChild(root);
   else uiRoot.appendChild(root);
@@ -160,6 +162,7 @@ export function createContactHailPrompt(ctx) {
     panel.removeAttribute('tabindex');
     linesEl.replaceChildren();
     actionsEl.replaceChildren();
+    root.hidden = !availability.enabled;
     updateDeckVisual(true);
   }
 
@@ -253,8 +256,8 @@ export function createContactHailPrompt(ctx) {
       const button = document.createElement('button');
       button.type = 'button';
       button.dataset.choice = action.id;
-      button.textContent = `${index + 1} · ${action.label}`;
-      button.setAttribute('aria-label', `${action.label}. Choice ${index + 1}.`);
+      button.textContent = `${promptAnswerKey(index) || '·'} · ${action.label}`;
+      button.setAttribute('aria-label', `${action.label}. Key ${promptAnswerKey(index)}.`);
       return button;
     }));
     panel.hidden = false;
@@ -281,6 +284,7 @@ export function createContactHailPrompt(ctx) {
       : 'Hail unavailable for selected contact');
     root.classList.toggle('sf-contact-hail--ready', !!availability.enabled);
     if (active && (!availability.enabled || availability.targetId !== active.targetId)) hidePanel();
+    root.hidden = !availability.enabled && !active;
     updateDeckVisual(true);
   }
 
@@ -326,9 +330,8 @@ export function createContactHailPrompt(ctx) {
     // choices step aside rather than race it (pre-deck, both capture listeners fired).
     const deck = getPromptDeck();
     if (deck && deck.size > 0) return;
-    const index = event.code === 'Digit1' || event.code === 'Numpad1' ? 0
-      : event.code === 'Digit2' || event.code === 'Numpad2' ? 1
-        : event.code === 'Digit3' || event.code === 'Numpad3' ? 2 : -1;
+    // R17: the hail answers on 6/7/8 — keys 1–5 stay the powers in flight.
+    const index = promptAnswerSlot(event.code);
     if (index < 0) return;
     const action = active.actions && active.actions[index];
     if (!action) return;
@@ -388,7 +391,10 @@ export function createContactHailPrompt(ctx) {
   ];
   for (const [event, handler] of busBindings) bus.on(event, handler);
 
-  return { el: root, tick, request, choose, hide: hidePanel, destroy };
+  return { el: root, tick, request, choose, hide: hidePanel, destroy,
+    // tick() only works while an offer lives or the panel still shows (ribbon refresh);
+    // hidePanel() clears both together, so a false flag cannot strand a visible panel.
+    get isActive() { return !destroyed && (active != null || !panel.hidden); } };
 }
 
 

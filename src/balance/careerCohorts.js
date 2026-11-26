@@ -39,7 +39,7 @@ import {
   recordFieldExtraction,
   recoverFieldDepletion,
 } from '../systems/fieldDepletion.js';
-import { cargo as cargoSystem, addCargo, removeCargo } from '../systems/cargo.js';
+import { cargo as cargoSystem, addCargo, removeCargo, slotFitFor } from '../systems/cargo.js';
 import { economy as economySystem, SERVICE_PRICES } from '../systems/economy.js';
 import { ships as shipsSystem, makeShipEntitySpec, fittingsFromDefaultModules, getDerivedStats, buildSlotList, fits } from '../systems/ships.js';
 import { factions as factionsSystem } from '../systems/factions.js';
@@ -1473,9 +1473,7 @@ function runHauler(horizonS, options = {}) {
 
     const ship = SHIP_BY_ID.get(ctx.currentShipId) || SHIP_BY_ID.get(NEW_GAME.shipId);
     ctx.state.player.cargo.capVolume = ship.cargo;
-    const freeVol = ctx.state.player.cargo.capVolume - ctx.state.player.cargo.usedVolume;
-    const volPer = best.vol > 0 ? best.vol : 1;
-    let want = Math.floor(freeVol / volPer);
+    let want = slotFitFor(ctx.state, best.cmdtyId);
     const entry = ctx.state.economy.markets[buyStationId][best.cmdtyId];
     const stockAvail = Math.max(0, Math.floor((entry && entry.stock) - 1));
     if (stockAvail <= 0) {
@@ -2307,8 +2305,11 @@ function runProspector(horizonS, options = {}) {
       });
     }
 
-    const free = ctx.state.player.cargo.capVolume - ctx.state.player.cargo.usedVolume;
-    const timeToSell = free < 1 || ctx.state.player.cargo.usedVolume >= ship.cargo * 0.85;
+    // Slot law: sell when the bag cannot stack the rock ore or is ~85% claimed.
+    const held = ctx.state.player.cargo;
+    const slotsUsed = Array.isArray(held.slots) ? Math.min(held.slots.length, held.slotCount || 0) : 0;
+    const timeToSell = slotFitFor(ctx.state, rockOre) < 1
+      || (held.slotCount > 0 && slotsUsed >= Math.ceil(held.slotCount * 0.85));
     if (!timeToSell) continue;
 
     const sellSec = STATION_TO_SECTOR.get(sellStationId);
@@ -2962,9 +2963,7 @@ function continueCohortActions(ctx, careerId, remainS, seed) {
       });
       if (!m1.ok) break;
       currentSectorId = buySector.id;
-      const freeVol = ctx.state.player.cargo.capVolume - ctx.state.player.cargo.usedVolume;
-      const vol = CMDTY_BY_ID.get(cmdtyId)?.volPerU || 1;
-      let want = Math.max(0, Math.floor(freeVol / vol));
+      let want = Math.max(0, slotFitFor(ctx.state, cmdtyId));
       while (want > 0) {
         const q = ctx.econ.quote(buyStationId, cmdtyId, 'buy', want);
         if (q.ok && q.total <= (ctx.state.player.credits | 0)) break;

@@ -13,9 +13,16 @@
 // threat, --sf-goal objective, --sf-calm chrome, --sf-paper copy) and never as the only channel —
 // every figure carries its own word. No animation at all, so reduced-motion needs no variant.
 
-import { SURVIVAL_RUN_WAVE_COUNT } from '../systems/survivalRun.js';
+import {
+  SURVIVAL_ARENA_INTRO_TICKS,
+  SURVIVAL_CLEANUP_TICKS,
+  SURVIVAL_RUN_WAVE_COUNT,
+  SURVIVAL_WAVE_INTRO_TICKS,
+} from '../systems/survivalRun.js';
 import { waveOpeningLine } from '../systems/survivalAnnounce.js';
 import { isSwarmDeepRun, isSwarmRuleset } from '../systems/survivalSwarm.js';
+import { swarmCourseFor } from '../data/swarmCourse.js';
+import { arcadeEffectsLevel } from '../data/swarmJuice.js';
 import { circuitFor, circuitRoundFor, CIRCUIT_STAGE_COUNT, CIRCUIT_ROUNDS_PER_STAGE } from '../systems/survivalCircuit.js';
 import {
   deathCauseText,
@@ -27,10 +34,109 @@ import { SWARM_CHAIN_VARIED_STEP, SWARM_CHAIN_WARN_S, SWARM_CHAIN_WINDOW_S } fro
 import { resolveActionLabel } from '../systems/input.js';
 import { swarmOwnedTapMods } from '../systems/playerModifiers.js';
 import { indexedShipLikeOrEntitiesScan } from '../world/livingWorldViews.js';
+import { FOUNDRY_APPROACH_ALERT, FOUNDRY_RETURN_ALERT } from './alerts.js';
+import { runRulesetLabel } from './windowTitle.js';
+import { createPilotBreathController } from './pilotCards.js';
+import { loadCrucibleMeta } from '../systems/survivalRecords.js';
+import { ENEMY_JOB_WORDS, castJobs } from '../data/enemyJobs.js';
+import { CONTACT_JOB_PALETTE, CONTACT_ROLE_GLYPHS } from './map/tacticalMapGrammar.js';
+import { isSwarmGlass, isSwarmHudActive } from './swarmGlass.js';
+import {
+  SWARM_HUD_BODY_CLASS,
+  SWARM_PICK_PULSE_S,
+  SWARM_ROOM_KILL_FLASH_S,
+  SWARM_ROOM_KILL_MULTIPLIER,
+  createSwarmHudLayer,
+  formatRoomMultiplier,
+  formatSwarmPickLabel,
+  formatSwarmRoundKicker,
+  formatSwarmRoundName,
+  isRoomKillCausePhrase,
+} from './swarmHudLayer.js';
+import { getSwarmTeaching, SWARM_TEACH_MECHANIC } from './swarmTeaching.js';
 
 const STYLE_ID = 'sf-crun-css';
 /** How long an earn receipt stays on screen, in sim seconds. */
 export const EARN_RECEIPT_S = 2.6;
+/** OVH-01b: "LEVEL n" rides the bar this long; the bar's one flash is shorter. Sim seconds. */
+export const LEVEL_RIDE_S = 1.2;
+export const XP_FLASH_S = 0.6;
+/** HUD-2 Item 11: how long the composed cast banner sits on the round card, in sim seconds. */
+export const CAST_ANNOUNCE_S = 3.2;
+/** Show the tactical counter hint only on a player's first few Swarm runs. */
+export const CAST_ANSWER_RUN_LIMIT = 3;
+
+export function shouldShowCastAnswer(profile = null) {
+  if (!profile || !Array.isArray(profile.history)) return true;
+  return profile.history.length < CAST_ANSWER_RUN_LIMIT;
+}
+
+/** Miniature inline SVG matching the exact contact-job silhouettes in tacticalMapGrammar.js. */
+export function castJobGlyphSvg(jobId) {
+  const color = CONTACT_JOB_PALETTE[jobId] || '#ff6fae';
+  const label = CONTACT_ROLE_GLYPHS[jobId]?.word || jobId;
+  let inner = '';
+  if (jobId === 'rush') {
+    inner = `<path d="M0-5.8L4 4.4 0 1.6-4 4.4Z" fill="${color}" stroke="#040b12" stroke-width="1"/>`;
+  } else if (jobId === 'burst') {
+    inner = `<path d="M0-7L1.7-1.7 5.6 0 1.7 1.7 0 5.6-1.7 1.7-5.6 0-1.7-1.7Z" fill="${color}" stroke="#040b12" stroke-width=".9"/><circle r="1.4" fill="#fff1cf"/>`;
+  } else if (jobId === 'reach') {
+    inner = `<path d="M0-6.2L1.9 1.2 4.4 4.6 0 3.2-4.4 4.6-1.9 1.2Z" fill="${color}" stroke="#040b12" stroke-width=".9"/><path d="M0-7.6V-9.8" stroke="${color}" stroke-width="1.4" stroke-linecap="round"/>`;
+  } else if (jobId === 'wall') {
+    inner = `<path d="M-5.4-3.4L-3.2-5.4H3.2L5.4-3.4V4.6H-5.4Z" fill="${color}" stroke="#040b12" stroke-width="1"/><path d="M-3.2-1.8H3.2M-3.2 1.4H3.2" stroke="#040b12" stroke-width="1.2"/>`;
+  } else if (jobId === 'skirmish') {
+    inner = `<path d="M0-5.4Q4.6-3.6 6.2 4.2Q3.2.6 0 .4Q-3.2.6-6.2 4.2Q-4.6-3.6 0-5.4Z" fill="${color}" stroke="#040b12" stroke-width=".9"/>`;
+  } else if (jobId === 'deny') {
+    inner = `<circle r="3.2" fill="${color}" stroke="#040b12" stroke-width=".9"/><circle r="6" fill="none" stroke="${color}" stroke-width="1.3" stroke-dasharray="4.5 3"/>`;
+  } else if (jobId === 'seize') {
+    inner = `<path d="M-4.6 4.6L-4.8-1.6-2.4-6-1.6-1.8 0-.6 1.6-1.8 2.4-6 4.8-1.6 4.6 4.6Z" fill="${color}" stroke="#040b12" stroke-width=".9"/>`;
+  } else if (jobId === 'source') {
+    inner = `<polygon points="5.2,0 2.6,4.5 -2.6,4.5 -5.2,0 -2.6,-4.5 2.6,-4.5" fill="${color}" stroke="#040b12" stroke-width=".9"/><circle r="1.5" fill="#fff1cf"/><circle cx="0" cy="-7.6" r="1.2" fill="${color}"/><circle cx="6.6" cy="3.8" r="1.2" fill="${color}"/><circle cx="-6.6" cy="3.8" r="1.2" fill="${color}"/>`;
+  } else {
+    inner = `<circle r="4.2" fill="${color}" stroke="#040b12" stroke-width="1"/>`;
+  }
+  return `<svg class="sf-crun__castglyph" viewBox="-10 -10 20 20" width="14" height="14" aria-label="${label}" role="img">${inner}</svg>`;
+}
+
+/** Build the cast readout model from an `encounter:castAnnounced` payload. */
+export function buildCastAnnouncementModel(payload, { showAnswer = true } = {}) {
+  if (!payload || typeof payload !== 'object') return null;
+  const jobs = [];
+  if (Array.isArray(payload.jobs)) {
+    for (const j of payload.jobs) {
+      if (typeof j === 'string' && CONTACT_JOB_PALETTE[j] && !jobs.includes(j)) jobs.push(j);
+    }
+  }
+  if (!jobs.length && Array.isArray(payload.groups)) {
+    const flatCast = [];
+    for (const g of payload.groups) {
+      if (Array.isArray(g?.cast)) flatCast.push(...g.cast);
+    }
+    for (const j of castJobs(flatCast)) {
+      if (CONTACT_JOB_PALETTE[j] && !jobs.includes(j)) jobs.push(j);
+    }
+  }
+  let line = typeof payload.line === 'string' ? payload.line.trim() : '';
+  if (!line && jobs.length) {
+    const phrases = jobs.slice(0, 2).map((j) => ENEMY_JOB_WORDS[j]?.one).filter(Boolean);
+    if (phrases.length) {
+      const joined = phrases.join(' with ');
+      line = joined.charAt(0).toUpperCase() + joined.slice(1);
+    }
+  }
+  if (!line && !jobs.length) return null;
+  let answer = '';
+  if (showAnswer) {
+    answer = typeof payload.answer === 'string' ? payload.answer.trim() : '';
+    if (!answer && jobs.length) answer = ENEMY_JOB_WORDS[jobs[0]]?.answer || '';
+  }
+  return {
+    wave: Number.isInteger(payload.wave) ? payload.wave : null,
+    jobs: jobs.slice(0, 4),
+    line,
+    answer,
+  };
+}
 
 /** Phase word the player reads. Never a phase id — 'wave_intro' is not a thing anyone says. */
 export const PHASE_WORDS = Object.freeze({
@@ -86,8 +192,23 @@ export function objectiveWord(objectiveKind) {
  * past it. Same figure, one suffix — the deep water is announced, not renumbered.
  */
 export function swarmRoundWord(run) {
-  const word = `ROUND ${String(Math.max(1, (run && run.wave) || 1)).padStart(2, '0')}`;
+  const wave = Math.max(1, (run && run.wave) || 1);
+  const word = `ROUND ${String(wave).padStart(2, '0')}`;
   return isSwarmDeepRun(run) ? `${word} · DEEP` : word;
+}
+
+/**
+ * The Swarm round's display heading: the round number plus its authored course name
+ * (e.g. "Round 4 · Mind the Gap") so the player always knows which room rule they are in.
+ */
+export function swarmRoundTitle(run) {
+  const wave = Math.max(1, (run && run.wave) || 1);
+  if (isSwarmDeepRun(run)) return `Round ${wave} · Deep`;
+  const course = swarmCourseFor(wave);
+  if (course && typeof course.name === 'string' && course.name) {
+    return `Round ${wave} · ${course.name}`;
+  }
+  return `Round ${wave}`;
 }
 
 const MARK_GLYPHS = Object.freeze(['↑', '↗', '→', '↘', '↓', '↙', '←', '↖']);
@@ -103,23 +224,78 @@ export function circuitMarkGlyph(player, mark) {
   return MARK_GLYPHS[(octant + 8) % 8];
 }
 
-/** Arena label from the id. Data-free so a new arena needs no edit here. */
+/** Keep the setup's room names for arenas whose IDs predate those names. */
 export function arenaLabel(arenaId) {
   if (!arenaId) return 'ARENA';
+  if (arenaId === 'helios_core') return 'RICOCHET FOUNDRY';
+  if (arenaId === 'tethys_hub') return 'TETHYS EXCHANGE';
   return String(arenaId).replace(/_/g, ' ').toUpperCase();
 }
 
 /**
- * The variety badge beside the chain figure (INF-031). Pure: the HUD never re-derives the
- * bonus — swarmChain's own cause/step result arrives on the `swarm:chain` event and this only
- * words it. A varied kill reads `COLLISION +2`; a repeated one reads `GUN`. Null when there is
- * no cause to show, so the row stays a bare number.
+ * What the last kill was, said once in Madame Kiln's voice (04_SWARM.md §4) — never a code word
+ * and a bonus count ("TERRAIN +2"). A kill of a new kind, the one that grows the chain by two,
+ * gets her exclamation.
  */
+const CHAIN_CAUSE_WORDS = Object.freeze({
+  direct: 'Clean shot', kinetic: 'Clean shot', explosive: 'Boom', terrain: 'Off the wall',
+  collision: 'That was his friend', thrown: 'Thrown', field: 'Into the well', hazard: 'The room did that',
+});
 export function chainCauseBadge(cause, step) {
   if (typeof cause !== 'string' || cause.length === 0) return null;
-  const word = cause.replace(/_/g, ' ').toUpperCase();
-  if (step === SWARM_CHAIN_VARIED_STEP) return `${word} +2`;
-  return word;
+  const word = CHAIN_CAUSE_WORDS[cause] || cause.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase());
+  return step === SWARM_CHAIN_VARIED_STEP ? `${word}!` : word;
+}
+
+/**
+ * Shared single-owner coordination bridge between the Swarm HUD layer (`swarmHudLayer.js`,
+ * driven by `survivalHud`) and `swarmJuiceHud.js`. Ensures ONE Boss Machine-Plate, ONE Chain
+ * readout, and ONE thing at a time in the top-centre lane.
+ * Purely UI-side presentation state — never persisted, never writes state.run.
+ */
+export const swarmChainBridge = {
+  owner: null,
+  chain: 0,
+  best: 0,
+  cause: null,
+  step: 0,
+  at: null,
+  overdriveRate: 0,
+  wave: 0,
+  bannerActive: false,
+  subCallActive: false,
+  clearActive: false,
+  bossHp: null,
+  bossMove: '',
+  bossInstruction: '',
+  bossMoveUntil: 0,
+  bossDownUntil: 0,
+};
+
+/**
+ * Plain-language style / chain readout model (design/overhaul/04_SWARM.md §4):
+ * speaks as a multiplier (×1.5, ×2, ×3, ×4, ×5, ×6) and at most one short line in Madame Kiln's
+ * voice — never IGNITION / FLARE / NOVA or MIXED +2. Returns null when no chain is active.
+ */
+export function swarmStyleReadout(chain, { cause = null, step = 0, overdriveRate = 0 } = {}) {
+  const n = Number.isFinite(chain) ? Math.max(0, Math.trunc(chain)) : 0;
+  if (n <= 0) return null;
+  let mult = '×1';
+  let tier = 1;
+  let pips = 1;
+  let kilnTop = null;
+  if (n >= 200) { mult = '×6'; tier = 5; pips = 4; kilnTop = 'Burn it down.'; }
+  else if (n >= 100) { mult = '×5'; tier = 5; pips = 4; kilnTop = "The room's yours."; }
+  else if (n >= 50) { mult = '×4'; tier = 4; pips = 4; kilnTop = 'Keep it moving.'; }
+  else if (n >= 25) { mult = '×3'; tier = 3; pips = 3; }
+  else if (n >= 10) { mult = '×2'; tier = 2; pips = 2; }
+  else if (n >= 5) { mult = '×1.5'; tier = 1; pips = 1; }
+  const overdrive = Number.isFinite(overdriveRate) && overdriveRate > 0;
+  const causeLine = chainCauseBadge(cause, step);
+  const line = overdrive
+    ? `Overdrive · guns ×${overdriveRate}`
+    : (causeLine ? (/[.!]$/.test(causeLine) ? causeLine : `${causeLine}.`) : (kilnTop || ''));
+  return { chain: n, mult, tier, pips, overdrive, line, kilnTop };
 }
 
 /**
@@ -155,10 +331,10 @@ export function threatCensus(run) {
   return { alive, total, remaining, resolved };
 }
 
-/** The Swarm quota tracks the full-ship cohort; Brood bodies are supplemental pressure. */
+/** The Swarm quota tracks the full-ship cohort; plain words, no ALL-CAPS soup. */
 export function threatPopulationLabel(ruleset, objective) {
-  if (!isSwarmRuleset(ruleset)) return 'THREAT';
-  return !objective || objective.population === 'ships' ? 'HOSTILE SHIPS' : 'HOSTILES';
+  if (!isSwarmRuleset(ruleset)) return 'Threat';
+  return !objective || objective.population === 'ships' ? 'Hostiles left' : 'Hostiles left';
 }
 
 /** The fitted Hero ability's live cue, using only the worker-owned HUD projection. */
@@ -177,10 +353,10 @@ export function heroManeuverHudCue(state) {
   const mode = pinball ? 'pinball' : boomerang ? 'boomerang' : 'veil_step';
   if (!model || model.mode !== mode) {
     const label = pinball ? 'PINBALL RUSH' : boomerang ? 'BOOMERANG RUN' : 'VEIL STEP';
-    return { mode, status: 'blocked', text: `${label} · syncing readiness` };
+    return { mode, status: 'blocked', text: `${label} · getting ready` };
   }
   const name = model.targetName || 'hostile lock';
-  const boost = resolveActionLabel(state, 'boost', { arrows: 'word', empty: 'unbound' });
+  const boost = resolveActionLabel(state, 'boost', { arrows: 'word', empty: 'set a key' });
   const veilModel = veil ? model.veil : null;
   const veilCue = veilModel
     ? veilModel.phase === 'aiming'
@@ -199,8 +375,8 @@ export function heroManeuverHudCue(state) {
         .filter(Boolean).join(' · ') };
   }
   if (mode === 'boomerang') {
-    const action = resolveActionLabel(state, 'bomb', { arrows: 'word', empty: 'unbound' });
-    const budget = Number.isFinite(model.energyRequired) ? ` · ${Math.ceil(model.energyRequired)} cap budget` : '';
+    const action = resolveActionLabel(state, 'bomb', { arrows: 'word', empty: 'set a key' });
+    const budget = Number.isFinite(model.energyRequired) ? ` · ${Math.ceil(model.energyRequired)} energy` : '';
     const stage = model.phase === 'bank' ? `physical bank · ${model.attackCommitted ? 'bomb away' : 'bomb reserved'}`
       : model.phase === 'return' ? `phase return · ${model.attackCommitted ? 'bomb away' : 'no bomb released'}` : null;
     const terminal = ['complete', 'attack_region_missed', 'target_lost', 'interrupted',
@@ -262,7 +438,8 @@ export function levelProgress(run) {
 export function earnLine(award) {
   if (!award) return null;
   const parts = [];
-  if (award.credits > 0) parts.push(`+${award.credits.toLocaleString('en-US')} CR`);
+  // Swarm says one money word: Scrap (678f1a9ded), never CR.
+  if (award.credits > 0) parts.push(`+${award.credits.toLocaleString('en-US')} SCRAP`);
   if (award.score > 0) {
     let line = `+${award.score} SCORE`;
     // A style settlement names its acts so the player learns what paid.
@@ -288,6 +465,7 @@ export function earnLine(award) {
  */
 export function deathLineFor(receipt, tell = null, deathSimTime = 0) {
   const cause = deathCauseText(receipt);
+  if (receipt?.source?.kind === 'environment' || receipt?.physicalLabel === 'arena impact') return cause;
   if (tell && typeof tell === 'object' && typeof tell.kind === 'string' && tell.kind
     && tell.attackerId != null && tell.attackerId === (receipt?.killerId ?? receipt?.attackerId)
     && Number.isFinite(tell.simTime) && Number.isFinite(deathSimTime)
@@ -333,9 +511,21 @@ export const survivalHud = {
     this._chainCause = null;
     this._chainStep = 0;
     this._chainAt = null;
+    this._overdriveRate = 0;
+    this._cast = null;
+    this._castUntil = -1;
+    this._castSig = '';
+    this._profileCache = null;
+    this._profileRunKey = '';
     this._waveProgress = null;
+    this._foundryGuidance = new Map();
     this._death = null;
     this._lastTells = [];
+    // The top-centre lane bridge is a singleton; a fresh HUD must not inherit the last run's
+    // banner/clear state (the chain would hide behind a beat nobody is playing).
+    swarmChainBridge.bannerActive = false;
+    swarmChainBridge.subCallActive = false;
+    swarmChainBridge.clearActive = false;
     // The style figure's memo (see update): the three printed numbers it was built from, and the
     // composed line. NaN forces one rebuild on the first frame a combo is live.
     this._stylePts = NaN;
@@ -352,6 +542,23 @@ export const survivalHud = {
     this._tapMods = [];
     this._modsText = '';
     this._unsubs = [];
+    this._xpFlashUntil = -1;
+    this._xpFlashAt = -1;
+    this._levelRideLevel = 0;
+    this._levelRideUntil = -1;
+    this._levelRidePending = 0;
+    this._pickPulseUntil = -1;
+    this._pickPulseAt = -1;
+    this._pickDelta = 1;
+    this._roomMultValue = 0;
+    this._roomMultUntil = -1;
+    this._roomMultAt = -1;
+    this._phaseTracked = null;
+    this._phaseEnteredAt = 0;
+    this._swarmLayer = null;
+    this._swarmView = Object.create(null);
+    this._swarmHudClass = null;
+    this._pilot = null;
     if (!this.bus || typeof this.bus.on !== 'function') return;
     this._unsubs.push(this.bus.on('run:awarded', (p) => this._onAwarded(p)));
     this._unsubs.push(this.bus.on('run:levelUp', (p) => this._onLevelUp(p)));
@@ -362,6 +569,7 @@ export const survivalHud = {
       this._objective = null;
       this._objectiveKind = null;
       this._waveProgress = null;
+      this._foundryGuidance.clear();
       this._death = null;
       this._lastTells = [];
       this._chain = 0;
@@ -369,19 +577,65 @@ export const survivalHud = {
       this._chainCause = null;
       this._chainStep = 0;
       this._chainAt = null;
+      this._overdriveRate = 0;
+      this._cast = null;
+      this._castUntil = -1;
+      this._castSig = '';
+      this._xpFlashUntil = -1;
+      this._xpFlashAt = -1;
+      this._levelRideLevel = 0;
+      this._levelRideUntil = -1;
+      this._levelRidePending = 0;
+      this._pickPulseUntil = -1;
+      this._pickPulseAt = -1;
+      this._pickDelta = 1;
+      this._roomMultValue = 0;
+      this._roomMultUntil = -1;
+      this._roomMultAt = -1;
+      this._phaseTracked = null;
+      this._phaseEnteredAt = 0;
     }));
+    const clearRunChrome = () => {
+      this._clearSwarmBodyClasses();
+      if (this._swarmLayer) this._swarmLayer.hide();
+      if (swarmChainBridge.owner === 'layer') swarmChainBridge.owner = null;
+    };
+    this._unsubs.push(this.bus.on('run:ended', clearRunChrome));
+    this._unsubs.push(this.bus.on('game:exitToMenu', clearRunChrome));
+    this._unsubs.push(this.bus.on('save:restoring', clearRunChrome));
     this._unsubs.push(this.bus.on('run:wavePlanned', (p) => this._onWavePlanned(p)));
     this._unsubs.push(this.bus.on('run:waveProgress', (p) => this._onWaveProgress(p)));
+    this._unsubs.push(this.bus.on('encounter:castAnnounced', (p) => this._onCastAnnounced(p)));
+    this._unsubs.push(this.bus.on('alert', (p) => {
+      const key = p?.key;
+      if (key !== FOUNDRY_APPROACH_ALERT && key !== FOUNDRY_RETURN_ALERT) return;
+      if (p.action === 'clear') this._foundryGuidance.delete(key);
+      else if (typeof p.text === 'string' && p.text) this._foundryGuidance.set(key, p.text);
+    }));
     this._unsubs.push(this.bus.on('swarm:chain', (p) => this._onChain(p)));
     this._unsubs.push(this.bus.on('swarm:chainBroken', () => this._onChainBroken()));
+    this._unsubs.push(this.bus.on('swarm:overdrive', (p) => this._onOverdrive(p)));
     // PQ-174.06: the death line on the glass. Read-only like everything else here — it names
     // the cause and the missed telegraph, and never emits.
     this._unsubs.push(this.bus.on('ai:telegraph', (p) => this._onTell(p)));
     this._unsubs.push(this.bus.on('player:death', (p) => this._onDeath(p)));
   },
 
+  _clearSwarmBodyClasses() {
+    if (typeof document !== 'undefined') {
+      document.body?.classList?.remove(SWARM_HUD_BODY_CLASS, 'sf-swarm-flight', 'sf-run-flight');
+    }
+    this._swarmHudClass = false;
+    this._swarmFlightClass = false;
+    this._runFlightClass = false;
+  },
+
   destroy() {
-    if (typeof document !== 'undefined') document.body?.classList?.remove('sf-swarm-flight', 'sf-run-flight');
+    if (this._pilot) { this._pilot.destroy(); this._pilot = null; }
+    if (this._swarmLayer) { this._swarmLayer.destroy(); this._swarmLayer = null; }
+    if (swarmChainBridge.owner === 'layer') swarmChainBridge.owner = null;
+    this._clearSwarmBodyClasses();
+    this._swarmHudClass = null;
     this._swarmFlightClass = null;
     this._runFlightClass = null;
     for (const off of this._unsubs || []) if (typeof off === 'function') off();
@@ -394,9 +648,28 @@ export const survivalHud = {
 
   newGame() {
     this._clearEarn();
+    this._clearSwarmBodyClasses();
+    if (this._swarmLayer) this._swarmLayer.hide();
     this._waveProgress = null;
+    this._foundryGuidance?.clear();
     this._death = null;
     this._lastTells = [];
+    this._overdriveRate = 0;
+    this._cast = null;
+    this._castUntil = -1;
+    this._castSig = '';
+    this._xpFlashUntil = -1;
+    this._xpFlashAt = -1;
+    this._levelRideLevel = 0;
+    this._levelRideUntil = -1;
+    this._levelRidePending = 0;
+    this._pickPulseUntil = -1;
+    this._pickPulseAt = -1;
+    this._roomMultValue = 0;
+    this._roomMultUntil = -1;
+    this._roomMultAt = -1;
+    this._phaseTracked = null;
+    this._phaseEnteredAt = 0;
   },
 
   update(dt, state) {
@@ -404,38 +677,65 @@ export const survivalHud = {
     if (typeof document === 'undefined') return;
     const st = state || this.state;
     if (!st) return;
+    // OVH-01b: the Pilot Tree breath / "Pick at once" cards. No HUD DOM; reads state, acts on edges.
+    if (!this._pilot && this.bus) this._pilot = createPilotBreathController({ state: st, bus: this.bus });
+    if (this._pilot) this._pilot.tick(st);
     const run = st.run;
     const live = !!(run && run.kind === 'survival' && run.phase !== 'inactive');
-    const swarmFlight = live && run.ruleset === 'swarm' && st.mode === 'flight';
+    const swarmHud = isSwarmHudActive(st);
+    if (this._swarmHudClass !== swarmHud) {
+      this._swarmHudClass = swarmHud;
+      document.body?.classList?.toggle(SWARM_HUD_BODY_CLASS, swarmHud);
+    }
+    const swarmFlight = swarmHud;
     if (this._swarmFlightClass !== swarmFlight) {
       this._swarmFlightClass = swarmFlight;
       document.body?.classList?.toggle('sf-swarm-flight', swarmFlight);
     }
     // Any live survival run in flight (Swarm, the Gauntlet): the voice line gets the measured lane
     // and the glass plate, so a long boss line never crosses the round panel.
-    const runFlight = live && st.mode === 'flight';
+    const runFlight = live && run.phase !== 'ended' && run.phase !== 'victory' && st.mode === 'flight';
     if (this._runFlightClass !== runFlight) {
       this._runFlightClass = runFlight;
       document.body?.classList?.toggle('sf-run-flight', runFlight);
     }
     if (!live || st.mode !== 'flight' || (st.ui && st.ui.docked)) {
       this._hide();
+      if (this._swarmLayer) this._swarmLayer.hide();
+      if (swarmChainBridge.owner === 'layer') swarmChainBridge.owner = null;
       return;
     }
+
+    const swarm = isSwarmRuleset(run.ruleset);
+    if (swarm) {
+      // DEMO-SWARM-HUD-2: Swarm uses its own perimeter arcade layer (.sf-swhud), never the old
+      // top-left .sf-crun card. Keep .sf-crun hidden and pay zero writes to it in Swarm mode.
+      this._hide();
+      if (!swarmHud) {
+        if (this._swarmLayer) this._swarmLayer.hide();
+        if (swarmChainBridge.owner === 'layer') swarmChainBridge.owner = null;
+        return;
+      }
+      this._updateSwarmLayer(st, run);
+      return;
+    }
+
+    if (this._swarmLayer) this._swarmLayer.hide();
+    if (swarmChainBridge.owner === 'layer') swarmChainBridge.owner = null;
+
     const dom = this._ensureDom();
     if (!dom) return;
     this._show(dom);
 
     const census = threatCensus(run);
-    const swarm = isSwarmRuleset(run.ruleset);
     const planForWave = this._planWave === run.wave ? this._plan : null;
     const objectiveKind = planForWave ? this._objectiveKind : null;
     const objective = objectiveWord(objectiveKind);
     // A boss or elite wave says so; everything else reads as the phase, which already says FIGHT.
     const fighting = run.phase === 'active' || run.phase === 'wave_intro';
     const phase = (fighting && objective) ? objective : phaseWord(run.phase);
-    this._setText(dom.label, `CRUCIBLE · ${swarm && run.arenaId === 'helios_core'
-      ? 'RICOCHET FOUNDRY' : arenaLabel(run.arenaId)}`);
+    const mode = run.practice ? 'Practice' : (runRulesetLabel(run.ruleset) || 'Combat');
+    this._setText(dom.label, `${mode.toUpperCase()} · ${arenaLabel(run.arenaId)}`);
     // A swarm run has no denominator: there is no last wave to count toward, and printing one
     // would be a lie about when it ends. SWARM-08 B5 — a Circuit run DOES have a finite shape,
     // so it prints the stage and the round inside it, then OVERTIME once the journey is done.
@@ -463,14 +763,17 @@ export const survivalHud = {
       this._setAttr(dom.hero, 'aria-label', `Hero maneuver, ${heroCue.text}`);
     }
 
-    // FB-025 — the wave intro is a real window: the opening line sits on the glass for the
-    // whole of it, then clears with the phase. Same pure function the announce voice speaks,
-    // so the readout and the voice can never disagree about what is coming.
-    const intro = run.phase === 'wave_intro' && planForWave
-      ? waveOpeningLine(run.wave, planForWave)
-      : null;
-    this._setHidden(dom.intro, !intro);
-    if (intro) this._setText(dom.intro, intro);
+    // During the opening, the instruction follows the announced wave. During active Foundry
+    // flight, an imminent plate takes the same seat and yields back to the return bearing.
+    const foundryFight = swarmFlight && run.phase === 'active' && run.arenaId === 'helios_core';
+    const approach = foundryFight && this._foundryGuidance.get(FOUNDRY_APPROACH_ALERT);
+    const guidance = approach || (foundryFight && run.wave === 1 && this._foundryGuidance.get(FOUNDRY_RETURN_ALERT));
+    const instruction = guidance || (run.phase === 'wave_intro' && planForWave
+      ? waveOpeningLine(run.wave, planForWave) : null);
+    this._setClass(dom.intro, approach ? 'sf-crun__guidance sf-crun__guidance--warn'
+      : guidance ? 'sf-crun__guidance' : 'sf-crun__intro');
+    this._setHidden(dom.intro, !instruction);
+    if (instruction) this._setText(dom.intro, instruction);
 
     // C01-05 — the room twist's own countdown: the owning module posts a deadline on
     // state.render, the chip words the remaining seconds and hides itself when it ends.
@@ -513,11 +816,12 @@ export const survivalHud = {
           : null;
         const player = st.entities && st.entities.get && st.entities.get(st.playerId);
         const glyph = circuitMarkGlyph(player, mark);
-        const word = zoned ? objectiveWord(objectiveKind) : (surviving ? 'SURVIVE' : 'NEXT WAVE');
+        // Swarm counts rounds everywhere a player reads (the door, the Bench, Run Over).
+        const word = zoned ? objectiveWord(objectiveKind) : (surviving ? 'SURVIVE' : 'NEXT ROUND');
         this._setText(dom.threatWord, glyph ? `${word} ${glyph}` : word);
         this._setText(dom.threatFig, clock);
         this._setStyle(dom.threatFill, 'width', `${Math.round(waveElapsedFill(remainingTicks, durationTicks) * 100)}%`);
-        this._setAttr(dom.threat, 'aria-label', surviving ? `Survive ${clock}` : zoned ? `${word} ${clock}` : `Next wave in ${clock}`);
+        this._setAttr(dom.threat, 'aria-label', surviving ? `Survive ${clock}` : zoned ? `${word} ${clock}` : `Next round in ${clock}`);
         this._setAttr(dom.threat, 'aria-valuemin', '0');
         this._setAttr(dom.threat, 'aria-valuenow', String(remainingSeconds));
         this._setAttr(dom.threat, 'aria-valuemax', String(durationSeconds));
@@ -576,28 +880,29 @@ export const survivalHud = {
       }
     }
 
-    // The chain, if the ruleset has one. A swarm run shows the chain and hides the style
-    // multiplier: they measure the same instinct — vary how you kill — and the chain is the one
-    // that says so in a number the player is already watching.
+    // The chain, if the ruleset has one. Lives as the second hero figure beside the wave clock /
+    // count in the round card, carrying Overdrive as well now that the top-centre hero is retired.
     const chain = swarm ? this._chain : 0;
     const showChain = swarm && chain > 0;
     this._setHidden(dom.chainRow, !showChain);
     if (showChain) {
       this._setText(dom.chainFig, `${chain}`);
       this._setText(dom.chainBest, this._chainBest > chain ? `best ${this._chainBest}` : '');
-      // The cause glyph: what the last kill arrived as, and +2 when it varied the chain.
-      const badge = chainCauseBadge(this._chainCause, this._chainStep);
+      const overdrive = this._overdriveRate > 0;
+      const badge = overdrive
+        ? `OVERDRIVE ×${this._overdriveRate}`
+        : chainCauseBadge(this._chainCause, this._chainStep);
       this._setText(dom.chainCause, badge || '');
-      if (dom.chainCause) dom.chainCause.hidden = !badge;
+      if (dom.chainCause) {
+        dom.chainCause.hidden = !badge;
+        dom.chainCause.dataset.overdrive = overdrive ? '1' : '0';
+      }
       const tier = chain >= 50 ? 'peak' : (chain >= 15 ? 'hot' : 'warm');
       if (dom.chainRow.dataset.tier !== tier) dom.chainRow.dataset.tier = tier;
-      // The depletion mark: what share of the four-second window is left, from the kill's own
-      // sim-time anchor. A 2px underline, never a second panel, and the number is untouched.
       const simNow = Number.isFinite(st.simTime) ? st.simTime : 0;
       const remaining = chainWindowRemaining(this._chainAt, simNow);
       const deplete = Math.max(0, Math.min(1, remaining / SWARM_CHAIN_WINDOW_S));
       this._setStyle(dom.chainDeplete, 'width', `${Math.round(deplete * 100)}%`);
-      // The last second reads as colour plus a word — never flashing, never motion. INF-032.
       const final = remaining <= SWARM_CHAIN_WARN_S;
       if (final) {
         if (dom.chainRow.dataset.urgency !== 'final') dom.chainRow.dataset.urgency = 'final';
@@ -605,8 +910,33 @@ export const survivalHud = {
         delete dom.chainRow.dataset.urgency;
       }
       this._setAttr(dom.chainRow, 'aria-label', badge
-        ? `Kill chain ${chain}, last kill ${badge}${final ? ', ending' : ''}`
+        ? `Kill chain ${chain}, ${overdrive ? badge : `last kill ${badge}`}${final ? ', ending' : ''}`
         : `Kill chain ${chain}${final ? ', ending' : ''}`);
+    }
+
+    // HUD-2 Item 11: composed cast announcement on the round card (~3s hold).
+    const simNowCast = Number.isFinite(st.simTime) ? st.simTime : 0;
+    const castLive = !!(swarm && this._cast && simNowCast <= this._castUntil
+      && (this._cast.wave == null || this._cast.wave === run.wave));
+    if (dom.cast) {
+      this._setHidden(dom.cast, !castLive);
+      if (castLive) {
+        const sig = `${this._cast.jobs.join(',')}|${this._cast.line}|${this._cast.answer}`;
+        if (this._castSig !== sig) {
+          this._castSig = sig;
+          if (dom.castGlyphs) {
+            dom.castGlyphs.innerHTML = this._cast.jobs.map((j) => castJobGlyphSvg(j)).join('');
+            dom.castGlyphs.hidden = !this._cast.jobs.length;
+          }
+          this._setText(dom.castLine, this._cast.line);
+          this._setHidden(dom.castAnswer, !this._cast.answer);
+          if (this._cast.answer) this._setText(dom.castAnswer, this._cast.answer);
+        }
+      } else if (this._cast && simNowCast > this._castUntil) {
+        this._cast = null;
+        this._castUntil = -1;
+        this._castSig = '';
+      }
     }
 
     // Style is a live figure, not a phase readout: it decays as you repeat yourself and climbs as
@@ -646,7 +976,8 @@ export const survivalHud = {
           this._styleActFams[i] = acts[i].family;
         }
         const styleMult = styleMultiplier(combo);
-        this._styleFigText = `${Math.floor(combo.activePoints)} pending ×${styleMult.toFixed(2)} · ${2-links} links`;
+        // Plain words (04_SWARM.md §4): the multiplier alone, never "pending" or "links".
+        this._styleFigText = `×${styleMult.toFixed(1)}`;
       }
       this._setText(dom.styleFig, this._styleFigText);
     } else {
@@ -676,6 +1007,11 @@ export const survivalHud = {
     this._setStyle(dom.xpFill, 'width', `${Math.round(levelProgress(run) * 100)}%`);
 
     const simTime = Number.isFinite(st.simTime) ? st.simTime : 0;
+    // OVH-01b: one flash on the bar at a level-up, and a "+1 pick" chip while picks are banked.
+    this._setClass(dom.xpTrack, 'sf-crun__track sf-crun__track--xp' + (simTime <= this._xpFlashUntil ? ' sf-crun__track--flash' : ''));
+    const banked = run.pilot && Number.isInteger(run.pilot.banked) ? run.pilot.banked : 0;
+    this._setHidden(dom.pick, banked <= 0);
+    if (banked > 0) this._setText(dom.pick, banked === 1 ? '+1 pick' : `+${banked} picks`);
     if (this._earn && simTime <= this._earnUntil) {
       this._setHidden(dom.earn, false);
       this._setText(dom.earn, this._earn);
@@ -718,6 +1054,280 @@ export const survivalHud = {
     } else if (dom.death) {
       this._setHidden(dom.death, true);
     }
+  },
+
+  // ---- Swarm arcade HUD layer (DEMO-SWARM-HUD-2) ----------------------------
+
+  _updateSwarmLayer(st, run) {
+    if (!this._swarmLayer) this._swarmLayer = createSwarmHudLayer();
+    swarmChainBridge.owner = 'layer';
+
+    const simTime = Number.isFinite(st.simTime) ? st.simTime : 0;
+    if (this._phaseTracked !== run.phase) {
+      this._phaseTracked = run.phase;
+      this._phaseEnteredAt = simTime;
+    }
+
+    const v = this._swarmView;
+    v.visible = true;
+    const eff = arcadeEffectsLevel(st.settings);
+    const htmlReduced = !!(typeof document !== 'undefined' && document.documentElement?.classList
+      && (document.documentElement.classList.contains('sf-reduce-motion')
+        || document.documentElement.classList.contains('sf-reduce-flash')));
+    v.reduced = eff === 'reduced' || htmlReduced;
+
+    // 1. Top edge XP bar + flanks
+    const level = Math.max(1, run.level || 1);
+    const xpFrac = levelProgress(run);
+    v.level = level;
+    v.xpFracQ = Math.round(xpFrac * 1000) / 1000;
+    v.xpFlashing = simTime <= this._xpFlashUntil;
+    v.xpFlashAt = this._xpFlashAt;
+    // DEMO-SWARM-UX-2: the round-clear summary shows alone first; a level-up card that lands in
+    // the same beat waits for the summary to clear, then takes its own 1.2 s. The level number
+    // and gear are never read through the summary.
+    const clearUp = !!swarmChainBridge.clearActive;
+    if (clearUp && this._levelRideLevel > 0 && simTime <= this._levelRideUntil) {
+      this._levelRidePending = this._levelRideLevel;
+    } else if (!clearUp && this._levelRidePending > 0) {
+      this._levelRideLevel = this._levelRidePending;
+      this._levelRidePending = 0;
+      this._levelRideUntil = simTime + LEVEL_RIDE_S;
+    }
+    v.levelRideText = !clearUp && simTime <= this._levelRideUntil && this._levelRideLevel > 0
+      ? `LEVEL ${this._levelRideLevel}` : '';
+    const banked = run.pilot && Number.isInteger(run.pilot.banked) ? Math.max(0, run.pilot.banked) : 0;
+    const pickPulsing = banked > 0 && simTime <= this._pickPulseUntil;
+    v.banked = banked;
+    v.pickPulsing = pickPulsing;
+    v.pickPulseAt = this._pickPulseAt;
+    v.pickText = formatSwarmPickLabel(banked, pickPulsing, this._pickDelta);
+
+    // 2. Top-centre Round Plate OR Boss Machine-Plate
+    const census = threatCensus(run);
+    const planForWave = this._planWave === run.wave ? this._plan : null;
+    const objectiveKind = planForWave ? this._objectiveKind : null;
+    const circuit = circuitFor(run);
+    const circuitRound = circuit ? circuitRoundFor(run, run.wave) : null;
+    const overtime = !!(circuit && circuit.status === 'overtime');
+    const waveProgress = this._waveProgress?.wave === run.wave ? this._waveProgress : null;
+    const kicker = formatSwarmRoundKicker(run, circuitRound, overtime);
+    const fallbackArena = run.arenaId === 'helios_core' ? 'Ricochet Foundry'
+      : run.arenaId === 'tethys_hub' ? 'Tethys Exchange' : 'Arena';
+
+    v.bannerOwnsTop = !!swarmChainBridge.bannerActive;
+    v.subCallActive = !!swarmChainBridge.subCallActive;
+
+    const bridgeBoss = swarmChainBridge.bossHp && simTime >= (swarmChainBridge.bossDownUntil || 0)
+      ? swarmChainBridge.bossHp : null;
+    const entityBoss = run.phase === 'active' ? this._bossVitals(st) : null;
+    const liveBoss = run.phase === 'active' && (bridgeBoss || entityBoss);
+    if (liveBoss) {
+      v.bossVisible = true;
+      const fracRaw = entityBoss?.parts
+        ? entityBoss.pct
+        : (bridgeBoss && Number.isFinite(bridgeBoss.frac) ? bridgeBoss.frac : entityBoss?.pct);
+      const frac = Number.isFinite(fracRaw) ? Math.max(0, Math.min(1, fracRaw)) : 1;
+      const move = swarmChainBridge.bossMove
+        && (!swarmChainBridge.bossMoveUntil || simTime < swarmChainBridge.bossMoveUntil)
+        ? swarmChainBridge.bossMove : '';
+      const baseName = (bridgeBoss && bridgeBoss.name)
+        || (entityBoss && entityBoss.name)
+        || formatSwarmRoundName(run, fallbackArena);
+      v.bossKicker = `${kicker} · BOSS`;
+      v.bossName = move ? `${baseName} · ${move}` : baseName;
+      v.bossFracQ = Math.round(frac * 1000) / 1000;
+      const pctStr = `${Math.round(frac * 100)}%`;
+      v.bossPctText = bridgeBoss && bridgeBoss.total > 1
+        ? `${bridgeBoss.alive}/${bridgeBoss.total} · ${pctStr}`
+        : (entityBoss && entityBoss.count > 1 ? `×${entityBoss.count} · ${pctStr}` : pctStr);
+      v.bossAria = entityBoss?.parts
+        ? `${baseName} parts remaining ${entityBoss.parts.attached} of ${entityBoss.parts.total}`
+        : `${baseName} hull ${Math.round(frac * 100)} percent`;
+      v.bossInst = move ? (swarmChainBridge.bossInstruction || '') : '';
+      v.roundKicker = kicker;
+      v.roundName = baseName;
+      v.roundNum = '';
+      v.roundUnit = '';
+      v.roundMode = 'boss';
+    } else {
+      v.bossVisible = false;
+      v.bossKicker = '';
+      v.bossName = '';
+      v.bossPctText = '';
+      v.bossFracQ = 0;
+      v.bossAria = '';
+      v.bossInst = '';
+
+      // DEMO-SWARM-UX-2: `wave_intro` is the round already starting — the header keeps the
+      // round's own number, name and hostiles-left count while the FIGHT word runs below it.
+      const betweenRounds = run.phase === 'cleanup' || run.phase === 'draft'
+        || run.phase === 'arena_intro' || run.phase === 'refit';
+      if (betweenRounds) {
+        const upcomingWave = (run.phase === 'cleanup' || run.phase === 'draft' || run.phase === 'refit')
+          ? Math.max(1, (run.wave || 0) + 1)
+          : Math.max(1, run.wave || 1);
+        v.roundMode = 'between';
+        v.roundKicker = 'NEXT ROUND';
+        v.roundName = formatSwarmRoundName(run, fallbackArena, upcomingWave);
+        // Cleanup lasts as long as this wave's own plan says (a Swarm round's is 45 ticks, not the
+        // generic 180), so the countdown reaches zero when the next screen actually opens.
+        const planCleanupTicks = planForWave && planForWave.completionRules
+          && Number.isInteger(planForWave.completionRules.cleanupTicks)
+          ? Math.max(0, planForWave.completionRules.cleanupTicks) : SURVIVAL_CLEANUP_TICKS;
+        const totalS = run.phase === 'cleanup' ? planCleanupTicks / 60
+          : run.phase === 'wave_intro' ? SURVIVAL_WAVE_INTRO_TICKS / 60
+          : run.phase === 'arena_intro' ? SURVIVAL_ARENA_INTRO_TICKS / 60
+          : 0;
+        if (totalS > 0) {
+          const leftTicks = Math.max(0, Math.round((totalS - Math.max(0, simTime - this._phaseEnteredAt)) * 60));
+          v.roundNum = waveCountdownClock(leftTicks);
+          v.roundUnit = '';
+        } else if (waveProgress && Number.isInteger(waveProgress.durationTicks) && waveProgress.durationTicks > 0) {
+          v.roundNum = waveCountdownClock(waveProgress.remainingTicks);
+          v.roundUnit = '';
+        } else {
+          v.roundNum = '';
+          v.roundUnit = run.phase === 'refit' ? 'Bench' : (banked > 0 ? 'Pick a card' : '');
+        }
+      } else {
+        v.roundMode = 'fight';
+        v.roundKicker = kicker;
+        v.roundName = formatSwarmRoundName(run, fallbackArena);
+        const timedObjective = objectiveKind === 'survive' || objectiveKind === 'hold'
+          || objectiveKind === 'reach' || waveProgress?.completionKind === 'duration';
+        const cores = waveProgress && waveProgress.completionKind === 'collect'
+          && Number.isInteger(waveProgress.total);
+        const cohortBased = !timedObjective && !cores && (
+          !!planForWave?.swarm?.killTarget
+          || waveProgress?.completionKind === 'cohort'
+          || (Number.isFinite(run.threatBudget) && run.threatBudget > 0)
+        );
+        if (cores) {
+          v.roundNum = `${waveProgress.found || 0}/${waveProgress.total}`;
+          v.roundUnit = 'cores';
+        } else if (cohortBased) {
+          v.roundNum = String(census.remaining);
+          v.roundUnit = 'left';
+        } else if (waveProgress && Number.isInteger(waveProgress.durationTicks) && waveProgress.durationTicks > 0) {
+          const surviving = objectiveKind === 'survive';
+          const zoned = objectiveKind === 'hold' || objectiveKind === 'reach';
+          const planned = planForWave && planForWave.swarm && planForWave.swarm.circuit;
+          const mark = zoned
+            ? (objectiveKind === 'hold'
+              ? (planned && planned.zone) || (circuitRound && circuitRound.zone)
+              : (planned && planned.gate) || (circuitRound && circuitRound.gate))
+            : null;
+          const player = st.entities && st.entities.get && st.entities.get(st.playerId);
+          const glyph = circuitMarkGlyph(player, mark);
+          const baseUnit = zoned ? (objectiveKind === 'hold' ? 'Hold' : 'Gate')
+            : (surviving ? 'Survive' : 'Next round');
+          v.roundNum = waveCountdownClock(waveProgress.remainingTicks);
+          v.roundUnit = glyph ? `${baseUnit} ${glyph}` : baseUnit;
+        } else {
+          v.roundNum = num(census.resolved);
+          v.roundUnit = 'kills';
+        }
+      }
+    }
+
+    // 3. Under the Round/Boss plate — Chain (only while live)
+    const chain = this._chain > 0 ? this._chain : (swarmChainBridge.chain || 0);
+    const chainCause = this._chain > 0 ? this._chainCause : swarmChainBridge.cause;
+    const chainStep = this._chain > 0 ? this._chainStep : swarmChainBridge.step;
+    const chainAt = this._chain > 0 ? this._chainAt : swarmChainBridge.at;
+    const overdriveRate = this._overdriveRate > 0 ? this._overdriveRate : (swarmChainBridge.overdriveRate || 0);
+    const style = chain > 0
+      ? swarmStyleReadout(chain, { cause: chainCause, step: chainStep, overdriveRate })
+      : null;
+    if (style) {
+      const remaining = chainWindowRemaining(chainAt, simTime);
+      const deplete = Math.max(0, Math.min(1, remaining / SWARM_CHAIN_WINDOW_S));
+      const finalSec = remaining <= SWARM_CHAIN_WARN_S;
+      v.chainVisible = true;
+      v.chainMult = style.mult;
+      v.chainCount = style.chain;
+      v.chainLine = style.line;
+      v.chainTier = style.tier;
+      v.chainOverdrive = style.overdrive;
+      v.chainUrgency = finalSec ? 'final' : '';
+      v.chainDepleteQ = Math.round(deplete * 1000) / 1000;
+      v.chainAria = style.line
+        ? `Chain ${style.mult}, ${style.chain}, ${style.line}${finalSec ? ', ending' : ''}`
+        : `Chain ${style.mult}, ${style.chain}${finalSec ? ', ending' : ''}`;
+    } else {
+      v.chainVisible = false;
+      v.chainMult = '';
+      v.chainCount = 0;
+      v.chainLine = '';
+      v.chainTier = 0;
+      v.chainOverdrive = false;
+      v.chainUrgency = '';
+      v.chainDepleteQ = 0;
+      v.chainAria = '';
+    }
+
+    // 4. Top-right Scrap + Score + room-kill multiplier flash
+    v.scrapText = num(run.credits);
+    v.scoreText = num(run.score);
+    const roomFlashLive = simTime <= this._roomMultUntil && this._roomMultValue > 1;
+    v.roomMultText = roomFlashLive ? formatRoomMultiplier(this._roomMultValue) : '';
+    v.roomFlashAt = this._roomMultAt;
+
+    // Quiet top-left contextual notes (cast announcement, Foundry guidance, twist, hero cue, bought mods, death)
+    const castLive = !!(this._cast && simTime <= this._castUntil
+      && (this._cast.wave == null || this._cast.wave === run.wave));
+    if (castLive) {
+      const sig = `${this._cast.jobs.join(',')}|${this._cast.line}|${this._cast.answer}`;
+      v.castSig = sig;
+      if (this._castSig !== sig) {
+        this._castSig = sig;
+        this._castGlyphsHtml = this._cast.jobs.map((j) => castJobGlyphSvg(j)).join('');
+      }
+      v.castGlyphsHtml = this._castGlyphsHtml || '';
+      v.castLine = this._cast.line;
+      v.castAnswer = this._cast.answer || '';
+    } else {
+      v.castSig = '';
+      v.castGlyphsHtml = '';
+      v.castLine = '';
+      v.castAnswer = '';
+      if (this._cast && simTime > this._castUntil) {
+        this._cast = null;
+        this._castUntil = -1;
+        this._castSig = '';
+      }
+    }
+
+    const foundryFight = run.phase === 'active' && run.arenaId === 'helios_core';
+    const approach = foundryFight && this._foundryGuidance.get(FOUNDRY_APPROACH_ALERT);
+    const guidance = approach || (foundryFight && run.wave === 1 && this._foundryGuidance.get(FOUNDRY_RETURN_ALERT));
+    v.guidanceText = guidance || '';
+    v.guidanceWarn = !!approach;
+
+    v.twistText = twistChipText(st.render && st.render.swarmTwistChip, simTime) || '';
+    const heroCue = heroManeuverHudCue(st);
+    v.heroCueText = heroCue ? heroCue.text : '';
+    v.heroCueState = heroCue ? (heroCue.status || 'blocked') : '';
+
+    const modsArr = Array.isArray(run.modifiers) ? run.modifiers : null;
+    const modsLen = modsArr ? modsArr.length : 0;
+    const modsTail = modsLen > 0 ? modsArr[modsLen - 1] : null;
+    if (this._modsRun !== run || this._modsArr !== modsArr || this._modsLen !== modsLen
+      || this._modsTail !== modsTail) {
+      this._modsRun = run;
+      this._modsArr = modsArr;
+      this._modsLen = modsLen;
+      this._modsTail = modsTail;
+      this._tapMods = swarmOwnedTapMods(st);
+      this._modsText = this._tapMods.map((mod) => `${mod.icon} ${mod.name}`).join('  ');
+    }
+    v.modsText = this._tapMods.length ? this._modsText : '';
+    v.deathText = this._death
+      ? deathLineFor(this._death.receipt, this._killerTell(), this._death.simTime)
+      : '';
+
+    this._swarmLayer.update(st, v);
   },
 
   // ---- receipts -------------------------------------------------------------
@@ -775,6 +1385,63 @@ export const survivalHud = {
     this._chainCause = null;
     this._chainStep = 0;
     this._chainAt = null;
+    this._overdriveRate = 0;
+  },
+
+  _onOverdrive(payload) {
+    this._overdriveRate = payload && payload.active ? Math.max(0, Number(payload.rate) || 0) : 0;
+  },
+
+  _readProfile() {
+    const run = this.state?.run;
+    const key = run ? `${run.kind || ''}:${run.seed || ''}:${run.phase || ''}` : 'none';
+    if (key !== this._profileRunKey) {
+      this._profileRunKey = key;
+      try { this._profileCache = loadCrucibleMeta(); } catch { this._profileCache = null; }
+    }
+    return this._profileCache;
+  },
+
+  _onCastAnnounced(payload) {
+    if (!payload || typeof payload !== 'object') return;
+    const explicitAnswer = typeof payload.showAnswer === 'boolean' ? payload.showAnswer : null;
+    const showAnswer = explicitAnswer != null ? explicitAnswer : shouldShowCastAnswer(this._readProfile());
+    const model = buildCastAnnouncementModel(payload, { showAnswer });
+    if (!model) return;
+    // DEMO-SWARM-TUTOR-1 (owner demo 2026-11-23): inside a Swarm run the round brief is a TEACHING
+    // CARD, and it goes through the one Swarm teaching lane so it can never land beside the
+    // first-sighting card and the first-use power caption on the same frame. It is the one card
+    // allowed to repeat on Again (`repeat`), because the round is new; the codex and power cards
+    // are not. The lane owns the seat and the read clock, so the HUD's own top-left cast strip
+    // stays empty. The gate mirrors the power caption's: SWARM GLASS ONLY — a Gauntlet or open
+    // ladder cast keeps the strip below, it never takes the lane (XR-DEMO-SWARM-TUTOR-1).
+    const teaching = isSwarmGlass(this.state) ? getSwarmTeaching() : null;
+    if (teaching) {
+      const run = this.state && this.state.run;
+      const wave = model.wave != null ? model.wave : (run && Number.isInteger(run.wave) ? run.wave : 1);
+      this._cast = null;
+      this._castUntil = -1;
+      this._castSig = '';
+      // A veteran profile omits the tactical answer (`shouldShowCastAnswer`), so the card falls back
+      // to the plain-words line alone rather than offering an empty card.
+      const answer = model.answer || '';
+      teaching.offer({
+        id: `swarm:brief:${wave}`,
+        // The brief's opening lesson IS the Line ("Catch one Wasp on the Line…") — the same verb
+        // the first-sighting card teaches, so one catch retires whichever of the two is up
+        // (XR-DEMO-SWARM-TUTOR-1). `repeat` still lets it announce each new round on Again.
+        mechanic: SWARM_TEACH_MECHANIC.line,
+        kicker: formatSwarmRoundKicker(run || { wave }),
+        title: answer ? model.line : '',
+        line: answer || model.line,
+        repeat: true,
+      });
+      return;
+    }
+    const simNow = this.state && Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
+    this._cast = model;
+    this._castUntil = simNow + CAST_ANNOUNCE_S;
+    this._castSig = '';
   },
 
   _onWavePlanned(payload) {
@@ -813,6 +1480,13 @@ export const survivalHud = {
   },
 
   _onAwarded(payload) {
+    // A kill paid by the room flashes its ×2.5 multiplier beside Scrap for a beat.
+    if (payload && payload.reason === 'kill' && isRoomKillCausePhrase(payload.causePhrase)) {
+      const simTime = this.state && Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
+      this._roomMultValue = SWARM_ROOM_KILL_MULTIPLIER;
+      this._roomMultAt = simTime;
+      this._roomMultUntil = simTime + SWARM_ROOM_KILL_FLASH_S;
+    }
     // The chain pays on every kill and has its own large readout two lines up. Letting it also
     // drive the earn receipt would mean the receipt said "+14 SCORE" continuously and never got a
     // chance to say the thing it exists for — that something NEW was earned.
@@ -825,13 +1499,25 @@ export const survivalHud = {
   _onLevelUp(payload) {
     const level = payload && payload.level;
     if (!Number.isInteger(level)) return;
-    this._pushEarn(`LEVEL ${level}`);
+    this._pushEarn(`LEVEL ${level}`, LEVEL_RIDE_S);
+    const simTime = this.state && Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
+    this._xpFlashAt = simTime;
+    this._xpFlashUntil = simTime + XP_FLASH_S;
+    this._levelRideLevel = level;
+    this._levelRideUntil = simTime + LEVEL_RIDE_S;
+    const prev = Number.isInteger(payload.previousLevel) ? payload.previousLevel : level - 1;
+    this._pickDelta = Math.max(1, level - prev);
+    this._pickPulseAt = simTime;
+    this._pickPulseUntil = simTime + SWARM_PICK_PULSE_S;
+    // The chime: the promotion chord (the voice a chain tier and a cleared round already use),
+    // not the menu's confirm click, so a level-up is heard as a reward. Nothing pauses the fight.
+    if (this.bus && typeof this.bus.emit === 'function') this.bus.emit('audio:cue', { id: 'sfx_promotion_chord', gain: 0.55 });
   },
 
-  _pushEarn(text) {
+  _pushEarn(text, seconds = EARN_RECEIPT_S) {
     this._earn = text;
     const simTime = this.state && Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
-    this._earnUntil = simTime + EARN_RECEIPT_S;
+    this._earnUntil = simTime + seconds;
   },
 
   _clearEarn() {
@@ -984,7 +1670,7 @@ export const survivalHud = {
     root.setAttribute('role', 'status');
     root.setAttribute('aria-live', 'polite');
     root.setAttribute('aria-atomic', 'true');
-    root.setAttribute('aria-label', 'Crucible run status');
+    root.setAttribute('aria-label', 'Swarm run status');
 
     // MOB-07: on a phone the round panel is this one line (round · hostiles left · score); tapping it
     // opens the full panel. Desktop never shows it (display:none in the base sheet).
@@ -997,19 +1683,54 @@ export const survivalHud = {
       brief.setAttribute('aria-expanded', open ? 'true' : 'false');
     });
 
-    const label = make('div', 'sf-crun__label', root);
-
-    const waveRow = make('div', 'sf-crun__row', root);
+    const head = make('div', 'sf-crun__head', root);
+    const label = make('div', 'sf-crun__label', head);
+    const waveRow = make('div', 'sf-crun__row sf-crun__waverow', head);
     const waveN = make('span', 'sf-crun__wave', waveRow);
     const phase = make('span', 'sf-crun__phase', waveRow);
+
+    // HUD-2 Item 6: TWO large hero figures (wave remaining/clock + chain) on one clear row,
+    // so the player reads the fight at a glance instead of parsing seven equal-weight numbers.
+    const heroes = make('div', 'sf-crun__heroes', root);
+
+    const threat = make('div', 'sf-crun__threat', heroes);
+    threat.setAttribute('role', 'meter');
+    threat.setAttribute('aria-valuemin', '0');
+    threat.setAttribute('aria-label', 'Hostiles remaining');
+    const threatWord = make('span', 'sf-crun__word', threat);
+    threatWord.textContent = 'THREAT';
+    const threatFig = make('span', 'sf-crun__fig sf-crun__hero-num', threat);
+    const threatTrack = make('span', 'sf-crun__track', threat);
+    const threatFill = make('span', 'sf-crun__fill sf-crun__fill--foe', threatTrack);
+
+    const chainRow = make('div', 'sf-crun__chain', heroes);
+    const chainTop = make('div', 'sf-crun__chaintop', chainRow);
+    const chainWord = make('span', 'sf-crun__word', chainTop);
+    chainWord.textContent = 'CHAIN';
+    const chainBest = make('span', 'sf-crun__chainbest', chainTop);
+    const chainMid = make('div', 'sf-crun__chainmid', chainRow);
+    const chainFig = make('span', 'sf-crun__chainfig', chainMid);
+    const chainCause = make('span', 'sf-crun__chaincause', chainMid);
+    const chainDepleteTrack = make('span', 'sf-crun__track sf-crun__track--chain', chainRow);
+    const chainDeplete = make('span', 'sf-crun__fill sf-crun__fill--you', chainDepleteTrack);
+    chainRow.hidden = true;
+
+    // HUD-2 Item 11: ~3-second cast announcement on the round card (job glyphs + plain line +
+    // tactical answer on the player's first few runs).
+    const cast = make('div', 'sf-crun__cast', root);
+    cast.hidden = true;
+    const castRow = make('div', 'sf-crun__castrow', cast);
+    const castGlyphs = make('span', 'sf-crun__castglyphs', castRow);
+    const castLine = make('span', 'sf-crun__castline', castRow);
+    const castAnswer = make('div', 'sf-crun__castanswer', cast);
+    castAnswer.hidden = true;
 
     const hero = make('div', 'sf-crun__hero', root);
     hero.hidden = true;
     hero.setAttribute('aria-live', 'off');
     hero.setAttribute('role', 'group');
 
-    // FB-025: the intro window's line — the wave's own words, on the glass only while
-    // wave_intro lasts, then cleared.
+    // One instruction row: the wave intro, then live Foundry navigation when needed.
     const intro = make('div', 'sf-crun__intro', root);
     intro.hidden = true;
 
@@ -1019,21 +1740,8 @@ export const survivalHud = {
     twist.hidden = true;
     twist.setAttribute('aria-live', 'off');
 
-    const threat = make('div', 'sf-crun__threat', root);
-    threat.setAttribute('role', 'meter');
-    threat.setAttribute('aria-valuemin', '0');
-    threat.setAttribute('aria-label', 'Hostiles remaining');
-    const threatWord = make('span', 'sf-crun__word', threat);
-    threatWord.textContent = 'THREAT';
-    const threatTrack = make('span', 'sf-crun__track', threat);
-    const threatFill = make('span', 'sf-crun__fill sf-crun__fill--foe', threatTrack);
-    const threatFig = make('span', 'sf-crun__fig', threat);
-
-    // SWARM-05 §7.5 — the boss bar. The wave's champion bodies carry the swarmChampion mark
-    // stamped at materialization (SWARM-02 left it for exactly this surface), so the readout
-    // scans the live entities and never asks an owner to publish. It rides the same
-    // word/track/figure grammar as the threat meter, and leaves when the last boss falls.
-    const boss = make('div', 'sf-crun__threat sf-crun__boss', root);
+    // SWARM-05 §7.5 — the boss bar.
+    const boss = make('div', 'sf-crun__boss', root);
     boss.setAttribute('role', 'meter');
     boss.setAttribute('aria-valuemin', '0');
     boss.setAttribute('aria-valuemax', '100');
@@ -1044,46 +1752,22 @@ export const survivalHud = {
     const bossFill = make('span', 'sf-crun__fill sf-crun__fill--foe sf-crun__fill--boss', bossTrack);
     const bossFig = make('span', 'sf-crun__fig', boss);
 
-    // THE CHAIN GETS ITS OWN LINE, and it is the biggest thing here.
-    //
-    // Everything else in this readout is a status you glance at between fights. The chain is the
-    // one figure a player is watching WHILE they fly, and it is the thing that makes them take the
-    // risk that makes the mode fun. It is not going in the small-figures row with the credits.
-    const chainRow = make('div', 'sf-crun__chain', root);
-    const chainWord = make('span', 'sf-crun__word', chainRow);
-    chainWord.textContent = 'CHAIN';
-    const chainFig = make('span', 'sf-crun__chainfig', chainRow);
-    const chainCause = make('span', 'sf-crun__chaincause', chainRow);
-    const chainBest = make('span', 'sf-crun__chainbest', chainRow);
-    // The window depletion mark: a 2px underline on its own flex line, reusing the threat
-    // track/fill grammar. The number above it is never touched. INF-032.
-    const chainDepleteTrack = make('span', 'sf-crun__track sf-crun__track--chain', chainRow);
-    const chainDeplete = make('span', 'sf-crun__fill sf-crun__fill--you', chainDepleteTrack);
-    chainRow.hidden = true;
-
+    // Quiet single-line muted footer for secondary totals (score, kills, credits, level).
     const figures = make('div', 'sf-crun__row sf-crun__row--figs', root);
-    const scoreWord = make('span', 'sf-crun__word', figures);
+    const scoreWord = make('span', 'sf-crun__word sf-crun__footword sf-crun__scorepair', figures);
     scoreWord.textContent = 'SCORE';
-    const score = make('span', 'sf-crun__fig sf-crun__fig--you', figures);
-    const killWord = make('span', 'sf-crun__word', figures);
+    const score = make('span', 'sf-crun__fig sf-crun__footfig sf-crun__scorepair', figures);
+    const killWord = make('span', 'sf-crun__word sf-crun__footword', figures);
     killWord.textContent = 'KILLS';
-    const killFig = make('span', 'sf-crun__fig', figures);
+    const killFig = make('span', 'sf-crun__fig sf-crun__footfig', figures);
     killWord.hidden = true;
     killFig.hidden = true;
-    const crWord = make('span', 'sf-crun__word', figures);
-    crWord.textContent = 'CR';
-    const credits = make('span', 'sf-crun__fig sf-crun__fig--you', figures);
-    const level = make('span', 'sf-crun__fig sf-crun__fig--you', figures);
+    const crWord = make('span', 'sf-crun__word sf-crun__footword', figures);
+    crWord.textContent = 'SCRAP';
+    const credits = make('span', 'sf-crun__fig sf-crun__footfig', figures);
+    const level = make('span', 'sf-crun__fig sf-crun__footfig sf-crun__footlv', figures);
 
-    // THE STYLE MULTIPLIER, ON GLASS.
-    //
-    // survivalStyle.js has always rewarded VARIETY of kill cause — a terrain kill, an explosive
-    // kill and a direct kill in a row score far better than three of the same — and the player
-    // could never see it. In a mode whose premise is that the arena is a weapon, the number that
-    // says "using the room is worth more" has to be visible or the loop never closes. It appears
-    // only while it is above 1x, so a plain fight is not carrying a permanent "1.0x" it has not
-    // earned. The word travels with the figure: colour is never the only channel.
-    const styleWord = make('span', 'sf-crun__word', figures);
+    const styleWord = make('span', 'sf-crun__word sf-crun__footword', figures);
     styleWord.textContent = 'STYLE';
     const styleFig = make('span', 'sf-crun__fig sf-crun__fig--goal', figures);
     styleWord.hidden = true;
@@ -1091,6 +1775,9 @@ export const survivalHud = {
 
     const xpTrack = make('div', 'sf-crun__track sf-crun__track--xp', root);
     const xpFill = make('span', 'sf-crun__fill sf-crun__fill--you', xpTrack);
+    // OVH-01b: picks banked by levelling, beside the bar — words, never colour alone.
+    const pick = make('span', 'sf-crun__pick', root);
+    pick.hidden = true;
 
     const earn = make('div', 'sf-crun__earn', root);
     earn.hidden = true;
@@ -1101,11 +1788,10 @@ export const survivalHud = {
     death.hidden = true;
     death.setAttribute('role', 'status');
 
-    // A01-05: the run's bought Tap bottles — icon + name, never colour alone. The row
-    // leaves the glass entirely until the till has sold the run something.
+    // A01-05: the run's bought Tap bottles — icon + name, never colour alone.
     const mods = make('div', 'sf-crun__mods', root);
     mods.hidden = true;
-    mods.setAttribute('aria-label', 'Bought tap modifiers');
+    mods.setAttribute('aria-label', 'Bought modifiers');
     const modsWord = make('span', 'sf-crun__word', mods);
     modsWord.textContent = 'MODS';
     const modsList = make('span', 'sf-crun__modslist', mods);
@@ -1115,7 +1801,8 @@ export const survivalHud = {
       root, brief, label, waveN, phase, hero, intro, twist, threat, threatWord, threatFill, threatFig,
       boss, bossWord, bossFill, bossFig,
       chainRow, chainFig, chainCause, chainBest, chainDeplete,
-      score, killWord, killFig, credits, level, styleWord, styleFig, xpFill, earn, death, line,
+      cast, castGlyphs, castLine, castAnswer,
+      score, killWord, killFig, credits, level, styleWord, styleFig, xpTrack, xpFill, pick, earn, death, line,
       mods, modsList,
     };
     // Rebuilt nodes reuse the same __crunKey values: drop the last-written cache so the first
@@ -1130,87 +1817,114 @@ export const survivalHud = {
     style.id = STYLE_ID;
     // Own lease: this block styles only .sf-crun*. It never redefines a shared selector.
     style.textContent = `
-  /* PQ-210.05: the Crucible readout is an instrument in the comms strip, not a CSS card.
-     Parent .sf-leftcontext already supplies the machined bezel; this sheet only paints the
-     legends, lamps and channels. No overlay fill, no hairline border, no second palette. */
-  .sf-crun { display:flex; flex-direction:column; gap:6px; min-width:0;
+  .sf-crun { display:flex; flex-direction:column; gap:7px; min-width:0;
     padding:0; border:0; background:none; color:var(--dp-ink, var(--sf-paper)); }
-  .sf-crun__label { font-family:var(--dp-face-etch, var(--sf-subhead-face)); font-variation-settings:"wght" 720, "wdth" 62;
-    font-weight:700; font-size:12px; letter-spacing:.1em; text-transform:uppercase;
-    color:var(--dp-ink-mute, var(--sf-calm)); text-shadow:var(--dp-etch-shadow, none); }
-  .sf-crun__row { display:flex; align-items:baseline; gap:9px; }
+  .sf-crun__head { display:flex; flex-direction:column; gap:2px; }
+  .sf-crun__label { font-family:var(--dp-face-read, var(--sf-subhead-face));
+    font-weight:600; font-size:12px; letter-spacing:.08em; text-transform:uppercase;
+    color:rgb(184 208 218 / .72); }
+  .sf-crun__row { display:flex; align-items:baseline; gap:8px; }
+  .sf-crun__waverow { justify-content:space-between; align-items:center; }
   .sf-crun__brief { display:none; }
+  .sf-crun__wave { font-family:var(--dp-face-read, var(--sf-data-face));
+    font-weight:650; font-size:13px; font-variant-numeric:tabular-nums; letter-spacing:.06em;
+    color:#a9edf4; }
+  .sf-crun__phase { font-family:var(--dp-face-read, var(--sf-subhead-face));
+    font-weight:650; font-size:12px; letter-spacing:.09em; text-transform:uppercase;
+    color:rgb(184 208 218 / .76); }
+  .sf-crun__phase--hot { color:var(--dp-danger-hot, #ff806b); }
+  /* Two-hero row: Wave clock/remaining on the left, Chain + Overdrive on the right. */
+  .sf-crun__heroes { display:grid; grid-template-columns:minmax(0, 1fr) auto; gap:14px; align-items:end;
+    padding-top:2px; }
+  .sf-crun__threat { display:flex; flex-direction:column; gap:3px; min-width:0; }
+  .sf-crun__threat[hidden] { display:none; }
+  .sf-crun__hero-num { font-family:var(--dp-face-numeral, var(--dp-face-read, sans-serif));
+    font-weight:750; font-size:28px; line-height:1; font-variant-numeric:tabular-nums;
+    letter-spacing:-.01em; color:#f4f8fa; text-shadow:0 1px 4px rgb(3 8 12 / .82); }
+  .sf-crun__chain { display:flex; flex-direction:column; gap:3px; min-width:94px;
+    padding-left:12px; border-left:1px solid rgb(166 210 224 / .28); }
+  .sf-crun__chain[hidden] { display:none; }
+  .sf-crun__chaintop { display:flex; align-items:baseline; justify-content:space-between; gap:6px; }
+  .sf-crun__chainmid { display:flex; align-items:baseline; gap:6px; flex-wrap:wrap; }
+  .sf-crun__chainfig { font-family:var(--dp-face-numeral, var(--dp-face-read, sans-serif));
+    font-weight:780; font-size:28px; line-height:1; font-variant-numeric:tabular-nums;
+    color:var(--dp-lamp-hot, #ffd98c); text-shadow:0 1px 4px rgb(3 8 12 / .82); }
+  .sf-crun__chain[data-tier="hot"] .sf-crun__chainfig { color:#ffbe55; }
+  .sf-crun__chain[data-tier="peak"] .sf-crun__chainfig,
+  .sf-crun__chain[data-urgency="final"] .sf-crun__chainfig { color:var(--dp-danger-hot, #ff7159); }
+  .sf-crun__chainbest { font-family:var(--dp-face-read, var(--sf-data-face)); font-weight:500; font-size:12px;
+    font-variant-numeric:tabular-nums; color:rgb(184 208 218 / .68); }
+  .sf-crun__chaincause { font-family:var(--dp-face-read, var(--sf-subhead-face)); font-weight:700; font-size:12px;
+    letter-spacing:.06em; text-transform:uppercase; font-variant-numeric:tabular-nums;
+    color:#d8ecf2; }
+  .sf-crun__chaincause[data-overdrive="1"] { padding:1px 5px; border-radius:2px;
+    background:rgb(255 110 74 / .22); border:1px solid rgb(255 138 112 / .7);
+    color:#ffd3c7; }
+  .sf-crun__track--chain { width:100%; min-width:0; height:3px; flex:none; }
+  /* Cast announcement strip (Item 11): miniature job glyphs + plain line + early-run counter hint. */
+  .sf-crun__cast { display:flex; flex-direction:column; gap:3px; padding:6px 0 4px;
+    border-top:1px solid rgb(166 210 224 / .24); }
+  .sf-crun__cast[hidden] { display:none; }
+  .sf-crun__castrow { display:flex; align-items:flex-start; gap:7px; }
+  .sf-crun__castglyphs { display:inline-flex; align-items:center; gap:3px; flex:none; padding-top:2px; }
+  .sf-crun__castglyph { display:block; width:14px; height:14px; flex:none; }
+  .sf-crun__castline { font-family:var(--dp-face-read, var(--sf-data-face)); font-weight:600; font-size:13px;
+    line-height:1.28; color:#eef5f7; text-wrap:balance; }
+  .sf-crun__castanswer { font-family:var(--dp-face-read, var(--sf-data-face)); font-weight:500; font-size:12px;
+    line-height:1.25; color:#a9edf4; }
   .sf-crun__hero { font-family:var(--dp-face-read, var(--sf-data-face)); font-weight:600; font-size:12px;
     color:var(--dp-phos, var(--sf-paper)); line-height:1.35; }
   .sf-crun__hero[data-state="blocked"], .sf-crun__hero[data-state="hidden"] { color:var(--dp-ink-mute, var(--sf-calm)); }
-  .sf-crun__row--figs { flex-wrap:wrap; gap:4px 10px; }
-  /* The round figure is a READING — the world's count — so it reads phos, not lamp: the amber
-     leader in this panel is the chain (the one figure watched while flying), never two. */
-  .sf-crun__wave { font-family:var(--dp-face-etch, var(--sf-data-face)); font-variation-settings:"wght" 820, "wdth" 80;
-    font-weight:700; font-size:20px; font-variant-numeric:tabular-nums; letter-spacing:.04em;
-    color:var(--dp-phos, var(--sf-paper)); text-shadow:var(--dp-emit, none); }
-  .sf-crun__phase { font-family:var(--dp-face-etch, var(--sf-subhead-face)); font-variation-settings:"wght" 720, "wdth" 68;
-    font-weight:700; font-size:12px; letter-spacing:.1em; text-transform:uppercase;
-    color:var(--dp-ink-mute, var(--sf-calm)); margin-left:auto; }
-  .sf-crun__phase--hot { color:var(--dp-danger-hot, var(--sf-foe)); }
-  /* FB-025: the intro window's opening line — a full-width sentence in the paper ink, not a
-     figure and not a word-pair, so it cannot be mistaken for a live gauge. */
-  .sf-crun__intro { font-family:var(--dp-face-read, var(--sf-data-face)); font-weight:600; font-size:12px;
-    letter-spacing:.02em; color:var(--dp-ink, var(--sf-paper)); text-shadow:var(--dp-emit, none); }
-  .sf-crun__threat { display:flex; align-items:center; gap:7px; }
-  .sf-crun__word { font-family:var(--dp-face-etch, var(--sf-subhead-face)); font-variation-settings:"wght" 700, "wdth" 62;
-    font-weight:700; font-size:12px; letter-spacing:.1em; text-transform:uppercase;
-    color:var(--dp-ink-mute, var(--sf-calm)); }
-  /* A bar is a printed track with a flat lit fill (ONE_PHOTOGRAPH section 9): the track is drawn so
-     a part-spent bar reads as a gauge, not as a loose coloured slab, and the fill is one flat colour
-     that glows -- no top-lit ramp pretending to be a rounded rod. */
-  .sf-crun__track { position:relative; flex:1 1 auto; min-width:44px; height:8px; overflow:hidden;
-    border-radius:1px; background:var(--dp-rule-hi, rgb(232 226 212 / .22));
-    box-shadow:none; }
-  .sf-crun__track--xp { height:5px; }
-  /* Bloom is geometry, not a filter: the printed track + the full-saturation fill carry the lit
-     reading; no live glow shadow rides a bar whose width changes every frame. */
+  .sf-crun__intro, .sf-crun__guidance { font-family:var(--dp-face-read, var(--sf-data-face)); font-weight:600; font-size:12px;
+    letter-spacing:.02em; color:var(--dp-ink, var(--sf-paper)); }
+  .sf-crun__guidance--warn { color:var(--dp-lamp-hot, var(--sf-goal)); }
+  .sf-crun__boss { display:flex; align-items:center; gap:7px; }
+  .sf-crun__boss[hidden] { display:none; }
+  .sf-crun__word { font-family:var(--dp-face-read, var(--sf-subhead-face));
+    font-weight:650; font-size:12px; letter-spacing:.08em; text-transform:uppercase;
+    color:rgb(184 208 218 / .72); }
+  .sf-crun__track { position:relative; flex:1 1 auto; min-width:44px; height:5px; overflow:hidden;
+    border-radius:1px; background:rgb(176 210 224 / .20); box-shadow:none; }
+  .sf-crun__threat .sf-crun__track { width:100%; flex:none; }
+  .sf-crun__track--xp { height:4px; }
+  .sf-crun__track--flash { animation:sf-crun-xp-flash .6s ease-out 1; background:var(--dp-lamp, #f2b950); }
+  @keyframes sf-crun-xp-flash { 0% { background:var(--dp-lamp-hot, #ffd98a); } 100% { background:rgb(176 210 224 / .20); } }
+  html.sf-reduce-motion .sf-crun__track--flash { animation:none; }
+  .sf-crun__pick { align-self:flex-start; font-family:var(--dp-face-read, var(--sf-subhead-face));
+    font-weight:700; font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:var(--dp-lamp-hot, var(--sf-goal)); }
   .sf-crun__fill { position:absolute; inset:0 auto 0 0; width:0; }
-  .sf-crun__fill--foe { background:var(--dp-danger, #ff5038); }
+  .sf-crun__fill--foe { background:var(--dp-danger, #ff644c); }
   .sf-crun__fill--you { background:var(--dp-lamp, #f2b950); }
-  .sf-crun__fig { font-family:var(--dp-face-read, var(--sf-data-face)); font-weight:650; font-size:13px;
-    font-variant-numeric:tabular-nums; color:var(--dp-ink, var(--sf-paper)); text-shadow:var(--dp-emit, none); }
-  .sf-crun__fig--you { color:var(--dp-ink, var(--sf-you)); }
-  .sf-crun__fig--goal { color:var(--dp-phos, var(--sf-paper)); text-shadow:var(--dp-emit, none); }
-  /* The chain. Three channels as always — the word, the figure and its colour — so a forced-colors
-     or colour-blind reader loses nothing. No animation, so reduced-motion needs no variant. */
-  .sf-crun__chain { display:flex; align-items:baseline; flex-wrap:wrap; gap:2px 8px; }
-  .sf-crun__track--chain { flex:1 1 100%; min-width:0; height:2px; }
-  .sf-crun__chain[data-urgency="final"] .sf-crun__chainfig { color:var(--dp-danger-hot, var(--sf-foe)); }
-  .sf-crun__chainfig { font-family:var(--dp-face-etch, var(--sf-data-face)); font-variation-settings:"wght" 820, "wdth" 84;
-    font-weight:700; font-size:26px; line-height:1.05; font-variant-numeric:tabular-nums;
-    color:var(--dp-lamp-hot, var(--sf-you)); text-shadow:var(--dp-emit-lamp, none); }
-  .sf-crun__chain[data-tier="hot"] .sf-crun__chainfig { color:var(--dp-lamp-hot, var(--sf-goal, #e3a13d)); }
-  .sf-crun__chain[data-tier="peak"] .sf-crun__chainfig { color:var(--dp-danger-hot, var(--sf-foe)); }
-  .sf-crun__chainbest { font-family:var(--dp-face-read, var(--sf-data-face)); font-weight:500; font-size:12px;
-    font-variant-numeric:tabular-nums; color:var(--dp-ink-mute, var(--sf-calm)); }
-  .sf-crun__chaincause { font-family:var(--dp-face-etch, var(--sf-subhead-face)); font-weight:700; font-size:12px;
-    letter-spacing:.09em; text-transform:uppercase; font-variant-numeric:tabular-nums;
-    color:var(--dp-ink-dim, var(--sf-calm)); }
+  .sf-crun__fig { font-family:var(--dp-face-read, var(--sf-data-face)); font-weight:600; font-size:12px;
+    font-variant-numeric:tabular-nums; color:var(--dp-ink, var(--sf-paper)); }
+  .sf-crun__fig--goal { color:var(--dp-phos, var(--sf-paper)); }
+  /* Quiet single-line muted footer: Score, Kills, CR, Level stay subordinate to the two hero numbers. */
+  .sf-crun__row--figs { flex-wrap:nowrap; align-items:baseline; gap:4px 6px; padding-top:4px;
+    border-top:1px solid rgb(166 210 224 / .20); white-space:nowrap; overflow:hidden; }
+  .sf-crun__footword { font-size:12px; font-weight:550; letter-spacing:.04em; color:rgb(176 202 214 / .62); }
+  .sf-crun__footfig { font-size:12px; font-weight:600; color:rgb(214 230 236 / .82); margin-right:5px; }
+  .sf-crun__footlv { margin-left:auto; margin-right:0; color:rgb(184 212 222 / .78); }
   .sf-crun__earn { font-family:var(--dp-face-read, var(--sf-data-face)); font-weight:650; font-size:12px;
-    font-variant-numeric:tabular-nums; color:var(--dp-phos, var(--sf-paper)); text-shadow:var(--dp-emit, none); }
+    font-variant-numeric:tabular-nums; color:var(--dp-phos, var(--sf-paper)); }
   .sf-crun__death { font-family:var(--dp-face-read, var(--sf-data-face)); font-weight:500; font-size:12px;
     font-variant-numeric:tabular-nums; color:var(--dp-danger-hot, var(--sf-foe)); }
   .sf-crun__mods { display:flex; gap:8px; align-items:baseline; }
   .sf-crun__modslist { font-family:var(--dp-face-read, var(--sf-data-face)); font-weight:600; font-size:12px;
     font-variant-numeric:tabular-nums; color:var(--dp-ink-dim, var(--sf-calm)); }
-  /* forced-colors strips the fills; the figure beside each bar is the surviving channel. */
   @media (forced-colors: active) {
     .sf-crun { border:0; background:Canvas; color:CanvasText; }
     .sf-crun__fill { background:Highlight; forced-color-adjust:none; }
-    .sf-crun__wave, .sf-crun__chainfig, .sf-crun__chaincause, .sf-crun__fig--goal, .sf-crun__earn { color:CanvasText; text-shadow:none; }
-    .sf-crun__phase--hot, .sf-crun__death, .sf-crun__chain[data-tier="peak"] .sf-crun__chainfig,
+    .sf-crun__wave, .sf-crun__hero-num, .sf-crun__chainfig, .sf-crun__chaincause, .sf-crun__fig--goal, .sf-crun__earn { color:CanvasText; text-shadow:none; }
+    .sf-crun__phase--hot, .sf-crun__guidance--warn, .sf-crun__death, .sf-crun__chain[data-tier="peak"] .sf-crun__chainfig,
     .sf-crun__chain[data-urgency="final"] .sf-crun__chainfig { color:Highlight; text-shadow:none; }
   }
   @media (max-width: 900px) {
     .sf-crun { min-width:0; }
-    .sf-crun__wave { font-size:16px; }
-    .sf-crun__chainfig { font-size:22px; }
+    .sf-crun__hero-num, .sf-crun__chainfig { font-size:22px; }
+    /* A narrow card keeps kills, Scrap and the level on one line by dropping the score total
+       instead of clipping them — the Run Over plate's figures are Round, Kills, Best chain
+       and Time, so the total only lives on the wide card. */
+    .sf-crun__scorepair { display:none; }
   }
 `;
     document.head.appendChild(style);

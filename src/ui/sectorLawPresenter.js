@@ -7,6 +7,7 @@ import { SECTORS } from '../data/sectors.js';
 import { sectorLawProfile } from './securityReadout.js';
 import { INK_SHADOW } from './hudBrackets.js';
 import { openingInstructionSolo } from './hudAttention.js';
+import { openingQuiet } from '../onboarding/openingQuiet.js';
 import { isPlayerWanted } from '../systems/heat.js';
 import { classifyImpactResponsibility } from '../combat/killCausality.js';
 import { targetDisplayName } from './targetPanel.js';
@@ -90,15 +91,52 @@ export function stationName(state, stationId) {
   return String(stationId || 'protected station').replace(/^station_/, '').replace(/_/g, ' ');
 }
 
+function sameEntityId(a, b) {
+  return a != null && b != null && String(a) === String(b);
+}
+
+function generationMatches(entity, expected) {
+  if (expected == null) return false;
+  return !!(entity && entity.occupantGeneration != null && entity.occupantGeneration === expected);
+}
+
+function isPlayerAggressor(payload, state) {
+  if (!payload) return false;
+  // The law's canonical player cause/stable id is authoritative even when the live entity is gone.
+  if (/^player_(assault|piracy)$/.test(String(payload.cause || ''))) return true;
+  if (payload.offenderStableId === 'player') return true;
+  const attacker = entityById(state, payload.attackerId);
+  if (!generationMatches(attacker, payload.attackerGeneration)) return false;
+  if (state && sameEntityId(payload.attackerId, state.playerId)) return true;
+  return !!(attacker && (attacker.isPlayer === true || attacker.data?.isPlayer === true));
+}
+
+function incidentVictimIsPlayer(payload, state) {
+  if (!payload || !state || !sameEntityId(payload.victimId, state.playerId)) return false;
+  return generationMatches(entityById(state, payload.victimId), payload.victimGeneration);
+}
+
+function incidentInvolvesPlayer(payload, state) {
+  if (!payload || !state) return false;
+  if (isPlayerAggressor(payload, state)) return true;
+  return incidentVictimIsPlayer(payload, state);
+}
+
 export function authorityTargetText(payload, state) {
-  if (!payload || payload.attackerId == null) return 'UNKNOWN AGGRESSOR';
-  if (payload.attackerId === state.playerId) {
+  if (!payload || payload.attackerId == null) {
+    if (payload && /^player_(assault|piracy)$/.test(String(payload.cause || ''))) return 'YOU · AGGRESSOR';
+    return 'UNKNOWN AGGRESSOR';
+  }
+  if (isPlayerAggressor(payload, state)) {
     return /^player_(assault|piracy)$/.test(String(payload.cause || '')) ? 'YOU · AGGRESSOR' : 'YOU · INCIDENT SUBJECT';
   }
   // The same display-name path as the roster/panel: readableIdentity rejects id-shaped names,
-  // a def resolves to its catalog name, and an entity that is gone reads as a contact — the
-  // raw attackerId (npc_12ab, ship_removed_hull) never reaches the law card.
+  // a def resolves to its catalog name, and an entity that is gone or recycled reads as a contact
+  // — neither raw ids nor a wrong recycled hull name ever reach the law card.
   const attacker = entityById(state, payload.attackerId);
+  if (payload.attackerGeneration != null && !generationMatches(attacker, payload.attackerGeneration)) {
+    return 'CONTACT';
+  }
   return attacker ? targetDisplayName(attacker) : 'CONTACT';
 }
 
@@ -181,7 +219,8 @@ export function authorityIncidentReadout(payload, state, simTime = state && stat
   if (!payload || !payload.id) return null;
   // A player may only be presented as an enforcement target when the incident's canonical cause
   // proves player aggression. Never turn a neutral-player payload into an invented police pursuit.
-  if (payload.attackerId === state.playerId
+  if ((isPlayerAggressor(payload, state)
+    || (state && sameEntityId(payload.attackerId, state.playerId)))
     && !/^player_(assault|piracy)$/.test(String(payload.cause || ''))) return null;
   const target = authorityTargetText(payload, state || {});
   const authority = factionName(payload.factionId);
@@ -357,6 +396,9 @@ export function createSectorLawPresenter(ctx) {
 
   function renderIncident(payload) {
     if (drillUiOpen() || isSwarmGlass(state)) return false;
+    // During the calm opening rail, unrelated NPC-on-NPC skirmishes stay off the flight HUD so
+    // an ambient Hornet/pirate brawl cannot hijack the opening with patrol intercept banners.
+    if (openingQuiet(state) && !incidentInvolvesPlayer(payload, state)) return false;
     const view = authorityIncidentReadout(payload, state, state.simTime);
     if (!view) return false;
     active = { mode: view.mode, incident: { ...payload }, hideAt: view.mode === 'receipt' ? Number(state.simTime || 0) + RECEIPT_TTL_S : Infinity };
@@ -459,7 +501,10 @@ export function createSectorLawPresenter(ctx) {
   subscribe('game:new', hide);
   subscribe('game:load', hide);
 
-  return { el: root, tick, hide, destroy, showSector, renderIncident, showDirectReceipt };
+  return { el: root, tick, hide, destroy, showSector, renderIncident, showDirectReceipt,
+    // tick() early-returns on the same condition — hide() clears `active` together with
+    // root.hidden, so a false flag can never strand a visible card.
+    get isActive() { return !destroyed && active != null; } };
 }
 
 function injectStyle() {

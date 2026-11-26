@@ -1,4 +1,5 @@
 import { wantedTierFor, WANTED_TIER } from '../../systems/heat.js';
+import { markStationControl } from './stationBindingMap.js';
 // Docked presentation only. The law and economy owners validate and settle every answer.
 export function mountLawFineDesk(host, ctx) {
   const doc = host.ownerDocument || globalThis.document;
@@ -22,11 +23,13 @@ export function mountLawFineDesk(host, ctx) {
       && ['offered', 'working'].includes(offer.status) ? offer : null;
   }
   const labels = { pay: 'Pay fine', work: 'Work the debt', leave: 'Carry the warrant' };
+  const controlIds = { pay: 'law-fine-pay', work: 'law-fine-work', leave: 'law-fine-leave' };
   for (const choice of Object.keys(labels)) {
     const button = doc.createElement('button');
     button.type = 'button';
     button.className = 'k-word k-word--fine fh-key fh-key--small';
     button.setAttribute('data-law-fine-choice', choice);
+    markStationControl(button, controlIds[choice]);
     button.textContent = labels[choice];
     button.addEventListener('click', () => {
       const offer = current();

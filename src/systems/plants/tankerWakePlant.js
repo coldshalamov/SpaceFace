@@ -50,6 +50,7 @@ export function tankerTowImpulse(tankerRot, magnitude) {
 }
 
 export const tankerWakePlant = {
+  modes: ['flight'],
   name: 'plants159',
 
   init(ctx) {

@@ -290,6 +290,10 @@ test('successful begin emits run:started with the loadout payload', () => {
     // Carried for survivalRun's first-run teaching beat (survivalRun._onStarted); false
     // unless the begin request asked for the round-zero lesson.
     openingLesson: false,
+    // 5d31935b76: a fresh launch reports whether it restored a checkpoint and whether it is
+    // the boot rehearsal's throwaway fight, so the Resume slot clear spares a real player's.
+    swarmResumed: false,
+    bootRehearsal: false,
   });
 });
 

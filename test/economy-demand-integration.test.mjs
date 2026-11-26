@@ -4,7 +4,6 @@ import test from 'node:test';
 import { economy } from '../src/systems/economy.js';
 import { predictPriceCurve } from '../src/systems/economyCycles.js';
 import { stationTradeMults } from '../src/economy/stationConditions.js';
-import { COMMODITIES } from '../src/data/commodities.js';
 import { SECTORS } from '../src/data/sectors.js';
 
 function makeBus() {
@@ -73,13 +72,11 @@ function boot({ war = true, warm = true } = {}) {
   return { state, bus, econ };
 }
 
-function settleCycle(state, stationId, commodityId) {
-  const cycle = state.economy.cycles[stationId][commodityId];
-  Object.assign(cycle, {
-    regime: 'stable', family: 'stable', phase: 0, frequency: 1,
-    amplitude: 0, bias: 0, slope: 0, a: 0, b: 0, c: 0,
-    amp2: 0, amp3: 0, regimeStartT: 0, regimeEndT: 1000,
-  });
+// ECON-BUILD-1 closed-form model: regimes live on a seeded epoch grid, so there is no per-listing
+// cycle state to flatten. Minting the market through the public berth seam is the settle — every
+// row opens at demandMult 1 until refreshStationDemand writes the averaged conflict drivers.
+function settleCycle(econ, stationId) {
+  econ.ensureMarket(stationId);
 }
 
 test('minting a station reads the regional signal once and later quotes see changed demand', () => {
@@ -105,7 +102,7 @@ test('board, history, forecast, and executable quote share one demand-adjusted p
   const { state, econ } = boot({ war: false });
   const stationId = 'station_helios';
   const commodityId = 'cmdty_weapons';
-  settleCycle(state, stationId, commodityId);
+  settleCycle(econ, stationId);
   // Exercise the real coarse state transition after the formula baseline has settled.
   state.conflicts['faction_reach:faction_scn'] = { state: 'war', tension: 90 };
   econ.refreshStationDemand(stationId);
@@ -115,7 +112,8 @@ test('board, history, forecast, and executable quote share one demand-adjusted p
   const forecast = predictPriceCurve(state, stationId, commodityId, 2, 5);
   assert.ok(entry.demandMult > 1);
   assert.ok(entry.demandDrivers.some((driver) => driver.id === 'war-footing'));
-  assert.equal(entry.history.at(-1).mid, entry.lastMid);
+  // Closed-form rows carry no live history array: the forecast cone IS the chart — its first
+  // point and the stamped mid agree because both read the same demand-adjusted model.
   assert.equal(forecast[0].mid, entry.lastMid);
   // The displayed buy is the book price with the berth's trade fold on it (market day, festival,
   // strike/blockade) — the same composition the intel snapshot and the market screen print.
@@ -132,7 +130,7 @@ test('persistent demand responds to averaged conflict state and ignores visible 
   const stationId = 'station_helios';
   const commodityId = 'cmdty_weapons';
   for (const run of [warRun, calmRun]) {
-    settleCycle(run.state, stationId, commodityId);
+    settleCycle(run.econ, stationId);
     run.econ.refreshStationDemand(stationId);
   }
   // Rich visible life is presentation only; changing this list must not enter the averaged quote.
@@ -148,8 +146,10 @@ test('persistent demand responds to averaged conflict state and ignores visible 
 
   warRun.state.conflicts['faction_reach:faction_scn'].state = 'cold';
   warRun.state.simTime += 5;
-  warRun.econ.econTick(5, warRun.state);
-  assert.equal(warEntry.demandMult, 1, 'the next coarse economy tick removes a resolved war premium');
+  // Closed-form demand refreshes on read, not on the sweep: the berth consult a resolved war
+  // sees is economy:marketOpened, and it removes the premium.
+  warRun.bus.emit('economy:marketOpened', { stationId });
+  assert.equal(warEntry.demandMult, 1, 'the next market consult removes a resolved war premium');
   economy._instance = null;
 });
 
@@ -157,7 +157,7 @@ test('save restoration rebuilds derived demand after faction and sector owners r
   const original = boot({ war: true });
   const stationId = 'station_helios';
   const commodityId = 'cmdty_weapons';
-  settleCycle(original.state, stationId, commodityId);
+  settleCycle(original.econ, stationId);
   original.econ.refreshStationDemand(stationId);
   const before = original.econ.quote(stationId, commodityId, 'buy', 4);
   const saved = structuredClone(original.econ.serialize());
@@ -259,44 +259,42 @@ test('sector offline catch-up reconciles demand after the real save listener ord
 test('restore reseeds only omitted synthetic histories after authoritative demand settles', () => {
   const stationId = 'station_helios';
   const commodityId = 'cmdty_weapons';
-  const def = COMMODITIES.find((commodity) => commodity.id === commodityId);
 
   const original = boot({ war: true });
-  settleCycle(original.state, stationId, commodityId);
+  settleCycle(original.econ, stationId);
   original.econ.refreshStationDemand(stationId);
-  const originalEntry = original.state.economy.markets[stationId][commodityId];
-  const originalCycle = original.state.economy.cycles[stationId][commodityId];
-  original.econ.seedPriceHistory(originalEntry, def, originalCycle, original.state.simTime);
   const savedWithoutHistory = structuredClone(original.econ.serialize());
-  assert.equal(savedWithoutHistory.markets[stationId][0][6], null,
+  const savedRow = savedWithoutHistory.markets[stationId].find((row) => row[0] === commodityId);
+  // The v2 market row is exactly ten scalar fields — no derived chart cache rides the save.
+  assert.equal(savedRow.length, 10,
     'an unobserved market saves no derived chart cache');
 
   const restored = boot({ war: false });
   restored.econ.deserialize(savedWithoutHistory);
   const restoredEntry = restored.state.economy.markets[stationId][commodityId];
-  const preOwnerRestoreMid = restoredEntry.history.at(-1).mid;
   restored.state.conflicts = structuredClone(original.state.conflicts);
   restored.state.sectorSim.field = structuredClone(original.state.sectorSim.field);
   restored.bus.emit('save:loaded', { slot: 'synthetic-history' });
 
-  assert.ok(restoredEntry.lastMid > preOwnerRestoreMid,
-    'restored authoritative war state changes the live quote from the pre-restore seed');
-  assert.equal(restoredEntry.history.at(-1).mid, restoredEntry.lastMid,
-    'the omitted synthetic history is reseeded from the authoritative post-restore demand');
+  assert.equal(restoredEntry.demandMult, 1.213917,
+    'restored authoritative war state settles the derived demand again');
+  assert.equal(predictPriceCurve(restored.state, stationId, commodityId, 1, 5)[0].mid, restoredEntry.lastMid,
+    'the chart is reseeded from authoritative post-restore demand, not a carried cache');
 
   const durable = boot({ war: true });
-  const durableEntry = durable.state.economy.markets[stationId][commodityId];
-  durableEntry.history = [{ t: -5, mid: 1_234 }, { t: 0, mid: 1_235 }];
-  durable.state.economy.marketIntel[stationId] = { snapshot: {}, seenAtT: 0 };
-  const savedWithHistory = structuredClone(durable.econ.serialize());
+  const observedSnapshot = { cmdty_weapons: { buy: 144, sell: 132, demandMult: 1, demandDrivers: [] } };
+  durable.state.economy.marketIntel[stationId] = { snapshot: observedSnapshot, seenAtT: 0 };
+  const savedWithIntel = structuredClone(durable.econ.serialize());
   const durableRestored = boot({ war: false });
-  durableRestored.econ.deserialize(savedWithHistory);
+  durableRestored.econ.deserialize(savedWithIntel);
   durableRestored.state.conflicts = structuredClone(durable.state.conflicts);
   durableRestored.state.sectorSim.field = structuredClone(durable.state.sectorSim.field);
   durableRestored.bus.emit('save:loaded', { slot: 'durable-history' });
+  // The observed sighting is the chart a player actually saw: it survives the boundary verbatim
+  // instead of being re-derived from the post-restore model.
   assert.deepEqual(
-    durableRestored.state.economy.markets[stationId][commodityId].history,
-    durableEntry.history,
+    durableRestored.state.economy.marketIntel[stationId].snapshot,
+    observedSnapshot,
     'a genuinely observed chart remains exact lived history rather than being formula-reseeded',
   );
   economy._instance = null;

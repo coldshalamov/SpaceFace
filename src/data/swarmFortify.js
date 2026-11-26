@@ -62,7 +62,7 @@ export const SWARM_FORTIFY_DEVICES = Object.freeze({
   }),
   repulsor_pylon: Object.freeze({
     id: 'repulsor_pylon',
-    name: 'Repulsor Pylon',
+    name: 'Repulsion Pylon',
     description: 'A timed outward pulse breaks a dense push before heat forces it to cool.',
     cost: 120,
     repairCost: 30,

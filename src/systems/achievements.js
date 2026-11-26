@@ -37,12 +37,26 @@ import {
 } from '../save/sharedPlayerStore.js';
 import { loadCrucibleMeta, recordKey } from './survivalRecords.js';
 import { isOnboardingTeaching } from '../core/onboardingReadModel.js';
+import { SWARM_RULESET } from '../data/swarmMode.js';
 
 export const ACHIEVEMENTS_FMT = 'spaceface-achievements';
 export const ACHIEVEMENTS_SCHEMA_VERSION = 1;
 export const ACHIEVEMENTS_STORAGE_KEY = 'sf.save.achievements';
 export const ACHIEVEMENT_UNLOCKED_EVENT = 'achievement:unlocked';
 export const ACHIEVEMENT_NOTICE_ID = 'achievement:notice';
+
+/** A live Swarm round in flight: its notice lane belongs to the fight it is fighting. */
+function inLiveSwarmFight(state) {
+  const run = state && state.run;
+  return !!(state && state.mode === 'flight'
+    && run && run.kind === 'survival' && run.ruleset === SWARM_RULESET
+    && run.phase !== 'inactive' && run.phase !== 'ended' && run.phase !== 'victory');
+}
+
+/** Career/adventure deeds count the whole save; they are not earned inside a Swarm round. */
+function lifetimeCategory(category) {
+  return category === 'career' || category === 'adventure';
+}
 export const ACHIEVEMENT_NOTICE_TTL_S = 5;
 const COUNTER_SAVE_DEBOUNCE_MS = 4000;
 const PENDING_NOTICE_CAP = 16;
@@ -843,6 +857,8 @@ export function installAchievements({
   const eventContext = { state };
   const unsubs = [];
   const pendingNotice = [];
+  /** Lifetime deeds unlocked during a live Swarm fight; their notice waits for Run Over. */
+  const deferredNotices = [];
   let lastNotice = null;
   let saveTimer = null;
   let disposed = false;
@@ -1022,8 +1038,8 @@ export function installAchievements({
     // Newest first, so the achievement just earned is never the one hidden behind the ellipsis.
     const names = lineDefs.map((def) => def.name).reverse();
     const text = names.length === 1
-      ? `Achievement unlocked · ${names[0]}`
-      : `${names.length} achievements unlocked · ${names.slice(0, 3).join(' · ')}${names.length > 3 ? ' · …' : ''}`;
+      ? `On your record · ${names[0]}`
+      : `${names.length} on your record · ${names.slice(0, 3).join(' · ')}${names.length > 3 ? ' · …' : ''}`;
     bus.emit('voice:say', {
       channel: 'news',
       kind: 'achievement',
@@ -1036,6 +1052,13 @@ export function installAchievements({
   function flushPendingNotice() {
     if (!pendingNotice.length || isOnboardingTeaching(state)) return;
     const defs = pendingNotice.splice(0, pendingNotice.length);
+    speak(defs);
+  }
+
+  /** A lifetime deed held out of the fight is named on the results plate. */
+  function flushDeferredNotice() {
+    if (!deferredNotices.length || isOnboardingTeaching(state)) return;
+    const defs = deferredNotices.splice(0, deferredNotices.length);
     speak(defs);
   }
 
@@ -1083,7 +1106,20 @@ export function installAchievements({
     }
     if (!fresh.length) return fresh;
     saveNow();
+    // DEMO-SWARM-UX-2: a live Swarm fight only speaks deeds this run can actually earn. A
+    // lifetime career milestone ('Six Figures' at Scrap 0 on a fresh round) is still unlocked and
+    // saved, but its notice waits for Run Over / the results plate instead of interrupting the
+    // first minute of the fight.
+    const midFight = inLiveSwarmFight(state);
+    const audible = [];
     for (const def of fresh) {
+      const quiet = !announce || (midFight && lifetimeCategory(def.category));
+      if (announce && midFight && lifetimeCategory(def.category)
+        && deferredNotices.length < 8 && !deferredNotices.some((held) => held.id === def.id)) {
+        deferredNotices.push(def);
+      } else if (!quiet) {
+        audible.push(def);
+      }
       try {
         bus.emit(ACHIEVEMENT_UNLOCKED_EVENT, {
           id: def.id,
@@ -1092,12 +1128,13 @@ export function installAchievements({
           at: bag.unlocked[def.id] ? bag.unlocked[def.id].at : null,
           via: via || null,
           retroactive: !announce,
+          announce: !quiet,
         });
       } catch {
         // a presenter fault must never lose the unlock, which is already saved
       }
     }
-    if (announce) speak(fresh);
+    speak(audible);
     mirrorToShell(fresh.map((def) => def.id));
     return fresh;
   }
@@ -1136,6 +1173,7 @@ export function installAchievements({
     refreshCrucible();
     const fresh = evaluate('run:resultsReady');
     if (!fresh.length) saveNow();
+    flushDeferredNotice();
     flushPendingNotice();
   }
 
@@ -1205,6 +1243,9 @@ export function installAchievements({
   if (typeof offDockSample === 'function') unsubs.push(offDockSample);
   const offResults = bus.on('run:resultsReady', onRunResults);
   if (typeof offResults === 'function') unsubs.push(offResults);
+  // A fresh run supersedes a deferred lifetime deed from a run the player left without results.
+  const offRunStarted = bus.on('run:started', () => { deferredNotices.length = 0; });
+  if (typeof offRunStarted === 'function') unsubs.push(offRunStarted);
   const offSynced = bus.on('save:store-synced', onStoreSynced);
   if (typeof offSynced === 'function') unsubs.push(offSynced);
   const offTutorial = bus.on('tutorial:finished', () => flushPendingNotice());

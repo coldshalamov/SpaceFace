@@ -3,6 +3,7 @@
 //
 //   node tools/art/render_hull_posters.mjs                 # every player hull
 //   node tools/art/render_hull_posters.mjs ship_kestrel    # one or more hulls
+//   --hud-only rebuilds the flight schematics without touching the other posters
 //   --write-posters-js also rewrites src/ui/hullPosters.js to list every rendered hull
 //
 // Per hull: Cycles hero / side / top (tools/art/render_hull.py), the refit-jig line drawing
@@ -16,7 +17,11 @@ import { mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:f
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { NodeIO } from '@gltf-transform/core';
+import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
+import { MeshoptDecoder } from 'meshoptimizer';
 import sharp from 'sharp';
+import { ordinaryWholeShipVisualForEntity, WHOLE_SHIP_FILE_BY_DEF_ID } from '../../src/data/wholeShipVisualIdentity.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const OUT = path.join(ROOT, 'assets/ui/renders/hulls');
@@ -24,6 +29,8 @@ const TMP = process.env.SF_POSTER_TMP || path.join(os.tmpdir(), 'sf-hull-posters
 const MANIFEST = path.join(OUT, 'manifest.json');
 const POSTERS_JS = path.join(ROOT, 'src/ui/hullPosters.js');
 const SAMPLES = process.env.SF_POSTER_SAMPLES || '64';
+const releaseIO = new NodeIO().registerExtensions(ALL_EXTENSIONS)
+  .registerDependencies({ 'meshopt.decoder': MeshoptDecoder });
 
 export const PLAYER_HULLS = {
   ship_kestrel: 'kestrel', ship_pelican: 'pelican_production_v1', ship_wasp: 'wasp_production_v1',
@@ -49,6 +56,41 @@ function writeRetry(file, text, tries = 6) {
   }
 }
 const run = (cmd, args) => execFileSync(cmd, args, { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 1 << 26 }).toString();
+
+async function renderHudPlan(id, file) {
+  const glb = path.join(ROOT, 'assets/ships/release/parts', file);
+  const unpacked = path.join(TMP, `${id}.hud.glb`);
+  const raw = path.join(TMP, `${id}.hudraw.png`);
+  // Blender's glTF importer cannot read the released meshopt payload. Decode the model and
+  // discard texture encodings, keeping geometry, metadata and material names for the line pass.
+  await MeshoptDecoder.ready;
+  const model = await releaseIO.read(glb);
+  for (const texture of model.getRoot().listTextures()) texture.dispose();
+  for (const extension of model.getRoot().listExtensionsUsed()) {
+    if (extension.extensionName === 'EXT_meshopt_compression' || extension.extensionName === 'KHR_texture_basisu') {
+      extension.dispose();
+    }
+  }
+  await releaseIO.write(unpacked, model);
+  try {
+    const log = run(BLENDER, ['-b', '-t', '4', '-P', 'tools/art/render_jig.py', '--', unpacked, raw, '512', '--hud']);
+    if (!/JIG_DONE/.test(log)) throw new Error(`${id} HUD plan render failed:\n${log.slice(-1000)}`);
+  } finally {
+    rmSync(unpacked, { force: true });
+  }
+  run(PYTHON, ['tools/art/jig_glyph.py', raw, path.join(OUT, `${id}.hud.webp`), '--hud']);
+  process.stdout.write(`  ${id} HUD plan ok\n`);
+}
+
+async function renderFlightPlans(id) {
+  await renderHudPlan(id, WHOLE_SHIP_FILE_BY_DEF_ID[id]);
+  if (id === 'ship_hornet') {
+    const cutter = ordinaryWholeShipVisualForEntity({
+      isPlayer: true, data: { defId: id, appearance: { variantId: 'customs_cutter' } },
+    });
+    await renderHudPlan('ship_hornet_customs_cutter', cutter.file);
+  }
+}
 
 async function renderHull(id, file) {
   const glb = `assets/ships/parts/wholeships/${file}.glb`;
@@ -80,6 +122,7 @@ async function renderHull(id, file) {
   run(BLENDER, ['-b', '-P', 'tools/art/render_jig.py', '--', glb, jigRaw, '1024']);
   run(PYTHON, ['tools/art/jig_glyph.py', jigRaw, path.join(OUT, `${id}.jig.webp`)]);
   process.stdout.write(`  ${id} holo+jig ok\n`);
+  await renderFlightPlans(id);
   return entry;
 }
 
@@ -95,11 +138,15 @@ async function main() {
   mkdirSync(TMP, { recursive: true });
   const want = process.argv.slice(2).filter((a) => !a.startsWith('--'));
   const ids = want.length ? want : Object.keys(PLAYER_HULLS);
+  for (const id of ids) if (!PLAYER_HULLS[id]) throw new Error(`unknown hull ${id}`);
+  if (process.argv.includes('--hud-only')) {
+    for (const id of ids) await renderFlightPlans(id);
+    return;
+  }
   const manifest = JSON.parse(readFileSync(MANIFEST, 'utf8'));
   manifest.script = 'tools/art/render_hull_posters.mjs (render_hull.py, render_jig.py, jig_glyph.py, holo_glyph.py)';
   manifest.renderer = `Blender Cycles (CPU), the Look restated for Cycles (clear coat, warm key / cyan rim, lamp gain, game reflection env), AgX High Contrast, exposure 0.8, transparent film, ${SAMPLES} samples + denoise, saturation x1.2`;
   for (const id of ids) {
-    if (!PLAYER_HULLS[id]) throw new Error(`unknown hull ${id}`);
     process.stdout.write(`${id}\n`);
     manifest.hulls[id] = await renderHull(id, PLAYER_HULLS[id]);
     writeRetry(MANIFEST, `${JSON.stringify(manifest, null, 1)}\n`);

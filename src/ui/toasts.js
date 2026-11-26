@@ -29,6 +29,7 @@ import { counterplayDoctrineById } from '../ai/counterplay/catalog.js';
 import { bindReturningPilotSummary } from './dockArrival.js';
 import { createToastActionButton, normalizeToastAction, pickEvictionVictim, runToastAction } from './toastAction.js';
 import { isSwarmGlass } from './swarmGlass.js';
+import { openingThrowPayoffWait } from '../onboarding/openingQuiet.js';
 
 const MAX = RECEIPT_MAX;
 // Receipt kind icons — inline SVG from src/ui/glyphs.js (was text ✓ ✕ ! ¢ ◈, which leaned on
@@ -153,6 +154,43 @@ export function createToasts(ctx) {
     lastAnnounced = msg;
   }
 
+  // Receipt cards are pooled like floatingText/swarmJuiceHud nodes: the card, icon, text and
+  // decay hairline are created once and recycled by class/content swap instead of five DOM ops
+  // per receipt. The free list is bounded by the lane cap plus the exit-beat margin; overflow
+  // is dropped for GC as before. Interactive listeners bind once per node and read the live
+  // record through _sfRec.
+  const toastNodeFree = [];
+  const TOAST_NODE_POOL_MAX = MAX + 4;
+  function acquireToastNode() {
+    const node = toastNodeFree.pop();
+    if (node) return node;
+    const el = document.createElement('div');
+    const icon = document.createElement('span');
+    icon.className = 'sf-toast__icon';
+    icon.setAttribute('aria-hidden', 'true');
+    const body = document.createElement('span');
+    body.className = 'sf-toast__text';
+    // The decay hairline: the receipt's remaining life as light. CSS animates it from --sf-toast-ttl
+    // (compositor-only scaleX; the tick never touches it again). The text carries the meaning, so the
+    // bar hides under reduced motion rather than freezing mid-life.
+    const decay = document.createElement('span');
+    decay.className = 'sf-toast__decay';
+    decay.setAttribute('aria-hidden', 'true');
+    el.append(icon, body, decay);
+    el.addEventListener('click', () => { if (el._sfRec) dismiss(el._sfRec); });
+    el.addEventListener('keydown', (ev) => {
+      if ((ev.key === 'Enter' || ev.key === ' ') && el._sfRec) { ev.preventDefault(); dismiss(el._sfRec); }
+    });
+    return { el, icon, body, decay, badge: null, actionEl: null };
+  }
+  function releaseToastNode(node) {
+    if (!node) return;
+    node.el._sfRec = null;
+    node.el.className = 'sf-toast';
+    node.el.style.opacity = '';
+    if (toastNodeFree.length < TOAST_NODE_POOL_MAX) toastNodeFree.push(node);
+  }
+
   function isRestorableTarget(el) {
     if (!el || el === document.body || el === document.documentElement) return false;
     if (!el.isConnected || typeof el.focus !== 'function') return false;
@@ -250,24 +288,60 @@ export function createToasts(ctx) {
   // or deferred toast events never make the HUD walk and measure the flight overlays.
   function invalidateReceiptGeometry() { bus?.emit?.('hud:receiptGeometryChanged', {}); }
 
+  // DEMO-ADV-2 (item 2): the opening's throw lesson keeps one voice on the glass. While the
+  // staged rail's swing beat is current — the sentence asking for the throw is the objective line —
+  // the pilot's payoff receipts wait for it to land instead of landing on top of it: the level-up
+  // point ("Level 2: a point to spend in the Pilot Tree (T)") and a deed ("Light Ships Are
+  // Ammunition") fire on the very throw the lesson is asking for, so they used to speak over the
+  // instruction that earned them. The wait (openingThrowPayoffWait) lasts past the throw itself,
+  // because the throw closes the beat flag in the same dispatch that earns the deed — the receipt
+  // would otherwise land in the same tick the instruction is still up. Held receipts replay through
+  // this same admission path once the instruction has left the tracker, so every ordinary gate
+  // still applies at speak time. Nothing the player must act on is held: an error, a danger/warning
+  // line or a tutorial line goes straight through.
+  const OPENING_HELD_KINDS = new Set(['good', 'info', 'success', 'credits', 'rep', 'discovery']);
+  const OPENING_HELD_HOLD_MS = 25000;
+  let openingHeld = null;
+  function holdForOpeningThrow(text, kind) {
+    if (!OPENING_HELD_KINDS.has(String(kind || 'info'))) return false;
+    if (!openingThrowPayoffWait(ctx.state)) {
+      if (openingHeld && openingHeld.length) drainOpeningHeld();
+      return false;
+    }
+    if (!openingHeld) openingHeld = [];
+    if (openingHeld.length >= 4) openingHeld.shift();
+    openingHeld.push({ text, kind, channel: '', queuedAtMs: performance.now() });
+    return true;
+  }
+  function drainOpeningHeld() {
+    const held = openingHeld;
+    openingHeld = null;
+    if (!held || !held.length || destroyed) return;
+    const now = performance.now();
+    for (const rec of held) {
+      // A payoff held past its moment is history, not a receipt: the beat it belonged to is gone.
+      if (now - rec.queuedAtMs > OPENING_HELD_HOLD_MS) continue;
+      if (openingThrowPayoffWait(ctx.state)) {
+        // The next beat reopened the lesson (a retry restaged the swing), or the instruction that
+        // earned this receipt is still on the tracker: keep waiting.
+        if (!openingHeld) openingHeld = [];
+        openingHeld.push(rec);
+        continue;
+      }
+      pushNow({ text: rec.text, kind: rec.kind });
+    }
+  }
+
   // Returns true when the receipt was drawn (or folded into a live card) and false when it was
   // refused, so a once-only notice sent through the presenter can tell it was never seen.
-  function pushNow({ text = '', kind = 'info', ttl = 4, _fromVoice = false, channel = '', action = null, charonApproach = null } = {}) {
+  function pushNow({ text = '', kind = 'info', ttl = 4, _fromVoice = false, channel = '', action = null, charonApproach = null, quip = false } = {}) {
     if (!root || !text) return false;
     // Phone Swarm: the stunt-name receipt ("Tidy.") is a second card in the lane; the centre-lane
     // callout already speaks the moment, and the phone HUD budget has no room for both.
     if (kind === 'stunt' && isSwarmGlass(ctx.state) && typeof document !== 'undefined'
       && document.documentElement?.getAttribute?.('data-sf-mobile-flight') === '1') return false;
-    // One notice at a time in a Swarm round: a notice that arrives while another is up waits its
-    // turn (short queue, the oldest drops) and shows when the lane is clear. Errors and an
-    // identical repeat of the live card (it merges, below) are never queued.
-    if (isSwarmGlass(ctx.state) && kind !== 'error' && live.length > 0
-      && !live.some((r) => r.text === text && r.kind === kind)) {
-      swarmWait.push({ text, kind, ttl, channel, action, charonApproach });
-      while (swarmWait.length > SWARM_WAIT_MAX) swarmWait.shift();
-      return true;   // accepted: it will be shown in its turn (false would read as "refused, never seen")
-    }
-    ensureConnected();
+    // DEMO-ADV-2: the throw lesson's own payoff receipts wait for the throw (see holdForOpeningThrow).
+    if (holdForOpeningThrow(text, kind)) return false;
     // One-voice (spec2/06): the voiceArbiter re-emits its surfaced floor as a _fromVoice toast for
     // telemetry/golden parity, but that floor is presented top-center by alerts.js (voice:surface).
     // Rendering it here too would double the voice, so drop it. Mechanical action toasts (no
@@ -282,6 +356,15 @@ export function createToasts(ctx) {
       : '';
     const decision = admitReceipt({ text, kind, channel, _fromVoice, charonApproach, state: ctx.state, combat: job === 'fight' || job === 'hurt' });
     if (!decision.admit) return false;
+    // Only admitted notices can take a seat in Swarm's short queue. Voice mirrors and chatter
+    // must not displace a useful receipt. Errors and repeats still go straight to the live card.
+    if (isSwarmGlass(ctx.state) && kind !== 'error' && live.length > 0
+      && !live.some((r) => r.text === text && r.kind === kind)) {
+      swarmWait.push({ text, kind, ttl, channel, action, charonApproach, quip });
+      while (swarmWait.length > SWARM_WAIT_MAX) swarmWait.shift();
+      return true;
+    }
+    ensureConnected();
     // Grouping: if an identical toast (same text + kind) is already live and recent (within 2.5s of
     // its birth), collapse into it — bump a count badge and refresh its TTL instead of stacking N
     // copies ("Platinum x1" five times becomes "Platinum x1 ×5"). Keeps the feed readable under
@@ -300,7 +383,7 @@ export function createToasts(ctx) {
         if (r.el.style && typeof r.el.style.setProperty === 'function') {
           r.el.style.setProperty('--sf-toast-ttl', `${(r.ttl / 1000).toFixed(2)}s`);
         }
-        const decay = r.el.querySelector ? r.el.querySelector(':scope > .sf-toast__decay') : null;
+        const decay = r._node ? r._node.decay : null;
         if (decay && decay.style) {
           if (typeof decay.getAnimations === 'function') {
             // WAAPI restart — no forced reflow: cancel yanks the run, play re-arms it from full
@@ -318,8 +401,9 @@ export function createToasts(ctx) {
         r.el.style.opacity = '';
         r._sfOpacity = null;
         r.el.classList.remove('sf-toast--jsfade');
+        const hadBadge = !!r.badge;
         if (!r.badge) {
-          const badge = document.createElement('span');
+          const badge = r._node.badge || (r._node.badge = document.createElement('span'));
           badge.className = 'sf-toast__count';
           r.el.appendChild(badge);
           r.badge = badge;
@@ -329,7 +413,7 @@ export function createToasts(ctx) {
         announceStatus(text, r.count);
         recentShown.set(text, now);
         recomputeNextWake();
-        invalidateReceiptGeometry();
+        if (!hadBadge || r.count === 10 || r.count === 100) invalidateReceiptGeometry();
         return true;
       }
     }
@@ -342,29 +426,24 @@ export function createToasts(ctx) {
       }
     }
     recentShown.set(text, now);
-    const el = document.createElement('div');
-    el.className = `sf-toast sf-toast--${kind}`;
-    const icon = document.createElement('span');
-    icon.className = 'sf-toast__icon';
-    icon.setAttribute('aria-hidden', 'true');
-    icon.innerHTML = glyphSvg(KIND_ICON[kind] || 'info', 12);
-    const body = document.createElement('span');
-    body.className = 'sf-toast__text';
-    body.textContent = text;
-    // The decay hairline: the receipt's remaining life as light. CSS animates it from --sf-toast-ttl
-    // (compositor-only scaleX; the tick never touches it again). The text carries the meaning, so the
-    // bar hides under reduced motion rather than freezing mid-life.
-    const decay = document.createElement('span');
-    decay.className = 'sf-toast__decay';
-    decay.setAttribute('aria-hidden', 'true');
-    el.append(icon, body, decay);
-    // An offer receipt's one button (toastAction.js); the card is then a plain group, not a dismiss control.
-    const act = normalizeToastAction(action);
-    if (act) el.appendChild(createToastActionButton(act, () => { dismiss(rec); runToastAction(act); }));
-    // Guarded like lampKey: headless Mini-DOM harnesses stub style as a plain object.
+    const node = acquireToastNode();
+    const el = node.el;
+    el.className = `sf-toast sf-toast--${quip ? 'quip' : kind}`;
+    // A recycled card starts clear of every inline property the tick/dismiss paths own:
+    // the jsfade opacity ramp and the previous receipt's TTL variable.
     if (el.style && typeof el.style.setProperty === 'function') {
+      el.style.opacity = '';
       el.style.setProperty('--sf-toast-ttl', `${(normalizeTtlMs(ttl) / 1000).toFixed(2)}s`);
     }
+    node.icon.innerHTML = glyphSvg(KIND_ICON[kind] || 'info', 12);
+    node.body.textContent = text;
+    // A grouped card's count badge stays cached on the pooled node, mounted only while >1.
+    if (node.badge && node.badge.parentNode === el) el.removeChild(node.badge);
+    // An offer receipt's one button (toastAction.js) is content-owned, so it is rebuilt per fill;
+    // the card is then a plain group, not a dismiss control.
+    if (node.actionEl && node.actionEl.parentNode === el) el.removeChild(node.actionEl);
+    node.actionEl = null;
+    const act = normalizeToastAction(action);
     // Click-to-dismiss is advertised by the cursor:pointer styling; expose the same affordance to
     // keyboard users (Enter/Space) and to AT as a dismissible control.
     // Do NOT put aria-live on the card — announcement is via #toast-live (status once).
@@ -372,19 +451,23 @@ export function createToasts(ctx) {
     if (act) {
       el.setAttribute('role', 'group');
       el.setAttribute('aria-label', text);
+      // A recycled plain card carried tabindex=0; the action button is this card's only stop.
+      // (Optional-call: Mini-DOM harnesses may not implement removeAttribute.)
+      if (typeof el.removeAttribute === 'function') el.removeAttribute('tabindex');
     } else {
       el.setAttribute('role', 'button');
       el.setAttribute('tabindex', '0');
       el.setAttribute('aria-label', text + ' (dismiss)');
     }
-    el.addEventListener('click', () => dismiss(rec));
-    el.addEventListener('keydown', (ev) => {
-      if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); dismiss(rec); }
-    });
     // The card enters through the Stage feed door: bare — its own .sf-toast chrome is the frame —
     // with its kind as the severity so a hot receipt can take a seat from a cold one. A queued
     // card's element stays unmounted until the queue promotes it.
-    const rec = { el, born: now, ttl: normalizeTtlMs(ttl), text, kind, count: 1, action: act, stageHandle: null };
+    const rec = { el, _node: node, born: now, ttl: normalizeTtlMs(ttl), text, kind, count: 1, action: act, stageHandle: null };
+    if (act) {
+      node.actionEl = createToastActionButton(act, () => { dismiss(rec); runToastAction(act); });
+      el.appendChild(node.actionEl);
+    }
+    el._sfRec = rec;
     live.unshift(rec);
     if (stage) {
       rec.stageHandle = stage.show('feed', el, { id: `toast:${++toastSeq}`, severity: kind, bare: true });
@@ -423,6 +506,8 @@ export function createToasts(ctx) {
         // Session-boundary teardown: the scene is swapping underneath, so there is nothing
         // to fade out over — drop the card synchronously instead of the exit beat.
         if (rec.el.parentNode) rec.el.parentNode.removeChild(rec.el);
+        releaseToastNode(rec._node);
+        rec._node = null;
       } else {
         // The tick's inline opacity ramp would pin the card mid-fade; hand the exit to the class.
         // --jsfade goes with it: its transition:none would kill the exit beat armed just below.
@@ -434,7 +519,12 @@ export function createToasts(ctx) {
         // departure, not a snap. Expiry already fades via tick(); the beat there is invisible
         // (opacity is ~0) and keeps one removal path. Focus restore below stays synchronous.
         const el = rec.el;
-        setTimeout(() => { if (el.parentNode) el.parentNode.removeChild(el); }, 170);
+        const node = rec._node;
+        setTimeout(() => {
+          if (el.parentNode) el.parentNode.removeChild(el);
+          releaseToastNode(node);
+        }, 170);
+        rec._node = null;
       }
     }
     if (hadFocus) restoreFocusAfterDismiss(i >= 0 ? i : 0);
@@ -443,14 +533,51 @@ export function createToasts(ctx) {
     invalidateReceiptGeometry();
   }
 
+  // The one-voice seat hides the receipt lane while a higher voice holds it. A hidden
+  // receipt must not spend its life unseen: credit the yielded interval onto its birth.
+  function feedYielded() {
+    const body = typeof document !== 'undefined' ? document.body : null;
+    if (!body || typeof body.getAttribute !== 'function') return false;
+    const list = body.getAttribute('data-sf-voice-yields');
+    if (!list) return false;
+    return ` ${list} `.includes(' feed ');
+  }
+  function holdReceiptClock(rec, now) {
+    const mark = rec._yieldMark == null ? now : rec._yieldMark;
+    const hiddenFor = now - mark;
+    if (hiddenFor > 0) rec.born += hiddenFor;
+    rec._yieldMark = now;
+    const decay = rec._node && rec._node.decay;
+    if (decay && decay.style && decay.style.animationPlayState !== 'paused') {
+      decay.style.animationPlayState = 'paused';
+    }
+  }
+  function releaseReceiptClock(rec) {
+    rec._yieldMark = null;
+    const decay = rec._node && rec._node.decay;
+    if (decay && decay.style && decay.style.animationPlayState === 'paused') {
+      decay.style.animationPlayState = 'running';
+    }
+  }
+
   // Called from hud's frame(), but sleeps until a toast can fade or expire.
   function tick() {
+    // DEMO-ADV-2: the throw lesson's held payoffs replay once its instruction has left the glass.
+    // Checked before the idle return so the lane wakes even when no card is live.
+    if (openingHeld && openingHeld.length && !openingThrowPayoffWait(ctx.state)) drainOpeningHeld();
     if (swarmWait.length && !live.length) {
       if (isSwarmGlass(ctx.state)) pushNow(swarmWait.shift());
       else swarmWait.length = 0;
     }
     if (!live.length) return;
     const now = performance.now();
+    if (feedYielded()) {
+      for (let i = 0; i < live.length; i++) holdReceiptClock(live[i], now);
+      return;
+    }
+    for (let i = 0; i < live.length; i++) {
+      if (live[i]._yieldMark != null) releaseReceiptClock(live[i]);
+    }
     if (now < nextWakeAt) return;
     let next = Infinity;
     for (let i = live.length - 1; i >= 0; i--) {
@@ -605,7 +732,7 @@ function disabledActionLine(rest) {
   const name = String(parts[1] || '').toLowerCase();
   const cause = parts.slice(2).join(':');
   if (kind === 'capability') {
-    if (name === 'tether') return 'Massline spool out — the rope will not hold';
+    if (name === 'tether') return 'Line spool out — the rope will not hold';
     if (name === 'transport_clamp') return 'Clamp out — the load is no longer held';
     if (name === 'drive') return 'Drive out — the ship is not pushing';
     if (name === 'weapon') return 'Guns out — the battery is dark';
@@ -614,9 +741,9 @@ function disabledActionLine(rest) {
     return '';
   }
   if (kind === 'tag') {
-    if (name === 'attach' || name === 'reel') return 'Massline spool out — the rope will not hold';
+    if (name === 'attach' || name === 'reel') return 'Line spool out — the rope will not hold';
     if (name === 'clamp') return 'Clamp out — the load is no longer held';
-    if (name === 'sling') return 'Can\'t throw — the drive or the Massline spool is out';
+    if (name === 'sling') return 'Can\'t throw — the drive or the line spool is out';
     if (name === 'dash') return 'Can\'t dash — the ship is tumbling';
     if (name === 'tether') return 'Can\'t use the rope — the ship is tumbling';
     if (name === 'weapon' || name === 'burst') {
@@ -700,8 +827,8 @@ export function bindSlingPassReceipts(bus) {
     if (!payload || typeof bus.emit !== 'function') return;
     const speed = Math.round(Number(payload.exitSpeedWuS) || 0);
     const text = payload.aligned === false
-      ? `Sling ring — thrown wide at ${speed} u/s.`
-      : `Sling ring — slung forward at ${speed} u/s.`;
+      ? `Sling ring — thrown wide at ${speed} m/s.`
+      : `Sling ring — slung forward at ${speed} m/s.`;
     bus.emit('toast', { text, kind: 'info', ttl: 4 });
   });
 }
@@ -781,6 +908,7 @@ export function capitalBossCounteredReceipt(payload) {
 
 export function capitalBossExposureReceipt(payload) {
   if (!payload || payload.exposure == null) return null;
+  if (payload.fightId === 'swarm:w5' && payload.mouthLine) return null;
   const title = String(payload.title || '').trim();
   if (!title) return null;
   return {
@@ -850,6 +978,9 @@ export function bindCapitalBossReceipts(bus, getState) {
     if (!receipt) return;
     seen.add(payload.castId);
     if (seen.size > 64) seen.delete(seen.values().next().value);
+    // Iron Maw's timed instructions use its live boss readout. A delayed attack
+    // toast can outlast the move and compete with the next recovery opening.
+    if (payload.fightId === 'swarm:w5') return;
     bus.emit('toast', receipt);
   });
   bus.on('capitalBoss:started', (payload) => {

@@ -15,24 +15,31 @@
 //   ordnance            readRailModel(state, simTime)     (slots 1..9, states ready/armed/cooling/…)
 //   tether              masslineInstrumentReadout(tether) + the attached body's mass — for a
 //                       declared manifest, only the measurement the loaded rope earned
-import { weaponHeatSummary } from '../weaponHeat.js';
-import { BOMB_SLOT_INDEX, readRailModel, RAIL_SLOTS, SUPPORT_SLOTS, railSlotTip, resolveSlotKeys, resolveSlotLabels, slotDescription } from '../powerRail.js';
+import { HEAT_AMBER_BAND, weaponHeatSummary } from '../weaponHeat.js';
+import { BOMB_SLOT_INDEX, FLIGHT_POWER_COPY, readRailModel, RAIL_SLOTS, SUPPORT_SLOTS, railSlotTip, resolveSlotKeys, resolveSlotLabels, slotDescription } from '../powerRail.js';
 import { createArsenalPresentation, readArsenalBindings } from '../../data/arsenalPresentation.js';
 import { masslineInstrumentReadout } from '../hudAttention.js';
-import { isAdventureFlight } from '../attentionGlass.js';
+import { isSwarmGlass } from '../swarmGlass.js';
+import { getSwarmTeaching } from '../swarmTeaching.js';
+import { SWARM_TEACH_MECHANIC } from '../../data/swarmTeaching.js';
+import { loadCrucibleMeta } from '../../systems/survivalRecords.js';
 import { massDeclarationForTarget, physicalMassT } from '../../systems/cargoCustody.js';
 import { SHIPS } from '../../data/ships.js';
+import { targetDisplayName } from '../targetPanel.js';
+import { couplingBodyMass, resolveMassInterpretation } from '../masslineHud.js';
+import { lineBodyFixed, lineBodyMassT, lineWeightWord } from '../lineRelation.js';
 import { resolveGovernedCombatSpeed, resolvePropulsionProfile } from '../../core/flight/propulsionCatalog.js';
 import { resolveTravelCeiling } from '../../core/flight/propulsionKernel.js';
-import { isSwarmControls, swarmRailSlotAllowed, SWARM_LINE_KEY_LABEL } from '../../data/swarmControls.js';
+import { swarmRailSlotAllowed } from '../../data/swarmControls.js';
 import { runPerkIds, SWARM_PERK_BY_ID } from '../../data/swarmPerks.js';
 import { travelFlag } from '../../data/featureFlags.js';
-import { formatBindingCode, resolveActionCodes, resolveActionLabel } from '../../systems/input.js';
-import { heldPower } from '../../systems/powerVerbs.js';
+import { formatBindingCode, MOUSE_ACTION_LABELS, resolveActionCodes, resolveActionLabel } from '../../systems/input.js';
+import { heldPower, powerUsesReleasePreview } from '../../systems/powerVerbs.js';
 import { injectOrrery } from './tokens.js';
-import { createFlightCluster } from './flightCluster.js';
+import { createFlightCluster, FLIGHT_CLUSTER_SIZE } from './flightCluster.js';
 import { applyOrreryHudSkin } from './hudSkin.js';
 import { currentDenial, mountArsenalDenials } from '../arsenalDenials.js';
+import { digitIndex, getPromptDeck } from '../promptDeck.js';
 
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
 
@@ -45,28 +52,64 @@ const SWARM_PERK_ICON = Object.freeze({
   bounty_hunter: 'target',
   chain_reactor: 'fire',
 });
-// The five powers (owner 2026-10-22): each power is its own band, so each prints by name.
-const GROUP_NAME = Object.freeze({ PULL: 'Pull', SHOVE: 'Shove', PIN: 'Pin', BAY: 'Bomb', RIG: 'Rig', LINE: 'Line', GYRE: 'Gyre', CLOAK: 'Cloak' });
-const GROUP_ICON = Object.freeze({ Pull: 'well', Shove: 'repel', Pin: 'seed', Bomb: 'munitions', Rig: 'cone', Line: 'line', Gyre: 'well', Cloak: 'seed' });
-// One tint per power (design/expansion/05_ASSET_ROSTER.md §7.2): the Cluster colours each key's
-// mark so a glance tells the five apart. Armed/live states still override the tint.
-const GROUP_POWER = Object.freeze({ PULL: 'pull', SHOVE: 'shove', PIN: 'pin', BAY: 'bomb', RIG: 'rig', LINE: 'line', GYRE: 'gyre', CLOAK: 'cloak' });
+// The six flight powers: one name per power everywhere on the flight HUD.
+const GROUP_NAME = Object.freeze({ PULL: 'Pull', SHOVE: 'Shove', PIN: 'Pin', BAY: 'Bomb', RIG: 'Plow', LINE: 'Line', GYRE: 'Gyre', CLOAK: 'Cloak' });
+const GROUP_ICON = Object.freeze({ Pull: 'well', Shove: 'repel', Pin: 'seed', Bomb: 'munitions', Plow: 'cone', Line: 'line', Gyre: 'well', Cloak: 'seed' });
+// One tint per power: the Cluster colours each key's mark so a glance tells them apart.
+const GROUP_POWER = Object.freeze({ PULL: 'pull', SHOVE: 'shove', PIN: 'pin', BAY: 'bomb', RIG: 'plow', LINE: 'line', GYRE: 'gyre', CLOAK: 'cloak' });
 // The rail's 24-px glyph names → the 48-px kit icon file names the Cluster masks.
 const SLOT_ICON = Object.freeze({ munitions: 'munitions', blast: 'fire', tether: 'line', seed: 'seed', well: 'well', repel: 'repel', cone: 'cone', skim: 'skim', weapon: 'munitions' });
 const SLOT_ARSENAL = Object.freeze({ 0: 'power_travel_burn', 1: 'field_well_standard', 2: 'field_repulsor_standard',
-  3: 'field_seed_standard', 5: 'field_cone_standard', 6: 'power_massline', 7: 'power_gyre' });
+  3: 'field_seed_standard', 4: 'power_charge', 5: 'field_cone_standard', 6: 'power_massline', 7: 'power_gyre' });
 const PRESENTED_ID = Object.freeze({ 0: 'travel', 1: 'pull', 2: 'shove', 3: 'pin', 4: 'bomb', 5: 'rig', 6: 'line', 7: 'gyre', 8: 'cloak' });
 const VERB_TO_SLOT = Object.freeze({
   travel: 0, travelBurn: 0,
   pull: 1, deployWell: 1,
-  shove: 2, deployRepulsor: 2, chargeDetonate: 2,
+  shove: 2, deployRepulsor: 2,
   pin: 3, deployMassSeed: 3,
-  bomb: 4, chargeThrow: 4, dropBomb: 4, swarmBombThrow: 4,
-  rig: 5, toggleClearingCone: 5, toggleSkimCollector: 5,
+  bomb: 4, chargeThrow: 4, dropBomb: 4, swarmBombThrow: 4, chargeDetonate: 4,
+  rig: 5, plow: 5, toggleClearingCone: 5, toggleSkimCollector: 5,
   line: 6, tether: 6,
   gyre: 7, gyreSnare: 7,
   cloak: 8,
 });
+
+export const POWER_CAPTION_LIMIT = 3;
+export const POWER_CAPTION_DURATION_MS = 2500;
+
+/**
+ * True during a player's first Swarm run on this profile (zero completed Swarm runs in history).
+ * Every power key press in that first Swarm run shows the one-line caption over the power bar.
+ */
+export function isFirstSwarmRunOnProfile(state, profile = null) {
+  const inSwarm = isSwarmGlass(state)
+    || !!(state?.run && state.run.kind === 'survival' && state.run.phase && state.run.phase !== 'inactive' && state.run.phase !== 'ended');
+  if (!inSwarm) return false;
+  if (!profile) return true;
+  const history = Array.isArray(profile.history) ? profile.history : [];
+  return history.length === 0;
+}
+
+/**
+ * Consume one press of a flight power key (`1`..`6`) for the first-use caption strip.
+ * Shows the power's one-line caption on the first 3 presses per key in a save, and on every
+ * press during the first Swarm run on a profile. Returns `{ power, name, text }` or `null`.
+ */
+export function consumePowerCaption(state, slotIndex, { profile = null } = {}) {
+  const copy = FLIGHT_POWER_COPY[slotIndex];
+  if (!copy || !state) return null;
+  if (isFirstSwarmRunOnProfile(state, profile)) {
+    return { power: copy.power, name: copy.name, text: copy.caption };
+  }
+  const player = state.player;
+  if (!player || typeof player !== 'object') return null;
+  if (!player.hints || typeof player.hints !== 'object') player.hints = {};
+  const key = `powerCaption_${copy.power}`;
+  const used = Number(player.hints[key]) || 0;
+  if (used >= POWER_CAPTION_LIMIT) return null;
+  player.hints[key] = used + 1;
+  return { power: copy.power, name: copy.name, text: copy.caption };
+}
 
 
 /** The rail's slots grouped by band, each with a stable id (its rail index) and its live key label. */
@@ -137,16 +180,27 @@ function presentedDescription(pe) {
   return [pe.sentence, pe.limits[0], ...(pe.hints || [])].filter(Boolean).join(' ');
 }
 
-function activeLineControlHint(state) {
+function availableCodes(codes, claimedDigits) {
+  const list = Array.isArray(codes) ? codes : (codes ? [codes] : []);
+  return claimedDigits?.length ? list.filter(code => !claimedDigits.includes(digitIndex(code) + 1)) : list;
+}
+
+function activeLineControlHint(state, claimedDigits) {
   const player = state.player || {};
   const tether = player.tether?.active ? player.tether : player.remoteMassline;
   if (!masslineInstrumentReadout(tether)) return '';
-  const hold = resolveActionLabel(state, 'tether');
+  const label = action => {
+    const codes = resolveActionCodes(state, action);
+    const available = availableCodes(codes, claimedDigits);
+    if (available.length === codes.length) return resolveActionLabel(state, action);
+    return available.map(code => formatBindingCode(code)).join('/') || MOUSE_ACTION_LABELS[action] || '';
+  };
+  const hold = label('tether');
   if (!hold) return '';
-  const first = action => formatBindingCode(resolveActionCodes(state, action)[0]);
+  const first = action => formatBindingCode(availableCodes(resolveActionCodes(state, action), claimedDigits)[0]);
   const forward = first('forward'); const reverse = first('reverse');
   const orbit = [first('yawLeft'), first('yawRight')].filter(Boolean).join('/');
-  const boost = resolveActionLabel(state, 'boost');
+  const boost = label('boost');
   const parts = [];
   if (forward) parts.push(`${forward} REEL`);
   if (reverse) parts.push(`${reverse} PAY OUT`);
@@ -159,15 +213,19 @@ export function readOrdnanceModel(state, tracker, bindings, options = {}) {
   const nowS = Number(state && state.simTime) || 0;
   const rail = readRailModel(state, nowS);
   bindings ??= readClusterBindings(state);
-  const labels = resolveSlotLabels(bindings);
-  const keys = resolveSlotKeys(bindings);
+  const claimedDigits = options.claimedDigits;
+  const displayBindings = claimedDigits?.length
+    ? Object.fromEntries(Object.entries(bindings).map(([action, codes]) => [action, availableCodes(codes, claimedDigits)]))
+    : bindings;
+  const labels = resolveSlotLabels(displayBindings);
+  const keys = resolveSlotKeys(displayBindings);
   const held = options.held !== undefined ? options.held : heldPower(state);
   const firingUntil = options.firingUntil;
   const nowWall = options.nowWall || (typeof performance !== 'undefined' && typeof performance.now === 'function' ? performance.now() : Date.now());
   const acts = state && state.input && state.input.actions;
   // The presentation reads the same remappable binding table; a caller's override wins per action.
   const presented = presentationFor(state).read(state, {
-    rail, nowS, bindings: { ...readArsenalBindings(state), ...bindings },
+    rail, nowS, bindings: { ...readArsenalBindings(state), ...displayBindings },
     // the owner's latest refusal ("Too big to take whole"), quoted while it still explains the dead net
     denial: currentDenial(options.denial, Number(state && state.tick)),
   });
@@ -177,73 +235,128 @@ export function readOrdnanceModel(state, tracker, bindings, options = {}) {
     if (!swarmRailSlotAllowed(state, slot.index)) continue;
     const r = rail[slot.index] || {};
     const pe = presented.entries[PRESENTED_ID[slot.index]];
+    const copy = FLIGHT_POWER_COPY[slot.index] || null;
     const st = RAIL_STATE[r.state] || 'ready';
     const isBomb = slot.index === BOMB_SLOT_INDEX;
-    // Which mark the socket draws: the effective function's own authored glyph (the bomb it will throw,
-    // the rig it will toggle, the cloak module fitted), never a fixed per-socket symbol.
-    const arsenalId = pe && (isBomb || slot.index === 5 || slot.index === 8) ? pe.glyph : (SLOT_ARSENAL[slot.index] || '');
-    const entry = { state: st, key: labels[slot.index] || '', arsenalId };
-    // S5 + X3: the flight rail draws icons and key caps, no words — the names live on the
-    // socket's tip and aria label. The Line socket wears RMB in Swarm (no keyboard tether).
-    entry.iconOnly = true;
-    if (isSwarmControls(state) && slot.index === 6) entry.key = SWARM_LINE_KEY_LABEL;
+    const arsenalId = copy
+      ? (SLOT_ARSENAL[slot.index] || '')
+      : (pe && slot.index === 8 ? pe.glyph : (SLOT_ARSENAL[slot.index] || ''));
+    const kbLabel = labels[slot.index] || '';
+    const slotKeyLabel = slot.index === 6
+      ? (kbLabel && kbLabel !== 'RMB' ? `RMB / ${kbLabel}` : (kbLabel || 'RMB'))
+      : (kbLabel || MOUSE_ACTION_LABELS[slot.action] || '');
+    const entry = {
+      state: st,
+      key: slotKeyLabel,
+      arsenalId,
+    };
+    entry.iconOnly = false;
     if (isBomb) entry.consumable = true;
-    // SWARM-03: the rail's tactical-live flag rides beside the state so the Cluster can
-    // breathe a key whose verb is real right now (latch in reach, ordnance armed, pack
-    // inside the well) — a cue, not a new surface.
     if (r.live === true) entry.live = true;
-    if (st === 'cooldown') entry.cooldown = tracker ? tracker(slot.index, r) ?? 0 : 0;
-    if (r.absent === true) entry.hidden = true;
+    if (st === 'cooldown') {
+      entry.cooldown = tracker ? tracker(slot.index, r) ?? 0 : 0;
+      const ms = Math.max(0, Number(r.cooldownMs) || 0);
+      entry.cooldownSec = ms > 0 ? Math.max(1, Math.ceil(ms / 1000)) : 0;
+    }
+    const unlockedMap = state?.player?.unlockedPowers;
+    const powerLockedOut = !!(copy && unlockedMap && unlockedMap[copy.power] === false);
+    if (r.absent === true || r.unowned === true || powerLockedOut) entry.hidden = true;
     if (slot.index === 8) entry.passive = true;
 
-    // Active & firing states: lighting up upon pressing number keys or hold-to-preview
-    const isHeld = (held && VERB_TO_SLOT[held] === slot.index)
+    const canHold = slot.index < 1 || slot.index > 5 || powerUsesReleasePreview(state, slot.action);
+    const isHeld = canHold && ((held && VERB_TO_SLOT[held] === slot.index)
       || (slot.index === 1 && acts?.pull?.held === true)
-      || (slot.index === 2 && acts?.shove?.held === true)
       || (slot.index === 3 && acts?.pin?.held === true)
       || (slot.index === 4 && acts?.bomb?.held === true)
-      || (slot.index === 5 && acts?.rig?.held === true)
       || (slot.index === 6 && (acts?.massline?.held === true || acts?.massline?.source != null))
-      || (slot.index === 7 && acts?.gyreSnare === true);
+      || (slot.index === 7 && acts?.gyreSnare === true));
 
-    const isFiring = (firingUntil && firingUntil.has(slot.index) && nowWall < firingUntil.get(slot.index))
+    const isFiring = slot.index !== 5 && ((firingUntil && firingUntil.has(slot.index) && nowWall < firingUntil.get(slot.index))
       || (slot.index === 1 && (acts?.pull?.pressed === true || acts?.deployWell === true))
-      || (slot.index === 2 && (acts?.shove?.pressed === true || acts?.deployRepulsor === true || acts?.chargeDetonate === true))
+      || (slot.index === 2 && (acts?.shove?.pressed === true || acts?.deployRepulsor === true))
       || (slot.index === 3 && (acts?.pin?.pressed === true || acts?.deployMassSeed === true))
-      || (slot.index === 4 && (acts?.bomb?.pressed === true || acts?.chargeThrow === true || acts?.dropBomb === true || acts?.swarmBombThrow === true))
-      || (slot.index === 5 && (acts?.rig?.pressed === true || acts?.toggleClearingCone === true || acts?.toggleSkimCollector === true))
+      || (slot.index === 4 && (acts?.bomb?.pressed === true || acts?.chargeThrow === true || acts?.dropBomb === true || acts?.swarmBombThrow === true || acts?.chargeDetonate === true))
       || (slot.index === 6 && (acts?.tetherFire === true || acts?.massline?.latch === true))
       || (slot.index === 7 && acts?.gyreSnare === true)
-      || (slot.index === 8 && acts?.cloakToggle === true);
+      || (slot.index === 8 && acts?.cloakToggle === true));
 
     if (isHeld) entry.held = true;
     if (isFiring) entry.firing = true;
-    if (isHeld || isFiring) entry.active = true;
-    // The socket's own words: the EFFECTIVE verb ("Rig · Scoop", "Line · Haul"), not the band
-    // name — a bare "LINE" reads as jargon next to its key (owner 2026-10-28).
-    if (pe && slot.index >= 1) entry.label = pe.label;
-    if (pe && pe.charges && Number.isFinite(pe.charges.count)) entry.count = pe.charges.count;
+    if (r.running === true) entry.running = true;
+    if (isHeld || isFiring || r.running === true) entry.active = true;
+
+    if (copy) {
+      if (isBomb) {
+        const detonate = r.detonate === true || st === 'armed';
+        entry.detonate = detonate;
+        entry.label = detonate ? 'Detonate' : copy.name;
+      } else if (slot.index === 5) {
+        const plowRocks = Number(r.plowRocks) > 0 ? Math.floor(Number(r.plowRocks)) : 0;
+        entry.active = r.running === true || st === 'armed';
+        entry.running = entry.active;
+        if (plowRocks > 0) entry.plowCount = plowRocks;
+        entry.label = plowRocks > 0 ? 'Launch' : copy.name;
+        entry.shortLabel = entry.label;
+      } else {
+        entry.label = copy.name;
+      }
+    } else if (pe && slot.index >= 1) {
+      entry.label = pe.label;
+    }
+
+    if (Number.isFinite(r.stock)) entry.count = r.stock;
+    else if (pe && pe.charges && Number.isFinite(pe.charges.count)) entry.count = pe.charges.count;
     else {
       const count = /×(\d+)/.exec(String(r.name || ''));
       if (count) entry.count = Number(count[1]);
     }
-    // The tier-2 reveal phrase for this verb: what the next press does, its limit, the live keys, the
-    // live state. Composed here (not in the Cluster) so every surface explains a verb in the same words.
-    entry.tip = pe && slot.index !== 0
-      ? railSlotTip({
-        name: pe.label, keys: keys[slot.index] || labels[slot.index] || '',
-        description: presentedDescription(pe),
-        why: [r.why, pe.denial && pe.denial.text].filter(Boolean).join(' — '),
-      })
-      : railSlotTip({
-        name: r.name || slot.name,
-        keys: keys[slot.index] || labels[slot.index] || '',
-        description: r.description || slotDescription(slot.index),
-        why: r.why || '',
+
+    const cleanWhy = (st !== 'ready' && st !== 'armed') ? (r.why || '') : (pe?.denial?.text || '');
+    if (copy) {
+      const tipKeyLine = slot.index === 6
+        ? entry.key
+        : (keys[slot.index] || entry.key || '');
+      // An unbound socket has no keycap to aim at; surface the presentation's bind guidance on the
+      // reason line so the tip still tells the player where the key is set.
+      const bindHint = !tipKeyLine && pe
+        ? ((pe.hints || []).find((h) => /^Bind /.test(h)) || '')
+        : '';
+      entry.tip = railSlotTip({
+        name: entry.label,
+        keys: tipKeyLine,
+        description: copy.caption,
+        why: cleanWhy || bindHint,
       });
-    if (slot.action === 'tether') {
-      const hint = activeLineControlHint(state);
-      if (hint) entry.tip += `\n${hint}`;
+      if (slot.action === 'tether') {
+        const hint = activeLineControlHint(state, claimedDigits);
+        if (hint) entry.tip += `\n${hint}`;
+      }
+      entry.briefTip = [entry.key ? `${entry.label} · ${entry.key}` : entry.label, copy.caption].filter(Boolean).join('\n');
+    } else {
+      entry.tip = pe && slot.index !== 0
+        ? railSlotTip({
+          name: pe.label, keys: keys[slot.index] || labels[slot.index] || '',
+          description: presentedDescription(pe),
+          why: [r.why, pe.denial && pe.denial.text].filter(Boolean).join(' — '),
+        })
+        : railSlotTip({
+          name: r.name || slot.name,
+          keys: keys[slot.index] || labels[slot.index] || '',
+          description: r.description || slotDescription(slot.index),
+          why: r.why || '',
+        });
+      const title = pe?.label || r.name || slot.name;
+      const binding = labels[slot.index] || entry.key;
+      const description = pe?.sentence || r.description || slotDescription(slot.index);
+      const summary = pe?.denial?.text || (st !== 'ready' && st !== 'armed' ? r.why : '')
+        || description.match(/^.*?[.!?](?=\s+[A-Z]|$)/)?.[0] || description;
+      entry.briefTip = [binding ? `${title} · ${binding}` : title, summary].filter(Boolean).join('\n');
+    }
+    if (claimedDigits?.length && !kbLabel && bindings[slot.action]?.length && slot.index !== 6) {
+      const notice = 'Use this button while the number key answers the call.';
+      entry.key = '—';
+      entry.tip += `\n${notice}`;
+      entry.briefTip = [entry.label || slot.name, notice].filter(Boolean).join('\n');
     }
     out[String(slot.index)] = entry;
   }
@@ -301,7 +414,9 @@ export function readClusterModel(state, p, { tracker = null, ordnance = null, bi
     while (rel <= -180) rel += 360;
     drift = rel;
   }
-  const heat = weaponHeatSummary(p.data && p.data.weapons, weaponHeatScratch);
+  // W2-1 (OVH-08b): the clock goes in so the per-gun lock (`_lockUntil`) is part of the reading —
+  // without it the gauge showed a locked gun as merely cooling.
+  const heat = weaponHeatSummary(p.data && p.data.weapons, weaponHeatScratch, finite(state && state.simTime, NaN));
   const player = (state && state.player) || {};
   const local = player.tether;
   const tether = local && local.active ? local : player.remoteMassline;
@@ -337,7 +452,14 @@ export function readClusterModel(state, p, { tracker = null, ordnance = null, bi
       if (Number.isFinite(slipMass) && slipMass > 0) mass = slipMass;
       else if (Number.isFinite(mwMass) && mwMass > 0) mass = mwMass;
     }
-    tetherModel = { state: 'Payload', mass: mass != null && mass > 0 ? Math.round(mass) : null, strain: ml.load };
+    const shownMass = mass != null && mass > 0 ? Math.round(mass) : null;
+    tetherModel = {
+      state: 'Payload',
+      mass: shownMass,
+      strain: ml.load,
+      // One plain word. A declared load stays blank until the rope has actually weighed it.
+      weight: lineWeightWord(shownMass, lineBodyMassT(p), !decl && lineBodyFixed(body)),
+    };
   }
   return {
     hull: finite(p.hull), hullMax: finite(p.hullMax, 1),
@@ -345,31 +467,35 @@ export function readClusterModel(state, p, { tracker = null, ordnance = null, bi
     armor: finite(p.armorHp), armorMax: finite(p.armorMax, 0),
     energy: finite(p.cap), energyMax: finite(p.capMax, 0),
     heat: finite(heat && heat.frac),
+    // W2-1: the lock the gauge must name — flightCluster reads these to show the countdown.
+    heatLocked: !!(heat && heat.locked),
+    heatOverheated: !!(heat && heat.overheated),
+    heatLockRemainingS: finite(heat && heat.lockRemainingS),
     speed, speedRef: finite(clusterSpeedRef(p, state), 180), speedMax: finite(speedMax),
     boost: p.boost && p.boost.max > 0 ? Math.max(0, Math.min(1, p.boost.energy / p.boost.max)) : 0,
     boosting: !!(p.flags && p.flags.boosting),
     // burning, not recovering: the dial's DRIVE tag and halo belong to a spooling or engaged drive only
     driveActive: !!(drive && (drive.state === 'spooling' || drive.state === 'engaged')),
     drift,
-    // X3 Adventure glass: the beam and strain dial are instruments, the payload's
-    // label/tonnage/strain words are telemetry. The Cluster drops only the words.
-    quietTelemetry: isAdventureFlight(state),
+    // Swarm hides the weight word. Adventure (and a docked or mapped cluster) may show Light
+    // or Heavy. Tonnes and strain percent are not part of this readout.
+    quietTelemetry: isSwarmGlass(state),
+    swarm: isSwarmGlass(state),
     ordnance: ordnance || readOrdnanceModel(state, tracker, bindings),
     tether: tetherModel,
   };
 }
 
 const HOST_CSS = `
-#hud .orr-hud-cluster { position:absolute; left:18px; bottom:24px; z-index:5; pointer-events:none; }
-#hud .orr-hud-cluster .orr-cluster { --orr-cluster-scale:.85; }
-/* Mirror of the cluster's scaled visual height (540px artboard × --orr-cluster-scale)
-   as an #hud-level var so bottom-anchored siblings (the drive tape) can clear it. */
-#hud { --orr-cluster-h: calc(540px * .85); }
-@media (max-width:1700px) { #hud .orr-hud-cluster .orr-cluster { --orr-cluster-scale:.7; }
-  #hud { --orr-cluster-h: calc(540px * .7); } }
-@media (max-width:1400px) { #hud .orr-hud-cluster { left:8px; } }
-@media (max-width:1300px) { #hud .orr-hud-cluster .orr-cluster { --orr-cluster-scale:.6; }
-  #hud { --orr-cluster-h: calc(540px * .6); } }
+/* Scale the instrument once. Bottom-anchored siblings use the same visual height.
+   z-index:14 keeps HUD instrument panels above world markers (#sf-ml2 z-index:6, .sf-lockdiamond z-index:13)
+   so the aim/tether white diamond never paints over the power bar or vitals. */
+#hud[data-hud="orrery"] .orr-hud-cluster { position:absolute; left:calc(12px + var(--sf-safe-inset-x, 0px)); bottom:24px; z-index:14; pointer-events:none; transform:none; }
+#hud[data-hud="orrery"] .orr-hud-cluster.orr-hud-cluster--visor { left:calc(clamp(12px, 1.435vw, 24px) + var(--sf-safe-inset-x, 0px)); bottom:clamp(24px, 4.36vh, 43px); }
+#hud { --orr-cluster-scale:.85; --orr-cluster-h:calc(${FLIGHT_CLUSTER_SIZE.height}px * var(--orr-cluster-scale)); }
+@media (max-width:1700px), (max-height:850px) { #hud { --orr-cluster-scale:.71; } }
+@media (max-width:1100px), (max-height:660px) { #hud { --orr-cluster-scale:.64; } }
+@media (max-width:640px) { #hud { --orr-cluster-scale:min(.64, calc((100vw - 24px) / ${FLIGHT_CLUSTER_SIZE.width}px)); } }
 `;
 
 /** Pure: is a projected point over (or within `pad` px of) a measured instrument box? The
@@ -397,6 +523,7 @@ export function mountOrreryCluster(root, state, { bus = null, helpers = null } =
   }
   const player = state && state.entities && typeof state.entities.get === 'function' ? state.entities.get(state.playerId) : null;
   const defId = (player && player.data && (player.data.defId || player.data.shipId)) || 'ship_kestrel';
+  const variantId = player?.data?.appearance?.variantId ?? null;
   const def = SHIP_BY_ID.get(defId);
   const defName = (def && def.name) || 'Hull';
   const classLine = `${def && def.role ? def.role : 'hull'} · tier ${def && Number.isFinite(def.tier) ? def.tier : 0}`;
@@ -407,18 +534,76 @@ export function mountOrreryCluster(root, state, { bus = null, helpers = null } =
   const firingUntil = new Map();
   const FLASH_DURATION_MS = 400;
   let lastActiveSig = '';
+  // First-use power caption strip: 2.5 s one-shot timer (no rAF loop).
+  let activeCaption = null;
+  let captionUntilWall = 0;
+  let captionTimer = null;
+  let cachedProfile = null;
+  let cachedProfileRunId = null;
+  const prevPressedSlots = new Set();
+
+  const readProfileForRun = (liveState) => {
+    const runKey = liveState?.run ? `${liveState.run.kind || ''}:${liveState.run.phase || ''}:${liveState.run.seed || ''}` : 'adventure';
+    if (runKey !== cachedProfileRunId) {
+      cachedProfileRunId = runKey;
+      try { cachedProfile = loadCrucibleMeta(); } catch { cachedProfile = null; }
+    }
+    return cachedProfile;
+  };
+
+  const triggerPowerCaption = (liveState, slotIdx) => {
+    // DEMO-SWARM-TUTOR-1 (owner demo 2026-11-23): inside a Swarm run the power hint is a TEACHING
+    // CARD, so it takes the one Swarm teaching lane (one at a time, in the margin) instead of
+    // drawing its own strip over the power bar beside the round brief and the first-sighting card.
+    const teaching = isSwarmGlass(liveState) ? getSwarmTeaching() : null;
+    const copy = FLIGHT_POWER_COPY[slotIdx] || null;
+    const mechanic = copy ? SWARM_TEACH_MECHANIC.power(copy.power) : '';
+    // A press while this power's card is still on the glass completes the lesson the card names
+    // (for a two-stage power the follow-up press IS the rest of it) — the card retires early and
+    // nothing re-offers. The lesson never depends on this press: it was already spent when the
+    // card was offered, below, so a card that times out unread can never re-teach either
+    // (XR-DEMO-SWARM-TUTOR-1 — the card must not wait on a second press to count the lesson).
+    if (teaching && mechanic && teaching.used(mechanic) === true) return;
+    const shown = consumePowerCaption(liveState, slotIdx, { profile: readProfileForRun(liveState) });
+    if (!shown) return;
+    if (teaching) {
+      const verdict = teaching.offer({
+        id: `swarm:power:${shown.power}`,
+        mechanic,
+        kicker: shown.name,
+        line: shown.text,
+      });
+      // The first press IS the mechanic being used — the card exists because the player just did
+      // the thing. Spend the lesson the moment the card is offered (never before, or the offer
+      // itself would read as spent), so the ~6 s read window and Again both stay truthful.
+      if (verdict === 'shown') teaching.spend(mechanic);
+      return;
+    }
+    const nowWall = typeof performance !== 'undefined' && typeof performance.now === 'function' ? performance.now() : Date.now();
+    activeCaption = shown;
+    captionUntilWall = nowWall + POWER_CAPTION_DURATION_MS;
+    if (captionTimer) clearTimeout(captionTimer);
+    captionTimer = setTimeout(() => {
+      captionTimer = null;
+      activeCaption = null;
+      captionUntilWall = 0;
+      cluster.setPowerCaption?.(null);
+    }, POWER_CAPTION_DURATION_MS);
+    cluster.setPowerCaption?.(activeCaption);
+  };
 
   const onActivateSocket = ({ id, power, slot }) => {
     const slotIdx = Number(id) || (slot && Number(slot.id)) || 0;
+    if (slotIdx >= 1 && slotIdx <= 6) triggerPowerCaption(state, slotIdx);
     const action = slot?.action || power || (slotIdx === 1 ? 'pull' : slotIdx === 2 ? 'shove' : slotIdx === 3 ? 'pin' : slotIdx === 4 ? 'bomb' : slotIdx === 5 ? 'rig' : slotIdx === 6 ? 'tether' : '');
-    const nowWall = typeof performance !== 'undefined' && typeof performance.now === 'function' ? performance.now() : Date.now();
-    if (slotIdx > 0) {
-      firingUntil.set(slotIdx, nowWall + FLASH_DURATION_MS);
-    }
     if (action && typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
       const codes = resolveActionCodes(state, action);
-      const code = (codes && codes[0]) || (slotIdx >= 1 && slotIdx <= 5 ? `Digit${slotIdx}` : null);
+      const code = codes && codes[0];
       if (code) {
+        if (slotIdx > 0 && slotIdx !== 5) {
+          const nowWall = typeof performance !== 'undefined' && typeof performance.now === 'function' ? performance.now() : Date.now();
+          firingUntil.set(slotIdx, nowWall + FLASH_DURATION_MS);
+        }
         const Ctor = typeof KeyboardEvent === 'function' ? KeyboardEvent
           : (typeof window.KeyboardEvent === 'function' ? window.KeyboardEvent : null);
         const downEvt = Ctor ? new Ctor('keydown', { code, bubbles: true }) : { type: 'keydown', code, bubbles: true };
@@ -433,23 +618,38 @@ export function mountOrreryCluster(root, state, { bus = null, helpers = null } =
     }
   };
 
+  const onOpenMore = () => {
+    if (bus && typeof bus.emit === 'function') {
+      bus.emit('ui:contextWheelToggle', { source: 'power-bar' });
+    }
+  };
+
   const cluster = createFlightCluster({
     shipId: defId,
+    variantId,
     name: customName || defName,
     classLine,
     groups: buildOrdnanceGroups(readClusterBindings(state)),
     // before anything is engaged the Hand rests on the Line: the game's signature verb
     restSlot: String(REST_SLOT_INDEX),
     onActivateSocket,
+    onOpenMore,
+    layout: 'visor',
   });
+  cluster.el.setAttribute('data-why-above', '');
   host.appendChild(cluster.el);
+  // The visor layout names itself on the host and on #hud (the rules that used :has() to find it
+  // made every HUD text write re-check them).
+  host.classList.add('orr-hud-cluster--visor');
   root.appendChild(host);
   root.dataset.hud = 'orrery';
+  root.dataset.hudCluster = 'visor';
   const removeSkin = applyOrreryHudSkin(document);
   cluster.arrive();
   const tracker = createCooldownTracker();
   const weaponHeatScratch = {};
   let ordnance = null;
+  let lastClaimedDigits = null;
   let ceiling = null;
   // Refusals the matter tools publish reach the pilot as a toast and as the Gyre/Pull tip's last line.
   let lastDenial = null;
@@ -460,13 +660,17 @@ export function mountOrreryCluster(root, state, { bus = null, helpers = null } =
   // The cluster bakes the hull poster at create; a hull swap after mount (shipworks "Make active",
   // a save whose active hull differs) must restamp it or the HUD names the wrong ship all session.
   let syncedHullId = defId;
+  let syncedVariantId = variantId;
   const syncHull = (liveState = state, livePlayer = liveState?.entities?.get?.(liveState.playerId)) => {
     const liveDefId = (livePlayer && livePlayer.data && (livePlayer.data.defId || livePlayer.data.shipId)) || 'ship_kestrel';
-    if (liveDefId === syncedHullId) return;
+    const liveVariantId = livePlayer?.data?.appearance?.variantId ?? null;
+    if (liveDefId === syncedHullId && liveVariantId === syncedVariantId) return;
     syncedHullId = liveDefId;
+    syncedVariantId = liveVariantId;
     const liveDef = SHIP_BY_ID.get(liveDefId);
     cluster.setHull({
       shipId: liveDefId,
+      variantId: liveVariantId,
       name: customNameForActiveHull(liveState) || (liveDef && liveDef.name) || 'Hull',
       classLine: `${liveDef && liveDef.role ? liveDef.role : 'hull'} · tier ${liveDef && Number.isFinite(liveDef.tier) ? liveDef.tier : 0}`,
     });
@@ -474,10 +678,59 @@ export function mountOrreryCluster(root, state, { bus = null, helpers = null } =
   // S12 — the run's perk pick rides the cluster model; a fired trigger bumps that chip's pulse.
   const perkPulseCounts = {};
   let offPerkTrigger = null;
+  // HUD-2 Item 5 — live ship-panel status: directional hull-hit flashes (0.65 s decay) and weapon fire flash.
+  const HIT_FLASH_MS = 650;
+  const WEAPON_FLASH_MS = 220;
+  const hitUntilWall = { bow: 0, starboard: 0, port: 0, stern: 0 };
+  const weaponFireUntil = new Map();
+  let offShipDmg = null;
+  let offShipImpact = null;
+  let offShipFire = null;
+  const nowWallMs = () => (typeof performance !== 'undefined' && typeof performance.now === 'function' ? performance.now() : Date.now());
+  const recordHitFromPos = (liveState, srcPos) => {
+    const me = liveState?.entities?.get?.(liveState.playerId);
+    const until = nowWallMs() + HIT_FLASH_MS;
+    if (!me?.pos || !srcPos || !Number.isFinite(srcPos.x) || !Number.isFinite(srcPos.z)) {
+      hitUntilWall.bow = Math.max(hitUntilWall.bow, until);
+      return;
+    }
+    const dx = srcPos.x - me.pos.x;
+    const dz = srcPos.z - me.pos.z;
+    if (dx * dx + dz * dz < 1e-4) {
+      hitUntilWall.bow = Math.max(hitUntilWall.bow, until);
+      return;
+    }
+    const rot = Number.isFinite(me.rot) ? me.rot : 0;
+    let rel = Math.atan2(dz, dx) - rot;
+    while (rel > Math.PI) rel -= Math.PI * 2;
+    while (rel <= -Math.PI) rel += Math.PI * 2;
+    const deg = rel * 180 / Math.PI;
+    const side = Math.abs(deg) <= 45 ? 'bow' : Math.abs(deg) >= 135 ? 'stern' : (deg > 0 ? 'starboard' : 'port');
+    hitUntilWall[side] = Math.max(hitUntilWall[side], until);
+  };
   if (bus && typeof bus.on === 'function') {
     offPerkTrigger = bus.on('swarm:perkTrigger', (p) => {
       const id = p && p.perkId;
       if (typeof id === 'string' && id) perkPulseCounts[id] = (perkPulseCounts[id] || 0) + 1;
+    });
+    offShipDmg = bus.on('combat:damage', (ev) => {
+      if (!ev) return;
+      if (ev.targetId !== state.playerId && ev.isPlayer !== true) return;
+      const attacker = ev.attackerId != null ? state.entities?.get?.(ev.attackerId) : null;
+      recordHitFromPos(state, attacker?.pos || ev.sourcePos || ev.pos);
+    });
+    offShipImpact = bus.on('physics:impact', (ev) => {
+      if (!ev) return;
+      const pid = state.playerId;
+      if (ev.entityId !== pid && ev.aId !== pid && ev.bId !== pid) return;
+      const otherId = ev.aId === pid ? ev.bId : (ev.bId === pid ? ev.aId : ev.otherId);
+      const other = otherId != null ? state.entities?.get?.(otherId) : null;
+      recordHitFromPos(state, other?.pos || ev.pos);
+    });
+    offShipFire = bus.on('combat:fire', (ev) => {
+      if (!ev || ev.ownerId !== state.playerId) return;
+      const key = ev.slotIndex != null ? ev.slotIndex : (ev.weaponIndex != null ? ev.weaponIndex : 0);
+      weaponFireUntil.set(key, nowWallMs() + WEAPON_FLASH_MS);
     });
   }
   let offName = null;
@@ -534,15 +787,26 @@ export function mountOrreryCluster(root, state, { bus = null, helpers = null } =
       const nowWall = typeof performance !== 'undefined' && typeof performance.now === 'function' ? performance.now() : Date.now();
 
       let firingEdge = false;
+      const nowPressed = new Set();
       if (acts) {
-        if (acts.pull?.pressed || acts.deployWell) { firingUntil.set(1, nowWall + FLASH_DURATION_MS); firingEdge = true; }
-        if (acts.shove?.pressed || acts.deployRepulsor || acts.chargeDetonate) { firingUntil.set(2, nowWall + FLASH_DURATION_MS); firingEdge = true; }
-        if (acts.pin?.pressed || acts.deployMassSeed) { firingUntil.set(3, nowWall + FLASH_DURATION_MS); firingEdge = true; }
-        if (acts.bomb?.pressed || acts.chargeThrow || acts.dropBomb || acts.swarmBombThrow) { firingUntil.set(4, nowWall + FLASH_DURATION_MS); firingEdge = true; }
-        if (acts.rig?.pressed || acts.toggleClearingCone || acts.toggleSkimCollector) { firingUntil.set(5, nowWall + FLASH_DURATION_MS); firingEdge = true; }
-        if (acts.tetherFire || acts.massline?.latch) { firingUntil.set(6, nowWall + FLASH_DURATION_MS); firingEdge = true; }
+        if (acts.pull?.pressed || acts.deployWell) { firingUntil.set(1, nowWall + FLASH_DURATION_MS); firingEdge = true; nowPressed.add(1); }
+        if (acts.shove?.pressed || acts.deployRepulsor) { firingUntil.set(2, nowWall + FLASH_DURATION_MS); firingEdge = true; nowPressed.add(2); }
+        if (acts.pin?.pressed || acts.deployMassSeed) { firingUntil.set(3, nowWall + FLASH_DURATION_MS); firingEdge = true; nowPressed.add(3); }
+        if (acts.bomb?.pressed || acts.chargeThrow || acts.dropBomb || acts.swarmBombThrow || acts.chargeDetonate) { firingUntil.set(4, nowWall + FLASH_DURATION_MS); firingEdge = true; nowPressed.add(4); }
+        if (acts.rig?.pressed || acts.toggleClearingCone || acts.toggleSkimCollector) { firingUntil.set(5, nowWall + FLASH_DURATION_MS); firingEdge = true; nowPressed.add(5); }
+        if (acts.tetherFire || acts.massline?.latch) { firingUntil.set(6, nowWall + FLASH_DURATION_MS); firingEdge = true; nowPressed.add(6); }
         if (acts.gyreSnare) { firingUntil.set(7, nowWall + FLASH_DURATION_MS); firingEdge = true; }
         if (acts.cloakToggle) { firingUntil.set(8, nowWall + FLASH_DURATION_MS); firingEdge = true; }
+      }
+      for (const slotIdx of nowPressed) {
+        if (!prevPressedSlots.has(slotIdx)) triggerPowerCaption(liveState, slotIdx);
+      }
+      prevPressedSlots.clear();
+      for (const slotIdx of nowPressed) prevPressedSlots.add(slotIdx);
+
+      if (activeCaption && nowWall >= captionUntilWall) {
+        activeCaption = null;
+        captionUntilWall = 0;
       }
 
       let firingExpired = false;
@@ -556,9 +820,12 @@ export function mountOrreryCluster(root, state, { bus = null, helpers = null } =
       const activeSig = `${held || ''}|${Array.from(firingUntil.keys()).sort().join(',')}`;
       const activeChanged = activeSig !== lastActiveSig;
       lastActiveSig = activeSig;
+      const claimedDigits = getPromptDeck()?.claimedDigits ?? null;
 
-      if (slow || !ordnance || activeChanged || firingEdge || firingExpired || firingUntil.size > 0 || held != null) {
-        ordnance = readOrdnanceModel(liveState, tracker, undefined, { denial: lastDenial, firingUntil, held, nowWall });
+      if (slow || !ordnance || activeChanged || firingEdge || firingExpired || firingUntil.size > 0 || held != null
+        || claimedDigits !== lastClaimedDigits) {
+        ordnance = readOrdnanceModel(liveState, tracker, undefined, { denial: lastDenial, firingUntil, held, nowWall, claimedDigits });
+        lastClaimedDigits = claimedDigits;
       }
       if (slow || ceiling == null) ceiling = readSpeedCeiling(liveState, p);
       const model = readClusterModel(liveState, p, { ordnance, speedMax: ceiling, weaponHeatScratch });
@@ -569,12 +836,81 @@ export function mountOrreryCluster(root, state, { bus = null, helpers = null } =
           icon: SWARM_PERK_ICON[id] || 'spark',
         }));
         model.perkPulses = perkPulseCounts;
+        model.moreKey = resolveActionLabel(liveState, 'contextWheel') || 'Q';
+        model.powerCaption = liveState?._uiBenchPowerCaption || activeCaption;
+        // HUD-2 Item 5: live ship-panel status (directional hull hits, hardpoint pips, held Line tag).
+        const benchShip = liveState?._uiBenchShipStatus || null;
+        const hits = benchShip?.hits || {
+          bow: hitUntilWall.bow > nowWall ? (hitUntilWall.bow - nowWall) / HIT_FLASH_MS : 0,
+          starboard: hitUntilWall.starboard > nowWall ? (hitUntilWall.starboard - nowWall) / HIT_FLASH_MS : 0,
+          port: hitUntilWall.port > nowWall ? (hitUntilWall.port - nowWall) / HIT_FLASH_MS : 0,
+          stern: hitUntilWall.stern > nowWall ? (hitUntilWall.stern - nowWall) / HIT_FLASH_MS : 0,
+        };
+        const weapons = Array.isArray(p.data?.weapons) ? p.data.weapons : [];
+        const simNowS = finite(liveState && liveState.simTime);
+        const hardpoints = benchShip?.hardpoints || weapons.slice(0, 4).map((w, idx) => {
+          const heatMax = Number(w?.heatMax) || 100;
+          const heatFrac = Number.isFinite(w?._heat) && heatMax > 0 ? w._heat / heatMax : 0;
+          const slotKey = w?.slotIndex != null ? w.slotIndex : idx;
+          const firing = !!(w?._firing || (weaponFireUntil.get(slotKey) > nowWall) || (weaponFireUntil.get(idx) > nowWall));
+          // W2-1 (OVH-08b): one amber band everywhere — the pip goes hot at the sim's own 0.6
+          // feather band, and stays hot for the gun's whole `_lockUntil` (the sim never sets
+          // `_overheated`/`_venting`; those reads lied that a locked gun was already cooling).
+          const locked = Number.isFinite(w?._lockUntil) && simNowS < w._lockUntil;
+          const hot = locked || heatFrac >= HEAT_AMBER_BAND;
+          return { firing, hot, locked };
+        });
+        let lineTag = benchShip?.lineTag || '';
+        if (!lineTag && model.tether && model.tether.state && model.tether.state !== 'Idle') {
+          const local = liveState.player?.tether;
+          const activeLine = local && local.active ? local : liveState.player?.remoteMassline;
+          const ledger = liveState.combat?.attachments?.byId;
+          const att = activeLine?.attachmentId != null && ledger ? ledger[String(activeLine.attachmentId)] : null;
+          const bodyId = att?.targetId != null ? att.targetId : (activeLine?.targetId ?? activeLine?.payloadId);
+          const body = bodyId != null ? liveState.entities?.get?.(bodyId) : null;
+          const rawName = body
+            ? (body.type === 'asteroid' ? 'Rock' : (targetDisplayName(body, { state: liveState }) || 'Payload'))
+            : 'Payload';
+          const shortName = rawName.length > 14 ? `${rawName.slice(0, 13).trim()}…` : rawName;
+          const interp = body ? resolveMassInterpretation(couplingBodyMass(p), couplingBodyMass(body)) : null;
+          // DEMO-SWARM-UX-2: in a Swarm fight the grade reads as plain weight, not an
+          // unexplained 'Even / Heavy'. Adventure keeps its own designed Light/Heavy words.
+          const band = isSwarmGlass(liveState)
+            ? (interp?.key === 'likely-payload' ? 'light enough to throw'
+              : interp?.key === 'likely-anchor' ? 'too heavy to throw'
+              : interp?.key === 'comparable' ? 'even mass' : '')
+            : (interp?.key === 'likely-payload' ? 'Light'
+              : interp?.key === 'likely-anchor' ? 'Heavy'
+              : interp?.key === 'comparable' ? 'Even' : '');
+          lineTag = band ? `${shortName} · ${band}` : shortName;
+        }
+        model.shipStatus = { hits, hardpoints, lineTag };
         cluster.update(model);
       }
     },
+    // HUD-FRAME-BREADTH: the scheduler job calls exactly the reads the old `slow` flag armed —
+    // ring legend, hull, ordnance scan and the speed ceiling — so update(false) can run every
+    // frame without doing them twice.
+    updateSlow(liveState, p) {
+      if (typeof cluster.setRingLegend === 'function') syncLegend(liveState, p);
+      if (typeof cluster.setHull === 'function') syncHull(liveState, p);
+      if (!p) return;
+      const held = heldPower(liveState);
+      const nowWall = typeof performance !== 'undefined' && typeof performance.now === 'function'
+        ? performance.now() : Date.now();
+      const claimedDigits = getPromptDeck()?.claimedDigits ?? null;
+      ordnance = readOrdnanceModel(liveState, tracker, undefined,
+        { denial: lastDenial, firingUntil, held, nowWall, claimedDigits });
+      lastClaimedDigits = claimedDigits;
+      ceiling = readSpeedCeiling(liveState, p);
+    },
     dispose() {
+      if (captionTimer) { clearTimeout(captionTimer); captionTimer = null; }
       if (typeof offName === 'function') { try { offName(); } catch (_) {} }
       if (typeof offPerkTrigger === 'function') { try { offPerkTrigger(); } catch (_) {} }
+      if (typeof offShipDmg === 'function') { try { offShipDmg(); } catch (_) {} }
+      if (typeof offShipImpact === 'function') { try { offShipImpact(); } catch (_) {} }
+      if (typeof offShipFire === 'function') { try { offShipFire(); } catch (_) {} }
       try { offDenials(); } catch (_) {}
       if (typeof window !== 'undefined' && window.removeEventListener) {
         window.removeEventListener('resize', markClusterBoxStale);
@@ -583,6 +919,7 @@ export function mountOrreryCluster(root, state, { bus = null, helpers = null } =
       host.remove();
       removeSkin();
       if (root.dataset.hud === 'orrery') delete root.dataset.hud;
+      delete root.dataset.hudCluster;
     },
   };
 }

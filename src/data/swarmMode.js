@@ -38,7 +38,7 @@ import { SPAWN_BUDGET_DEFAULT_MAX, SPAWN_BUDGET_HARD_MAX } from './survivalActs.
 import { ENEMY_TYPES } from './enemies.js';
 import { CAPITAL_BOSS_ENCOUNTERS } from './encounters/capital-boss.js';
 import { hunterTrickById } from './hunterTricks.js';
-import { swarmCastFor, swarmCastIdsFor } from './swarmCourseCast.js';
+import { swarmCastFor, swarmCastIdsFor, swarmRoundBudget } from './swarmCourseCast.js';
 
 export const SWARM_RULESET = 'swarm';
 export const SWARM_SCHEMA_VERSION = 2;
@@ -57,9 +57,13 @@ export const SWARM_WAVE_MAX = 30;
 export const SWARM_DEEP_WAVE_MAX = 999;
 
 /**
- * Every round opens the cash armory. Every tenth also opens the refit/extraction bench.
+ * THE BENCH, EVERY TENTH ROUND, IS THE ONLY MENU IN A RUN (04_SWARM.md §2, R3). Rounds 10 and 20
+ * stop at the Bench: the equipment stop (change ship, buy) and then the refit. Every other round,
+ * the boss rounds included, passes straight through `draft`: skills arrive as the level-up cards
+ * in the breath, and gear is bought on the floor by flying to it. (Was every fifth round, which
+ * put a shop after each boss.)
  */
-export const SWARM_DRAFT_EVERY = 1;
+export const SWARM_DRAFT_EVERY = 10;
 export const SWARM_REFIT_EVERY = 10;
 
 /** The design's cadence: the first champion arrives at wave 5, then every fifth round —
@@ -446,7 +450,7 @@ export const SWARM_BOSS_ROTATION = Object.freeze([
   {
     id: 'iron_maw',
     label: "Dreadnought 'Iron Maw'",
-    line: 'Throw the pack into it.',
+    line: 'Cross its bow before it fires.',
     room: 'flank_berm',
     // RC-02 — the round-10 champion is the FIRST capital row: the same dreadnought_boss hull it
     // always fielded, now handed to the authored Iron Maw score (`capital_boss_hulk`) instead of
@@ -832,6 +836,8 @@ export function isSwarmBossWave(wave) {
 }
 
 export function isSwarmDraftWave(wave) {
+  // Wave 0 is the opening stop before round 1: the setup screen's route still opens the armory there.
+  if (Number.isFinite(Number(wave)) && Number(wave) < 1) return true;
   const w = swarmWaveOf(wave);
   return w % SWARM_DRAFT_EVERY === 0;
 }
@@ -877,7 +883,11 @@ export const SWARM_QUOTA_CAP = 48;
  * Quota 15 against a 10-hull pile clears in 23–35 s on the fast kits (.00 bench). Quota 24
  * put two of nine cells inside 45–90 s and left seven unfinished — a stall after ~22 kills,
  * or a death on the longer clock. Thinning the opening room starved unlucky seeds worse.
- * Hull values stay untouched. Later waves keep this margin and the 20+2w climb.
+ * Hull values stay untouched. Later waves keep this margin and the 20+2w climb on the
+ * ENDLESS LADDER. The course rounds 1-30 are exempt since DEMO-SWARM-BUDGET-1: they owe the
+ * director-approved round budgets in swarmCourseCast.js, which on some rounds sit inside this
+ * margin — round 2's 16 is one SWARM_CLEAR_KILLS below its concurrent+8 floor of 19. The
+ * ladder past round 30 keeps the law untouched.
  */
 export const SWARM_QUOTA_MARGIN = 8;
 
@@ -895,15 +905,26 @@ export const SWARM_OPENING_QUOTA = 15;
 /**
  * Course round 1 is "ten Wasps, one gate" (design/game/12): its quota IS the cast row's
  * body count, read from the table so the two cannot drift, and no stake or wager moves it.
- * 0 everywhere else — those rounds keep `swarmQuota`.
+ * 0 everywhere else — rounds 2-30 owe the approved round budgets (`swarmRoundBudget` in
+ * swarmCourseCast.js) and past the course `swarmQuota` keeps the endless ladder.
  */
 export function swarmCastQuota(wave, castRow) {
   return castRow && swarmWaveOf(wave) === 1 ? swarmOpeningCount(castRow.packages) : 0;
 }
 
-/** The ordinary course's base quota for a round: the cast's own count where it pins one. */
+/**
+ * The ordinary course's base quota for a round: round 1's cast count where the row pins one
+ * (it does — ten Wasps), else the director-approved round budget for rounds 2-30
+ * (swarmCourseCast.js, 2026-11-20), else the endless ladder's `swarmQuota` past the course.
+ * Inputs below 1 (the pre-round stop at wave 0) normalize through `swarmWaveOf` onto the
+ * round-1 opening, the same wave normalization `swarmPlanBlock` applies — the pre-round reader
+ * and the plan block answer one number for the round the player is about to play.
+ */
 export function swarmCourseQuota(wave) {
-  return swarmCastQuota(wave, swarmCastFor(wave)) || swarmQuota(wave);
+  const castQuota = swarmCastQuota(wave, swarmCastFor(wave));
+  if (castQuota > 0) return castQuota;
+  const budget = swarmRoundBudget(swarmWaveOf(wave));
+  return budget > 0 ? budget : swarmQuota(wave);
 }
 
 /**
@@ -1567,11 +1588,17 @@ export function swarmGateFor(wave, index) {
  * XP and credits for clearing a swarm wave. Scales with the quota so a longer wave pays more,
  * and stays close to the arc's purse so the draft re-roll price (6 + 3*wave) means the same thing
  * in both rulesets.
+ *
+ * DEMO-SWARM-BUDGET-1-R2 — the approved round budgets (swarmCourseCast.js) field fewer bodies,
+ * so the kill leg of the 04 §3 level curve comes up short (204 XP through round 10). The clear
+ * purse is the round-indexed knob, so it carries the round pacing the kills no longer do: at
+ * 64 + 14 a wave the pinned checkpoints hold again — level 6 by round 3, level 14 by round 10 —
+ * and the thirty-round total lands within a dozen XP of the pre-budget curve.
  */
 export function swarmRewards(wave) {
   const w = swarmWaveOf(wave);
   return {
-    xp: 40 + w * 14,
+    xp: 64 + w * 14,
     // Priced off the QUOTA, not the wave number, so one body is worth a whole, legible 2 credits
     // exactly as it is on the arc — the purse follows how much work the wave actually asks for.
     credits: swarmQuota(w) * 2 + (isSwarmBossWave(w) ? 40 : 0),
@@ -1708,7 +1735,11 @@ export function swarmPlanBlock(wave, bossOverride, castRow = undefined) {
     schemaVersion: SWARM_SCHEMA_VERSION,
     wave: w,
     // Finite pressure per round. Clearing the pack earns the shop; a timer cannot award it.
-    killTarget: swarmCastQuota(w, cast) || swarmQuota(w),
+    // DEMO-SWARM-BUDGET-1 — a course round owes the approved budgets: round 1 its cast count,
+    // rounds 2-30 the table. One reader owns that precedence (swarmCourseQuota), so the plan
+    // and every other consumer spell it once. Cast-off paths (Circuit, heavies_only) pass
+    // cast === null and keep the ladder, and past 30 the endless ladder is unchanged.
+    killTarget: (cast ? swarmCourseQuota(w) : 0) || swarmQuota(w),
     rewardReferenceKills: swarmQuota(w),
     durationTicks: SWARM_WAVE_DURATION_TICKS,
     concurrent: swarmConcurrent(w),

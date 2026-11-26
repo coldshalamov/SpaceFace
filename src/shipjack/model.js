@@ -163,8 +163,8 @@ export function captureReadiness(state, target, attempt = null) {
     && attachment.state==='active' && attachment.ownerId===player?.id && attachment.targetId===target?.id
     && attachment.ownerGeneration===occupantGenerationOf(player) && attachment.targetGeneration===occupantGenerationOf(target));
   if (!player?.alive || !target?.alive) reasons.push('A living pilot and intact target are required.');
-  if (distance > 115) reasons.push('Close within 115 WU.');
-  if (relativeSpeed > (attempt?.dwell > 0 ? 18 : 14)) reasons.push('Match velocity below 14 WU/s.');
+  if (distance > 115) reasons.push('Close within 115 m.');
+  if (relativeSpeed > (attempt?.dwell > 0 ? 18 : 14)) reasons.push('Match velocity below 14 m/s.');
   if (Math.abs(finite(target?.angVel)) > .65) reasons.push('Stabilize the target’s spin.');
   if (player && target && distance<=350 && !witnessLineOfSight(state,player,target.pos,[player.id,target.id])) reasons.push('Terrain blocks the service link. Approach around it.');
   if (finite(target?.shield) > 1 && !surrendered) reasons.push('Shields deny the service link.');
@@ -205,7 +205,7 @@ export function queryShipjack(state, targetId = state.player?.targetId) {
     add('beacon','Set recovery beacon');
     add('release','Release custody');
   } else if (!attempt?.scanned) {
-    add('scan','Identify vessel',readiness.distance <= 1200,'Scan within 1,200 WU.');
+    add('scan','Identify vessel',readiness.distance <= 1200,'Scan within 1,200 m.');
     if(!autonomous)add('hail','Hail captain',readiness.distance <= 1200);
   } else if (stage === 'secured') {
     add('transfer','Assume control',readiness.ready && readiness.dwell >=1.5,readiness.reasons[0] || 'Hold stable for 1.5 seconds.');
@@ -218,8 +218,8 @@ export function queryShipjack(state, targetId = state.player?.targetId) {
     add('shutdown','Interrupt propulsion',readiness.distance<=115); add('abort','Break link');
   } else {
     if(!autonomous)add('hail','Negotiate crew passage',readiness.distance<=1200);
-    add('probe','Probe maintenance signal',readiness.distance<=350,'Close within 350 WU.');
-    add('isolator','Pulse exposed drive',readiness.distance<=180 && finite(target?.shield)<=1,'Lower shields and close within 180 WU.');
+    add('probe','Probe maintenance signal',readiness.distance<=350,'Close within 350 m.');
+    add('isolator','Pulse exposed drive',readiness.distance<=180 && finite(target?.shield)<=1,'Lower shields and close within 180 m.');
     add('drone','Launch service pod · 45 cr',readiness.distance<=300,'A live pod must reach the aft port.');
   }
   const forensic=attempt?.scanned&&vessel&&fittedBlackFlagTool(state,'mod_signature_reader_s')?inspectVessel(vessel,{grade:2}):null;

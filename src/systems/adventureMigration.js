@@ -14,14 +14,9 @@ import {
   resolvePayload,
 } from '../combat/attackPayload.js';
 import { ADVENTURE_TRAIT_MAP, ADVENTURE_TRAIT_MAP_BY_ID } from '../data/adventureTraitMap.js';
-import { ADVENTURE_ARENA_SITE_BY_ARENA, ADVENTURE_LIVE_ARENA_IDS } from '../data/adventureArenaSites.js';
+import { ADVENTURE_LIVE_ARENA_IDS } from '../data/adventureArenaSites.js';
 import { ADVENTURE_ROLE_DOCTRINE_BY_ROLE } from '../data/adventureDoctrines.js';
 import { ADVENTURE_COMBAT_LAB_SHORTCUT_BY_ID } from '../data/adventureCombatLab.js';
-import { planLagrangeInstall, LAGRANGE_ARENA_ID } from './lagrangeCrucible.js';
-import { planCinderInstall, CINDER_ARENA_ID } from './cinderSluiceArena.js';
-import { planCryoInstall, CRYO_ARENA_ID } from './cryoDriftArena.js';
-import { planStormInstall, STORM_ARENA_ID } from './stormLatticeArena.js';
-import { planArenaInstall } from './survivalArena.js';
 
 export function fitFingerprint(fittings) {
   const list = Array.isArray(fittings) ? fittings : [];
@@ -86,31 +81,6 @@ export function physicalRewardForKill(input = {}) {
     runScore: 0,
     wave: null,
     causalTags: Object.freeze(tags),
-  });
-}
-
-export function lawForSite(arenaId, at) {
-  const site = ADVENTURE_ARENA_SITE_BY_ARENA[arenaId];
-  const center = at || (site && site.center) || { x: 0, z: 0 };
-  const phase = site && site.standingPhase ? site.standingPhase : 'idle';
-  if (arenaId === LAGRANGE_ARENA_ID) {
-    return planLagrangeInstall({ arenaPhase: phase, at: center, lane: { x: 1, z: 0 } });
-  }
-  if (arenaId === CINDER_ARENA_ID) {
-    return planCinderInstall({ arenaPhase: phase, at: center, lane: { x: 1, z: 0 } });
-  }
-  if (arenaId === CRYO_ARENA_ID) {
-    return planCryoInstall({ arenaPhase: phase, at: center, lane: { x: 1, z: 0 } });
-  }
-  if (arenaId === STORM_ARENA_ID) {
-    return planStormInstall({ arenaPhase: phase, at: center, lane: { x: 1, z: 0 }, simTime: 0 });
-  }
-  return planArenaInstall({
-    arenaId: arenaId || 'helios_core',
-    arenaPhase: phase,
-    wave: 1,
-    seed: 1,
-    anchor: center,
   });
 }
 

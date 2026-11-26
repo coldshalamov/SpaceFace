@@ -72,12 +72,28 @@ test('INF-033: the preview names the secured figures, the risk, and run-only amo
   assert.match(lines.secured, /1250/);
   assert.match(lines.secured, /340/);
   assert.match(lines.secured, /wave 10/);
-  assert.match(lines.secured, /final result/i);
+  assert.match(lines.secured, /hangar/i);
   assert.match(lines.risk, /wave 11/);
   assert.match(lines.risk, /shop spends salvage/i);
   assert.match(lines.risk, /death ends the run/i);
-  assert.match(lines.amounts, /run-only/i);
-  assert.match(lines.amounts, /never campaign credits/i);
+  assert.match(lines.amounts, /earned credits count toward hangar bounty/i);
+  assert.match(lines.amounts, /never become campaign credits/i);
+});
+
+test('INF-033: a Swarm cash-out names the Scrap payout and never the points', () => {
+  const lines = extractionPreviewLines({
+    kind: 'survival', ruleset: 'swarm', score: 3040, credits: 212, wave: 10, telemetry: {},
+  });
+  assert.match(lines.secured, /round 10 and banks 212 Scrap/);
+  assert.doesNotMatch(lines.secured, /points|score|\bcr\b/i);
+  assert.match(lines.risk, /round 11/);
+  // A partially banked purse still reads as the full landing amount plus the safe note.
+  const banked = extractionPreviewLines({
+    kind: 'survival', ruleset: 'swarm', credits: 56, wave: 10,
+    telemetry: { securedBounty: 106 },
+  });
+  assert.match(banked.secured, /banks 162 Scrap/);
+  assert.match(banked.amounts, /106 Scrap is already safe/);
 });
 
 test('INF-033: no survival run means no preview', () => {

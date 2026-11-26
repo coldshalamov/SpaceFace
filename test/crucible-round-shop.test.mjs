@@ -30,15 +30,18 @@ function shop({ cash = 100, unlock = true } = {}) {
   for (const next of ['arena_intro', 'wave_intro', 'active', 'cleanup']) {
     bus.emit('run:transitionRequested', { expectedPhase: phase, nextPhase: next }); phase = next;
   }
-  state.run.wave = 1;
+  // The equipment stop opens at the Bench, every tenth round (04_SWARM.md §2).
+  state.run.wave = 10;
   bus.emit('run:awardRequested', { credits: cash, reason: 'round_loot' });
   bus.emit('run:transitionRequested', { expectedPhase: 'cleanup', nextPhase: 'draft' });
   return { state, bus, events };
 }
 
-test('every Swarm round offers shopping and requires defeating a finite pack', () => {
-  for (const wave of [1, 2, 5, 10, 30, 100]) {
-    assert.equal(isSwarmDraftWave(wave), true);
+test('the equipment stop opens only at the Bench (every tenth round); every round is a finite pack', () => {
+  // Rewritten to the new rule — superseded by design/overhaul/04_SWARM.md section 2: no shop after
+  // the boss rounds; the Bench every tenth round is the one menu.
+  for (const wave of [1, 2, 5, 10, 15, 30, 100]) {
+    assert.equal(isSwarmDraftWave(wave), wave % 10 === 0, `round ${wave}`);
     const plan = planWave({ seed: 4242, wave, arenaId: 'helios_core', ruleset: 'swarm' });
     assert.equal(plan.completionRules.kind, 'cohort');
     assert.ok(plan.swarm.killTarget > 0);

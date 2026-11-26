@@ -121,8 +121,23 @@ test('luminous velocity ribbons honor flash, motion, quality, and engine-trail s
   assert.ok(trail && trail.getMesh().visible,
     'the eligible NPC receives a live ordinary-route ribbon');
   const material = trail.getMaterial();
-  const fullOpacity = material.uniforms.uOpacity.value;
-  const fullRadiance = material.uniforms.uRadiance.value;
+  // Solo trails carry presentation in uniforms; the batched fleet program carries the same
+  // values per-vertex in aTrailShade. Read whichever surface the live lane exposes.
+  const laneShade = () => {
+    const mesh = trail.getMesh();
+    if (mesh.name !== 'SF_RibbonTrailBatch') {
+      return {
+        opacity: material.uniforms.uOpacity.value,
+        radiance: material.uniforms.uRadiance.value,
+      };
+    }
+    const shade = mesh.geometry.getAttribute('aTrailShade').array;
+    const stats = trail.inspect();
+    const base = stats.slot * stats.capacity * 4;
+    return { opacity: shade[base], radiance: shade[base + 1] };
+  };
+  const fullOpacity = laneShade().opacity;
+  const fullRadiance = laneShade().radiance;
   assert.ok(fullOpacity > 0.5 && fullRadiance > 1,
     'default presentation keeps a bright HDR filament and colored sheath');
 
@@ -194,8 +209,8 @@ test('luminous velocity ribbons honor flash, motion, quality, and engine-trail s
     enableReducedFlash();
     player.pos.x += 4;
     system._updateRibbonTrails(1 / 60);
-    assert.ok(material.uniforms.uOpacity.value < fullOpacity, `${label} must lower ribbon coverage`);
-    assert.ok(material.uniforms.uRadiance.value < fullRadiance,
+    assert.ok(laneShade().opacity < fullOpacity, `${label} must lower ribbon coverage`);
+    assert.ok(laneShade().radiance < fullRadiance,
       `${label} must lower HDR energy without changing trail topology`);
   }
   state.settings.accessibility.reducedFlash = false;
@@ -299,16 +314,37 @@ test('dense fleets keep ribbon owners and full NPC history rebuilds bounded', ()
     } else {
       assert.ok(stats.fullRebuildCount <= Math.ceil(frames / 3),
         `reduced NPC ${id} rebuilt full history ${stats.fullRebuildCount} times in ${frames} frames`);
-      const range = trail.getMesh().geometry.attributes.position.updateRanges[0];
-      assert.equal(range && range.count, 6,
-        `cadenced NPC ${id} must publish a two-vertex partial upload on repeated trail ticks`);
-      assert.equal(range.count * Float32Array.BYTES_PER_ELEMENT, 24,
-        `cadenced NPC ${id} head upload must remain 24 bytes`);
+      const geo = trail.getMesh().geometry;
+      if (trail.getMesh().name === 'SF_RibbonTrailBatch') {
+        // Shared-buffer parity: the cadence contract is still a two-vertex head upload, now
+        // coalesced into the fleet buffer's single dirty span. Drive one lane's sync in
+        // isolation and the published span must be exactly its own head pair — 24 bytes at
+        // the lane's slot offset, not the whole pooled buffer.
+        geo.attributes.position.updateRanges.length = 0;
+        assert.equal(trail.syncHead(0.7, 0.2, 1.5, 1.5), true);
+        const range = geo.attributes.position.updateRanges[0];
+        const slotBase = stats.slot * stats.capacity * 2;
+        assert.equal(range && range.start, slotBase * 3,
+          `batched NPC ${id} head sync must publish at its own slot offset`);
+        assert.equal(range && range.count, 6,
+          `batched NPC ${id} must publish a two-vertex partial upload on repeated trail ticks`);
+        assert.equal(range.count * Float32Array.BYTES_PER_ELEMENT, 24,
+          `batched NPC ${id} head upload must remain 24 bytes`);
+      } else {
+        const range = geo.attributes.position.updateRanges[0];
+        assert.equal(range && range.count, 6,
+          `cadenced NPC ${id} must publish a two-vertex partial upload on repeated trail ticks`);
+        assert.equal(range.count * Float32Array.BYTES_PER_ELEMENT, 24,
+          `cadenced NPC ${id} head upload must remain 24 bytes`);
+      }
     }
     headSyncs += stats.headSyncCount;
     const entity = state.entities.get(id);
     const positions = trail.getMesh().geometry.attributes.position.array;
-    const headX = (positions[0] + positions[3]) * 0.5;
+    const headBase = trail.getMesh().name === 'SF_RibbonTrailBatch'
+      ? stats.slot * stats.capacity * 6
+      : 0;
+    const headX = (positions[headBase] + positions[headBase + 3]) * 0.5;
     const expectedNozzleX = entity.pos.x - entity.radius * 0.88;
     assert.ok(Math.abs(headX - expectedNozzleX) < 5e-4,
       `cadenced NPC ${id} head ${headX} detached from live nozzle ${expectedNozzleX}`);

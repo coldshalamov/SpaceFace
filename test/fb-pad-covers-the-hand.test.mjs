@@ -1,11 +1,12 @@
-// FB-003 — the pad covers the whole hand.
+// FB-003 / CONTROLLER-1 — the pad covers the whole hand.
 //
-// Packet done-when: every id in VERB_BINDINGS that has a keyboard code has a pad route;
+// Packet done-when: every id in VERB_BINDINGS that has a keyboard code has a pad route —
+// a dedicated seat, a named alias, a stick axis, or a slice on the held-D-pad-down wheel;
 // the default chord table passes findGamepadBindConflict; pq-164-01 glyphs/remap and the
 // input lifecycle suites stay green. This file proves the route table itself, the chord
 // mechanics (key edges while its modifier is held; the chorded solo is suppressed for the
 // hold; the modifier's own verb keeps working), gesture capture committing a 'mod+key'
-// name, and the merge of the twelve new verbs into state.input.actions.
+// name, and the merge of the flight verbs into state.input.actions.
 //
 // Run: node --test test/fb-pad-covers-the-hand.test.mjs
 import test from 'node:test';
@@ -26,31 +27,38 @@ import { DEFAULTS as INPUT_DEFAULTS, input } from '../src/systems/input.js';
 import { heldPower } from '../src/systems/powerVerbs.js';
 import { GAMEPAD_REBINDABLE } from '../src/ui/screens/settings.js';
 import { createBus } from '../src/core/eventBus.js';
+import { contextWheelSlices } from '../src/ui/contextWheel.js';
 
 // --- Pad route table ---------------------------------------------------------------
 // The keyboard verb set is the union DEFAULT_BINDINGS table minus the mouse-only and
 // retired slots. A verb has a pad route when it owns a default binding, when a named
 // alias owns it (the rope verb rides the Massline button; the winch rides the line-control
-// axis; draw-to-fly rides the auto-target toggle), or when a stick axis IS the verb.
+// axis; draw-to-fly rides the auto-target toggle), when a stick axis IS the verb, or when
+// the context wheel carries its slice — the held-D-pad-down wheel IS the pad route for
+// overflow verbs, exactly like Q on the keyboard.
 const AXIS_VERBS = new Set(['forward', 'reverse', 'yawLeft', 'yawRight', 'strafeLeft', 'strafeRight']);
 
-// The five powers (owner 2026-10-22): PIN, PULL and RIG took the LB D-pad seats of the seed, the
-// well and the cone; the skim collector (LB+Y) folded into RIG and the charge throw (RB+D-pad left)
-// into BOMB, so those two chords are free for later verbs.
+// CONTROLLER-1: LB is the shift bumper — hold it and the face/view buttons take their
+// second seat. The fight powers sit solo under the right thumb (A shove, Y pull, B bomb);
+// the anchor and the plow ride the layer, never a radial. The Gyre Snare keeps its shipped
+// RB+Y lash — a hold-to-beam verb needs a real button's two edges.
 const CHORD_VERBS = {
-  scanPulse: 'l1+dUp',
-  pin: 'l1+dDown',
-  pull: 'l1+dLeft',
-  rig: 'l1+dRight',
-  siteBeam: 'l1+action',
-  bulletTime: 'r1+dUp',
-  cloak: 'r1+dDown',
-  cruise: 'r1+dRight',
-  deployBeacon: 'r1+view',
-  jettisonLot: 'r1+home',
+  pin: 'l1+action',
+  rig: 'l1+alt',
+  countermeasure: 'l1+accept',
+  scanPulse: 'l1+cancel',
+  steeringView: 'l1+view',
+  gyreSnare: 'r1+alt',
 };
 
+// Wheel slices whose action id differs from the keyboard verb they route: the mining
+// beam's keyboard verb is 'mine', its wheel slice is the aimed beam.
+const WHEEL_ROUTE_ALIASES = { mine: 'aimedMine' };
+
 test('every keyboard flight verb with a code has a pad route', () => {
+  const state = createGameState(7);
+  state.mode = 'flight';
+  const wheelActions = new Set(contextWheelSlices(state).map((s) => s.action));
   const missing = [];
   for (const verb in INPUT_DEFAULTS.BINDINGS) {
     const codes = INPUT_DEFAULTS.BINDINGS[verb] || [];
@@ -58,7 +66,9 @@ test('every keyboard flight verb with a code has a pad route', () => {
     const direct = (GAMEPAD_DEFAULT_BINDINGS[verb] || []).length > 0;
     const aliased = GAMEPAD_VERB_ALIASES[verb] != null;
     const axial = AXIS_VERBS.has(verb);
-    if (!direct && !aliased && !axial) missing.push(verb);
+    const wheelSlice = WHEEL_ROUTE_ALIASES[verb] || verb;
+    const wheeled = wheelActions.has(wheelSlice);
+    if (!direct && !aliased && !axial && !wheeled) missing.push(verb);
   }
   assert.deepEqual(missing, [], 'every keyboard-coded verb must reach the pad');
   // The aliased verbs name real pad machinery, not a hand-wave.
@@ -70,7 +80,7 @@ test('every keyboard flight verb with a code has a pad route', () => {
   assert.equal(GAMEPAD_VERB_ALIASES.reelOut, 'lineControl');
 });
 
-test('the chord verbs sit on LB/RB chords and every bound name is well formed', () => {
+test('the chord verbs sit on the LB shift layer and every bound name is well formed', () => {
   for (const [verb, expected] of Object.entries(CHORD_VERBS)) {
     assert.deepEqual(GAMEPAD_DEFAULT_BINDINGS[verb], [expected], `${verb} default seat`);
     const parts = parseGamepadChord(expected);
@@ -89,9 +99,11 @@ test('the chord verbs sit on LB/RB chords and every bound name is well formed', 
   }
   // The stock solo verbs were NOT rebound — the chord layer is additive.
   assert.deepEqual(GAMEPAD_DEFAULT_BINDINGS.fire, ['r2']);
-  assert.deepEqual(GAMEPAD_DEFAULT_BINDINGS.mine, ['l2']);
+  assert.deepEqual(GAMEPAD_DEFAULT_BINDINGS.massline, ['l2']);
   assert.deepEqual(GAMEPAD_DEFAULT_BINDINGS.boost, ['r1']);
-  assert.deepEqual(GAMEPAD_DEFAULT_BINDINGS.brake, ['l1']);
+  assert.deepEqual(GAMEPAD_DEFAULT_BINDINGS.brake, ['l3']);
+  // The modifier's own seat is the station-tab verb — inert in flight, so LB shifts freely.
+  assert.deepEqual(GAMEPAD_DEFAULT_BINDINGS.tabPrev, ['l1']);
 });
 
 test('findGamepadBindConflict passes pairwise on the shipped table', () => {
@@ -107,9 +119,10 @@ test('findGamepadBindConflict passes pairwise on the shipped table', () => {
 
 test('chord labels name every button a player holds', () => {
   const map = GAMEPAD_DEFAULT_BINDINGS;
-  assert.deepEqual(gamepadButtonLabels('scanPulse', map), ['LB + D-Pad Up']);
-  assert.deepEqual(gamepadButtonLabels('scanPulse', map, { dual: true }), ['LB / L1 + D-Pad Up']);
-  assert.deepEqual(gamepadButtonLabels('jettisonLot', map, { dual: true }), ['RB / R1 + Guide']);
+  assert.deepEqual(gamepadButtonLabels('pin', map), ['LB + X']);
+  assert.deepEqual(gamepadButtonLabels('scanPulse', map, { dual: true }), ['LB / L1 + B / ○']);
+  assert.deepEqual(gamepadButtonLabels('rig', map, { dual: true }), ['LB / L1 + Y / △']);
+  assert.deepEqual(gamepadButtonLabels('countermeasure', map), ['LB + A']);
 });
 
 // --- Live chord mechanics ----------------------------------------------------------
@@ -139,7 +152,7 @@ Object.defineProperty(globalThis, 'navigator', {
   value: { getGamepads: () => [pad] }, configurable: true,
 });
 
-const BTN = { l1: 4, r1: 5, dUp: 12, dDown: 13, dLeft: 14, dRight: 15, alt: 3, action: 2 };
+const BTN = { l1: 4, r1: 5, dUp: 12, dDown: 13, dLeft: 14, dRight: 15, alt: 3, action: 2, accept: 0, cancel: 1, view: 8 };
 const press = (i, down) => {
   pad.buttons[i] = { pressed: !!down, value: down ? 1 : 0, touched: !!down };
   pad.timestamp += 1;
@@ -151,92 +164,92 @@ test('a chord fires only its own verb; the key solo is suppressed for the hold',
   gp.tick(1 / 60, state);
   assert.equal(gp.isConnected(), true);
 
-  // Hold LB, tap D-pad up → the scanner ping fires; auto-target stays silent.
+  // Hold LB, tap X → the anchor seed fires; dock stays silent.
   press(BTN.l1, true);
   state.tick += 1; gp.tick(1 / 60, state);
-  press(BTN.dUp, true);
+  press(BTN.action, true);
   state.tick += 1; gp.tick(1 / 60, state);
-  assert.equal(gp.actions.scanPulse.pressed, true, 'LB+D-pad up is the scanner ping edge');
-  assert.equal(gp.actions.scanPulse.held, true);
-  assert.equal(gp.actions.autoTarget.pressed, false, 'the chorded solo key is suppressed');
-  assert.equal(gp.actions.autoTarget.held, false);
-  assert.equal(gp.actions.brake.held, true, 'the modifier keeps its own verb (brake)');
+  assert.equal(gp.actions.pin.pressed, true, 'LB+X is the anchor edge');
+  assert.equal(gp.actions.pin.held, true);
+  assert.equal(gp.actions.dock.pressed, false, 'the chorded X solo is suppressed');
+  assert.equal(gp.actions.dock.held, false);
+  assert.equal(gp.actions.tabPrev.held, true, 'the modifier keeps its own verb (tabPrev)');
 
   // Releasing the key ends the chord; while the modifier stays held a new key press is
-  // another chord, never a leaked auto-target press.
-  press(BTN.dUp, false);
+  // another chord, never a leaked dock press.
+  press(BTN.action, false);
   state.tick += 1; gp.tick(1 / 60, state);
-  press(BTN.dUp, true);
+  press(BTN.action, true);
   state.tick += 1; gp.tick(1 / 60, state);
-  assert.equal(gp.actions.scanPulse.pressed, true, 'key edge under a held modifier re-chords');
-  assert.equal(gp.actions.autoTarget.pressed, false);
+  assert.equal(gp.actions.pin.pressed, true, 'key edge under a held modifier re-chords');
+  assert.equal(gp.actions.dock.pressed, false);
 
   // Modifier up: the key solo re-arms and fires its own verb on the next press.
-  press(BTN.l1, false); press(BTN.dUp, false);
+  press(BTN.l1, false); press(BTN.action, false);
   state.tick += 1; gp.tick(1 / 60, state);
-  press(BTN.dUp, true);
+  press(BTN.action, true);
   state.tick += 1; gp.tick(1 / 60, state);
-  assert.equal(gp.actions.autoTarget.pressed, true, 'solo re-arms once the modifier is up');
-  assert.equal(gp.actions.scanPulse.pressed, false, 'no modifier, no chord');
-  press(BTN.dUp, false);
+  assert.equal(gp.actions.dock.pressed, true, 'solo re-arms once the modifier is up');
+  assert.equal(gp.actions.pin.pressed, false, 'no modifier, no chord');
+  press(BTN.action, false);
 });
 
-test('the RB+Y chord holds the lash: gyreSnare.held rides r1+alt, alt solo suppressed', () => {
+test('the LB+Y chord holds the rig preview: rig.held rides l1+alt, alt solo suppressed', () => {
   const gp = createGamepad({ bus: createBus() });
   const state = makeState();
   gp.tick(1 / 60, state);
-  // RB down, Y down — the chorded verb reports held, the key's solo stays silent.
-  press(BTN.r1, true);
+  // LB down, Y down — the chorded verb reports held, the key's solo stays silent.
+  press(BTN.l1, true);
   state.tick += 1; gp.tick(1 / 60, state);
   press(BTN.alt, true);
   state.tick += 1; gp.tick(1 / 60, state);
-  assert.equal(gp.actions.gyreSnare.held, true, 'RB+Y reports the lash held');
-  assert.equal(gp.actions.gyreSnare.pressed, true);
-  assert.equal(gp.actions.shove.pressed, false, 'the chorded Y solo is suppressed');
-  assert.equal(gp.actions.boost.held, true, 'the modifier keeps its own verb (boost)');
-  // The hold persists across ticks — input.js reads gp.actions.gyreSnare.held
+  assert.equal(gp.actions.rig.held, true, 'LB+Y reports the plow held');
+  assert.equal(gp.actions.rig.pressed, true);
+  assert.equal(gp.actions.pull.pressed, false, 'the chorded Y solo is suppressed');
+  assert.equal(gp.actions.tabPrev.held, true, 'the modifier keeps its own verb (tabPrev)');
+  // The hold persists across ticks — input.js reads gp.actions.rig.held
   // every frame for its held-through-modal preserve.
   state.tick += 1; gp.tick(1 / 60, state);
-  assert.equal(gp.actions.gyreSnare.held, true, 'the chorded hold rides on');
-  // Key up ends the hold without leaking a repulsor press; modifier solo re-arms.
+  assert.equal(gp.actions.rig.held, true, 'the chorded hold rides on');
+  // Key up ends the hold without leaking a pull press; modifier solo re-arms.
   press(BTN.alt, false);
   state.tick += 1; gp.tick(1 / 60, state);
-  assert.equal(gp.actions.gyreSnare.held, false, 'Y up drops the lash');
-  assert.equal(gp.actions.shove.pressed, false, 'no leaked solo on release');
-  press(BTN.r1, false);
+  assert.equal(gp.actions.rig.held, false, 'Y up drops the plow');
+  assert.equal(gp.actions.pull.pressed, false, 'no leaked solo on release');
+  press(BTN.l1, false);
   state.tick += 1; gp.tick(1 / 60, state);
 });
 
-test('the RB combat-state layer chords independently of the LB layer', () => {
+test('the LB shift layer chords independently of the solo verbs', () => {
   const gp = createGamepad({ bus: createBus() });
   const state = makeState();
   gp.tick(1 / 60, state);
-  press(BTN.r1, true);
-  press(BTN.dDown, true);
+  press(BTN.l1, true);
+  press(BTN.accept, true);
   state.tick += 1; gp.tick(1 / 60, state);
-  assert.equal(gp.actions.cloak.pressed, true, 'RB+D-pad down is the cloak edge');
-  assert.equal(gp.actions.shove.pressed, false, 'D-pad down solo (SHOVE) stays suppressed');
-  assert.equal(gp.actions.boost.held, true, 'boost rides the held modifier');
-  press(BTN.r1, false); press(BTN.dDown, false);
+  assert.equal(gp.actions.countermeasure.pressed, true, 'LB+A is the flare edge');
+  assert.equal(gp.actions.shove.pressed, false, 'A solo (SHOVE) stays suppressed');
+  assert.equal(gp.actions.accept.pressed, false, 'and so does the accept half of the share');
+  assert.equal(gp.actions.tabPrev.held, true, 'tabPrev rides the held modifier');
+  press(BTN.l1, false); press(BTN.accept, false);
 });
 
-test('RB+Y holds the Gyre Snare lash — the chord edges both ways', () => {
+test('LB+Y holds the plow grip — the chord edges both ways', () => {
   const gp = createGamepad({ bus: createBus() });
   const state = makeState();
   gp.tick(1 / 60, state);
-  press(BTN.r1, true);
+  press(BTN.l1, true);
   state.tick += 1; gp.tick(1 / 60, state);
   press(BTN.alt, true);
   state.tick += 1; gp.tick(1 / 60, state);
-  assert.equal(gp.actions.gyreSnare.pressed, true, 'RB+Y is the lash edge');
-  assert.equal(gp.actions.gyreSnare.held, true, 'the chord holds the beam open');
-  assert.equal(gp.actions.boost.held, true, 'RB keeps its own verb while chorded');
-  // Releasing Y is the bowl — a falling edge the sim turns into the launch.
+  assert.equal(gp.actions.rig.pressed, true, 'LB+Y is the plow edge');
+  assert.equal(gp.actions.rig.held, true, 'the chord holds the preview open');
+  assert.equal(gp.actions.tabPrev.held, true, 'LB keeps its own verb while chorded');
   press(BTN.alt, false);
   state.tick += 1; gp.tick(1 / 60, state);
-  assert.equal(gp.actions.gyreSnare.released, true, 'releasing Y bowls the clump');
-  assert.equal(gp.actions.gyreSnare.held, false);
-  press(BTN.r1, false);
+  assert.equal(gp.actions.rig.released, true, 'releasing Y ends the grip');
+  assert.equal(gp.actions.rig.held, false);
+  press(BTN.l1, false);
 });
 
 test('remap capture resolves a held modifier + tapped key into a chord name', () => {
@@ -275,6 +288,8 @@ function flightState() {
   state.mode = 'flight';
   state.playerId = 1;
   state.ui = { screenStack: [] };
+  // The grip-preview cases below exercise 'Aim first': press grips, release fires.
+  state.settings.gameplay.powerFire = 'aim';
   state.player = { id: 1, targetId: null, tether: { active: false, targetId: null, strain: 0, load: 0, restLength: 0, phase: 'slack' } };
   state.entities = new Map([[1, {
     id: 1, type: 'ship', alive: true, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, rot: 0,
@@ -284,10 +299,10 @@ function flightState() {
 
 function nullActions() {
   const a = {};
-  for (const verb of Object.keys(CHORD_VERBS)) {
-    a[verb] = { held: false, pressed: false, released: false, value: 0 };
-  }
-  for (const verb of ['boost', 'brake', 'fire', 'mine', 'massline', 'countermeasure', 'autoTarget', 'shove', 'bomb', 'cycleBomb', 'travelBurn']) {
+  for (const verb of new Set([...Object.keys(CHORD_VERBS),
+    'boost', 'brake', 'fire', 'mine', 'cargo', 'massline', 'autoTarget', 'shove', 'bomb', 'cycleBomb',
+    'travelBurn', 'pull', 'rig', 'scanPulse', 'cruise', 'deployBeacon', 'jettisonLot', 'cloak',
+    'bulletTime', 'siteBeam', 'gyreSnare', 'dock', 'countermeasure'])) {
     a[verb] = { held: false, pressed: false, released: false, value: 0 };
   }
   return a;
@@ -314,14 +329,14 @@ test('each new pad verb merges into state.input.actions like a stock pad verb', 
     ['scanPulse', 'edge', 'scanPulse'],
     ['cruise', 'edge', 'cruise'],
     ['deployBeacon', 'edge', 'deployBeacon'],
-    // The five powers drive the owners' internal flags: no charge aboard, so BOMB drops the
-    // selected drift bomb, and in open space RIG is the cone. Row 493: a power grips on the press
-    // (the held-key preview draws) and fires on the release.
+    // 'Aim first' (powerFire:'aim' set in flightState): the aimed powers — PULL, PIN, BOMB —
+    // grip on the press (the held-key preview draws) and fire on the release; SHOVE stays a
+    // pulse and RIG stays a toggle, so both land on the press like any other edge.
     ['pin', 'power', 'deployMassSeed'],
     ['pull', 'power', 'deployWell'],
-    ['rig', 'power', 'toggleClearingCone'],
     ['bomb', 'power', 'dropBomb'],
-    ['shove', 'power', 'deployRepulsor'],
+    ['rig', 'edge', 'toggleClearingCone'],
+    ['shove', 'edge', 'deployRepulsor'],
     ['jettisonLot', 'edge', 'jettisonLot'],
     ['cloak', 'edge', 'cloakToggle'],
     ['bulletTime', 'held', 'bulletTime'],
@@ -364,27 +379,27 @@ test('the Gyre Snare lash rides the RB+Y chord and gyre events pulse the pad', (
   assert.equal(gp.isConnected(), true);
 
   // Hold RB (its solo verb is boost — it stays live under the chord), tap Y: the lash
-  // holds while Y's own verb (SHOVE) stays suppressed for the hold.
+  // holds while Y's own verb (PULL) stays suppressed for the hold.
   press(BTN.r1, true);
   state.tick += 1; gp.tick(1 / 60, state);
   press(BTN.alt, true);
   state.tick += 1; gp.tick(1 / 60, state);
   assert.equal(gp.actions.gyreSnare.held, true, 'RB+Y holds the lash');
-  assert.equal(gp.actions.shove.held, false, 'the chorded Y solo stays silent');
+  assert.equal(gp.actions.pull.held, false, 'the chorded Y solo stays silent');
   assert.equal(gp.actions.boost.held, true, 'the modifier keeps boost');
 
   press(BTN.alt, false); press(BTN.r1, false);
   state.tick += 1; gp.tick(1 / 60, state);
   assert.equal(gp.actions.gyreSnare.held, false, 'releasing Y sets the lash down');
 
-  // Key-first order stays the solo verbs: Y down BEFORE RB is the repulsor, not the
+  // Key-first order stays the solo verbs: Y down BEFORE RB is the well, not the
   // lash — the chord only binds when the modifier (RB) leads.
   press(BTN.alt, true);
   state.tick += 1; gp.tick(1 / 60, state);
   press(BTN.r1, true);
   state.tick += 1; gp.tick(1 / 60, state);
   assert.equal(gp.actions.gyreSnare.held, false, 'Y-first never forms the lash chord');
-  assert.equal(gp.actions.shove.held, true, 'the Y-first press stays the repulsor (SHOVE)');
+  assert.equal(gp.actions.pull.held, true, 'the Y-first press stays the well (PULL)');
   press(BTN.alt, false); press(BTN.r1, false);
   state.tick += 1; gp.tick(1 / 60, state);
 

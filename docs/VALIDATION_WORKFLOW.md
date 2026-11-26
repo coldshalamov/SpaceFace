@@ -2,8 +2,8 @@
 # Feature validation workflow
 
 This is the repository reference for choosing the smallest check that directly answers a claim.
-Root [`AGENTS.md`](../AGENTS.md) §9 and the active program's
-[`README.md`](../design/program/finish/README.md) §2 set current verification scope and cadence.
+Root [`AGENTS.md`](../AGENTS.md) owns the verification router; the live board for current work is
+[`design/overhaul/12_PIPELINE.md`](../design/overhaul/12_PIPELINE.md).
 Use this file for the validation tools and their limits; do not turn its examples into a checklist.
 For lab implementation work, read
 [`../src/testing/lab/AGENTS.md`](../src/testing/lab/AGENTS.md).
@@ -73,12 +73,34 @@ samples live telemetry through the observer-only `src/testing/playerTruth/reader
 `scratch/player-truth/<mode>[-<arena>]/{verdict.md,contact-sheet.jpg,verdict.json,trace.json.gz,frames/}`.
 `--evidence` copies the compact verdict and sheet into `design/archive/program/player-truth/<label>/`.
 
+Compare a new run with a retained verdict through the shared checkout. The ref pins the saved
+capture's source. For a matrix, give the parent directory of the matching route verdicts.
+
+```powershell
+npm run player-truth -- --mode=swarm --baseline=MASTER_COMMIT --baseline-verdict=scratch/player-truth/baseline --out=scratch/player-truth/current
+node scripts/player-truth/compare.mjs scratch/player-truth/baseline scratch/player-truth/current
+```
+
+The comparison preserves each run's recorded grade. Use a matched session for performance claims.
+
 Before the browser starts, the harness checks that served `assets/` match `git ls-tree HEAD`
 (every blob's size, plus a content hash of files ≤64KB, every `render-package.json`, and the
 starter-hull `render.glb` files, and one manifest fetched through the bench server). `design/`
 is not fetched by the route, so it is not graded. A mismatch aborts with `HARNESS ENVIRONMENT: assets stale vs HEAD` and exit 4 when that is the only result.
 The same exit quotes a player-facing load error ("The authored starter ship could not be loaded…",
 a prepare/boot failure of the same family) instead of grading it as a route FAIL.
+
+To check a working-tree art candidate, put the exact changed and new runtime asset paths in a file
+with one repository-relative path per line. Capture the runtime bytes and the asset hashes together.
+
+```powershell
+node scripts/create-source-baseline.mjs --working-tree --all-runtime --candidate-assets-file=.devshots/candidate-assets.txt --out=.devshots/source-baselines/current-art.json.gz
+npm run gate -- --swarm-candidate-source=.devshots/source-baselines/current-art.json.gz
+```
+
+The Swarm step checks the candidate's asset bytes over HTTP and checks the rest against HEAD. The
+game server checks each candidate asset as it serves it. The manifest stays usable while those
+exact asset bytes are present in the checkout.
 
 `readability` is PASS or FAIL once any of enemy, asteroid, or projectile has at least 5 on-screen
 samples. It fails when more than half of those samples have ΔL < 8 against the local backdrop, or
@@ -120,8 +142,7 @@ started but was not watched.
 
 - **GPU (preferred):** add `--headed` on a machine with a real GPU. The verdict records the WebGL
   renderer string. A `SPACEFACE_QUIET_HOST=1` receipt is required only for claims made by the
-  separate Quiet Host Program. The Finish Program measures on the owner's machine with a matched
-  within-session A/B and reports host contention; do not turn a loaded diagnostic into a quiet-host
+  separate Quiet Host Program. Do not turn a loaded diagnostic into a quiet-host
   result or discard a valid local comparison. Verdicts record observer render/readback cadence.
 - **Browser:** Playwright's bundled Chromium first (`npx playwright install chromium`), then
   `CHROME_PATH`, `/opt/google/chrome/chrome`, or `google-chrome`/`chromium` on PATH.
@@ -129,8 +150,7 @@ started but was not watched.
   fraction of real speed (sim time is the clock, so bounds still hold) and takes a few minutes of wall
   time per bounded run. Absolute frame times are labeled `software-renderer evidence` and are not an
   absolute hardware performance result. Report the renderer and relevant host conditions; an
-  unsuitable comparison remains UNKNOWN for the performance claim. The Finish Program uses its
-  matched within-session comparison on the owner's machine for its performance A/B.
+  unsuitable comparison remains UNKNOWN for the performance claim.
   Long-task counts are always kept. The verdict says SOFTWARE GL.
 - Bounds are flags: `--rounds` (default 3), `--duration=<sim s>` (Swarm 180, Adventure 300),
   `--wall=<minutes>`, `--idle=<sim s>`, `--seed` (house seed 4242).
@@ -173,8 +193,8 @@ Reuse an already observed result when the relevant owner, fixture, harness, runt
 inputs are unchanged. Name its scope and say when it predates the current edit. Do not relabel
 focused or detached evidence as a fresh rendered/public-route pass. New changes to a covered owner,
 a conflicting observation, or a candidate-bound release/performance claim need fresh affected
-evidence. For Finish Program performance claims, use the matched local comparison required by its
-README; a diagnostic timing without a comparison can identify a cause but cannot establish a win.
+evidence. For performance claims, use a matched local comparison; a diagnostic timing without a
+comparison can identify a cause but cannot establish a win.
 
 Do not run the repository-wide `npm run check` while a focused owner failure is still red. Do not
 use Browser/Electron as an implementation debugger when a deterministic owner-level reproduction is
@@ -240,7 +260,7 @@ The matrix source is unchanged: `scripts/check-ci-report.mjs` still expands `pac
 
 | Job | Group | Holds | Installs a browser |
 |---|---|---|---|
-| `static` (sharded) | `static` | pure Node: data refs, schema, source scans, UI/label contracts, asset manifests. Also the thruster-history, visual-continuity, and program-control-plane quick steps | no |
+| `static` (sharded) | `static` | pure Node: data refs, schema, source scans, UI/label contracts, asset manifests. Also the thruster-history and visual-continuity quick steps | no |
 | `sim` | `sim` | determinism, the 47-A golden envelope, save/reload continuation, massline | no |
 | `feel` | `feel` | the FEEL_CONTRACT handling surface, plus `check:feel:scenarios` and `check:fun-bench` as explicit steps (they are not members of the `check` chain) | no |
 | `browser` | `browser` | every command that launches Playwright/Chromium, or raw Chrome over CDP | **yes — only here** |
@@ -445,10 +465,10 @@ profiles, limitations, and reproduction commands.
 
 ## Expensive acceptance and the validation broker
 
-Use the broker only when the active task or candidate-bound acceptance route calls for it. Ordinary
+Use the broker only when the task or candidate-bound acceptance route calls for it. Ordinary
 owner checks and route verifications do not need a broker. Broker-managed routes are declared under
 [`../scripts/validation-manifests/`](../scripts/validation-manifests/). Use a package command when
-one exists. Otherwise invoke the named manifest from the active packet:
+one exists. Otherwise invoke the named manifest directly:
 
 ```powershell
 node scripts/validation-broker-cli.mjs --manifest <manifest-id>
@@ -510,6 +530,6 @@ Do not create a second simulator, alternate system list, private acceptance laun
 class in feature code. Extend the owning schema/runtime/broker surface and document the limitation
 until its proof path is real.
 
-For a resumed task, refresh the current owner, diff, and required direct check from root `AGENTS.md`
-and the active packet. Preserve prior evidence when relevant code and route inputs are unchanged;
+For a resumed task, refresh the current owner, diff, and required direct check from the user's
+request and root `AGENTS.md`. Preserve prior evidence when relevant code and route inputs are unchanged;
 do not repeat unrelated discovery.

@@ -15,6 +15,14 @@ export const RESOURCE_BODY_RETENTION_CLASS = Object.freeze({
 });
 
 const RECOVERY_EPSILON = 1e-6;
+const DRILL_TILES = ['drillVeinRemainders', 'drillVented', 'drillScars', 'drillFaults', 'drillRubble', 'drillFill'];
+const DRILL_PROGRESS_FIELDS = ['boreSeed', 'boreFamily', 'drillAvatarCol', 'drillAvatarRow', 'lastDrillT',
+  'drillYieldMax', 'drillDepletion', 'drillCleared', ...DRILL_TILES];
+
+export function asteroidHasDrillProgress(data) {
+  return (data.drillCleared?.length || 0) > 1 || data.drillDepletion > 0
+    || DRILL_TILES.some(key => data[key]?.length > 0);
+}
 
 export function createEmptyResourceBodyBag() {
   return {
@@ -105,6 +113,69 @@ export function isReclaimableResourceBody(record, opts = {}) {
   if (record.retentionClass === RESOURCE_BODY_RETENTION_CLASS.PROTECTED) return false;
   if (opts.fieldMayRegenerate === false) return false;
   return true;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Rock regrowth (WORLD slice 3, owner 2026-11-20). Pure reads of a ledger row + play time; the
+// table lives in src/data/rockRegrowth.js. Never ticked per rock, never re-rolled on unload.
+// ---------------------------------------------------------------------------------------------
+
+/** A rock the player built in, is towing, moved, or a job owns: it never regrows or restocks. */
+export function resourceBodyPinned(record) {
+  if (!record) return false;
+  if (record.tethered === true || record.displaced === true || record.missionOwned === true) return true;
+  const extra = record.extra || {};
+  return !!(extra.siteId || extra.pinned === true || extra.claimId);
+}
+
+/** When the spent rock's slot is due to restock to its stock body (null when not spent). */
+export function resourceBodyRestockAt(record, cfg) {
+  if (!record || (record.outcome !== 'depleted' && record.outcome !== 'destroyed')) return null;
+  const spentAt = Number.isFinite(record.depletedAtT) ? record.depletedAtT
+    : (Number.isFinite(record.lastMinedT) ? record.lastMinedT : 0);
+  return spentAt + cfg.restockS;
+}
+
+/**
+ * What the regrowth rule says about a ledger row at play time `now`:
+ *   'pinned'  — built in / towed / mission rock: exactly as left, forever
+ *   'restock' — spent long enough (or the belt floor asked): the slot returns to its stock rock
+ *   'core'    — spent, not yet due: a dark worked-out core sits at the slot
+ *   'worn'    — partly worked: ore heals after the quiet period, linearly over the recover time
+ *   'stock'   — fully recovered: the row can retire and the stock rock stands
+ */
+export function regrowthVerdict(record, now, cfg, { early = false } = {}) {
+  if (!record) return 'stock';
+  if (resourceBodyPinned(record)) return 'pinned';
+  if (record.outcome === 'depleted' || record.outcome === 'destroyed') {
+    return early || now >= resourceBodyRestockAt(record, cfg) ? 'restock' : 'core';
+  }
+  return isFullyRecoveredResourceBody(record) ? 'stock' : 'worn';
+}
+
+/** Authoritatively return a slot to its stock rock (the regrowth rule's own authority). */
+export function restockResourceBody(bag, recordId, opts = {}) {
+  const record = bag && bag.byId && bag.byId[recordId];
+  if (!record) return { restocked: false, reason: 'missing' };
+  if (resourceBodyPinned(record)) return { restocked: false, reason: 'pinned', record };
+  const receipt = {
+    receiptId: `rb-restock:${record.recordId}:${Math.max(0, Math.floor(record.revision || 1))}`,
+    event: 'resource_body_restocked',
+    reason: opts.reason || 'regrowth',
+    recordId: record.recordId,
+    sectorId: record.sectorId,
+    fieldId: record.fieldId,
+    slotId: record.slotId,
+    simTime: Number.isFinite(opts.simTime) ? opts.simTime : 0,
+  };
+  bag.retirementReceipts = appendBounded(
+    Array.isArray(bag.retirementReceipts) ? bag.retirementReceipts : [],
+    receipt,
+    MAX_RESOURCE_RETIREMENT_RECEIPTS,
+  );
+  delete bag.byId[record.recordId];
+  sortedBodyIdKeysCache.delete(bag.byId);
+  return { restocked: true, record, receipt };
 }
 
 export function stableResourceBodyId(seed, sectorId, fieldId, slotId) {
@@ -303,6 +374,21 @@ export function captureResourceBodyRecord(entity, opts = {}) {
     || opts.existingRecord
     || (opts.resourceBag && opts.resourceBag.byId && existing ? opts.resourceBag.byId[existing] : null)
     || null;
+  let extra = previous?.extra;
+  // Rock regrowth (WORLD slice 3): remember the stock body the first time the rock is touched (a
+  // spent core is drawn shrunk from it and restocks back to it), and pin a rock the player built in.
+  if (!extra?.stock && Number.isFinite(entity.radius) && entity.radius > 0 && !d.spentCore) {
+    extra = { ...extra, stock: { radius: entity.radius } };
+  }
+  if (d.siteId && extra?.siteId !== d.siteId) extra = { ...extra, siteId: String(d.siteId) };
+  const hasBore = !d.siteId && asteroidHasDrillProgress(d);
+  if (hasBore || (!d.siteId && extra?.drill)) {
+    const drill = {};
+    for (const key of DRILL_PROGRESS_FIELDS) {
+      if (d[key] != null) drill[key] = d[key];
+    }
+    extra = { ...extra, drill };
+  }
   const oreHp = entity.oreHp != null ? entity.oreHp
     : (d.oreHp != null ? d.oreHp : (d.oreHP != null ? d.oreHP : previous && previous.oreHp));
   const oreHpMax = entity.oreHpMax != null ? entity.oreHpMax
@@ -357,7 +443,7 @@ export function captureResourceBodyRecord(entity, opts = {}) {
   };
   // Capture is an observation seam, not proof of mining. Only explicit mining/depletion or
   // changed resource fields marks the durable body as player-modified.
-  const playerModified = opts.playerModified === true
+  const playerModified = hasBore || opts.playerModified === true
     || previous && previous.playerModified === true
     || d.playerModified === true
     || inferredMiningModification(modifiedEvidence);
@@ -407,6 +493,7 @@ export function captureResourceBodyRecord(entity, opts = {}) {
     retentionClass,
     outcome,
     revision: opts.revision,
+    extra,
   });
 }
 
@@ -753,6 +840,12 @@ export function findResourceBodyForEntity(bag, entity) {
 export function applyResourceBodyToEntity(entity, record) {
   if (!entity || !record) return entity;
   const d = entity.data || (entity.data = {});
+  const drill = record.extra?.drill;
+  if (drill && !d.siteId) {
+    for (const key of DRILL_PROGRESS_FIELDS) {
+      if (drill[key] != null) d[key] = clonePlain(drill[key]);
+    }
+  }
   if (Number.isFinite(record.oreHp)) {
     d.oreHP = record.oreHp;
     entity.hull = record.oreHp;

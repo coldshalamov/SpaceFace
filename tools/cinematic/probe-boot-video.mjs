@@ -1,6 +1,8 @@
 // Probe: load the real game page, verify the boot video element plays while
 // the overlay is up, and screenshot the result.
-import { chromium } from 'playwright-core';
+import { chromium as rawChromium } from 'playwright-core';
+import { quietChromium } from '../../scripts/lib/quietLaunch.mjs';
+const chromium = quietChromium(rawChromium);
 import { writeFileSync } from 'node:fs';
 
 const browser = await chromium.connectOverCDP('http://localhost:29229');

@@ -141,13 +141,13 @@ export function heistCaseFileLine(caseFile) {
 export const PQ019C_HEIST_TUNING = Object.freeze({
   /**
    * Seconds from accept to launch. SELECTED 30: the measured Tethys-station-to-launcher-head
-   * distance is 2433 WU, which is 17.4 s at the live `MISSION_TUNING.cruiseSpeedRef` of 140 WU/s,
+   * distance is 2433 u, which is 17.4 s at the live `MISSION_TUNING.cruiseSpeedRef` of 140 u/s,
    * and 30 is the smallest candidate clearing that with the objective's 25% margin.
    */
   launchWindowS: 30,
   /**
    * Ticks after launch before the run is called off. SELECTED 6000: the full authored route
-   * (launcher->catcher 2040 WU plus catcher->fence 1921 WU) is 40 s at the selected 100 WU/s launch
+   * (launcher->catcher 2040 u plus catcher->fence 1921 u) is 40 s at the selected 100 u/s launch
    * speed, so the objective's 2x margin needs at least 4754 ticks and 6000 is the smallest candidate
    * above it. The window can therefore never expire a run the player was still flying.
    */
@@ -165,7 +165,7 @@ export const PQ019C_HEIST_TUNING = Object.freeze({
    * never reaching 600") selects 550. This packet does not apply it, and the mirror stays at
    * PQ-019B's live 450, for a reason about OWNERSHIP rather than balance: `lawSecurity` owns
    * `LAW_INCIDENT_WITNESS_RADIUS`. PQ-019B chose 450 deliberately after finding the witness gate was
-   * VACUOUS above the 600 WU lawful-station protection floor, and its annulus test pins the band
+   * VACUOUS above the 600 u lawful-station protection floor, and its annulus test pins the band
    * where a theft is inside the law's ring but genuinely unseen. Raising an owner's constant from a
    * consumer packet is a shared-change request, not a tuning edit - so 550 is RECORDED as the
    * matrix's answer and 450 is what ships. The receipt carries the delta as an open row.
@@ -182,13 +182,13 @@ export const PQ019C_HEIST_TUNING = Object.freeze({
   responderLeaseCap: 2,
   /**
    * WU beyond which a leased responder gives up and the lease is released. CONFIRMED 2600: the
-   * smallest candidate at least 600 WU above the selected escape radius, so the leash can never
+   * smallest candidate at least 600 u above the selected escape radius, so the leash can never
    * release before escape can latch - which would make pursuit decorative.
    */
   responderLeashWu: 2600,
   /**
    * WU from the nearest live responder at which the run counts as escaped. CONFIRMED 1800: the
-   * largest candidate under 95% of the 2040 WU launcher-to-catcher leg, so breaking contact happens
+   * largest candidate under 95% of the 2040 u launcher-to-catcher leg, so breaking contact happens
    * inside the route rather than only far outside it.
    */
   escapeRadiusWu: 1800,
@@ -335,9 +335,9 @@ export const BREAKAWAY_HEIST_TUNING = Object.freeze({
   /** Same measured station-to-launcher leg as the capsule run, so the same selected window. */
   launchWindowS: PQ019C_HEIST_TUNING.launchWindowS,
   /**
-   * CANDIDATE 4 minutes. The capsule's 100 s window was selected for a 100 WU/s capsule on a
-   * straight 2 km line. The SP-07 leaves at 60 WU/s off-line and keeps drifting; the player must
-   * catch it, bring roughly 2 km of heavy load back, enter the fork under 100 WU/s and let it
+   * CANDIDATE 4 minutes. The capsule's 100 s window was selected for a 100 u/s capsule on a
+   * straight 2 km line. The SP-07 leaves at 60 u/s off-line and keeps drifting; the player must
+   * catch it, bring roughly 2 km of heavy load back, enter the fork under 100 u/s and let it
    * settle. A shorter window would be a soft-lock wearing a timer.
    */
   runWindowTicks: 14400,
@@ -443,7 +443,7 @@ export const BREAKAWAY_TERMINAL_SETTLEMENT = Object.freeze({
 export const BREAKAWAY_CUE_TEXT = Object.freeze({
   accepted: 'Third Shift accepted — the SP-07 assembly releases from the Tethys launcher shortly',
   launched: 'SP-07 assembly broke away off the catcher line — recover it before it drifts out of reach',
-  possessed: 'Assembly on your line — bring it through the Concord catcher fork under 100 WU/s',
+  possessed: 'Assembly on your line — bring it through the Concord catcher fork under 100 u/s',
   lawful_arrival: 'Assembly settled in the Concord catcher fork — recovery logged and paid',
   fenced: 'The Quiet took the SP-07 at their fence — cash paid on the spot, Concord\'s logged recovery left open',
   destroyed: 'SP-07 assembly destroyed — there is nothing left to deliver',
@@ -454,7 +454,7 @@ export const BREAKAWAY_CUE_TEXT = Object.freeze({
   receiver_refused: 'Catcher fork could not take the assembly — no delivery, so nothing is paid',
   capture_acquired: 'Fork rails have the assembly — let it come to rest',
   capture_lost: 'Assembly slipped out of the fork — bring it around again',
-  capture_refused_too_fast: 'Too fast for the catcher fork — come in under 100 WU/s',
+  capture_refused_too_fast: 'Too fast for the catcher fork — come in under 100 u/s',
   capture_refused_too_sideways: 'Too much sideways drift for the fork rails — straighten the approach',
   capture_refused_outside_mouth: 'Off-centre for the fork — line the assembly up with the open end',
 });
@@ -500,7 +500,7 @@ export function buildBreakawayOffer({ epoch = 0, observed = null } = {}) {
     summary: 'Recover a drifting industrial flywheel assembly and deliver it into the Concord catcher fork.',
     description: 'The SP-07 flywheel assembly left the Tethys Surface Launcher off its line and is tumbling '
       + 'toward open space. Latch it, tow it or shove it home, and bring it through the open end of the '
-      + 'Concord Lawful Catcher fork under 100 WU/s. The fork brakes the load itself; custody passes only '
+      + 'Concord Lawful Catcher fork under 100 u/s. The fork brakes the load itself; custody passes only '
       + 'once it comes to rest. Deliver it in good condition and Concord adds a bonus. The Quiet want the '
       + 'same assembly at their own receiver and pay cash off the books, but the lawful contract logs the '
       + 'recovery — their money leaves that log open. '
@@ -528,8 +528,8 @@ export const COUNTERWEIGHT_WATCH_FACTION_ID = 'faction_mts';
 
 export const COUNTERWEIGHT_WATCH_TUNING = Object.freeze({
   /**
-   * CANDIDATE 5 minutes. The furthest stage point sits ~600 WU from the cradle; placing ballast at
-   * the authored pace (~140 WU/s reference) plus two 500 WU carries at the tug's 34 WU/s cruise
+   * CANDIDATE 5 minutes. The furthest stage point sits ~600 u from the cradle; placing ballast at
+   * the authored pace (~140 u/s reference) plus two 500 u carries at the tug's 34 u/s cruise
    * needs under half of it — the rest is the slack a genuine interruption costs.
    */
   windowTicks: 18000,

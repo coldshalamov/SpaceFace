@@ -106,6 +106,7 @@ function mount() {
   return {
     hud, bus, state,
     dom: () => hud._dom,
+    swarmDom: () => hud._swarmLayer && hud._swarmLayer.dom,
     step(n = 1) {
       for (let i = 0; i < n; i++) {
         state.simTime += 1 / 60;
@@ -130,14 +131,32 @@ test('a steady swarm tick performs zero repeated DOM mutations', () => {
   }
 });
 
-test('threat census transitions still paint figure and meter at once', () => {
+test('the flight HUD names the selected mode and arena as shown at launch', () => {
+  // Swarm arcade HUD, owner 2026-11-23: Swarm displays its Round Plate (round kicker + authored
+  // name); non-Swarm Gauntlet/Practice keeps the mode + arena label on .sf-crun.
   const fx = mount();
   try {
-    // No wave clock yet: a swarm run scores kills as a bare figure, threat meter parked hidden.
+    assert.equal(fx.swarmDom().roundKicker.textContent, 'ROUND 3');
+    assert.equal(fx.swarmDom().roundName.textContent, 'Hot Potato');
+    Object.assign(fx.state.run, { ruleset: 'scored', arenaId: 'tethys_hub' });
+    fx.step();
+    assert.equal(fx.dom().label.textContent, 'GAUNTLET · TETHYS EXCHANGE');
+    fx.state.run.practice = true;
+    fx.step();
+    assert.equal(fx.dom().label.textContent, 'PRACTICE · TETHYS EXCHANGE');
+  } finally {
+    fx.done();
+  }
+});
+
+test('threat census transitions still paint figure and meter at once', () => {
+  // Swarm arcade HUD, owner 2026-11-23: Swarm census updates the Round Plate with zero idle writes.
+  const fx = mount();
+  try {
     fx.state.run.resolvedThreat = 11;
     fx.step(1);
-    assert.equal(fx.dom().killFig.textContent, '11', 'kill figure follows the census');
-    assert.equal(fx.dom().threat.hidden, true, 'threat meter stays parked without a wave clock');
+    assert.equal(fx.swarmDom().roundNum.textContent, '11', 'kill figure follows the census');
+    assert.equal(fx.swarmDom().roundUnit.textContent, 'kills');
     resetWrites();
     fx.step(60);
     assert.equal(totalWrites(), 0, 'the settled census costs nothing further');
@@ -147,60 +166,65 @@ test('threat census transitions still paint figure and meter at once', () => {
 });
 
 test('chain appear, countdown tick, and death line all paint through the guards', () => {
+  // Swarm arcade HUD, owner 2026-11-23: Chain multiplier + countdown + death line paint on swarmHudLayer.
   const fx = mount();
   try {
     fx.bus.emit('swarm:chain', { chain: 7, best: 7, cause: 'gun', step: 1, at: fx.state.simTime });
     fx.step(1);
-    assert.equal(fx.dom().chainRow.hidden, false, 'a live chain shows its row');
-    assert.equal(fx.dom().chainFig.textContent, '7', 'chain figure paints');
+    assert.equal(fx.swarmDom().chain.hidden, false, 'a live chain shows under the round plate');
+    assert.equal(fx.swarmDom().chainMult.textContent, '×1.5', 'chain multiplier paints');
     fx.bus.emit('swarm:chainBroken', {});
     fx.step(1);
-    assert.equal(fx.dom().chainRow.hidden, true, 'a broken chain hides its row again');
+    assert.equal(fx.swarmDom().chain.hidden, true, 'a broken chain hides again');
 
     // The HUD never ticks the clock itself: it renders the published payload on arrival.
     fx.bus.emit('run:waveProgress', { wave: 3, remainingTicks: 3600, durationTicks: 3600 });
     fx.step(1);
-    assert.equal(fx.dom().threatFig.textContent, '0:60', 'countdown clock paints on arrival');
-    assert.equal(fx.dom().threat.hidden, false, 'the meter unparks with the clock');
+    assert.equal(fx.swarmDom().roundNum.textContent, '0:60', 'countdown clock paints on arrival');
     resetWrites();
     fx.step(59);
-    assert.equal(fx.dom().threatFig.textContent, '0:60', 'no payload means no repaint');
+    assert.equal(fx.swarmDom().roundNum.textContent, '0:60', 'no payload means no repaint');
     assert.equal(totalWrites(), 0, 'holding the second costs nothing');
     fx.bus.emit('run:waveProgress', { wave: 3, remainingTicks: 3540, durationTicks: 3600 });
     fx.step(1);
-    assert.equal(fx.dom().threatFig.textContent, '0:59', 'the next payload ticks the clock');
+    assert.equal(fx.swarmDom().roundNum.textContent, '0:59', 'the next payload ticks the clock');
 
     fx.bus.emit('player:death', { killerId: 9, attacker: 'Raider', weapon: 'pulse-bolt' });
     fx.step(1);
-    assert.equal(fx.dom().death.hidden, false, 'death keeps its line on the glass');
-    assert.match(fx.dom().death.textContent, /Raider · pulse-bolt/, 'death names the cause');
+    assert.equal(fx.swarmDom().death.hidden, false, 'death keeps its line on the glass');
+    assert.match(fx.swarmDom().death.textContent, /Raider · pulse-bolt/, 'death names the cause');
   } finally {
     fx.done();
   }
 });
 
 test('a remounted readout repaints instead of trusting the old mount cache', () => {
+  // Swarm arcade HUD, owner 2026-11-23: remounting swarmHudLayer repaints fresh nodes.
   const fx = mount();
   try {
     fx.step(5);
-    fx.dom().root.isConnected = false;
+    fx.swarmDom().root.isConnected = false;
     fx.step(1);
-    assert.equal(fx.dom().killFig.textContent, '10', 'fresh nodes repaint the census');
-    assert.equal(fx.dom().chainRow.hidden, true, 'fresh nodes repaint visibility');
-    assert.equal(fx.dom().threat.hidden, true, 'fresh nodes repaint the parked meter');
+    assert.equal(fx.swarmDom().roundNum.textContent, '10', 'fresh nodes repaint the census');
+    assert.equal(fx.swarmDom().chain.hidden, true, 'fresh nodes repaint visibility');
+    assert.equal(fx.swarmDom().scoreNum.textContent, '1,000', 'fresh nodes repaint score');
   } finally {
     fx.done();
   }
 });
 
-// MOB-07: the phone's one-line round readout carries round, hostiles left (when a census shows) and score.
-test('the phone round line reads round and score, and follows the score', () => {
+test('the Swarm purse readout tracks Scrap and Score cleanly', () => {
+  // Swarm arcade HUD, owner 2026-11-23: replaced the legacy phone brief bar with the compressed
+  // Swarm top bar (LV / Round Plate / Scrap + Score).
   const fx = mount();
   try {
-    assert.equal(fx.dom().brief.textContent, 'R03 · 1,000', 'round and score, no census while the wave has no clock');
+    assert.equal(fx.swarmDom().scoreNum.textContent, '1,000');
+    assert.equal(fx.swarmDom().scrapNum.textContent, '50');
     fx.state.run.score = 1500;
+    fx.state.run.credits = 175;
     fx.step(1);
-    assert.match(fx.dom().brief.textContent, /^R03 · 1[,.]?500$/);
+    assert.equal(fx.swarmDom().scoreNum.textContent, '1,500');
+    assert.equal(fx.swarmDom().scrapNum.textContent, '175');
   } finally {
     fx.done();
   }

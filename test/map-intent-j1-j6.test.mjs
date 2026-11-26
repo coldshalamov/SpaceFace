@@ -170,9 +170,9 @@ async function main() {
     assert.equal(galaxyMapScreen._commitCourse(galaxyMapScreen._selectedTarget), true,
       'the selected station uses the ordinary course commit path');
     const course = emitted.filter((event) => event.type === 'ui:setCourse').at(-1)?.payload;
-    assert.equal(course.stationId, 'station_helios');
-    assert.deepEqual(course.pos, expectedGlobal,
-      'the emitted course carries the station’s anchored global world position');
+    assert.deepEqual(course, {
+      type: 'sector', sectorId: 'sector_helios_prime', path: null, label: stationHit.name,
+    }, 'a station in another sector plots that sector; Engage owns the travel');
 
     // A name in an uncharted sector is not disclosed by the cross-sector catalog fallback.
     state.content = {

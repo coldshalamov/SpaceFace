@@ -1,68 +1,106 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { createGameState } from '../src/core/gameState.js';
 import { galaxyMapScreen } from '../src/ui/galaxyMap.js';
-import { drawSensorLattice } from '../src/ui/orrery/chartInstruments.js';
+import { ATLAS_ART_URL } from '../src/ui/map/atlasRelief.js';
 import { rangeScreen } from '../src/ui/screens/range.js';
 
-function latticeContext() {
-  const commands = [];
-  return { commands, save() {}, restore() {}, clearRect() { commands.length = 0; },
-    setTransform(...args) { this.transform = args; },
-    set fillStyle(value) { this.color = value; },
-    fillRect(...args) { commands.push([this.color, ...args]); } };
-}
-
-test('chart retains one exact-resolution lattice until its visual inputs change and releases it', () => {
-  const context = latticeContext();
-  const retained = { width: 0, height: 0, getContext: () => context };
-  let allocations = 0;
+test('chart relief keeps one surface, repaints changed inputs, and releases resources on remount', t => {
+  const images = [];
+  const originalImage = Object.getOwnPropertyDescriptor(globalThis, 'Image');
+  Object.defineProperty(globalThis, 'Image', { configurable: true, value: class {
+    constructor() { images.push(this); }
+  } });
+  t.after(() => {
+    if (originalImage) Object.defineProperty(globalThis, 'Image', originalImage);
+    else delete globalThis.Image;
+  });
+  const uniforms = new Map(), viewports = [], draws = [], freed = [], handlers = new Map();
+  const gl = {
+    TRIANGLES: 4, createShader: () => ({}), shaderSource() {}, compileShader() {},
+    getShaderParameter: () => true, deleteShader() {}, createProgram: () => ({ kind: 'program' }),
+    attachShader() {}, linkProgram() {}, getProgramParameter: () => true, useProgram() {},
+    createTexture: () => ({ kind: 'texture' }), activeTexture() {}, bindTexture() {},
+    texImage2D() {}, texParameteri() {}, generateMipmap() {},
+    deleteTexture: texture => freed.push(texture.kind), deleteProgram: program => freed.push(program.kind),
+    getUniformLocation: (_program, name) => name,
+    uniform2f: (name, ...args) => uniforms.set(name, args),
+    uniform1i: (name, value) => uniforms.set(name, value),
+    uniform1f: (name, value) => uniforms.set(name, value),
+    uniform4fv: (name, data) => uniforms.set(name, Array.from(data.slice(0, 4))),
+    viewport: (...args) => viewports.push(args), drawArrays: (...args) => draws.push(args),
+  };
+  let contextReads = 0, wakes = 0;
+  const canvas = { width: 0, height: 0, hidden: true,
+    getContext(type) { assert.equal(type, 'webgl2'); contextReads++; return gl; },
+    addEventListener: (type, listener) => handlers.set(type, listener),
+    removeEventListener: (type, listener) => { assert.equal(handlers.get(type), listener); handlers.delete(type); },
+  };
   const screen = Object.create(galaxyMapScreen);
-  screen._canvas = { width: 800, height: 400, ownerDocument: {
-    createElement: () => { allocations += 1; return retained; },
-  } };
-  screen._dpr = 2;
-  screen._pointer = { x: 120, y: 80 };
-  const copies = [];
-  const output = { drawImage(...args) { copies.push(args); } };
-  screen._drawSensorLattice(output, 400, 200, 0.055);
-  const direct = latticeContext();
-  drawSensorLattice(direct, 400, 200, { pointer: screen._pointer, a: 0.055 });
-  assert.deepEqual(context.commands, direct.commands, 'every point, alpha and pointer lens is preserved');
-  assert.deepEqual(context.transform, [2, 0, 0, 2, 0, 0]);
-  assert.equal(retained.width, 800);
-  assert.equal(retained.height, 400);
-  const firstCommands = context.commands.slice();
-  context.fillRect = () => { throw new Error('unchanged lattice must not redraw'); };
-  screen._drawSensorLattice(output, 400, 200, 0.055);
-  assert.deepEqual(copies[1], [retained, 0, 0, 400, 200]);
-  context.fillRect = (...args) => context.commands.push([context.color, ...args]);
-  screen._pointer.x += 1;
-  screen._drawSensorLattice(output, 400, 200, 0.055);
-  assert.notDeepEqual(context.commands, firstCommands, 'pointer lens changes immediately');
-  screen._drawSensorLattice(output, 400, 200, 0.11);
-  assert.equal(allocations, 1, 'scale alpha changes reuse the single owned surface');
-  screen._dpr = 1;
-  screen._canvas.width = 400;
-  screen._canvas.height = 200;
-  screen._drawSensorLattice(output, 400, 200, 0.11);
-  assert.deepEqual(context.transform, [1, 0, 0, 1, 0, 0]);
-  screen._releaseSensorLattice();
-  assert.equal(retained.width, 0);
-  assert.equal(retained.height, 0);
-  assert.equal(screen._sensorLatticeCache, null);
+  screen._atlasCanvas = canvas;
+  screen._wake = () => { wakes++; };
+  const paint = (originX = 120, featureKind = 2) => screen._paintAtlas(400, 200, originX, 80, 320,
+    [[180, 100, 22, featureKind]]);
+  assert.equal(paint(), true);
+  assert.equal(canvas.hidden, false);
+  assert.deepEqual(viewports.at(-1), [0, 0, 400, 200]);
+  assert.deepEqual(uniforms.get('uOrigin'), [120, 80]);
+  assert.deepEqual(uniforms.get('uFeature[0]'), [180, 100, 22, 2]);
+  assert.equal(images[0].src, ATLAS_ART_URL);
+  assert.match(images[1].src, /\/atlas-engravings\.webp$/);
+  assert.deepEqual(draws, [[gl.TRIANGLES, 0, 3]]);
+  assert.equal(paint(), true);
+  assert.equal(draws.length, 1, 'a settled view with equivalent feature values does not redraw');
+  paint(121);
+  assert.deepEqual(uniforms.get('uOrigin'), [121, 80]);
+  paint(121, 4);
+  assert.equal(draws.length, 3, 'pan and authored feature changes appear on the same paint');
+  assert.deepEqual(uniforms.get('uFeature[0]'), [180, 100, 22, 4]);
+  images[1].onload();
+  assert.equal(wakes, 1);
+  paint(121, 4);
+  assert.equal(uniforms.get('uHasEngraving'), 1);
+  assert.equal(draws.length, 4, 'new engraving art invalidates an otherwise identical view');
+  screen._paintAtlas(2000, 1100, 121, 80, 320);
+  assert.deepEqual(viewports.at(-1), [0, 0, 1440, 792]);
+  assert.equal(contextReads, 1, 'pan, features, asset arrival and resize reuse the one surface');
+  screen.mount(null, {});
+  assert.deepEqual(freed, ['texture', 'texture', 'program']);
+  assert.equal(handlers.size, 0);
+  assert.ok(images.every(image => image.onload === null));
+  assert.equal(screen._atlas, undefined);
 });
 
-test('chart lattice falls back to the original point drawing when no 2D cache is available', () => {
+test('the local chart still draws a navigable course when relief WebGL is unavailable', () => {
+  const state = createGameState(4242);
+  state.world.currentSectorId = 'sector_helios_prime';
+  const player = { id: 1, type: 'ship', alive: true, pos: { x: 0, z: 0 }, data: {} };
+  state.playerId = player.id;
+  state.entities.set(player.id, player);
+  state.entityList = [player];
+  state.nav.waypoint = { kind: 'local', label: 'Player course', pos: { x: 150, z: 55 } };
+  const text = [], gradient = { addColorStop() {} };
+  const context = new Proxy({ globalAlpha: 1, measureText: value => ({ width: String(value).length * 7 }),
+    createLinearGradient: () => gradient, createRadialGradient: () => gradient,
+    fillText: value => text.push(String(value)), strokeText() {} },
+  { get: (target, key) => key in target ? target[key] : () => {} });
+  let contextReads = 0;
+  const canvas = { hidden: true, getContext() { contextReads++; return null; } };
   const screen = Object.create(galaxyMapScreen);
-  screen._canvas = { ownerDocument: { createElement: () => ({ getContext: () => null }) } };
-  screen._pointer = null;
-  const output = latticeContext();
-  output.drawImage = () => { throw new Error('unavailable cache must not be copied'); };
-  screen._drawSensorLattice(output, 100, 80, 0.055);
-  const direct = latticeContext();
-  drawSensorLattice(direct, 100, 80, { pointer: null, a: 0.055 });
-  assert.deepEqual(output.commands, direct.commands);
-  assert.equal(screen._sensorLatticeCache.canvas, null);
+  Object.assign(screen, { _ctx: { state }, _atlasCanvas: canvas, _canvas: { setAttribute() {} },
+    _clickTargets: [], _scanRings: [], _previewPts: [], _reduceMotion: true,
+    _layers: { route: true }, _cams: { local: { cx: 0, cy: 0, zoom: 1 } },
+    _clearField: () => ({ x: 0, y: 0, width: 1000, height: 800 }),
+    _placeLabels: candidates => candidates.map(candidate => ({ ...candidate, visible: true })),
+  });
+  screen._drawLocal(context, state, 1000, 800);
+  assert.equal(canvas.hidden, true);
+  assert.equal(screen._atlas, null);
+  assert.ok(text.some(value => value.includes('GOAL · PLAYER COURSE')));
+  const goal = screen._clickTargets.find(target => target.id === 'active-waypoint');
+  assert.deepEqual({ x: goal?.x, z: goal?.z }, state.nav.waypoint.pos);
+  assert.equal(screen._paintAtlas(1000, 800, 0, 0, 400), false);
+  assert.equal(contextReads, 1, 'an unavailable context does not trigger an allocation attempt on every paint');
 });
 
 function node(attributes = {}) {

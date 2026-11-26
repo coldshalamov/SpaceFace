@@ -133,11 +133,14 @@ test('enemy Massline is specialist-only and has three rare gated placements', ()
 
 function raiderTrace() {
   const runtime = new CombatDoctrineRuntime({ seed: 905 });
+  // CW-TELLS: the spool cue lights at tick 8 and holds the 0.6 s tell floor, so the attach
+  // window opens at 8 + DOCTRINE_TELEGRAPH_TICKS and the tether contact is present from its
+  // first tick (the old trace sampled it one beat early at tick 38).
   const frames = [
     [0, [shipContact(320, { tethered: true })]],
     [8, [shipContact(120, { tethered: true })]],
     [37, [shipContact(112, { tethered: true })]],
-    [38, [shipContact(112, { tethered: true }), tetherContact('enemy_att', 'raider', 'player')]],
+    [8 + DOCTRINE_TELEGRAPH_TICKS, [shipContact(112, { tethered: true }), tetherContact('enemy_att', 'raider', 'player')]],
     [45, [shipContact(112, { tethered: true }), tetherContact('enemy_att', 'raider', 'player')]],
     [46, [shipContact(145, { tethered: true })]],
     [136, [shipContact(720, { tethered: true })]],

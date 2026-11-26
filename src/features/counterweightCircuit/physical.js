@@ -288,7 +288,9 @@ export function createCircuitPhysical(ctx) {
     retired.add(entity);
     entity.data.counterweightRetired = reason;
     bindings.delete(entity.data.worldRecordId);
-    helpers?.removeEntity?.(entity.id, { immediate: false });
+    // A destroyed load can still share the cleanup pass with an intact receiver.
+    // Keep its actual destruction cue and retire only surviving bodies quietly.
+    helpers?.removeEntity?.(entity.id, entity.hull > 0 ? { reason: 'counterweight_retire' } : undefined);
     return true;
   }
 

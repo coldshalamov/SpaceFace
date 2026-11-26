@@ -63,6 +63,7 @@ export function breathedHull(hull, hullMax, amount = BLEED_VENT_TUNING.breathHul
 }
 
 export const pl342BleedVent = {
+  modes: ['flight'],
   name: 'plantsPl342',
 
   init(ctx) {

@@ -170,6 +170,208 @@ Authority, highest first:
 
 ---
 
+## Rulings of 2026-11-20 (the owner's words that day, and what follows from them)
+
+### R13 — One rule, and no rule may block work
+
+- **Owner:** "We have one rule: make a good game… I just don't want any agent ever deciding there's a
+  blocker, or leaving work behind without finishing it."
+- **Ruling:** the root `AGENTS.md` is the only rulebook. Every review-before-landing step, hold,
+  parked state, lane, claim and ordering rule in this folder and elsewhere is void, including the
+  Codex-review steps written in `11_ORDER_OF_WORK.md` and the older rows of `12_PIPELINE.md`. Work
+  is reviewed after it lands and fixed forward.
+
+### R14 — Built the way a game released today would be
+
+- **Owner:** performance fixes "shouldn't be nuked to the stone age… make sure we have an appropriate
+  modern solution for everything… you know what techniques wouldn't be caught dead in a modern
+  A-list game."
+- **Ruling:** slowness is fixed with architecture (data layout, shared queries, batching,
+  time-slicing, streaming, prediction), never by making the game dumber, uglier or emptier. Every
+  technique is chosen by asking what a current release does for that problem.
+
+### R15 — Swarm is a horde; nothing holds enemies back
+
+- **Owner:** "This is supposed to be a swarm shoot-em-up dogfight game, kind of like a spaceship
+  Crimsonland… a lot of enemies are supposed to be able to attack at once." "In regular Adventure
+  combat there's a radius that the enemies can even see… but in a mode like Swarm you'd want heat to
+  be on the entire level… there just shouldn't be rules that only allow like 5 enemies to attack
+  while the others are frozen."
+- **Ruling:**
+  - **Swarm:** every enemy in the arena knows where the player is and comes for them. No limit on
+    simultaneous attackers, no attack permission, no spectators. (The first draft of this ruling
+    sized the game for 200–300 attackers on screen. The owner withdrew that the same day: see R19.
+    How many enemies a fight holds is set by R19 and by the measured frame budget.)
+  - **Adventure:** enemies have senses (a perception radius, an alert state, allies called within
+    earshot, a leash back to their post). Whoever is engaged fights; whoever has not noticed the
+    player does not.
+  - **Everywhere:** if an enemy is not attacking, the reason is visible in the world (it has not
+    seen you, it is out of range, reloading, fleeing, blocked). Group coordination shapes where a
+    crowd comes from; it never restrains the crowd.
+  - Fairness comes from numbers: fodder hits lightly and dies quickly; the dangerous attacks keep a
+    readable wind-up.
+
+### R16 — Life near the player, calm at the start, no silent respawn
+
+- **Owner:** "Some places feel overcrowded, not like a real place… agents would find weird proxies for
+  'action in the first 30 seconds', which apparently just means to flood units into the first sector."
+  And: sectors "too empty or too crowded"; rocks should "respawn at logical times" without a
+  depopulated galaxy and without the "move a bit to the left and it respawns brand new" feel.
+- **Ruling:** one owner decides who is in a sector, from a cast sheet with roles and doors. The
+  opening is a working harbour seen at a distance; the player chooses the first fight. Killed ships
+  stay dead until a replacement arrives through a gate. Worked rocks look worked and recover over
+  hours of play; a belt never falls under about 40 % stock; rocks the player built in never change.
+  This replaces both "Helios needs more density" (older plans) and "no new world content" (2026-11-19).
+
+### R17 — The powers and the Line say what they do
+
+- **Owner:** "I can't tell what any of the powers do." "My actions don't do what I'd expect."
+- **Ruling:**
+  - The five powers are **Pull, Shove, Pin, Bomb, Plow** on 1–5, and the **Line** on right mouse and
+    F. One name each, everywhere.
+  - Every power acts **on press, at the cursor**. "Aim first" (hold to preview, release to fire) is
+    a Settings option, off by default.
+  - **Pin** nails a point in space: cast on a body it stakes that body for a few seconds; cast on
+    empty space it plants a post the Line can swing on.
+  - **Bomb:** press 4 again to detonate. Shove does not detonate by rule.
+  - **Plow** never changes mode silently.
+  - The Line's two buttons are one button with one grammar (tap to latch, tap to throw, hold to reel).
+  - Nothing steals keys 1–5 in flight. Esc never starts a round. No prompt prints a blank or the
+    word "unbound".
+  - State lives on the power's tile and in the effect itself, never in a floating status chip.
+
+### R18 — Plain words and human units
+
+- **Owner:** "the UI is often filled with gibberish language."
+- **Ruling:** `08_INTERFACE.md` §5's banned list stands and grows (Massline, Mass Seed, Gyre, Well,
+  Repulsor, Cone and Rig as player-facing names are added). Distances read `m` and `km`, speeds
+  `m/s`. US spelling. A check (`npm run check:plain-words`) fails on a banned word.
+
+### R19 — A fight is a composed episode, not a head count
+
+- **Owner (2026-11-20, later):** "I think that maybe the performance of this game can't handle a full
+  'Crimsonland style' gameplay with hundreds of units… we'll have to tone it down and be logical…
+  like in Mindustry where different enemies with different powers come out and the experience is
+  kind of crafted by their abilities, your strategy must keep them in mind, same with tower defense
+  games and strategy games… most combat scenarios should fall somewhere between the Freelancer
+  style dogfights and Crimsonland swarm type of gameplay, and the combats are sort of atomic little
+  episodes when they happen, but the arrangement of the enemies makes the atomic battle have its
+  character."
+- **Ruling:**
+  - The unit of combat design is the **encounter**: a small cast of enemy kinds chosen because their
+    abilities interact (a shield-bearer in front of gunners, a tug that ropes the player while
+    rammers line up, a minelayer that makes rocks dangerous to throw). The mix is what the player
+    reads and answers with the verbs. A fight that is "more of the same ship" is a failed fight.
+  - Every enemy kind has one job a player can name after one meeting, one tell, and one best
+    answer among the player's verbs. Kinds are few and distinct; variety comes from combinations.
+  - **Scale sits between a dogfight and a swarm.** Adventure fights are a handful of ships. A Swarm
+    round is a wave of dozens, arriving in composed groups. Nobody is asked to hit a number; the
+    ceiling is whatever holds a smooth frame on the owner's laptop with every enemy thinking and
+    shooting, and it is measured, not assumed.
+  - What stands from R15: no attack caps, nobody parked, whole-arena awareness in Swarm, senses in
+    Adventure. A fodder kind may still arrive in a crowd; the crowd is one ingredient, not the dish.
+  - Fights are **atomic**: each has a start the player can see coming, a shape, and an end with a
+    result (salvage, bounty, a changed sector). Between fights the world is calm (R16).
+  - Engineering follows: instancing and impostors for hundreds of hulls is no longer a goal. Drawing
+    each ship at the detail its size on screen needs still is.
+
+### R20 — The economy runs on stored numbers, moves in readable trends, and breaks on events
+
+- **Owner:** "Some stuff about the economy seemed like it was weirdly messing with performance… there
+  has to be a way to do that in the backend of the station with stored values or something, not in
+  gameplay." "The economy would actually have realistic price swings from events and they'd follow
+  recognizable mathematical equations in their trends for a while and randomly turn on an event, so
+  a player could sort of pattern match a possible trade route but it only lasts so long, and if you
+  recognize an increasingly profitable trending route it could be a gold rush for a while until an
+  event happens."
+- **Ruling:**
+  - No economy work in the flight step. A price is a closed-form function of (good, station, time)
+    plus a short list of scheduled events, evaluated when a market screen, the map or a trade
+    computer asks. Nothing simulates markets tick by tick while the player flies.
+  - Each good at each station follows a **trend regime** for a stretch (steady climb, slow slide,
+    seasonal swing, squeeze toward a spike, glut). A regime has a recognisable curve a player can
+    learn to spot on a price chart, and it lasts a while.
+  - **Events** end regimes: a convoy lost, a strike, a new mine, a blockade, a war front. An event is
+    news the player can hear about (and sometimes cause), and it flips the affected goods into a new
+    regime. Spotting a strengthening route early is a gold rush until the next event.
+  - The player's own trading moves a price a little and it recovers, so one route cannot be milked
+    forever.
+  - Deterministic from the save's seed and clock, so an unvisited market reads the same whenever it
+    is looked at and catches up exactly when visited (same rule as R16's world catch-up).
+
+### R21 — Every rung of the ladder is its own game, and anything real and fun belongs
+
+- **Owner:** "I wanted each stage of the economic ladder to have its own feel, like trading is its own
+  minigame kind of with its own skills, and piracy takes some skills in combat, building is more
+  strategy/puzzle, but it's all kind of realistic because they're like things you could do in real
+  life if you were really in space. I guess that's a good rule of thumb, if it's something you could
+  really do and it's fun why not have it in the game to do?"
+- **Ruling:** hauling and trading (reading price charts, routes, news), mining (laser for a random
+  mix, rover for the pick of the rock), piracy and bounty work (combat), salvage, building inside
+  rocks (layout puzzle), drones and convoys (logistics with risk) each get their own skills, their
+  own screen or play space, and their own way to be good at them. The test for adding an activity:
+  could a pilot really do it out there, and is it fun? The test for keeping it: it shares the same
+  ship, cargo, money and map as everything else, and it never fights another system for the
+  player's ship, camera or keys (R23).
+
+### R22 — Cargo is a bag you can see
+
+- **Owner:** "In most games you have a popup hull or gear bag where packs of 20 items stack and then
+  take a new slot, that's a good way of managing stuff in the hull and then click and dragging it
+  off out of the bag drops it to free up space."
+- **Ruling:** one cargo owner. The hold is a grid of slots sized by the ship. Like items stack to 20
+  and then take a new slot. Opening the bag is one key in flight and it does not pause a calm
+  flight. Dragging a stack out of the bag jettisons it as a real crate in space that can be picked
+  back up, roped, or stolen. The same grid is what a station's trade and storage screens show. The
+  action is reachable by controller and touch (select a stack, press Jettison). An older save's
+  cargo migrates into slots.
+
+### R23 — One hand on the ship, one hand on the camera
+
+- **Owner:** "As long as the systems don't clash… there's too many triggers and weird things happening
+  watching for events that my ship would be swinging weird ways and the camera would move weird
+  sometimes, things like that, just sloppy game systems in general."
+- **Ruling:**
+  - The player's ship moves for three reasons only: the player's input, physics the player can see
+    (a hit, a rope, a field with a visible source), and a scripted moment the player started
+    (docking, a gate). Assists (aim help, flight stabilisers, auto-brake, path follow) go through one
+    arbiter, are visible when active and can be switched off. Nothing else writes the player's
+    velocity or heading.
+  - The camera has one owner with one target and one zoom. Other systems ask it for a look (a kill,
+    a boss entrance, a dock) through a single request queue with priorities and a return path; none
+    of them moves it directly. In a fight the camera only answers the player (R10).
+  - Triggers that fire on proximity or timers are listed in one place per sector, never stack on the
+    same moment, and never take input away without a visible reason.
+
+### R24 — The finish line
+
+- **Owner:** "Chug through this game until you pass that it's optimal and fun and would sell
+  confidently for at least $40." "This whole game needs good UI and graphics and VFX." "Recognize
+  when you might need to build something new in order to get the best value out of the pieces that
+  we have, in that case build it."
+- **Ruling:** the game is judged by a repeatable capture of the first thirty minutes of each mode
+  (frames, a smoothness trace, the words on screen), scored against the owner's ranked complaints
+  and against what a stranger paying $40 would expect in that half hour. Lanes exist to move that
+  capture; a lane that cannot show its change in the capture is not finished. Where the pieces need
+  a missing part to pay off, the part gets built. The capture's recipe is
+  [`12_PIPELINE.md`](12_PIPELINE.md) § The measure.
+
+## Rulings of 2026-11-21 (the owner's words that day, and what follows from them)
+
+### R25 — The loading movie never hitches, even at the cost of load time
+
+- **Owner:** "I'd rather the game loaded slightly slower as long as the video wasn't hitchy."
+- **Was:** the loading movie streamed from the wire during the first loading session, hitching and
+  standing on a frame while the boot's ~700 no-cache module revalidations and every asset competed
+  for the same sockets (measured: 17 buffer stalls per cold boot; multi-second standing frames on a
+  busy host). The in-memory copy that plays hitch-free only started at module-eval time, 14–25 s in.
+- **Ruling:** the loading movie plays only from memory, from its first frame. The entry markup
+  starts the in-memory fetch at parse time (the page's first download), the element never
+  pre-streams (`preload="none"`), and the poster with its compositor drift carries the short wait.
+  The wire is only the failure fallback when the fetch itself fails. Boot may pay slightly for it;
+  the movie may not hitch for it. Pinned by `test/boot-media-playback.test.mjs`
+  ("the entry markup never wire-streams the boot movie").
+
 ## Decisions the director made that the owner may want to overrule
 
 These are judgment calls inside the owner's vision, made so work can proceed. Each is easy to flip.

@@ -496,11 +496,8 @@ export function resolveKillBeat(victimMass, opts = {}) {
  * Distance falloff for a camera shake raised by a WORLD event (a ship dying somewhere) rather than
  * by something happening to the player.
  *
- * `camera:shake` has 13 emitters and the consumer used to read only `{ amount }`, so a shake was a
- * scalar with no notion of where it came from — an NPC exploding at the far edge of the sector hit
- * the player's camera exactly as hard as one exploding on their nose. Emitters that are already
- * player-scoped by construction (player hit, player death, respawn, drill, tether) send no position
- * and are passed through untouched; emitters describing a world event send one and get attenuated.
+ * Apply distance falloff to an admitted, positioned hero beat. Proximity does not give generic
+ * world destruction a claim on the player's camera.
  *
  * Shape: full strength inside FULL_RADIUS, a 1/d rolloff beyond it, and a linear taper so the
  * contribution reaches exactly zero at CUTOFF_RADIUS instead of trailing off asymptotically. Trauma
@@ -516,6 +513,16 @@ export function shakeDistanceAttenuation(distanceWu) {
   const rolloff = SHAKE_FULL_RADIUS_WU / d;
   const taper = 1 - (d - SHAKE_FULL_RADIUS_WU) / (SHAKE_CUTOFF_RADIUS_WU - SHAKE_FULL_RADIUS_WU);
   return Math.max(0, Math.min(1, rolloff * taper));
+}
+
+/** Route the player's own cues and explicit hero events into the camera's shake budget. */
+export function cameraShakeAmountForPlayer(payload, playerPos) {
+  const amount = payload?.amount || 0.3;
+  const at = payload?.position;
+  if (at == null) return amount;
+  if (payload.audience !== 'hero') return 0;
+  if (!Number.isFinite(at.x) || !Number.isFinite(at.z) || !playerPos) return amount;
+  return amount * shakeDistanceAttenuation(Math.hypot(at.x - playerPos.x, at.z - playerPos.z));
 }
 
 export function traumaFromMomentumExchange(dp, context = {}) {
@@ -549,6 +556,12 @@ function dampSlewed(current, target, lerp, maxSpeed, dt) {
   if (delta > maxStep) return current + maxStep;
   if (delta < -maxStep) return current - maxStep;
   return desired;
+}
+
+/** The OVH-06a camera gate (src/render/shakeAdmission.js), when the host attached one. */
+function cameraGateOf(state) {
+  const gate = state && state.render && state.render.cameraGate;
+  return gate && typeof gate.motion === 'function' ? gate : null;
 }
 
 function isMotionReduced(state) {
@@ -631,7 +644,7 @@ export function applyMasslineReleaseCameraCue(cameraController, state, payload =
     cameraController.pushZoom(cue.zoomFactor, cue.durationS);
   }
   if (cue.pullWu > 0 && cameraController && typeof cameraController.impactKick === 'function') {
-    cameraController.impactKick(cue.pullDirX, cue.pullDirZ, cue.pullWu);
+    cameraController.impactKick(cue.pullDirX, cue.pullDirZ, cue.pullWu, 'tether');
   }
   if (state) {
     if (!state.render) state.render = {};
@@ -722,6 +735,12 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
     return finiteOr(c.zoom, DEFAULT_ZOOM);
   }
   let _dynamicZoom = resolveBaseZoom();
+  // Last manual request seen by follow(). Manual zoom (wheel/pinch/keys/level) must feel
+  // StarCraft-instant: when the requested base moves, the displayed distance carries the
+  // same ratio immediately, so the ease below only handles AUTOMATIC drift (speed,
+  // context, boost) and never lags the player's own hand. Direct state.camera.zoom
+  // writes (mobile pinch, swarm level sets) ride the same path — no setZoom bypass.
+  let _lastBaseZoom = _dynamicZoom;
   let _speedZoomFactor = SPEED_ZOOM_MIN;
   let _speedZoomSpeedEma = 0;
   let _boostZoomFactor = 1;
@@ -739,6 +758,7 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
   let _pushZoomDecay = 0;     // per-second decay rate (derived from duration at push time)
   let _pushZoomPeak = 0;      // rise target while easing in; 0 once the peak has been reached
   let _pushZoomRise = 0;      // per-second rise rate (derived from duration at push time)
+  let _pushZoomHoldS = 0;     // seconds an establishing push holds wide before it eases back
   // Shake noise is resampled at a fixed rate so shake FREQUENCY does not track display refresh.
   let _shakeNoiseT = 0;
   const _shakeNoise = [0, 0, 0, 0];   // posX, posZ, roll, pitch — held between resample steps
@@ -755,9 +775,15 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
   const _glide = createCameraGlide();
   const _racingBlend = createRacingCameraBlend();
   const _racingRig = {};
+  const _racingMotion = { vx: NaN, vz: NaN };
   const _overheadPose = {};
   const _racingPose = {};
   let _exceptionalHold = 0;
+  let _fieldBuildActive = false;
+  let _fieldBuildBlend = 0;
+  let _fieldBuildPanX = 0;
+  let _fieldBuildPanZ = 0;
+  let _fieldBuildZoomMult = 2.35;
   let _anchorHoldX = 0;
   let _anchorHoldZ = 0;
   let _anchorHoldSimX = 0;
@@ -826,6 +852,7 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
     const pz = _playerLocalScratch.z;
     c.focus.set(px, 0, pz);
     _dynamicZoom = resolveBaseZoom();
+    _lastBaseZoom = _dynamicZoom;
     _dynamicNear = 1;
     if (cam.near !== 1) {
       cam.near = 1;
@@ -880,9 +907,13 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
 
   return {
     obj: cam,
-    addTrauma(amount) {
-      const a = Number.isFinite(amount) ? Math.max(0, amount) : 0;
+    addTrauma(amount, cause) {
+      let a = Number.isFinite(amount) ? Math.max(0, amount) : 0;
       if (a <= 0) return;
+      // OVH-06a / R10: with the camera gate attached, every trauma names its cause and the
+      // room's causes (and any untagged caller) are refused here, at the one chokepoint.
+      const gate = cameraGateOf(state);
+      if (gate) { a = gate.motion('trauma', cause, a, state.simTime); if (a <= 0) return; }
       const scale = isMotionReduced(state) ? MOTION_REDUCE_SHAKE_SCALE : 1;
       c.trauma = Math.min(1, Math.max(0, c.trauma || 0) + a * scale);
     },
@@ -891,9 +922,11 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
     // add into the shared envelope (opposing kicks cancel, as exchanged momentum does) and clamp
     // to the ceiling. Unlike trauma shake — which scales to 25% under reduced motion — the kick is
     // fully vestibular, so reduce-motion shows none.
-    impactKick(dirX, dirZ, magnitudeWu) {
+    impactKick(dirX, dirZ, magnitudeWu, cause) {
       if (isMotionReduced(state)) return;
-      const mag = Math.min(IMPACT_KICK_WU_MAX, Math.max(0, finiteOr(magnitudeWu, 0)));
+      let mag = Math.min(IMPACT_KICK_WU_MAX, Math.max(0, finiteOr(magnitudeWu, 0)));
+      const gate = cameraGateOf(state);
+      if (gate) { mag = gate.motion('kick', cause, mag, state.simTime); if (mag <= 0) return; }
       const dx = finiteOr(dirX, 0);
       const dz = finiteOr(dirZ, 0);
       const len = Math.hypot(dx, dz);
@@ -908,6 +941,35 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
     },
     snapToPlayer() {
       return snapToEntity(readPlayerEntity(state));
+    },
+    setFieldBuildMode(active) {
+      _fieldBuildActive = !!active;
+      if (!_fieldBuildActive && _fieldBuildBlend <= 0.001) {
+        _fieldBuildPanX = 0;
+        _fieldBuildPanZ = 0;
+      }
+    },
+    panFieldBuild(dx, dz, reset = false) {
+      if (reset) {
+        _fieldBuildPanX = 0;
+        _fieldBuildPanZ = 0;
+        return;
+      }
+      const maxPan = 2200;
+      _fieldBuildPanX = Math.max(-maxPan, Math.min(maxPan, _fieldBuildPanX + (Number.isFinite(dx) ? dx : 0)));
+      _fieldBuildPanZ = Math.max(-maxPan, Math.min(maxPan, _fieldBuildPanZ + (Number.isFinite(dz) ? dz : 0)));
+    },
+    setFieldBuildZoomMult(mult) {
+      if (Number.isFinite(mult)) _fieldBuildZoomMult = Math.max(1.25, Math.min(4.2, mult));
+    },
+    getFieldBuildState() {
+      return {
+        active: _fieldBuildActive,
+        blend: _fieldBuildBlend,
+        panX: _fieldBuildPanX,
+        panZ: _fieldBuildPanZ,
+        zoomMult: _fieldBuildZoomMult,
+      };
     },
     // M2: on frameOriginSeq change, reproject local focus/camera so the frame does not one-frame jump.
     // Composition biases are relative and stay valid; director absolute focus is shifted by the same delta.
@@ -976,9 +1038,20 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
     // (tighter) for `durationS`, easing in and out. e.g. pushZoom(0.25, 0.8) widens 25% over 0.8s;
     // pushZoom(-0.04, 0.25) tightens to 0.96x for 0.25s (kill-cam kiss). The effect is additive on
     // top of the dynamic zoom and decays smoothly.
-    pushZoom(factor, durationS) {
+    pushZoom(factor, durationS, opts = null) {
       const f = Number.isFinite(factor) ? factor : 0;
       const d = Math.max(0.05, durationS || 0.5);
+      // `from: true` — an establishing shot: the view OPENS at the offset and eases back over
+      // `durationS` (nothing to rise into; the first frame is already wide).
+      if (opts && opts.from === true) {
+        _pushZoom = f;
+        _pushZoomPeak = 0;
+        _pushZoomDecay = 3.0 / d;
+        _pushZoomHoldS = Math.max(0, Number(opts.holdS) || 0);
+        // Cut to the wide frame (the eased zoom would otherwise spend the shot widening out).
+        if (Number.isFinite(_dynamicZoom) && _dynamicZoom > 0) _dynamicZoom *= (1 + f);
+        return;
+      }
       // Ease IN to the peak rather than jumping to it. The docstring above has always promised
       // "eases in then back out", but this used to be `_pushZoom = f` — a single-frame step. The
       // biggest caller is uiRoot.js's dock fly-in at pushZoom(-0.45, 1.2), so the camera snapped 45%
@@ -998,6 +1071,15 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
         capital: opts.capital === true,
         reducedMotion: isMotionReduced(state),
       });
+      // OVH-06a / R10: a kill moves the camera only as a hero beat (a throw kill on a heavy).
+      // Every other kill is felt on the body that died, not at the camera.
+      const killGate = cameraGateOf(state);
+      const killCause = opts.cause === 'throwKillHeavy' ? 'throwKillHeavy' : 'kill';
+      if (killGate && killCause !== 'throwKillHeavy') {
+        killGate.refuse('kill', state.simTime, 'killcam');
+        return null;
+      }
+      const holdS = opts.hold === false ? 0 : beat.holdS;
       if (beat.tier === 'light') {
         // G18-03 — the light tier's beat is the directed nudge, not the zoom kiss. It needs the
         // kill direction the presentation receipt carries (opts.direction); a direction-less or
@@ -1007,22 +1089,24 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
         const dx = dir && Number.isFinite(dir.x) ? dir.x : 0;
         const dz = dir && Number.isFinite(dir.z) ? dir.z : 0;
         if (dx * dx + dz * dz <= 1e-12) return null;
-        this.impactKick(dx, dz, beat.kickWu);
+        this.impactKick(dx, dz, beat.kickWu, killCause);
       } else {
-        if (!beat.zoom && beat.holdS <= 0) return null;
+        if (!beat.zoom && holdS <= 0) return null;
         // A hold is a frozen frame, not vestibular motion — deliberately NOT hold()'s reduce gate.
-        if (beat.holdS > 0 && beat.holdS > _holdT) _holdT = beat.holdS;
+        // OVH-06a: a kill's frozen frame is hitstop, and hitstop belongs to hero beats only.
+        const heldS = holdS > 0 && killGate ? killGate.hitstop(killCause, holdS, state.simTime) : holdS;
+        if (heldS > 0 && heldS > _holdT) _holdT = heldS;
         if (beat.zoom) this.pushZoom(beat.factor, beat.durationS);
       }
       _killBeatLog.push({
         tier: beat.tier,
         zoom: beat.zoom === true,
-        holdS: beat.holdS,
+        holdS,
         kick: beat.kick === true,
         tick: Number.isFinite(state && state.tick) ? state.tick | 0 : 0,
       });
       if (_killBeatLog.length > KILL_BEAT_LOG_CAP) _killBeatLog.shift();
-      return beat;
+      return holdS === beat.holdS ? beat : { ...beat, holdS };
     },
     // The bounded kill-beat trail the probe and tests read ("the camera log shows three distinct
     // kill beats"). Oldest first, at most KILL_BEAT_LOG_CAP entries.
@@ -1035,7 +1119,10 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
       const cue = resolveStuntHushCameraCue(beat, isMotionReduced(state));
       if (cue.tick == null || cue.tick === _stuntHushTick) return null;
       _stuntHushTick = cue.tick;
-      if (cue.holdS > _holdT) _holdT = cue.holdS;
+      // OVH-06a: the razor-release / slingshot-apex hush is the "perfect release" hero beat.
+      const hushGate = cameraGateOf(state);
+      const hushHoldS = hushGate ? hushGate.hitstop('perfectRelease', cue.holdS, state.simTime) : cue.holdS;
+      if (hushHoldS > _holdT) _holdT = hushHoldS;
       if (cue.zoom) this.pushZoom(cue.zoomFactor, cue.durationS);
       _stuntHushLog.push({ tick: cue.tick, zoom: cue.zoom, holdS: cue.holdS });
       if (_stuntHushLog.length > KILL_BEAT_LOG_CAP) _stuntHushLog.shift();
@@ -1044,9 +1131,13 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
     stuntHushLog() { return _stuntHushLog.slice(); },
     // PQ-159.02: freeze chase composition for `durationS` so a rated moment reads. Reduce-motion
     // skips the hold (same vestibular gate as the kick).
-    hold(durationS) {
+    hold(durationS, cause) {
       if (isMotionReduced(state)) return;
-      const d = Math.max(0, finiteOr(durationS, CAMERA_HOLD_S));
+      let d = Math.max(0, finiteOr(durationS, CAMERA_HOLD_S));
+      // OVH-06a / R10: hitstop belongs to hero beats only (40-60 ms, once per 0.8 s). A camera
+      // hold is presentation-only - the simulation never pauses.
+      const gate = cameraGateOf(state);
+      if (gate) { d = gate.hitstop(cause, d, state.simTime); if (d <= 0) return false; }
       if (d > _holdT) _holdT = d;
     },
     holdRemaining() { return _holdT; },
@@ -1055,7 +1146,7 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
       // The picture goes overhead even when reduced motion skips the hold and the zoom.
       _deathCam = true;
       if (isMotionReduced(state)) return;
-      this.hold(DEATH_CAM_HOLD_S);
+      _holdT = Math.max(_holdT, DEATH_CAM_HOLD_S); // the player's death picture is not collision hitstop
       this.pushZoom(DEATH_CAM_PUSH_ZOOM, DEATH_CAM_HOLD_S);
     },
     isDeathCam() { return _deathCam; },
@@ -1436,6 +1527,21 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
       // chaseClose forces a tighter accessibility/profile choice; otherwise honor the exact c.zoom
       // selection, whose fresh-run schema default is the R1 144-WU recovery frame.
       const baseZoom = resolveBaseZoom();
+      // Manual-zoom fast path (StarCraft contract): the base only moves on explicit player
+      // input, so carry its ratio straight onto the displayed distance. The ease below
+      // then only settles AUTOMATIC drift (speed/context/boost) instead of lagging the hand.
+      if (Number.isFinite(baseZoom) && baseZoom > 0
+        && Number.isFinite(_lastBaseZoom) && _lastBaseZoom > 0
+        && baseZoom !== _lastBaseZoom) {
+        const manualRatio = baseZoom / _lastBaseZoom;
+        if (Number.isFinite(manualRatio) && manualRatio > 0) {
+          _dynamicZoom = Math.max(
+            CAMERA_ZOOM_MIN,
+            Math.min(COMPOSITION_ZOOM_MAX, _dynamicZoom * manualRatio),
+          );
+        }
+      }
+      _lastBaseZoom = baseZoom;
       let targetZoom = baseZoom;
       if (p && p.pos) {
         // The speed-zoom target follows a smoothed speed (SPEED_ZOOM_SPEED_SMOOTHING_S) so the
@@ -1502,6 +1608,8 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
           // Hand off to the decay phase once the rise has essentially arrived, so a push always
           // returns to 0 even if the peak is never reached exactly.
           if (Math.abs(_pushZoomPeak - _pushZoom) <= Math.abs(_pushZoomPeak) * 0.06) _pushZoomPeak = 0;
+        } else if (_pushZoomHoldS > 0) {
+          _pushZoomHoldS = Math.max(0, _pushZoomHoldS - frameDt); // an establishing shot holds wide first
         } else {
           _pushZoom = damp(_pushZoom, 0, _pushZoomDecay, frameDt);
           if (Math.abs(_pushZoom) < 0.0001) _pushZoom = 0;
@@ -1514,6 +1622,15 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
         // tightening channel; with no attacker the floor is 0 and the tighten is untouched.
         targetZoom = Math.max(targetZoom, Math.min(_contextMinZoom, _contextZoomCap));
         targetZoom = Math.min(targetZoom, _contextZoomCap);
+      }
+      _fieldBuildBlend = damp(_fieldBuildBlend, _fieldBuildActive ? 1 : 0, 7.5, frameDt);
+      if (!_fieldBuildActive && _fieldBuildBlend < 0.005) {
+        _fieldBuildBlend = 0;
+        _fieldBuildPanX = 0;
+        _fieldBuildPanZ = 0;
+      }
+      if (_fieldBuildBlend > 0) {
+        targetZoom *= 1 + (_fieldBuildZoomMult - 1) * _fieldBuildBlend;
       }
       if (holding && !_deathCam) {
         // PQ-159.02 camera hold: freeze distance as well as look-at.
@@ -1657,19 +1774,23 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
       c.kickOffset.set(_kick.x, 0, _kick.z);
       const reduced = isMotionReduced(state);
       const stern = !!p && !_deathCam && resolveSteeringView(state, { death: _deathCam }) === 'racing';
-      _overheadPose.eyeX = c.focus.x + offset.x;
-      _overheadPose.eyeZ = c.focus.z + offset.z;
+      const panX = _fieldBuildPanX * _fieldBuildBlend;
+      const panZ = _fieldBuildPanZ * _fieldBuildBlend;
+      _overheadPose.eyeX = c.focus.x + panX + offset.x;
+      _overheadPose.eyeZ = c.focus.z + panZ + offset.z;
       _overheadPose.eyeY = offset.y;
-      _overheadPose.lookX = c.focus.x;
-      _overheadPose.lookZ = c.focus.z;
+      _overheadPose.lookX = c.focus.x + panX;
+      _overheadPose.lookZ = c.focus.z + panZ;
       racingRigOf(state && state.settings, _racingRig);
       const hullRadius = p && Number.isFinite(p.radius) ? Math.max(0, p.radius) : 0;
       _racingRig.distance = Math.max(_racingRig.distance, hullRadius * 2.2);
       _racingRig.height = Math.max(_racingRig.height, hullRadius * 0.8);
+      _racingMotion.vx = p && p.vel ? p.vel.x : NaN;
+      _racingMotion.vz = p && p.vel ? p.vel.z : NaN;
       const pose = stepRacingCameraBlend(_racingBlend, frameDt, stern,
         p ? _playerLocalScratch : c.focus, p && p.rot, playerSpeed,
         _racingRig, _overheadPose, reduced, _racingPose,
-        _deathCam || !!(photo && photo.active));
+        _deathCam || !!(photo && photo.active) || _fieldBuildBlend > 0.05, _racingMotion);
       // BOTH views use the same predictive solid-clearance solver. The stern rig is anchored
       // to the presented hull, not the overhead camera's velocity/threat-biased focus.
       let camX = pose.eyeX, camY = pose.eyeY, camZ = pose.eyeZ;

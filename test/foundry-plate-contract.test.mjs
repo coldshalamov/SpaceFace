@@ -1,11 +1,17 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import { foundryPlateShape, foundryPlateProxy } from '../src/data/foundryPlate.js';
+import { foundryPlateShape, foundryPlateProxy, foundryReturnCourse, predictFoundryPlateContact } from '../src/data/foundryPlate.js';
 import { planArenaInstall, survivalArena } from '../src/systems/survivalArena.js';
 import { createVisualFactory } from '../src/render/visualFactory.js';
 import { createSg02DynamicBodyOwner } from '../src/core/sg02DynamicBodyOwner.js';
 import { createBus } from '../src/core/eventBus.js';
+import { createRunState } from '../src/core/runState.js';
+import { createAlerts } from '../src/ui/alerts.js';
+import { createStage } from '../src/ui/stage.js';
+import { survivalHud } from '../src/ui/survivalHud.js';
+import { projectBridgeEvent } from '../scripts/lib/simEventBridge.mjs';
+import { installDom } from './helpers/mini-dom.mjs';
 import { makeEntity } from '../src/core/entity.js';
 import { resolvePhysicsBodySpec } from '../src/core/physicsAuthority.js';
 import { resolveCollisionProxyManifest, validateCollisionProxyManifest } from '../src/data/collisionProxyManifests.js';
@@ -118,4 +124,166 @@ test('legacy room plates retain their datum while gate contacts use the visible 
   assert.equal(proxy.compactHull.length, 6);
   near(Math.max(...proxy.compactHull.map(p => Math.hypot(p.x, p.z))) * gate.radius, 3.2);
   assert.equal(gate.mass, 640); assert.equal(gate.rot, 0);
+});
+
+test('the Foundry round panel shows return guidance, yields to an actual bank approach, and clears each cue', () => {
+  const { document, restore } = installDom();
+  const panel = Object.create(survivalHud);
+  try {
+    const removeChild = child => { child.remove(); return child; };
+    const hudRoot = document.createElement('div');
+    hudRoot.id = 'hud';
+    const panelHost = document.createElement('div');
+    panelHost.className = 'sf-leftcontext';
+    panelHost.removeChild = removeChild;
+    hudRoot.appendChild(panelHost);
+    document.body.appendChild(hudRoot);
+    const stage = createStage({ document });
+    const alerts = document.createElement('div');
+    alerts.id = 'alerts';
+    stage.slotEl('banner').appendChild(alerts);
+    const h = fixture();
+    h.state.mode = 'flight';
+    h.state.run = createRunState({ kind: 'survival', ruleset: 'swarm', seed: 4242 });
+    Object.assign(h.state.run, { arenaId: 'helios_core', wave: 1, phase: 'active' });
+    h.state.settings = { gameplay: { physicsBackend: 'rapier-dynamic' } };
+    const bank = h.plates[0];
+    // Saved seed 4242, 1.25 simulated seconds before the first observed bank impact.
+    bank.pos = { x: -1651.9338133418412, z: -2332.6958429984616 };
+    bank.rot = 1.079603700927107;
+    const pilot = h.helpers.spawnEntity({ type: 'ship', alive: true, radius: 16,
+      pos: { x: -1854.31298828125, z: -2214.513916015625 },
+      vel: { x: 148.0164794921875, z: -64.03546142578125 } });
+    h.state.playerId = pilot.id;
+    const hud = createBus();
+    createAlerts({ bus: hud, state: h.state, stage });
+    panel.init({ bus: hud, state: h.state });
+    hud.emit('alert', { key: 'other', text: 'Separate status', ttl: null });
+    alerts.firstElementChild.removeChild = removeChild;
+    hud.emit('alert', { key: 'foundry-return', sev: 'info', text: 'Foundry gate →', ttl: null });
+    const guidance = expected => {
+      const line = panelHost.querySelector('.sf-crun__guidance');
+      assert.ok(line && !line.hidden && !line.parentElement.hidden, 'guidance is exposed in the flight panel');
+      assert.equal(line.textContent, expected);
+      assert.equal(line.classList.contains('sf-crun__intro'), false, 'mobile collapsed intro policy cannot hide guidance');
+      assert.equal(panelHost.querySelector('.sf-crun__phase').textContent, 'FIGHT');
+      assert.equal(alerts.textContent, 'Separate status', 'the guidance does not displace or duplicate the ordinary banner');
+    };
+    let spoken = 0;
+    hud.on('voice:say', () => spoken++);
+    h.host.bus = createBus();
+    const updates = [];
+    h.host.bus.on('alert', payload => {
+      updates.push(payload);
+      const bridged = projectBridgeEvent('alert', payload);
+      assert.equal(bridged.lane, 'presentation');
+      hud.emit('alert', bridged.flat);
+    });
+    const repaint = () => panel.update(1 / 60, h.state);
+    const step = tick => { h.state.tick = tick; h.host.update(1 / 60, h.state); repaint(); };
+    repaint();
+    guidance('Foundry gate →');
+    step(264);
+    guidance('Bank plate ahead · Turn clear');
+    step(268);
+    assert.equal(updates.length, 1, 'one approach does not turn into repeated alerts');
+    pilot.vel.x *= -1;
+    pilot.vel.z *= -1;
+    step(272);
+    guidance('Foundry gate →');
+    hud.emit('alert', { key: 'foundry-return', action: 'clear' });
+    repaint();
+    assert.equal(panelHost.querySelector('.sf-crun__guidance'), null);
+    hud.emit('alert', { key: 'foundry-return', sev: 'info', text: 'Foundry gate →', ttl: null });
+    hud.emit('run:started', {});
+    repaint();
+    assert.equal(panelHost.querySelector('.sf-crun__guidance'), null, 'Again starts with clear guidance');
+    h.state.run = null;
+    hud.emit('alert', { key: 'other', text: 'Adventure status', ttl: null });
+    repaint();
+    assert.equal(alerts.textContent, 'Adventure status');
+    assert.equal(spoken, 0);
+  } finally {
+    panel.destroy();
+    restore();
+  }
+});
+
+test('plate warning geometry uses the closing face and leaves the empty rounded corner clear', () => {
+  const { plates } = fixture();
+  const slab = plates[0];
+  const { halfWidth, halfDepth, rot } = foundryPlateShape(slab);
+  const toWorld = (x, z) => ({ x: x * Math.cos(rot) - z * Math.sin(rot), z: x * Math.sin(rot) + z * Math.cos(rot) });
+  const pilot = (x, z, vx, vz) => {
+    const start = toWorld(x, z);
+    return { pos: { x: slab.pos.x + start.x, z: slab.pos.z + start.z }, vel: toWorld(vx, vz), radius: 16 };
+  };
+  const face = predictFoundryPlateContact(slab, pilot(halfWidth - 8, halfDepth + 70, 0, -100), 1.5);
+  near(face.timeToContactS, 0.54);
+  near(face.closingSpeed, 100);
+  const n = toWorld(0, 1);
+  near(face.normal.x, n.x);
+  near(face.normal.z, n.z);
+  const corner = predictFoundryPlateContact(slab, pilot(halfWidth + 8, halfDepth + 70, 0, -100), 1.5);
+  near(corner.timeToContactS, (70 - Math.sqrt(16 * 16 - 8 * 8)) / 100);
+  near(corner.closingSpeed, 100 * Math.sqrt(0.75));
+  assert.equal(predictFoundryPlateContact(slab, pilot(halfWidth + 13.6, halfDepth + 12.8, 50, -50), 1.5), null);
+  assert.equal(predictFoundryPlateContact(slab, pilot(-halfWidth, halfDepth + 17, 100, 0), 1.5), null);
+});
+
+test('the Foundry shows one gate home through the real rim gap, then clears it inside', () => {
+  const h = fixture();
+  const at = { x: -1900, z: -2200 };
+  const pilot = h.helpers.spawnEntity({ type: 'ship', alive: true, radius: 16, pos: at, vel: { x: 0, z: 0 } });
+  h.state.playerId = pilot.id;
+  h.state.mode = 'flight';
+  h.state.run = createRunState({ kind: 'survival', ruleset: 'swarm', seed: 4242 });
+  Object.assign(h.state.run, { arenaId: 'helios_core', wave: 1, phase: 'wave_intro' });
+  h.state.settings = { gameplay: { physicsBackend: 'rapier-dynamic' } };
+  h.helpers.removeEntity = id => { h.state.entities.get(id).alive = false; h.state.entities.delete(id); };
+  h.host.bus = createBus();
+  const alerts = [];
+  h.host.bus.on('alert', payload => alerts.push(payload));
+  h.host._onWavePlanned({ wave: 1, plan: { arenaPhase: 'idle', packages: [] } });
+  const step = (tick, x, z) => {
+    h.state.tick = tick;
+    pilot.pos = { x: at.x + x, z: at.z + z };
+    h.host.update(1 / 60, h.state);
+  };
+  const markers = () => h.state.entityList.filter(row => row.alive && row.data?.foundryReturnGate);
+  step(8, 0, 0);
+  h.state.run.phase = 'active';
+  step(12, 350, 0);
+  assert.deepEqual(markers(), []);
+  const a = Math.PI / 30;
+  step(16, 460 * Math.cos(a), 460 * Math.sin(a));
+  assert.equal(markers().length, 1);
+  const marker = markers()[0];
+  assert.equal(marker.data.scanLabel, 'Foundry gate');
+  assert.equal(marker.physicsBody, false);
+  assert.equal(marker.collides, false);
+  near(marker.pos.x, at.x + 410 * Math.cos(Math.PI / 12));
+  near(marker.pos.z, at.z);
+  assert.equal(createVisualFactory().build(marker).userData.visualLanguage, 'circuit-zone');
+  assert.match(alerts.at(-1).text, /Circle outside the rim/);
+  const course = () => foundryReturnCourse(h.host._foundryReturnGuide, pilot, h.host._foundryReturnGate);
+  const advance = (tick, point) => step(tick, point.x - at.x, point.z - at.z);
+  advance(20, course().aim);
+  const turn = course();
+  assert.ok(!turn.throughGap && Math.hypot(turn.aim.x - pilot.pos.x, turn.aim.z - pilot.pos.z) > 1,
+    'the outside leg gives way to a real turn around the rim');
+  advance(24, turn.aim);
+  assert.equal(markers()[0], marker);
+  assert.match(alerts.at(-1).text, /^Foundry gate →$/);
+  const receiptCount = alerts.length;
+  advance(28, pilot.pos);
+  assert.equal(alerts.length, receiptCount);
+  advance(32, course().aim);
+  assert.deepEqual(markers(), []);
+  assert.equal(alerts.at(-1).action, 'clear');
+  step(36, 610, 0);
+  assert.equal(markers().length, 1);
+  h.host.newGame();
+  assert.deepEqual(markers(), []);
+  assert.equal(alerts.at(-1).action, 'clear');
 });

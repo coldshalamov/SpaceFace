@@ -21,6 +21,22 @@ function settle(root, e, seconds = 2.5) {
 }
 const world = o => o.getWorldPosition(new THREE.Vector3());
 
+test('dashed smear segments share their animated material and dispose it once', () => {
+  const e = markEntity({ style: 3, progress: 1, smear: 0.5 });
+  const root = buildRubricVisual(e);
+  const pieces = [];
+  root.traverse(o => { if (o.isMesh && Math.abs(o.material.opacity - 0.325) < 1e-9) pieces.push(o); });
+  assert.equal(pieces.length, 6);
+  assert.equal(new Set(pieces.map(o => o.material)).size, 1);
+  let disposals = 0;
+  pieces[0].material.addEventListener('dispose', () => disposals++);
+  e.data.rubricMark.smear = 0.8;
+  root.userData.updateAuthoredMotion(e, 0, {});
+  assert.ok(pieces.every(o => Math.abs(o.material.opacity - 0.52) < 1e-9));
+  disposeRubricVisual(root);
+  assert.equal(disposals, 1);
+});
+
 test('body and mark variants construct without a DOM, with finite geometry, no sprites or points, and the authored stamp', () => {
   let triangles = 0, meshes = 0;
   for (const root of [buildRubricVisual(body()), buildRubricVisual(markEntity({ filed: true, style: 1 })), buildRubricVisual(markEntity({ style: 2 })), buildRubricVisual(markEntity({ style: 3 }))]) {

@@ -1,3 +1,4 @@
+import { pilotHas } from '../data/pilotTree.js';
 import {applyFundedBeamRepair, beamRepairReserve, beamRepairScrap} from './beamRepairResources.js';
 import { isHeliosClaimCutter } from './heliosClaimOpening.js';
 import { crackerRunLoadRecovery } from '../data/worldOneOffs.js';
@@ -8,7 +9,7 @@ import { isCeresWorkfleetHardware } from '../data/ceresWorkfleetIdentity.js';
 // Mining system (ARCHITECTURE §2.3 step 9). Owns asteroid extraction, ore ejection as
 // collectible pickups, the magnet auto-collect pull, and wreck salvage.
 //
-// Drive: the player holds RIGHT-MOUSE / gamepad LT / touch MINE -> state.input.fireGroup === 2.
+// Drive: the context wheel's Mine Beam latch, gamepad LT, or touch Mine sets fireGroup to 2.
 // The active mining beam
 // runtime lives on state.player.miningBeam (gameState §3.5); we also honor a per-entity
 // entity.data.miningBeam override if a future ships/outfitting pass writes one there.
@@ -33,6 +34,7 @@ import { hasActiveSpatialHash, queryNearbyEntities } from '../core/spatialQuery.
 import { queryCombatTableEntities, combatTableRowDistance, COMBAT_TABLE_FLAGS } from '../core/combatTable.js';
 import { collectDirtyIds, markDirty, DIRTY } from '../core/dirtyJournal.js';
 import { queuePhysicsImpulse, isDynamicPhysicsBodyEntity } from '../core/physicsAuthority.js';
+import { markFieldRockAtRest } from './spawnClearance.js';
 import { occupantGenerationOf } from '../core/entity.js';
 import { promoteAsteroidFieldRock, queryAsteroidField } from '../world/asteroidField.js';
 import { isRacingCorridorSession } from '../world/racingCorridor.js';
@@ -48,6 +50,7 @@ import {
   setPickupAcceptanceRetry,
   writePickupRemainder,
 } from '../core/pickupAcceptance.js';
+import { pickupCustodyIdentity } from '../core/pickupCustody.js';
 import { presentationAllowsPlayerFacingAction } from '../core/presentationAdmission.js';
 import { verbAcceptsType } from '../data/interactionDescriptorCatalog.js';
 import { describeEntity } from './interactionDescriptors.js';
@@ -58,7 +61,8 @@ import { actionForWreck, poolForAction } from '../data/salvageActions.js';
 import { ANVIL_ORCHARD, normalizeOrchardRecord, orchardPhase } from '../data/anvilOrchard.js';
 import { isOrchardFrame, isOrchardPod } from '../data/anvilOrchardIdentity.js';
 import { debrisCacheFor, spawnDebrisCachePods } from '../data/scanReveal.js';
-import { removeCargo, addCargo } from './cargo.js';
+import { removeCargo, addCargo, slotFitFor, ensureSlots, syncItemsFromSlots, unitsPerSlotFor } from './cargo.js';
+import { fillSlots } from '../data/cargoSlots.js';
 import {
   claimRichSeamOpportunity,
   recordFieldExtraction,
@@ -91,6 +95,9 @@ import {
 } from './miningBeamTargetingRead.js';
 export { BULK_HAUL_MIN_U, beamRangeFor, isBeamTargetEligible } from './miningBeamTargetingRead.js';
 
+export const PILOT_DEEP_BITE_MULT = 1.5;
+export const PILOT_STEADY_BEAM_WEIGHT = 2;
+export const PILOT_ORE_MAGNET_FLOOR = 240;
 export const MAGNET_RANGE = 800; // wu pull radius for Super-Wide Vacuum Cargo Attractor
 export const MAGNET_ACCEL = 2400; // wu/s² snappy authority toward the seek velocity
 // Relative approach speed while magnetized (added on top of the player's velocity so flybys collect).
@@ -174,7 +181,9 @@ const SALVAGE_TIME_DEFAULT = 6; // s to fully drain a wreck if combat didn't set
 // Claim-jump prosecution: re-protest cadence while the beam stays on a staked wreck.
 const CLAIM_JUMP_PROTEST_COOLDOWN_S = 12;
 const MINEABLE_QUERY_RADIUS_PAD = 64;
-const SEAM_HIT_RADIUS = 14;
+const NPC_SEAM_HIT_RADIUS = 14;
+const SEAM_TRACK_S = 10;
+const SEAM_TRACK_MAX = 0.2;
 // SEAM_YIELD_OFF is a YIELD fraction, as its name has always claimed. Off-seam beam time delivers
 // 35% of the ore per point of rock removed, so spraying a rock destroys it for a third of its ore.
 // It used to be applied to extraction SPEED instead, which left total yield per rock identical and
@@ -282,11 +291,9 @@ export const mining = {
     this._miningQuiet = null;  // FB-090 quiet latch
     // Vent rhythm bookkeeping. `_pulseOre` is the ore (fractional units) this beam-on window has
     // already delivered; venting inside the amber band cashes a fraction of it as a bonus burst.
-    this._pulseOre = 0;
-    this._pulseTargetId = null;
-    this._pulseCommodityId = null;
+    this._clearVentPulse();
+    this._seamTrack = null;
     this._beamPegged = false;
-    this._pulsePeggedS = 0;
     this._ventCarry = 0;
     this._ventCarryCommodityId = null;
     this._heatEmitPct = -1;
@@ -312,14 +319,10 @@ export const mining = {
     // mid-beam must not carry pulse credit or a lock target into the restored field).
     const resetMiningSession = () => {
       wakeQuiet();
-      this._setLockTargetId(null);
+      this._clearVentPulse();
       this._stopBeam();
+      this._setLockTargetId(null);
       this._resetBeamHeat();
-      this._pulseOre = 0;
-      this._pulseTargetId = null;
-      this._pulseCommodityId = null;
-      this._beamPegged = false;
-      this._pulsePeggedS = 0;
     };
     bus.on('sector:enter', resetMiningSession);
     bus.on('save:loaded', resetMiningSession);
@@ -490,6 +493,7 @@ export const mining = {
     }
 
     if (!this._beaming || this._lockTargetId !== target.id || this._activeVerb !== resolved.verb) {
+      this._clearVentPulse();
       this._setLockTargetId(target.id);
       this._activeVerb = resolved.verb;
       this.bus.emit('mining:start', {
@@ -504,7 +508,9 @@ export const mining = {
     this._activeBeamLine = beamLineFor(player, target);
     if (this._activeBeamLine) this._activeBeamLine.verb = resolved.verb;
 
-    const dps = (beam.dps || 18) * (beam.directToCargo ? 1.08 : 1);
+    // Pilot Tree, Mining (Adventure): prospector_deep_bite — the player's laser cuts ×1.5.
+    const dps = (beam.dps || 18) * (beam.directToCargo ? 1.08 : 1)
+      * (pilotHas(this.state, 'prospector_deep_bite') ? PILOT_DEEP_BITE_MULT : 1);
     switch (resolved.verb) {
       case 'extract':
         if (target.type === 'wreck') this._drainWreck(player, target, dps, dt);
@@ -865,6 +871,7 @@ export const mining = {
   },
 
   _setLockTargetId(id) {
+    if (id !== this._lockTargetId) this._seamTrack = null;
     this._lockTargetId = id == null ? null : id;
     if (this.state && this.state.player) this.state.player.miningTargetId = this._lockTargetId;
   },
@@ -951,16 +958,23 @@ export const mining = {
   // Falling edge of the beam. Pays the vent bonus as real ore through the normal release path so it
   // lands in the hold, floats "+N <Ore>" like every other yield, and is worth exactly what the ore
   // is worth — no separate currency, no invisible stat.
+  _clearVentPulse() {
+    this._pulseOre = 0;
+    this._pulseTargetId = null;
+    this._pulseSource = null;
+    this._pulseCommodityId = null;
+    this._pulsePeggedS = 0;
+  },
+
   _resolveVent() {
     const pulseOre = this._pulseOre;
     const targetId = this._pulseTargetId;
+    const source = this._pulseSource;
     const commodityId = this._pulseCommodityId;
     // X-07: a clean cut cashed ≥85% depth with zero pegged seconds — read before the reset.
     const peggedS = this._pulsePeggedS || 0;
-    this._pulseOre = 0;
-    this._pulseTargetId = null;
-    this._pulseCommodityId = null;
-    this._pulsePeggedS = 0;
+    this._clearVentPulse();
+    if (!(pulseOre > 0)) return null;
     const player = this.state.entities.get(this.state.playerId);
     const beam = player ? this._beamRuntime(player) : null;
     if (!beam) return null;
@@ -981,7 +995,8 @@ export const mining = {
     this._ventCarry = Math.max(0, rawU - bonusU);
     if (!(bonusU > 0)) return null;
     this._ventTaught = true;
-    const rock = targetId != null ? this.state.entities.get(targetId) : null;
+    const occupant = targetId != null ? this.state.entities.get(targetId) : null;
+    const rock = source && source !== occupant?.data ? null : occupant;
     const pos = rock && rock.pos ? { x: rock.pos.x, z: rock.pos.z } : (player.pos ? { x: player.pos.x, z: player.pos.z } : null);
     const accepted = this._giveCargo(id, bonusU, player.id);
     const rejected = Math.max(0, bonusU - accepted);
@@ -1012,11 +1027,8 @@ export const mining = {
   _resetBeamHeat() {
     const player = this.state.entities.get(this.state.playerId);
     const beam = player ? this._beamRuntime(player) : null;
-    this._pulseOre = 0;
-    this._pulseTargetId = null;
-    this._pulseCommodityId = null;
+    this._clearVentPulse();
     this._beamPegged = false;
-    this._pulsePeggedS = 0;
     this._ventCarry = 0;
     this._ventCarryCommodityId = null;
     this._heatEmitPct = -1;
@@ -1038,8 +1050,8 @@ export const mining = {
     return dist <= range + (entity.radius || 0);
   },
 
-  // Nearest mineable target (asteroid or salvageable wreck) within range, biased toward aim.
-  // While the beam is held, the first-acquired target stays locked until fire is released.
+  // An explicit cursor pick can name a new rock while the wheel's beam latch is on.
+  // Direction-only aiming keeps the acquired body locked until the beam is released.
   _acquireTarget(ship, range, state) {
     const inp = state.input;
     if (inp && Object.prototype.hasOwnProperty.call(inp, 'worldObjectTargetId')) {
@@ -1057,6 +1069,9 @@ export const mining = {
     const tetherTarget = activeMineableTetherTarget(state, ship, range);
     if (tetherTarget !== undefined) return tetherTarget;
 
+    const pointer = inp?.actions?.aimedMine && inp.aimIntentActive && !inp.aimFromStick
+      && Number.isFinite(inp.aimWorld?.x) && Number.isFinite(inp.aimWorld?.z) ? inp.aimWorld : null;
+    let locked = null;
     if (this._beaming && this._lockTargetId != null) {
       // Entity ids recycle: when the locked body dies, the lifetime sweep's
       // clearRecycledEntityPointers nulls player.miningTargetId but cannot reach this system's
@@ -1066,9 +1081,9 @@ export const mining = {
       // verb. A dead lock reports no-target this tick; the free aim scan may still pick the same
       // body next tick, but as a fresh lock with its own start edge.
       if (state.player && state.player.miningTargetId !== this._lockTargetId) return null;
-      const locked = state.entities.get(this._lockTargetId);
-      if (locked && this._isValidMineableTarget(locked, ship, range, state)) return locked;
-      return null;
+      locked = state.entities.get(this._lockTargetId);
+      if (!locked || !this._isValidMineableTarget(locked, ship, range, state)) return null;
+      if (!pointer || Math.hypot(pointer.x - locked.pos.x, pointer.z - locked.pos.z) <= (locked.radius || 6)) return locked;
     }
 
     const selectedSiteIntent = state.input && state.input.actions && state.input.actions.siteBeam === true;
@@ -1081,6 +1096,7 @@ export const mining = {
     const aim = state.input.aimAngle || 0;
     const ax = Math.cos(aim), az = Math.sin(aim);
     let best = null, bestScore = -Infinity;
+    let pointedRock = null, pointedDistance = Infinity;
     const mineables = mineablesNearShip(state, ship, range + MINEABLE_QUERY_RADIUS_PAD, this._mineableScratch);
     this._diag.targetSpatialQueries = mineables === this._mineableScratch ? 1 : 0;
     this._diag.targetCandidates = mineables.length;
@@ -1093,12 +1109,24 @@ export const mining = {
       const dx = e.pos.x - ship.pos.x, dz = e.pos.z - ship.pos.z;
       const dist = Math.hypot(dx, dz);
       if (dist > range + (e.radius || 0)) continue;
+      if (pointer && e.type === 'asteroid') {
+        const distance = Math.hypot(pointer.x - e.pos.x, pointer.z - e.pos.z);
+        if (distance <= (e.radius || 6) && distance < pointedDistance) {
+          pointedRock = e;
+          pointedDistance = distance;
+        }
+      }
       const inv = 1 / (dist || 1);
       const dot = (dx * inv) * ax + (dz * inv) * az; // -1..1 alignment with the aim direction
       // alignment dominates so the cursor picks the rock; nearer breaks ties.
       const score = dot * 2 - dist / Math.max(1, range);
       if (score > bestScore) { bestScore = score; best = e; }
     }
+    if (pointedRock) {
+      return pointedRock.fieldResident
+        ? promoteAsteroidFieldRock(state, pointedRock.id, this.helpers, 'mine') : pointedRock;
+    }
+    if (locked) return locked;
     // WF-05 beam-tender pass: limping non-hostile hulls join the SAME aim-biased scan, so the
     // cursor picks between rock and casualty with one rule. No new target key, no mode switch.
     // Scratch self-heals for partial hosts (lab/test hosts may build mining without init),
@@ -1162,21 +1190,40 @@ export const mining = {
     if (d._oreCarry == null) d._oreCarry = 0; // fractional ore awaiting a whole unit
 
     const miner = state.entities.get(minerId);
-    const contact = this._beamContactPoint(ast, miner);
-    const seam = this._seamYield(ast, contact);
+    const piloted = minerId === state.playerId;
+    const impact = this._beamContactPoint(ast, miner, piloted);
+    const seam = this._seamYield(ast, impact, miner, piloted ? def.surfaceCut : null);
+    const contact = (piloted && seam.point) || impact || this._surfacePoint(ast, miner);
+    const workingBeam = piloted && this._beaming && this._lockTargetId === ast.id;
+    const cutBonus = workingBeam ? this._trackSeamCut(ast, seam.index, dt) : 0;
+    if (workingBeam && this._activeBeamLine) {
+      this._activeBeamLine.bx = contact.x;
+      this._activeBeamLine.bz = contact.z;
+    }
     if (seam.onSeam) this._emitSeamHit(ast, d, state);
 
     const before = d.oreHP;
-    d.oreHP = Math.max(0, d.oreHP - dps * seam.speedMult * dt);
+    d.oreHP = Math.max(0, d.oreHP - dps * seam.speedMult * (1 + cutBonus) * dt);
     ast.hull = d.oreHP; // keep the hull alias in sync
     const lost = before - d.oreHP;
     if (lost <= 0) return 0;
 
+    const rotation = ast.rot || 0;
+    const offsetX = contact.x - ast.pos.x;
+    const offsetZ = contact.z - ast.pos.z;
     this.bus.emit('mining:tick', {
       contactPos: contact,
       oreType: this._dominantOre(def),
       seamHit: seam.onSeam,
       yieldMult: seam.yieldMult,
+      ...(piloted ? {
+        seamGradePct: Math.round(100 * seam.yieldMult),
+        cutBonusPct: Math.floor(100 * cutBonus + 1e-6),
+        contactLocal: {
+          x: offsetX * Math.cos(rotation) + offsetZ * Math.sin(rotation),
+          z: offsetZ * Math.cos(rotation) - offsetX * Math.sin(rotation),
+        },
+      } : {}),
       sourceEntityId: minerId,
       targetId: ast.id,
     });
@@ -1243,11 +1290,13 @@ export const mining = {
     }
     // Vent bookkeeping: how much ore this beam-on window has produced so far, and from what. Only
     // the player runs the vent rhythm — mining drones reuse applyMining and must not bank a bonus.
-    if (minerId === state.playerId) {
+    if (piloted) {
+      if (this._pulseSource && this._pulseSource !== d) this._clearVentPulse();
       // X-07: a pegged gauge stops banking — extraction stays full-rate and what was
       // already banked still pays; the peg only stops the accrual (owner ruling mining.js).
       if (!this._beamPegged) this._pulseOre += delivered;
       this._pulseTargetId = ast.id;
+      this._pulseSource = d;
       this._pulseCommodityId = d.commodityId || this._dominantOre(def);
     }
     d.pctEjected = destroyed ? 1 : pctNow; // kept in sync for telemetry/readers
@@ -1275,7 +1324,11 @@ export const mining = {
       }
       d.depletedAtT = Number.isFinite(state.simTime) ? state.simTime : (state.tick | 0);
     }
+    // Rock regrowth's quiet clock starts at the last cut (src/data/rockRegrowth.js).
+    d.lastMinedT = Number.isFinite(state.simTime) ? state.simTime : (state.tick | 0);
     persistTouchedResourceBody(state, ast);
+    // The ledger row now says "spent"; the world leaves a worked-out core at the slot.
+    if (destroyed && !d.isChunk) this.bus.emit('mining:rockSpent', { id: ast.id, fieldId: d.fieldId || null });
     return releaseUnits;
   },
 
@@ -1296,7 +1349,7 @@ export const mining = {
       // one ordinary unit's weighted result; it never manufactures a bonus unit or reroutes cargo.
       const id = rareOreChance !== null && this.state.rng() < rareOreChance
         ? richOreForTier(rareOreTier)
-        : this._rollOre(def, ast);
+        : this._rollOre(def, ast, miner && miner.id === this.state.playerId && pilotHas(this.state, 'prospector_steady_beam'));
       if (!id) continue;
       buckets.set(id, (buckets.get(id) || 0) + 1);
     }
@@ -1468,7 +1521,9 @@ export const mining = {
   },
 
   // weighted, tier-filtered ore pick using the deterministic sim RNG
-  _rollOre(def, ast) {
+  // prospector_steady_beam (Pilot Tree, Mining): the player's laser weights every ore but silicate
+  // slag ×2 — more of the good ore, less slag. Same single rng draw per unit.
+  _rollOre(def, ast, richer = false) {
     const table = (def && def.oreTable) || { cmdty_silicate: 0.7, cmdty_ore_iron: 0.3 };
     const tierCap = (ast.data && ast.data.tierCap != null) ? ast.data.tierCap : (def ? def.tierCap : 0);
     let total = 0;
@@ -1476,8 +1531,9 @@ export const mining = {
     for (const id in table) {
       const ore = ORE_BY_ID.get(id);
       if (ore && ore.tier > tierCap) continue; // gated out → renormalize by skipping
-      total += table[id];
-      entries.push([id, table[id]]);
+      const weight = richer && id !== 'cmdty_silicate' ? table[id] * PILOT_STEADY_BEAM_WEIGHT : table[id];
+      total += weight;
+      entries.push([id, weight]);
     }
     if (!entries.length || total <= 0) return 'cmdty_silicate'; // never drop nothing
     let r = this.state.rng() * total;
@@ -1585,7 +1641,11 @@ export const mining = {
     if (!player) return;
     // Fitted tractor modules publish magnetRange through derived (ships.getDerivedStats);
     // fall back to the legacy player.magnetRange knobs so labs/tests without fittings still work.
-    const magnet = playerPickupMagnetRange(state, player);
+    // prospector_ore_magnet (Pilot Tree, Mining): loose ore drifts in from twice as far, with a
+    // floor so a ship with no tractor fitted still feels it.
+    const magnetBase = playerPickupMagnetRange(state, player);
+    const magnet = pilotHas(state, 'prospector_ore_magnet')
+      ? Math.max(magnetBase * 2, PILOT_ORE_MAGNET_FLOOR) : magnetBase;
     // Swarm Magnet drop (src/systems/swarmDrops.js): while its window is open every ordinary
     // pickup is inside the vacuum. Drops and repair cells keep the normal range.
     const dropMagnet = swarmDropMagnetRange(state);
@@ -1654,13 +1714,12 @@ export const mining = {
       }
       const dx = player.pos.x - e.pos.x, dz = player.pos.z - e.pos.z;
       const dist = Math.hypot(dx, dz) || 1e-4;
-      // A titled crew cut is the working barge's lot. The passive vacuum reaches the whole
-      // opening neighbourhood and would take the chip before that hull arrives. Flying into
-      // the body still collects it, which is the theft the law owner already charges.
-      const crewCut = e.type === 'pickup' && pickupData.npcMiningSource
-        && typeof pickupData.npcMiningSource === 'object';
+      // Owned chips and marked salvage stay where the pilot can choose whether to scoop them.
+      // Physical and beam collection still go through the normal custody and law checks.
+      const claimed = pickupData.claimedCargo === true
+        || (pickupData.npcMiningSource && typeof pickupData.npcMiningSource === 'object');
       const reach = dropMagnet > magnet && !pickupData.swarmDrop && !pickupData.swarmRepair ? dropMagnet : magnet;
-      if (e.type === 'pickup' && !crewCut && (combatLoot ? !beatPending : dist <= reach)) {
+      if (e.type === 'pickup' && !claimed && (combatLoot ? !beatPending : dist <= reach)) {
         // Homing vacuum: inherit player velocity, then accelerate relative approach.
         // An absolute speed cap used to make combat flybys miss (player ~combatSpeed, pickups
         // clamped below the ship's speed so they couldn't catch up). Cap relative approach only.
@@ -2631,6 +2690,7 @@ export const mining = {
         },
         ...(playerExtractedCore ? { flags: { persistent: true } } : {}),
       });
+      markFieldRockAtRest(chunk, { simTime: this.state.simTime });
       chunk.data.seams = inheritChunkSeams(parentSeams, seamCount, radius, i);
       if (ast.data.scanHighlightUntil != null && ast.data.scanHighlightUntil > this.state.simTime) {
         chunk.data.scanHighlightUntil = ast.data.scanHighlightUntil;
@@ -2792,9 +2852,15 @@ export const mining = {
       this.state && this.state.simTime,
       { state: this.state, pickup, collector: player },
     )) {
+      const parked = finiteWholePickupAmount(pickup.data.amount);
+      if (this._convertOverflowToCredits(pickup, parked)) {
+        pickup.alive = false;
+        clearPickupAcceptanceRetry(pickup.data);
+        return { accepted: 0, rejected: parked, legacyFullConsume: false, converted: true };
+      }
       return {
         accepted: 0,
-        rejected: finiteWholePickupAmount(pickup.data.amount),
+        rejected: parked,
         legacyFullConsume: false,
         deferred: true,
       };
@@ -2893,13 +2959,22 @@ export const mining = {
   _convertOverflowToCredits(pickup, rejectedUnits) {
     if (!combatFlag('arcadeLoot')) return false;
     const data = pickup && pickup.data;
-    if (!data || data.combatLoot !== true) return false;
-    if (data.kind !== 'ore' && data.kind !== 'cargo') return false;
+    if (!data) return false;
+    // Only loot the vacuum is allowed to pull (the same test as the homing write): owned chips,
+    // marked salvage, site and custody freight keep their own rules. Credit chips are credits.
+    if (data.claimedCargo === true || data.physicalCustodyOnly === true) return false;
+    // A custody-identified pod (freight annotation, salvor claim, named owner) is somebody's
+    // property: converting it to silent player cash bypasses the custody/law adjudication the
+    // contact gate exists to run, and destroys the pod the claim-holder is flying to reach.
+    if (pickupCustodyIdentity(data)) return false;
+    if (data.npcMiningSource && typeof data.npcMiningSource === 'object') return false;
+    if (data.worldSiteId || data.richLotSource || data.heistFacilityRole) return false;
+    if (isCreditChipPickup(data)) return false;
     if (data.wallet === 'run') return false;
     const units = finiteWholePickupAmount(rejectedUnits);
     if (units <= 0) return false;
     const commodity = COMMODITY_BY_ID.get(data.commodityId);
-    const unitValue = commodity && Number.isFinite(commodity.basePrice) ? commodity.basePrice : 0;
+    const unitValue = commodity && Number.isFinite(commodity.basePrice) ? commodity.basePrice : 10;
     const credits = Math.max(1, Math.floor(units * unitValue * LOOT_OVERFLOW_SCRAP_RATE));
     this.bus.emit('economy:grantCredits', {
       amount: credits,
@@ -2935,18 +3010,17 @@ export const mining = {
     if (qty <= 0) return 0;
     const cargo = this.state.player.cargo;
     if (!cargo) return 0;
-    if (!cargo.items) cargo.items = {};
+    ensureSlots(this.state, cargo);
     const ore = ORE_BY_ID.get(commodityId);
     const vol = (ore && ore.vol) || 1;
     const mass = (ore && ore.mass) || 1;
-    const cap = Number.isFinite(cargo.capVolume) ? cargo.capVolume : 40;
-    const free = cap - (cargo.usedVolume || 0);
-    const accepted = Math.max(0, Math.min(qty, Math.floor(free / vol)));
-    // The cargo writer emits this when it is mounted. The stub path has to say the same thing
-    // once, including a hold that takes nothing.
+    // Same slot law as the mounted writer: slotFitFor, then the shared fill. The stub keeps its
+    // own cargo:changed emit because the owner's bus binding is not mounted on this path.
+    const accepted = Math.max(0, Math.min(qty, slotFitFor(this.state, commodityId)));
     if (accepted < qty && this.bus) this.bus.emit('cargo:full', { commodityId });
     if (accepted <= 0) return 0;
-    cargo.items[commodityId] = (cargo.items[commodityId] || 0) + accepted;
+    fillSlots(cargo.slots, cargo.slotCount, commodityId, accepted, unitsPerSlotFor(this.state, commodityId));
+    syncItemsFromSlots(cargo);
     cargo.usedVolume = (cargo.usedVolume || 0) + accepted * vol;
     cargo.usedMass = (cargo.usedMass || 0) + accepted * mass;
     if (lotSource && typeof lotSource.richOpportunityId === 'string') {
@@ -3013,30 +3087,69 @@ export const mining = {
     return d.seams;
   },
 
-  _beamContactPoint(ast, miner) {
-    if (!miner) return { x: ast.pos.x, z: ast.pos.z };
-    const aim = this.state.input && Number.isFinite(this.state.input.aimAngle)
-      ? this.state.input.aimAngle
+  _beamContactPoint(ast, miner, piloted) {
+    if (!miner) return null;
+    const pilotAim = piloted ? this.state.input?.aimAngle : null;
+    const aim = Number.isFinite(pilotAim)
+      ? pilotAim
       : Math.atan2(ast.pos.z - miner.pos.z, ast.pos.x - miner.pos.x);
-    const hit = rayCircleContact(miner.pos, aim, ast.pos, ast.radius || 6);
-    return hit || this._surfacePoint(ast, miner);
+    return rayCircleContact(miner.pos, aim, ast.pos, ast.radius || 6);
   },
 
-  // Aim is a bet, not decoration: `yieldMult` is what the rock PAYS for the material you remove,
-  // `speedMult` is only how fast the beam chews. Off-seam therefore burns a rock down at nearly full
-  // speed for a third of its ore — a loss the player can see in the float text, which is the point.
-  _seamYield(ast, contact) {
+  // Pointer aim names a point on the projected face. Stick aim cuts along the
+  // projected ray. Both can reach the seam marks the scanner draws inside the rock.
+  _seamYield(ast, impact, miner, profile) {
     const seams = this._ensureAsteroidSeams(ast);
-    const off = { onSeam: false, yieldMult: SEAM_YIELD_OFF, speedMult: SEAM_SPEED_OFF };
-    if (!seams.length || !contact) return off;
-    const hitR2 = SEAM_HIT_RADIUS * SEAM_HIT_RADIUS;
-    for (const seam of seams) {
-      const p = seamWorldPoint(ast, seam);
-      const dx = contact.x - p.x;
-      const dz = contact.z - p.z;
-      if (dx * dx + dz * dz <= hitR2) return { onSeam: true, yieldMult: 1, speedMult: 1 };
+    const off = {
+      onSeam: false,
+      yieldMult: profile?.shellYield ?? SEAM_YIELD_OFF,
+      speedMult: profile?.shellSpeed ?? SEAM_SPEED_OFF,
+    };
+    if (!seams.length || !impact) return off;
+    const input = this.state.input;
+    const radius = ast.radius || 6;
+    const width = profile ? clamp(radius * profile.seamWidth, 1.5, 9) : NPC_SEAM_HIT_RADIUS;
+    const pointer = profile && input?.aimIntentActive && !input.aimFromStick ? input.aimWorld : null;
+    const pointAim = pointer && Math.hypot(pointer.x - ast.pos.x, pointer.z - ast.pos.z) <= radius
+      ? pointer : null;
+    const angle = input?.aimAngle;
+    const rayAim = profile && !pointAim && Number.isFinite(angle);
+    const dx = rayAim ? Math.cos(angle) : 0;
+    const dz = rayAim ? Math.sin(angle) : 0;
+    let bestDistance = width;
+    let best = null;
+    for (let index = 0; index < seams.length; index++) {
+      const point = seamWorldPoint(ast, seams[index]);
+      let distance;
+      if (rayAim) {
+        const offsetX = point.x - miner.pos.x;
+        const offsetZ = point.z - miner.pos.z;
+        if (offsetX * dx + offsetZ * dz < 0) continue;
+        distance = Math.abs(offsetX * dz - offsetZ * dx);
+      } else {
+        const aim = pointAim || impact;
+        distance = Math.hypot(point.x - aim.x, point.z - aim.z);
+      }
+      if (distance >= bestDistance) continue;
+      bestDistance = distance;
+      best = { onSeam: true, yieldMult: 1, speedMult: 1, index, point };
     }
-    return off;
+    return best || off;
+  },
+
+  _trackSeamCut(asteroid, index, dt) {
+    if (index == null) {
+      this._seamTrack = null;
+      return 0;
+    }
+    const previous = this._seamTrack;
+    if (!previous || previous.source !== asteroid.data || previous.index !== index) {
+      this._seamTrack = { source: asteroid.data, index, elapsed: 0 };
+    }
+    const track = this._seamTrack;
+    const bonus = (track.elapsed / SEAM_TRACK_S) * SEAM_TRACK_MAX;
+    track.elapsed = Math.min(SEAM_TRACK_S, track.elapsed + dt);
+    return bonus;
   },
 
   _emitSeamHit(ast, data, state) {

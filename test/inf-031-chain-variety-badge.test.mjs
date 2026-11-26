@@ -86,8 +86,9 @@ test('INF-031: swarm:chain carries the cause and step the chain itself scored', 
 test('INF-031: gun-to-collision and repeated-gun kills badge differently', () => {
   const varied = chainCauseBadge('collision', SWARM_CHAIN_VARIED_STEP);
   const repeated = chainCauseBadge('direct', 1);
-  assert.equal(varied, 'COLLISION +2');
-  assert.equal(repeated, 'DIRECT');
+  // Rewritten to plain words (design/overhaul/04_SWARM.md §4): Kiln says the kind once.
+  assert.equal(varied, 'That was his friend!');
+  assert.equal(repeated, 'Clean shot');
   assert.notEqual(varied, repeated);
   assert.equal(chainCauseBadge(null, 1), null);
   assert.equal(chainCauseBadge('', 2), null);

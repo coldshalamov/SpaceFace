@@ -9,6 +9,7 @@ import { FAUNA_FAMILIES, decodedSuhlClauses, namesForTheDead } from '../src/data
 import { DISCOVERY_AUDIO_RECIPES, FAUNA_ROLE_SOUND, MACHINE_SOUND_IDS } from '../src/data/discoveryAudio.js';
 import { MACHINE_KINDS, MACHINE_SITES } from '../src/data/precursorMachines.js';
 import { materializeMachineLayer, tickMachineLayer } from '../src/systems/precursorMachines.js';
+import { vergeCourt } from '../src/systems/faction_verge.js';
 import { handleAlienEcologyEvent, serializeAlienEcologyState, deserializeAlienEcologyState } from '../src/systems/alienEcology.js';
 import { tickDiscoverySound } from '../src/systems/discoverySound.js';
 import { faunaFieldNote } from '../src/ui/targetPanel.js';
@@ -34,7 +35,13 @@ function fixture(sectorId = 'sector_veil_nebula') {
   const player = { id: 1, type: 'player', alive: true, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, radius: 10 };
   state.entities.set(1, player); state.entityList.push(player);
   return { state, world, events, player,
-    seconds(seconds) { for (let i = 0; i < seconds * 10; i++) { state.simTime += .1; state.tick++; tickMachineLayer(world, .1); } },
+    seconds(seconds, update) {
+      for (let i = 0; i < seconds * 10; i++) {
+        state.simTime += .1; state.tick++;
+        tickMachineLayer(world, .1);
+        update?.(.1, state);
+      }
+    },
     spawn: world.helpers.spawnEntity,
   };
 }
@@ -104,15 +111,65 @@ test('468: all nine role calls and every machine kind are wired to the live ambi
 
 test('468: the unexplained Helios prism is materialized and audible on the ordinary starter mining approach', () => {
   const f = fixture('sector_helios_prime');
+  const court = Object.create(vergeCourt);
+  court.init({ state: f.state, bus: f.world.bus });
+  const update = court.update.bind(court);
   materializeMachineLayer(f.world, { id: 'sector_helios_prime' }, f.world.active);
   const prism = f.state.entityList.find(entity => entity.data?.machine?.siteId === 'helios_unanswered_survey');
   assert.ok(prism); assert.equal(prism.type, 'machine');
-  f.player.pos = { x: 720, z: -260 }; f.seconds(1);
+  f.state.onboarding = { active: true };
+  f.state.player.credits = 5150;
+  f.player.mass = 33;
+  f.player.pos = { x: 720, z: -260 }; f.seconds(1, update);
   assert.equal(f.state.world.alienEcology.machineSites.helios_unanswered_survey.seen, true);
   assert.equal(f.state.world.alienEcology.machineProtocol, 'unknown', 'the tease does not identify the machine civilisation');
   assert.ok(f.events.some(row => row.name === 'audio:cue' && row.payload.id === 'ambient_machine_surveyor_prism'));
   assert.ok(f.events.some(row => row.name === 'toast' && row.payload.kind === 'discovery'));
   assert.ok(f.state.simTime < 20 * 60);
+
+  f.player.pos = { x: -400, z: -220 }; f.seconds(1, update);
+  f.player.mass = 35; // Return from carrying the starter cargo.
+  f.player.pos = { ...prism.pos }; f.seconds(5, update);
+  assert.deepEqual(f.events.filter(row => row.name === 'verge:massWeighed').map(row => row.payload.mass), [33, 35]);
+  f.player.pos = { x: 760, z: 460 }; f.seconds(20, update);
+  assert.equal(f.events.some(row => row.name === 'economy:chargeCredits'), false);
+  assert.deepEqual(f.state.verge.violations, []);
+  assert.deepEqual(f.state.verge.checkpoints, {});
+  assert.equal(f.state.verge.escort, null);
+  assert.equal(f.state.verge.pursuit, null);
+});
+
+test('Continue retires the old Helios chase without changing a settled fine or another prism’s authority', () => {
+  const f = fixture();
+  const court = Object.create(vergeCourt);
+  court.init({ state: f.state, bus: f.world.bus });
+  const update = court.update.bind(court);
+  materializeMachineLayer(f.world, { id: 'sector_veil_nebula' }, f.world.active);
+  const prism = f.state.entityList.find(entity => entity.data?.machine?.siteId === 'veil_survey_monolith');
+  assert.ok(prism);
+  f.player.mass = 35;
+  f.player.pos = { ...prism.pos };
+  f.state.player.credits = 0;
+  const saved = court.serialize();
+  saved.seq = 15;
+  saved.receipts = ['pursuit_fine:4', 'pursuit_fine:11'];
+  saved.violations = [{ directive: 'ESCORT', machineId: 223, violatorId: 1, at: 0 }];
+  const retired = { id: 15, machineId: prism.id, gen: 29, sectorId: 'sector_helios_prime' };
+  saved.pursuit = { ...retired, openedAt: 0, status: 'crossed' };
+  saved.returns = [{
+    machineId: retired.machineId, gen: retired.gen, sectorId: retired.sectorId,
+    siteId: 'helios_unanswered_survey', kind: 'surveyor_prism', x: 480, z: -220,
+  }];
+  const v = court.deserialize(JSON.parse(JSON.stringify(saved)));
+
+  assert.equal(v.pursuit, null, 'the old post identity still identifies the retired chase after the body ID is reused');
+  assert.deepEqual(v.receipts, saved.receipts);
+  assert.equal(f.state.player.credits, 0);
+  assert.deepEqual(v.returns, []);
+  f.seconds(6, update);
+  assert.equal(f.events.some(row => row.name === 'verge:pursuitResumed'), false);
+  assert.equal(f.events.some(row => row.name === 'verge:checkpointChallenged' && row.payload.machineId === prism.id), true);
+  assert.equal(v.escort?.machineId, prism.id, 'the authored Veil checkpoint still enforces a real docket mark');
 });
 
 test('468: only an accepted physical appeal decodes one clause, and Continue cannot decode it twice', () => {

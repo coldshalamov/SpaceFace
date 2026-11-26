@@ -535,6 +535,19 @@ export const ALIEN_SITES = Object.freeze({
       casket_worm: 3,
       stone_lung: 1,
     }),
+    // The four marked seams face the open east. The Caskets can still be caught by an
+    // inward blast, and their usual feed drive now draws them to the western refuge.
+    faunaAnchors: Object.freeze({
+      suture_mite: Object.freeze([
+        Object.freeze({ x: 98, z: -34 }), Object.freeze({ x: 118, z: 30 }),
+        Object.freeze({ x: 108, z: 91 }), Object.freeze({ x: 98, z: 151 }),
+      ]),
+      casket_worm: Object.freeze([
+        Object.freeze({ x: -26, z: 23 }), Object.freeze({ x: -108, z: -30 }),
+        Object.freeze({ x: -112, z: 77 }),
+      ]),
+      stone_lung: Object.freeze([Object.freeze({ x: -85, z: 24 })]),
+    }),
     growthRing: Object.freeze({ inner: 44, outer: 150, count: 24 }),
     morphologyMix: Object.freeze(['calcified_collar', 'silt_root', 'mineral_root', 'dead_crown', 'nerve_lace']),
     surveyOfferId: 'em_dmc_closed_refinery_survey',
@@ -891,13 +904,16 @@ export function planFaunaCast(site, rng) {
   const out = [];
   for (const [speciesId, count] of Object.entries(site.faunaCast || {})) {
     for (let i = 0; i < count; i += 1) {
+      // Authored slots still consume the same draws. Unmarked fauna and every motion
+      // phase retain the seed and draw order of the existing cast.
       const ang = rng() * Math.PI * 2;
       const r = 40 + rng() * 160;
+      const anchor = site.faunaAnchors?.[speciesId]?.[i];
       out.push({
         faunaKey: `${site.siteId}:${speciesId}:${i}`,
         speciesId,
-        dx: Math.cos(ang) * r,
-        dz: Math.sin(ang) * r,
+        dx: anchor?.x ?? Math.cos(ang) * r,
+        dz: anchor?.z ?? Math.sin(ang) * r,
         phase: rng() * Math.PI * 2,
       });
     }

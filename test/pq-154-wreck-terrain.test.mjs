@@ -104,6 +104,9 @@ function killHaulerIntoWreck(ctx, extra = {}) {
     victimClass: 'hauler',
     victimVel: { x: -8, z: 2 },
   });
+  // The kill's corpse decoration mints on the deferred spawn lane — this harness asserts
+  // before stepping, so run the same drain lifetimeSweep runs at the end of the step.
+  ctx.sim.helpers.drainEntitySpawnJobs();
   // The kill flow retires the hull; the marker and its wreck body are what remain.
   victim.alive = false;
   const marker = aftermathForSector(ctx.state, SECTOR_ID)
@@ -330,6 +333,8 @@ test('PQ-154/SF-293 terrain seed 15430: the fight continues around the heavy\'s 
       extra.alive = false;
       freshestVictim = extra;
     }
+    // Drain the deferred kill-decoration lane exactly where a real step's sweep would.
+    ctx.sim.helpers.drainEntitySpawnJobs();
     const markers = aftermathForSector(ctx.state, SECTOR_ID);
     freshestMarker = markers.find((m) => m && m.victimId === freshestVictim.id) || null;
     assert.ok(freshestMarker, 'the freshest kill is never the one the cap retires');

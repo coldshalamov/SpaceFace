@@ -12,6 +12,7 @@ import sys
 from PIL import Image, ImageChops, ImageFilter
 
 src, out = sys.argv[1], sys.argv[2]
+hud = '--hud' in sys.argv[3:]
 BONE = (238, 231, 216)
 FILL = (8, 8, 9)
 
@@ -30,5 +31,17 @@ dark = Image.new('RGB', im.size, FILL)
 rgb = Image.composite(bone, dark, k)
 alpha = ImageChops.lighter(body.point(lambda v: int(v * 0.97)), k)
 glyph = Image.merge('RGBA', (*rgb.split(), alpha))
+if hud:
+    # The flight panel is about 160 px wide. Keep the real edge work and a translucent
+    # hull fill, and trim the refit image's square framing for a consistent footprint.
+    ink = ImageChops.multiply(line.point(lambda v: max(0, min(255, int((v - 29) * 1.32)))), body)
+    outline = ImageChops.subtract(mask.filter(ImageFilter.MaxFilter(3)), mask.filter(ImageFilter.MinFilter(5)))
+    ink = ImageChops.lighter(ink, outline.filter(ImageFilter.GaussianBlur(0.4)))
+    rgb = Image.composite(Image.new('RGB', im.size, (241, 250, 251)),
+                          Image.new('RGB', im.size, (15, 36, 49)), ink)
+    alpha = ImageChops.lighter(body.point(lambda v: int(v * .52)), ink)
+    glyph = Image.merge('RGBA', (*rgb.split(), alpha)).transpose(Image.Transpose.ROTATE_90)
+    left, top, right, bottom = glyph.getchannel('A').getbbox()
+    glyph = glyph.crop((left - 3, top - 3, right + 3, bottom + 3))
 glyph.save(out, 'WEBP', quality=94, method=6)
 print('ok', out)

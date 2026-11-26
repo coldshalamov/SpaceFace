@@ -36,7 +36,7 @@ import { physicalProblemFromPackages, shippedQuestionFor } from '../data/surviva
 import { SWARM_CHAMPION_LEAD_WAVES, swarmNextBossFor } from '../data/swarmMode.js';
 import { swarmCourseFor } from '../data/swarmCourse.js';
 import { SWARM_AFFIX_BY_ID } from '../data/swarmThreats.js';
-import { validateRunState } from '../core/runState.js';
+import { validateRunStateForTick } from '../core/runState.js';
 import { occupantGenerationOf } from '../core/entity.js';
 import {
   SURVIVAL_ARENA_INTRO_TICKS,
@@ -46,6 +46,7 @@ import { playerBearingName } from '../core/playerCompass.js';
 import { CRYO_ARENA_ID } from './cryoDriftArena.js';
 import { GATE_BEARINGS } from './waveMaterialization.js';
 import { isSwarmSpecialistRun, swarmSpecialistBriefForEnemy } from '../data/swarmSpecialists.js';
+import { SWARM_TEACH_MECHANIC_BY_ENEMY } from '../data/swarmTeaching.js';
 import { isHostileToPlayer } from './scannerReadModel.js';
 import { pluralWord } from '../core/numberFormat.js';
 
@@ -168,7 +169,7 @@ function liveSurvivalRun(state) {
   if (!run || typeof run !== 'object' || Array.isArray(run)) return null;
   if (run.kind !== 'survival') return null;
   if (run.phase === 'inactive') return null;
-  if (!validateRunState(run).ok) return null;
+  if (!validateRunStateForTick(run, state.tick).ok) return null;
   return run;
 }
 
@@ -255,7 +256,7 @@ function displayName(enemyId) {
  *   "Wave 1. Six hostiles from the south. Clear the arena."
  *   "Wave 5. Seven hostiles from the north and the south. Corsair Raider leads. Kill the elite and
  *    clear the rest."
- *   "Wave 10. Seven hostiles from the northwest and the east. Dreadnought 'Iron Maw' leads. Kill it
+ *   "Wave 10. Seven hostiles from the northeast and the west. Dreadnought 'Iron Maw' leads. Kill it
  *    and clear the rest."
  */
 /**
@@ -1070,7 +1071,7 @@ export const survivalAnnounce = {
     // No `position`: renderer.js:3537 treats a positionless payload as player-scoped by
     // construction, which is right for a scripted arrival beat. 0.55 sits inside the 0.2-0.9
     // range combat already uses. Not counted against the line budget — a shake is not a line.
-    this.bus.emit('camera:shake', { amount: 0.55 });
+    this.bus.emit('camera:shake', { amount: 0.55, cause: 'announce' });
     return true;
   },
 
@@ -1083,11 +1084,47 @@ export const survivalAnnounce = {
     if (this._bossAnnouncedWave === this._wave) return;
     const text = hintTextFor(enemyId, this.state);
     if (!text) return;
+    // DEMO-SWARM-TUTOR-1 (owner demo 2026-11-23): inside a Swarm run this lesson is a teaching
+    // CARD, not a voice line. It used to speak on the tutorial channel, which the one-voice floor
+    // draws top-right — so it landed beside the round brief and the power caption on the first
+    // frame of control. It now hands the card to the Swarm teaching lane (src/ui/swarmTeaching.js),
+    // which shows one at a time in the margin and retires it when the mechanic is used. The card is
+    // still one line inside this wave's budget, and still once per archetype per run.
+    if (this._swarmTeach(enemyId, text)) {
+      this._hintedEnemyIds.add(enemyId);
+      this._hintsThisWave += 1;
+      return;
+    }
     // 'tutorial' (70) — voiceArbiter.js:40 calls this channel "first-hour teaching", which is
     // exactly what a counter-hint is. It preempts objective and chatter, yields to danger.
     if (!this._say('tutorial', `survival:hint:${enemyId}`, text, 7)) return;
     this._hintedEnemyIds.add(enemyId);
     this._hintsThisWave += 1;
+  },
+
+  /**
+   * Hand a first-sighting lesson to the Swarm teaching lane as a card. True when the run is Swarm
+   * and the card was offered; false in the Gauntlet or in an endless non-Swarm run, which keep the
+   * voice line. The line is split at the hull name's own colon (hintTextFor authors "Name: lesson")
+   * so the card carries a name and a sentence ("Wasp Swarmer" / "Light enough to throw — …")
+   * instead of one long run-on.
+   */
+  _swarmTeach(enemyId, text) {
+    const run = liveSurvivalRun(this.state);
+    if (!run || run.ruleset !== 'swarm') return false;
+    if (!this.bus || typeof this.bus.emit !== 'function') return false;
+    const at = text.indexOf(': ');
+    const title = at > 0 ? text.slice(0, at) : '';
+    const line = at > 0 ? text.slice(at + 2) : text;
+    const mechanic = SWARM_TEACH_MECHANIC_BY_ENEMY[enemyId] || '';
+    this.bus.emit('swarm:teach', {
+      id: `swarm:teach:${enemyId}`,
+      mechanic,
+      kicker: 'New contact',
+      title,
+      line,
+    });
+    return true;
   },
 
   _plateSuffix() {

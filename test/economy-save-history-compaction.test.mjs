@@ -2,34 +2,38 @@ import assert from 'node:assert/strict';
 
 import { COMMODITIES } from '../src/data/commodities.js';
 import { economy } from '../src/systems/economy.js';
-import { deserializeCycles, serializeCycles } from '../src/systems/economyCycles.js';
+import { marketHistoryFor } from '../src/economy/marketModel.js';
+
+// ECON-BUILD-1 — price history is no longer a persisted ring: it is the closed
+// form evaluated at past times, reconstructed on demand. What persists per listing
+// is the v2 anchor row — equilibrium/baseEq/role, dents, demand, and the last
+// stamped quote — so a save/load boundary reproduces the uninterrupted book
+// bit-for-bit. Legacy shapes still migrate: object rows' saved `stock` deviation
+// becomes one fresh dent, and stamp-less rows re-price on load.
 
 const commodityId = COMMODITIES[0].id;
-const history = Array.from({ length: 64 }, (_, index) => ({
-  t: 1200 + index * 15,
-  mid: 40 + (index % 9),
-}));
 
-function makeState(serializedHistory = history, { knownStation = true } = {}) {
+function makeState({ knownStation = true } = {}) {
   return {
     meta: { seed: 47 },
     simTime: 2200,
     content: { commodities: COMMODITIES },
-    player: { marketMemory: knownStation ? { station_test: {} } : {} },
+    player: { marketMemory: knownStation ? { station_ceres: {} } : {} },
     economy: {
       markets: {
-        station_test: {
+        station_ceres: {
           [commodityId]: {
             stock: 700,
             equilibrium: 720,
             baseEq: 720,
             role: 'none',
-            eventMods: [],
-            history: serializedHistory,
+            dents: [{ t: 2100, q: -20 }],
+            lastMid: 40, lastBuy: 44, lastSell: 36,
+            demandMult: 1,
+            demandDrivers: [],
           },
         },
       },
-      cycles: {},
       econEvents: [],
       econClock: { accumulator: 0, lastTickT: 0, ticksElapsed: 0 },
       marketIntel: {},
@@ -40,10 +44,9 @@ function makeState(serializedHistory = history, { knownStation = true } = {}) {
 
 economy.state = makeState();
 economy._nextEventId = 1;
-economy._eventAccumulator = 0;
 economy._installRngFunction();
 
-economy.state.economy.marketIntel.station_test = {
+economy.state.economy.marketIntel.station_ceres = {
   seenAtT: 2190,
   snapshot: { [commodityId]: { mid: 44, demandDrivers: [{ id: 'fixture', mult: 1.1 }] } },
 };
@@ -52,141 +55,91 @@ economy.state.economy.econEvents.push({
 });
 
 const serialized = economy.serialize();
-serialized.marketIntel.station_test.snapshot[commodityId].demandDrivers[0].mult = 99;
+serialized.marketIntel.station_ceres.snapshot[commodityId].demandDrivers[0].mult = 99;
 serialized.econEvents[0].mods[0].mult = 99;
-assert.equal(economy.state.economy.marketIntel.station_test.snapshot[commodityId].demandDrivers[0].mult, 1.1,
+assert.equal(economy.state.economy.marketIntel.station_ceres.snapshot[commodityId].demandDrivers[0].mult, 1.1,
   'snapshot-owned economy serialization must not retain nested market-intel references');
 assert.equal(economy.state.economy.econEvents[0].mods[0].mult, 1.2,
   'snapshot-owned economy serialization must not retain nested event references');
-assert.ok(Array.isArray(serialized.markets.station_test),
+assert.ok(Array.isArray(serialized.markets.station_ceres),
   'market entries persist as compact rows instead of one property-heavy object per commodity');
-const marketRow = serialized.markets.station_test.find((row) => row[0] === commodityId);
+assert.equal(serialized.marketRows, 2, 'the anchor-row format is versioned');
+const marketRow = serialized.markets.station_ceres.find((row) => row[0] === commodityId);
 assert.ok(marketRow, 'compact market rows retain the commodity identity');
-const packed = marketRow[6];
-assert.equal(Array.isArray(packed), true);
-assert.equal(packed.length, history.length * 2,
-  'history persists as one flat numeric sequence instead of allocating one object per point');
-assert.deepEqual(packed.slice(0, 6), [1200, 40, 1215, 41, 1230, 42]);
-assert.ok(JSON.stringify(packed).length < JSON.stringify(history).length * 0.55,
-  'the persisted price trace materially reduces save size and worker clone cost');
+assert.equal(marketRow.length, 10, 'v2 anchors pack eq/baseEq/role/dents/demand/quote/stock');
+assert.deepEqual(marketRow.slice(1, 4), [720, 720, 0], 'equilibrium, baseEq and role code persist');
+assert.deepEqual(marketRow[4], [2100, -20], 'a live dent persists as one flat [t, q] pair');
+assert.deepEqual(marketRow.slice(6, 10), [40, 44, 36, 700],
+  'the stamped quote and stock mirror round-trip, so reload stays bit-identical');
 
-economy.state = makeState(history, { knownStation: false });
+economy.state = makeState({ knownStation: false });
 economy._installRngFunction();
 const unvisited = economy.serialize();
-const unvisitedRow = unvisited.markets.station_test.find((row) => row[0] === commodityId);
-assert.equal(unvisitedRow.length, 6,
-  'derived chart history is not persisted for a station the player has never visited');
+const unvisitedRow = unvisited.markets.station_ceres.find((row) => row[0] === commodityId);
+assert.equal(unvisitedRow.length, 10,
+  'no derived chart history is persisted — not even for an unvisited station');
+assert.ok(!JSON.stringify(unvisited.markets).includes('"mid"'),
+  'derived history points never reach the save');
 
-function restoreUnvisitedHistory(prewarm) {
-  economy.state = makeState([], { knownStation: false });
-  if (prewarm) economy.newGame();
-  else economy._installRngFunction();
-  economy.deserialize(structuredClone(unvisited));
-  return {
-    history: structuredClone(economy.state.economy.markets.station_test[commodityId].history),
-    seed: economy.state.economy.rngSeed,
-  };
-}
-const coldRestore = restoreUnvisitedHistory(false);
-const prewarmedRestore = restoreUnvisitedHistory(true);
-assert.ok(coldRestore.history.length >= 2, 'an omitted history is reconstructed');
-assert.deepEqual(prewarmedRestore.history, coldRestore.history,
-  'restoring the same omitted history is independent of pre-load market warmup');
-assert.equal(coldRestore.seed, unvisited.rngSeed, 'reconstruction does not advance the saved RNG');
-assert.equal(prewarmedRestore.seed, unvisited.rngSeed, 'warmup cannot alter the restored RNG');
-
-economy.state = makeState([]);
+// History is the closed form evaluated at past times: a cold restore and a prewarmed
+// restore ask the same function and get the same trace, no RNG consumed either way.
+economy.state = makeState({ knownStation: false });
 economy._installRngFunction();
-economy.deserialize(serialized);
-assert.deepEqual(economy.state.economy.markets.station_test[commodityId].history, history,
-  'packed history restores to the existing runtime point shape without data loss');
+economy.deserialize(structuredClone(unvisited));
+const coldHistory = marketHistoryFor(economy.state, 'station_ceres', commodityId, { spanS: 2400, stepS: 300 });
+const coldSeed = economy.state.economy.rngSeed;
+economy.state = makeState({ knownStation: false });
+economy.newGame();
+economy.deserialize(structuredClone(unvisited));
+const warmHistory = marketHistoryFor(economy.state, 'station_ceres', commodityId, { spanS: 2400, stepS: 300 });
+assert.ok(coldHistory.length >= 2, 'an omitted history is reconstructed on demand');
+assert.deepEqual(warmHistory, coldHistory,
+  'restoring the same omitted history is independent of pre-load market warmup');
+assert.equal(economy.state.economy.rngSeed, unvisited.rngSeed,
+  'history reconstruction consumes no saved RNG');
+
+// The persisted quote survives Continue untouched — restoring must not re-stamp a
+// row whose stamps were saved, or a mid-load quote would drift from what the player saw.
+economy.state = makeState({ knownStation: false });
+economy._installRngFunction();
+economy.deserialize(structuredClone(serialized));
+const restoredEntry = economy.state.economy.markets.station_ceres[commodityId];
+assert.deepEqual(
+  [restoredEntry.lastMid, restoredEntry.lastBuy, restoredEntry.lastSell, restoredEntry.stock],
+  [40, 44, 36, 700],
+  'the saved quote and shelf mirror come back untouched',
+);
+assert.deepEqual(restoredEntry.dents, [{ t: 2100, q: -20 }], 'the dent survives the round trip');
+
+// Early v2 rows (no stamp tail) and legacy object rows still load by re-pricing and
+// migrating the saved stock deviation into one fresh dent.
+const earlyV2 = structuredClone(serialized);
+earlyV2.markets.station_ceres[0].length = 6;
+economy.deserialize(earlyV2);
+const repriced = economy.state.economy.markets.station_ceres[commodityId];
+assert.ok([repriced.lastMid, repriced.lastBuy, repriced.lastSell]
+  .every((p) => Number.isSafeInteger(p) && p > 0),
+  'stamp-less rows reconstruct usable prices on load');
 
 const legacy = structuredClone(serialized);
+legacy.marketRows = 0;
 legacy.markets = {
-  station_test: {
-    [commodityId]: {
-      stock: 700,
-      equilibrium: 720,
-      baseEq: 720,
-      role: 'none',
-      eventMods: [],
-      history,
-    },
+  station_ceres: {
+    [commodityId]: { stock: 700, equilibrium: 720, baseEq: 720, role: 'none' },
   },
 };
-economy.state = makeState([]);
-economy._installRngFunction();
 economy.deserialize(legacy);
-assert.deepEqual(economy.state.economy.markets.station_test[commodityId].history, history,
-  'older object-per-point saves remain load-compatible');
+const migrated = economy.state.economy.markets.station_ceres[commodityId];
+assert.ok(Array.isArray(migrated.dents) && migrated.dents.length === 1
+  && migrated.dents[0].q === -20,
+  'a legacy saved stock deviation migrates to one fresh dent');
+assert.ok(migrated.lastSell > 0, 'the migrated listing is priced');
+
+// Malformed saved quotes recompute the complete tuple instead of serving -1.
+const malformed = structuredClone(serialized);
+malformed.markets.station_ceres[0][8] = -1;
+economy.deserialize(malformed);
+const fixed = economy.state.economy.markets.station_ceres[commodityId];
+assert.ok(fixed.lastSell > 0, 'a malformed saved sell quote recomputes');
 
 console.log('economy-save-history-compaction: PASS');
-
-const cycleState = {
-  economy: {
-    cycles: {
-      station_test: {
-        [commodityId]: {
-          cmdtyId: commodityId,
-          regime: 'turbulent', family: 'turbulent', phase: 0.25, frequency: 0.01,
-          amplitude: 0.2, bias: 0.03, slope: 0, a: 0, b: 0, c: 0, pivot: 0.5,
-          amp2: 0.08, freq2: 0.017, phase2: 0.4,
-          amp3: 0.04, freq3: 0.024, phase3: 0.8,
-          regimeStartT: 100, regimeEndT: 1700,
-        },
-      },
-    },
-  },
-};
-const packedCycles = serializeCycles(cycleState);
-assert.ok(Array.isArray(packedCycles.station_test),
-  'economic cycles persist as compact rows instead of 20-property objects');
-const restoredCycleState = { economy: { cycles: {} } };
-deserializeCycles(restoredCycleState, packedCycles);
-assert.equal(restoredCycleState.economy.cycles.station_test[commodityId].family, 'turbulent');
-assert.equal(restoredCycleState.economy.cycles.station_test[commodityId].amp3, 0.04);
-
-// Saving between economy pulses must preserve the public quote the player sees.
-// Recomputing the time-varying curve during load advances that quote without a simulation tick.
-economy.state = makeState(history, { knownStation: false });
-economy._installRngFunction();
-const quoted = economy.state.economy.markets.station_test[commodityId];
-Object.assign(quoted, { lastMid: 400, lastBuy: 420, lastSell: 380 });
-const visibleQuote = [economy.priceOf('station_test', commodityId, 'buy'),
-  economy.priceOf('station_test', commodityId, 'sell')];
-const quoteSave = JSON.parse(JSON.stringify(economy.serialize()));
-economy.state = makeState([], { knownStation: false });
-economy._installRngFunction();
-economy.deserialize(quoteSave);
-assert.deepEqual([economy.priceOf('station_test', commodityId, 'buy'),
-  economy.priceOf('station_test', commodityId, 'sell')], visibleQuote,
-  'Continue between market pulses must retain both public buy and sell quotes');
-assert.equal(economy.state.economy.markets.station_test[commodityId].lastMid, 400,
-  'the midpoint used by charts and snapshots remains the saved quote too');
-assert.equal(quoteSave.markets.station_test[0][6], null,
-  'preserving the current quote must not persist an unvisited market history');
-
-const withoutQuote = structuredClone(quoteSave);
-withoutQuote.markets.station_test[0].length = 6;
-economy.deserialize(withoutQuote);
-const repriced = economy.state.economy.markets.station_test[commodityId];
-const freshQuote = [repriced.lastMid, repriced.lastBuy, repriced.lastSell];
-assert.ok(freshQuote.every((price) => Number.isSafeInteger(price) && price > 0),
-  'older compact saves without quotes still reconstruct usable prices');
-
-for (const payload of [
-  { ...structuredClone(quoteSave), balanceVersion: -1 },
-  (() => { const data = structuredClone(quoteSave); data.markets.station_test[0][8] = -1; return data; })(),
-]) {
-  const withoutSavedQuote = structuredClone(payload);
-  withoutSavedQuote.markets.station_test[0].length = 6;
-  economy.deserialize(withoutSavedQuote);
-  const expected = economy.state.economy.markets.station_test[commodityId];
-  const expectedQuote = [expected.lastMid, expected.lastBuy, expected.lastSell];
-  economy.deserialize(payload);
-  const entry = economy.state.economy.markets.station_test[commodityId];
-  assert.deepEqual([entry.lastMid, entry.lastBuy, entry.lastSell], expectedQuote,
-    'changed balance or malformed saved quotes must recompute the complete price tuple');
-}
-
-console.log('economy-save-quotes: PASS');

@@ -1129,3 +1129,39 @@ test('autosave capture preparation is loading-only and exercises each production
   assert.equal(harness.primeAutosaveCapture(), true);
   assert.deepEqual(calls, ['first', 'second']);
 });
+
+test('the mutating physics reader runs inside the synchronous first capture-prep slice', () => {
+  const h = autosaveHarness({ productionCapture: true });
+  try {
+    const calls = [];
+    const productionPlan = save._saveCapturePlan.bind(save);
+    save._saveCapturePlan = () => productionPlan().map(([key, read]) => [key, () => {
+      calls.push(key);
+      return read();
+    }]);
+    const previousMode = h.state.mode;
+    h.state.mode = 'loading';
+    let primed;
+    try { primed = save.primeAutosaveCapture(); }
+    finally { h.state.mode = previousMode; }
+
+    assert.equal(primed, true);
+    // bec56074d5: physics.serialize exports AND re-adopts the live Rapier world — deferred
+    // into a scheduled slice it raced flight start and rebuilt the world with a per-run
+    // body set, flipping the sim's downstream hash. The warm owns its own slice order, so
+    // the one mutating reader must complete while the call itself is still on the stack —
+    // every key already in `calls` at this point ran inside the synchronous first slice.
+    assert.equal(calls[0], 'physics',
+      `physics must lead the synchronous first slice; readers ran as ${JSON.stringify(calls.slice(0, 5))}`);
+    assert.equal(calls.filter((key) => key === 'physics').length, 1,
+      'the warm exercises the physics reader exactly once');
+
+    // The reorder is scoped to the warm's own copy of the plan: the production capture plan
+    // itself keeps canonical restore order — world/entities before the native snapshot.
+    const planKeys = save._saveCapturePlan().map(([key]) => key);
+    assert.ok(planKeys.indexOf('physics') > planKeys.indexOf('entities'),
+      'the real capture plan keeps physics behind entities; only the warm moves it first');
+  } finally {
+    h.restore();
+  }
+});

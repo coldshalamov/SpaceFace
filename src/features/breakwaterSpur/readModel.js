@@ -130,7 +130,7 @@ export function getBreakwaterSpurMapMarkers(state, sectorId) {
       courseArrivalRadius: 20, stageId: 'restoration_route', stageLabel: 'Restoration route', statusLine: line,
     });
     if (Object.values(row.cartridges || {}).some(c => c.status === 'loose' || c.status === 'unconfirmed')) {
-      append('poi_breakwater_salvage_pocket', 'Breakwater · southeast salvage pocket', BREAKWATER_POCKET_LOCAL,
+      append('poi_breakwater_salvage_pocket', 'Breakwater · southwest salvage pocket', BREAKWATER_POCKET_LOCAL,
         'Original search area — not live cargo tracking.');
     }
     append('poi_breakwater_restoration_approach', 'Breakwater · receiving shelf approach',
@@ -142,10 +142,10 @@ export function getBreakwaterSpurMapMarkers(state, sectorId) {
     const spot = BREAKWATER_CONSIGNMENT.receiverLocal;
     markers.push({
       id: 'poi_breakwater_belt_receiver', kind: 'poi', poiType: 'breakwater_spur',
-      name: 'Belt Outpost · southeast receiving mark', x: spot.x, z: spot.z,
+      name: 'Belt Outpost · southwest receiving mark', x: spot.x, z: spot.z,
       drawPos: { x: spot.x, z: spot.z }, coursePos: { x: spot.x, z: spot.z },
-      courseLabel: 'Belt Outpost · southeast receiving mark', courseArrivalRadius: 60,
-      stageId: 'bonded_receiving', stageLabel: 'Southeast receiving mark',
+      courseLabel: 'Belt Outpost · southwest receiving mark', courseArrivalRadius: 60,
+      stageId: 'bonded_receiving', stageLabel: 'Southwest receiving mark',
       statusLine: 'Keep the ship clear. Tow the sealed load to this mark, settle below 4 WU/s and keep the line attached for handoff.',
     });
   }
@@ -178,7 +178,7 @@ export function buildBreakwaterSpurOffer(state, page = 'home') {
       const detail = [
         `Sockets: drive ${row.sockets.drive.status}, drum ${row.sockets.drum.status}.`,
         `Cartridges: drive — ${cartLabel(carts.drive)}; drum — ${cartLabel(carts.drum)}.`,
-        'The original search pocket is southeast; the chart marks the receiving shelf approach.',
+        'The original search pocket is southwest; the chart marks the receiving shelf approach.',
         'Guide each original through its matching cradle mouth and settle it against the rear support until Seat is offered.',
       ].join(' ');
       if (canSeat(row, 'drive')) actions.push({ id: 'seat:drive', label: 'Seat drive cartridge' });
@@ -305,7 +305,7 @@ function operatingOffer(row, base, status, actions, state, page) {
     actions.push({ id: 'job:bonded', label: `Post ${BREAKWATER_BONDED.bondCr} CR bond — take the consignment` });
   }
   if (load?.kind === 'consignment' && load.status === 'in_transit') {
-    actions.push({ id: 'course:receiver', label: 'Mark southeast receiving berth' });
+    actions.push({ id: 'course:receiver', label: 'Mark southwest receiving berth' });
   }
   if (load?.kind === 'consignment' && load.status === 'delivered') {
     actions.push({ id: 'settle:bonded', label: `Settle the run (${BREAKWATER_BONDED.payCr} CR + bond)` });

@@ -86,7 +86,7 @@ export function runShareCodeForRun(setup, result, { ghostHash = null } = {}) {
  */
 export function doorRunShareCode({
   starterId, seed, arenaId, ruleset, mutators = [], dailyDateKey = null, weeklyMutatorId = null,
-  stake = null,
+  stake = null, zeroScrapOpening = false, swarmThreats = [], openingLesson = false,
 } = {}) {
   const setup = typeof starterId === 'string' && starterId.startsWith('hull:')
     ? crucibleHullSetupFor({ hullId: starterId.slice(5), seed, arenaId, ruleset, swarmStake: stake })
@@ -94,10 +94,13 @@ export function doorRunShareCode({
   if (!setup.ok || !setup.value) {
     const reason = setup && Array.isArray(setup.issues) && setup.issues[0]
       ? setup.issues[0].message
-      : 'Crucible setup invalid';
+      : 'Swarm setup invalid';
     return { ok: false, error: reason };
   }
-  const code = runShareCodeForRun(
+  const code = zeroScrapOpening ? encodeRunShareCode({
+    zeroScrapOpening: true, seed: setup.value.seed, ruleset, arenaId, starterId, hullId: setup.value.hullId,
+    loadout: setup.value.loadout, stake, mutators, dailyDateKey, weeklyMutatorId, swarmThreats, openingLesson,
+  }) : runShareCodeForRun(
     {
       ...setup.value,
       dailyDateKey: typeof dailyDateKey === 'string' && dailyDateKey ? dailyDateKey : null,
@@ -119,7 +122,8 @@ export function doorRunShareCode({
  */
 export function applyRunShareCode(code) {
   const decoded = decodeRunShareCode(code);
-  if (!decoded.ok) return { ok: false, error: 'This run code could not be read. Use a complete code from this version of the game.' };
+  if (!decoded.ok) return { ok: false, error: decoded.error?.includes('not comparable') ? decoded.error
+    : 'This run code could not be read. Use a complete code from this version of the game.' };
   const fields = runShareSpecFields(decoded.spec);
   // NXB-020: a ruleset this build does not ship is a different game — the attempt is
   // not comparable. Normalizing it to the default ruleset would silently replay the
@@ -155,6 +159,9 @@ export function applyRunShareCode(code) {
     weeklyMutatorId: fields.weeklyMutatorId,
     ghostHash: fields.ghostHash,
     stake: fields.stake,
+    ...(fields.zeroScrapOpening ? {
+      zeroScrapOpening: true, swarmThreats: fields.swarmThreats, openingLesson: fields.openingLesson,
+    } : {}),
     ...(fields.wreck ? { wreck: fields.wreck } : {}),
   };
 }
@@ -307,7 +314,7 @@ export function runShareSummary(result, { code = null } = {}) {
   const reached = res ? Math.max(Number(res.deepestWave) || 0, Number(res.wave) || 0) : 0;
   if (!res || reached < 1) return runCode;
   const swarm = res.ruleset === 'swarm';
-  const parts = ['SpaceFace Crucible'];
+  const parts = ['SpaceFace Swarm'];
   const arena = arenaWordFor(res.arenaId);
   if (arena) parts.push(arena);
   const score = Math.max(0, Math.floor(Number(res.score) || 0));

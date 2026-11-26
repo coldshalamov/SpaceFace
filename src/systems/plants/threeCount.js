@@ -59,6 +59,7 @@ export function crossesLine(prev, pos, a, b) {
 }
 
 export const threeCountPlant = {
+  modes: ['flight'],
   name: 'plants141',
 
   init(ctx) {

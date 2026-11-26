@@ -492,7 +492,7 @@ test('continuous sector:exit preserves wingmen live ids; hard exit despawns', ()
   const live = {
     id: 201, type: 'ship', alive: true, team: 0,
     pos: { x: 20, z: 20 }, hull: 100, hullMax: 100,
-    data: { isWingman: true },
+    data: { isWingman: true, wingmanOf: 'f1' },
   };
   state.entities.set(201, live);
   state.entityList.push(live);

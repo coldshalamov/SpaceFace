@@ -132,7 +132,7 @@ function mount(proto, state) {
   return hud;
 }
 
-test('the deficit frame: STORM BAND commit + WELL READY 12s + live anchor, in one lane', () => {
+test('the deficit frame: STORM BAND commit stays clear and player power pills stay off the lane', () => {
   resetBottomLaneClaims();
   const previousDocument = globalThis.document;
   const previousWindow = globalThis.window;
@@ -142,13 +142,11 @@ test('the deficit frame: STORM BAND commit + WELL READY 12s + live anchor, in on
   try {
     const state = flightState({
       planet: { active: true, player: { region: 'danger', stage: 'commit', heat: 0.47, collectorOn: false } },
-      fields: { active: [], cooldowns: { well: NOW + 12 }, lastDenial: null },
+      fields: { active: [{ kind: 'well', engaged: true, expireAt: NOW + 8 }], cooldowns: { well: NOW + 12 }, lastDenial: { kind: 'well', at: NOW, reason: 'blocked' } },
       massSeed: { phase: 'active', expireAt: NOW + 24, lockAt: NOW - 1 },
-      player: { massSeed: { cooldownUntil: 0 } },
+      player: { massSeed: { cooldownUntil: NOW + 7 } },
     });
 
-    // Registry order: massSeedHud -> fieldHud -> planetHud (src/core/registry.js). The lane is
-    // one-way claim-then-query, so a simultaneous first appearance settles on the next frame.
     const mseed = mount(massSeedHud, state);
     const field = mount(fieldHud, state);
     const planet = mount(planetHud, state);
@@ -161,61 +159,16 @@ test('the deficit frame: STORM BAND commit + WELL READY 12s + live anchor, in on
       'the planet readout is whole, not overprinted');
     assert.equal(seat(planet._dom.pill), '', 'planet keeps its authored 142px seat');
     assert.equal(shown(field._dom.pill), false,
-      'the cooldown voice stays silent while the band readout occupies the lane');
-    assert.equal(shown(mseed._dom.pill), true);
-    assert.equal(seat(mseed._dom.pill), `${PLANET_LANE_BASE + LANE_SLOT_STEP}px`,
-      'the live anchor yields its seat upward instead of grazing');
-
-    const planetBottom = PLANET_LANE_BASE;
-    const mseedBottom = parseInt(seat(mseed._dom.pill), 10);
-    assert.equal(overlapPx(planetBottom, mseedBottom), 0, 'measured overlap after negotiation');
+      'player power cooldowns, active wells, and denials live on the power bar — no floating field pill');
+    assert.equal(shown(mseed._dom.pill), false,
+      'Pin status and cooldown live on the Pin tile — no floating seed/anchor pill');
 
     // Settled lane: a stable frame rewrites nothing (write-on-change seat discipline).
-    mseed.update(1 / 60, state);
-    field.update(1 / 60, state);
-    planet.update(1 / 60, state);
     const writes = trackStyleWrites([mseed._dom.pill, field._dom.pill, planet._dom.pill]);
     mseed.update(1 / 60, state);
     field.update(1 / 60, state);
     planet.update(1 / 60, state);
     assert.equal(writes.count(), 0, 'a settled lane costs zero DOM writes per frame');
-
-    // Denial keeps its voice at the authored seat; the planet readout steps up, still whole.
-    state.fields.lastDenial = { kind: 'well', at: NOW, reason: 'blocked' };
-    mseed.update(1 / 60, state);
-    field.update(1 / 60, state);
-    planet.update(1 / 60, state);
-    mseed.update(1 / 60, state);
-    field.update(1 / 60, state);
-    planet.update(1 / 60, state);
-    assert.equal(field._dom.pill.style.display, 'flex');
-    assert.equal(field._dom.pillText.textContent, 'WELL DENIED', 'the denial reason is never lost');
-    assert.equal(seat(field._dom.pill), '', 'denial holds the authored 146px seat');
-    assert.equal(seat(planet._dom.pill), `${FIELD_LANE_BASE + LANE_SLOT_STEP}px`);
-    assert.equal(seat(mseed._dom.pill), `${FIELD_LANE_BASE + 2 * LANE_SLOT_STEP}px`);
-    assert.equal(overlapPx(
-      parseInt(seat(planet._dom.pill), 10),
-      parseInt(seat(mseed._dom.pill), 10),
-    ), 0);
-
-    // The lane frees: the anchor retires, the band cools, the denial beat expires — the
-    // cooldown voice returns to its authored seat, the seed to its tuned 118px.
-    state.massSeed = { phase: 'idle' };
-    state.planet.player = { region: null, stage: null, heat: 0, collectorOn: false };
-    state.fields.lastDenial = { kind: 'well', at: NOW - 5, reason: 'blocked' };
-    mseed.update(1 / 60, state);
-    field.update(1 / 60, state);
-    planet.update(1 / 60, state);
-    mseed.update(1 / 60, state);
-    field.update(1 / 60, state);
-    planet.update(1 / 60, state);
-    assert.equal(shown(planet._dom.pill), false, 'a cold hull hides the band pill');
-    assert.equal(shown(mseed._dom.pill), false, 'a retired seed hides its pill');
-    assert.equal(field._dom.pill.style.display, 'flex');
-    assert.equal(field._dom.pillText.textContent, 'WELL READY 12s',
-      'the cooldown readout shows the moment the lane is free');
-    assert.equal(seat(field._dom.pill), '', 'cooldown alone keeps its authored 146px seat');
-    assert.equal(seat(mseed._dom.pill), '', 'the seed settles back to its tuned 118px seat');
 
     for (const hud of [mseed, field, planet]) hud.destroy();
   } finally {
@@ -225,7 +178,7 @@ test('the deficit frame: STORM BAND commit + WELL READY 12s + live anchor, in on
   }
 });
 
-test('solo output is unchanged: authored seat literals, forced-colors block, no inline override', () => {
+test('solo output is unchanged for planetHud while power pills stay retired', () => {
   assert.match(FIELD_HUD_CSS, /bottom: 146px;/, 'field sheet keeps its authored seat literal');
   assert.match(PLANET_HUD_CSS, /bottom: 142px;/, 'planet sheet keeps its authored seat literal');
   assert.match(MASS_SEED_HUD_CSS, /bottom: 118px;/, 'mass-seed sheet keeps its authored seat literal');
@@ -240,17 +193,16 @@ test('solo output is unchanged: authored seat literals, forced-colors block, no 
   globalThis.document = document;
   globalThis.window = { innerWidth: 1440, innerHeight: 900 };
   try {
-    const solos = [
-      { proto: fieldHud, state: flightState({ fields: { active: [{ kind: 'well', engaged: true, expireAt: NOW + 8 }], cooldowns: {}, lastDenial: null } }) },
-      { proto: planetHud, state: flightState({ planet: { active: true, player: { region: 'skim', stage: null, heat: 0.2, collectorOn: false } } }) },
-      { proto: massSeedHud, state: flightState({ massSeed: { phase: 'active', expireAt: NOW + 24, lockAt: NOW - 1 } }) },
-    ];
-    for (const { proto, state } of solos) {
-      const hud = mount(proto, state);
-      assert.equal(shown(hud._dom.pill), true);
-      assert.equal(seat(hud._dom.pill), '', 'a solo pill paints from the sheet, not an override');
-      hud.destroy();
-    }
+    const planet = mount(planetHud, flightState({ planet: { active: true, player: { region: 'skim', stage: null, heat: 0.2, collectorOn: false } } }));
+    assert.equal(shown(planet._dom.pill), true);
+    assert.equal(seat(planet._dom.pill), '', 'a solo planet pill paints from the sheet, not an override');
+    planet.destroy();
+    const field = mount(fieldHud, flightState({ fields: { active: [{ kind: 'well', engaged: true, expireAt: NOW + 8 }], cooldowns: {}, lastDenial: null } }));
+    assert.equal(shown(field._dom.pill), false, 'player wells no longer paint a floating pill');
+    field.destroy();
+    const mseed = mount(massSeedHud, flightState({ massSeed: { phase: 'active', expireAt: NOW + 24, lockAt: NOW - 1 } }));
+    assert.equal(shown(mseed._dom.pill), false, 'Pin anchors no longer paint a floating pill');
+    mseed.destroy();
     resetBottomLaneClaims();
   } finally {
     if (previousDocument === undefined) delete globalThis.document;

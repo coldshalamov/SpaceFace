@@ -287,11 +287,21 @@ assert.match(
 );
 assert.match(saveSystem, /save:restore:\$\{this\._restoreSequence\}/,
   'Each save restore must own a unique time-effects source');
-assert.match(
-  saveSystem,
-  /deferRunTransition\(callback\)[\s\S]*if \(!this\._restoring\) return false;[\s\S]*this\._pendingRunTransition = callback;/,
-  'Save restore must expose one latest-wins transition deferral slot',
-);
+const { save: saveOwner } = await import('../src/save/saveSystem.js');
+const transitionQueue = Object.create(saveOwner);
+const transitionCalls = [];
+const firstTransition = () => transitionCalls.push('first');
+const secondTransition = () => transitionCalls.push('second');
+transitionQueue._restoring = false;
+assert.equal(transitionQueue.deferRunTransition(firstTransition), false,
+  'Callers must be free to start a route outside a restore');
+transitionQueue._restoring = true;
+assert.equal(transitionQueue.deferRunTransition(firstTransition, () => transitionCalls.push('first superseded')), true);
+assert.equal(transitionQueue.deferRunTransition(secondTransition), true);
+assert.deepEqual(transitionCalls, ['first superseded'], 'Only the displaced request should be cancelled while restoring');
+transitionQueue._takePendingRunTransition()();
+assert.deepEqual(transitionCalls, ['first superseded', 'second'], 'Only the latest deferred route may start');
+assert.equal(transitionQueue._takePendingRunTransition(), null, 'Draining consumes the deferred route');
 const restoreEntry = saveSystem.indexOf('_restore(data, slot, options = {})');
 const nestedRestoreGuard = saveSystem.indexOf('if (this._restoring)', restoreEntry);
 const loadTokenReservation = saveSystem.indexOf('beginLoadedGameTransition', restoreEntry);
@@ -305,9 +315,8 @@ assert.ok(
 );
 assert.match(saveSystem, /transitionToken\s*\?\s*\{\s*slot,\s*transitionToken\s*\}\s*:\s*\{\s*slot\s*\}/,
   'Save restore must carry its reserved token into the authored-visual finalizer');
-assert.match(
-  saveSystem,
-  /const pendingRunTransition\s*=\s*this\._pendingRunTransition;[\s\S]*this\._pendingRunTransition\s*=\s*null;[\s\S]*this\._restoring\s*=\s*false;[\s\S]*pendingRunTransition\(\)/,
+assert.ok(
+  /const pendingRunTransition\s*=\s*this\._takePendingRunTransition\(\);[\s\S]*this\._restoring\s*=\s*false;[\s\S]*pendingRunTransition\(\)/.test(saveSystem),
   'Save restore must release synchronous ownership before draining exactly the latest route',
 );
 assert.match(

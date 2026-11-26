@@ -68,7 +68,7 @@ export function stonePocketCells(map, ix0, ix1, iz0, iz1, doors = []) {
 
 /**
  * Ceres gallery. A six-crystal fuse runs into a 3×3 field. Stone walls the lane and
- * the field. Two metal rocks sit west of the mouth flanks (not behind the wick stones)
+ * the field. Two metal rocks sit east of the mouth flanks (not behind the wick stones)
  * so a banked shot can still enter — (0,±2) put stone between metal and the fuse.
  */
 export function ceresPrismGalleryCells() {
@@ -121,7 +121,7 @@ export const VESTA_FREIGHTER_POCKET_ORIGIN = Object.freeze({ x: 768, z: -1340 })
  * Dead Freighter Drift, Vesta Forge — a wreck-site pocket. A closed stone ring
  * holds a 2×2 diamond field beside the hulk; one door cell opens the +iz wall,
  * and a lone sentry metal sits on the door axis outside the ring. Heading 45°
- * swings the door onto the northwest Forge approach so a bolt through the door
+ * swings the door onto the northeast Forge approach so a bolt through the door
  * lights the pocket, while a splinter escaping the door banks off the sentry.
  * No fuse — this is a closed field with a mouth, the mirror of Ceres.
  */

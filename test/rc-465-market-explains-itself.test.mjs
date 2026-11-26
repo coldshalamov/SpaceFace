@@ -16,6 +16,7 @@ import { economy } from '../src/systems/economy.js';
 import { addCargo } from '../src/systems/cargo.js';
 import { COMMODITIES } from '../src/data/commodities.js';
 import { regimeLabel } from '../src/systems/economyCycles.js';
+import { marketRegimeStateFor } from '../src/economy/marketModel.js';
 import { defaultLivingHull } from '../src/core/livingHull.js';
 import { leftoverMechanicCard, leftoverMechanicLines } from '../src/story/mechanicVoice.js';
 import { barContactIntelTags } from '../src/ui/station/barContacts.js';
@@ -69,9 +70,9 @@ test('selling 20 iron at Helios names your sale', () => {
     assert.equal(cause.text, 'Last move: your sale of 20 Iron Ore here');
     assert.equal(cause.eventId, null, 'eventId stays the evt_ contract');
     assert.equal(cause.receiptId, state.player.tradeLedger[0].receiptId);
-    const cycle = state.economy.cycles[HERE] && state.economy.cycles[HERE][IRON];
-    const regime = (cycle && (cycle.regime || cycle.family)) || 'stable';
-    assert.ok(!cause.text.includes(regimeLabel(regime)), 'the cycle label is not spoken over your own trade');
+    const regimeState = marketRegimeStateFor(state, HERE, IRON, state.simTime);
+    const regime = regimeState && regimeState.kind;
+    assert.ok(!regime || !cause.text.includes(regimeLabel(regime)), 'the cycle label is not spoken over your own trade');
   } finally { sim.dispose(); economy._instance = null; }
 });
 
@@ -202,12 +203,12 @@ test('a hull at 86/100 never hears "Clean plate"', () => {
 });
 
 test('the bar market tag is this station\'s news or nothing', () => {
-  const ceres = { id: 'evt_1', type: 'shortage', stationId: 'station_ceres', commodityId: IRON, startT: 0 };
+  const ceres = { id: 'evt_1', type: 'shortage', stationId: 'station_ceres', commodityId: IRON, tStart: 0, tEnd: 600 };
   const state = { simTime: 0, player: {}, economy: { econEvents: [ceres] } };
   const merchantTags = barContactIntelTags({ id: 'x', role: 'merchant' }, state, HERE);
   assert.equal(merchantTags.some((tag) => tag.label === 'Market'), false, 'a Ceres event is not Helios gossip');
 
-  state.economy.econEvents.push({ id: 'evt_2', type: 'boom', stationId: HERE, commodityId: FRESH, startT: 0 });
+  state.economy.econEvents.push({ id: 'evt_2', type: 'boom', stationId: HERE, commodityId: FRESH, tStart: 0, tEnd: 600 });
   const withLocal = barContactIntelTags({ id: 'x', role: 'merchant' }, state, HERE);
   assert.equal(withLocal.some((tag) => tag.label === 'Market'), true, 'this station\'s own news still tags');
 

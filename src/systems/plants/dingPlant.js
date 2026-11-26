@@ -46,6 +46,7 @@ export function dingScheduleFromWarning(payload, tuning = DING_TUNING) {
 }
 
 export const dingPlant = {
+  modes: ['swarm'],
   name: 'plants226',
 
   init(ctx) {

@@ -89,6 +89,7 @@ export function isLowballed(lowballedUntil, hullKey, now) {
 }
 
 export const pl344NeedsList = {
+  modes: ['flight'],
   name: 'plantsPl344',
 
   init(ctx) {

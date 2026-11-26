@@ -44,6 +44,12 @@ export function shouldSubmitEntityMesh(options = {}) {
   // 1x1 residency pass has registered those geometries.
   if (!standIn && options.geometryPending === true && !protectedRoot) return false;
   if (options.hidden === true) return false;
+  // Contact horizon (STREAM-BUILD-1): a solid body inside the collision reach can be hit
+  // inside one approach window. Leaving it runway-parked or glass-denied there is the
+  // "crash into nothing" hole — the player cannot see what the camera cannot show, but it
+  // can still hit it. The residency/pending gates above still ran first, so a root that
+  // reaches this line holds resident data to draw.
+  if (options.contactHorizon === true) return true;
   // The sim glass uses a conservative aspect and can lag camera zoom/glide. Letting its
   // membership override a measured miss submits off-screen roots; letting a stale tier
   // override a measured hit makes a ready body pop out until the next sim publication.

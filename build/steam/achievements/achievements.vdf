@@ -112,7 +112,7 @@
 				}
 				"desc"
 				{
-					"english"		"Latch the Massline onto another body."
+					"english"		"Latch the Line onto another body."
 				}
 				"icon"		"SF_MADE_CONTACT_achieved.jpg"
 				"icon_gray"		"SF_MADE_CONTACT_unachieved.jpg"
@@ -131,7 +131,7 @@
 				}
 				"desc"
 				{
-					"english"		"Throw a body with the Massline."
+					"english"		"Throw a body with the Line."
 				}
 				"icon"		"SF_LIGHT_SHIPS_ARE_AMMUNITION_achieved.jpg"
 				"icon_gray"		"SF_LIGHT_SHIPS_ARE_AMMUNITION_unachieved.jpg"
@@ -184,11 +184,11 @@
 			{
 				"name"
 				{
-					"english"		"Into the Crucible"
+					"english"		"Into the Swarm"
 				}
 				"desc"
 				{
-					"english"		"Finish a Crucible run, however it ends."
+					"english"		"Finish a Swarm run, however it ends."
 				}
 				"icon"		"SF_INTO_THE_CRUCIBLE_achieved.jpg"
 				"icon_gray"		"SF_INTO_THE_CRUCIBLE_unachieved.jpg"
@@ -207,7 +207,7 @@
 				}
 				"desc"
 				{
-					"english"		"Reach wave 10 in the Crucible."
+					"english"		"Reach wave 10 in the Swarm."
 				}
 				"icon"		"SF_TENTH_WAVE_achieved.jpg"
 				"icon_gray"		"SF_TENTH_WAVE_unachieved.jpg"
@@ -226,7 +226,7 @@
 				}
 				"desc"
 				{
-					"english"		"Beat your own best score in a Crucible challenge."
+					"english"		"Beat your own best score in a Swarm challenge."
 				}
 				"icon"		"SF_BETTER_THAN_LAST_TIME_achieved.jpg"
 				"icon_gray"		"SF_BETTER_THAN_LAST_TIME_unachieved.jpg"
@@ -245,7 +245,7 @@
 				}
 				"desc"
 				{
-					"english"		"Finish a Crucible daily run."
+					"english"		"Finish a Swarm daily run."
 				}
 				"icon"		"SF_SAME_SEED_SAME_DAY_achieved.jpg"
 				"icon_gray"		"SF_SAME_SEED_SAME_DAY_unachieved.jpg"
@@ -264,7 +264,7 @@
 				}
 				"desc"
 				{
-					"english"		"Extract from a Crucible swarm at the refit bench instead of dying in it."
+					"english"		"Extract from a Swarm run at the refit bench instead of dying in it."
 				}
 				"icon"		"SF_WALKED_OUT_achieved.jpg"
 				"icon_gray"		"SF_WALKED_OUT_unachieved.jpg"
@@ -416,7 +416,7 @@
 				}
 				"desc"
 				{
-					"english"		"Throw fifty bodies with the Massline."
+					"english"		"Throw fifty bodies with the Line."
 				}
 				"icon"		"SF_SALVAGE_CREW_achieved.jpg"
 				"icon_gray"		"SF_SALVAGE_CREW_unachieved.jpg"

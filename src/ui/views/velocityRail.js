@@ -74,16 +74,16 @@ export function speedGaugeMarkup() {
   const tipId = `sf-speed-tip-${++tooltipSerial}`;
   return '<div class="sf-kit-gauge sf-speed sf-stat--info" role="meter" tabindex="0" aria-label="Speed" ' +
     `aria-describedby="${tipId}" ` +
-    'aria-valuemin="0" aria-valuemax="1" aria-valuenow="0" aria-valuetext="0 world units per second; reference unavailable" ' +
+    'aria-valuemin="0" aria-valuemax="1" aria-valuenow="0" aria-valuetext="0 meters per second; cruise reference unavailable" ' +
     'data-available="true" data-over-reference="false" data-has-reference="false">' +
     '<span class="sf-speed__label" aria-hidden="true">SPEED</span>' +
-    '<span class="sf-speed__reference" aria-hidden="true">REF <b>—</b></span>' +
+    '<span class="sf-speed__reference" aria-hidden="true">CRUISE <b>—</b></span>' +
     '<span class="sf-speed__source" data-k="speed" aria-hidden="true">0</span>' +
     '<svg class="sf-speed__digits" viewBox="0 0 196 64" aria-hidden="true" focusable="false" preserveAspectRatio="xMinYMid meet">' +
       Array.from({ length: 5 }, (_, i) => '<path fill-rule="evenodd" ' +
         (i ? 'display="none"' : 'd="' + SPEED_FIGURES['0'] + '"') + '/>').join('') +
     '</svg>' +
-    '<span class="sf-speed__unit" aria-hidden="true">u/s</span>' +
+    '<span class="sf-speed__unit" aria-hidden="true">m/s</span>' +
     '<div class="sf-speed__track" aria-hidden="true">' +
       '<span class="sf-speed__bed"></span><span class="sf-speed__fill"></span>' +
       '<span class="sf-speed__over"></span>' +
@@ -92,8 +92,8 @@ export function speedGaugeMarkup() {
       '<svg class="sf-speed__runout" viewBox="0 0 8 11" focusable="false"><path d="M1 1L6 5.5L1 10" fill="none" stroke="currentColor" stroke-width="2"/></svg>' +
     '</div>' +
     '<span class="sf-speed__zero" aria-hidden="true">0</span>' +
-    '<span class="sf-speed__extent" aria-hidden="true">NO REFERENCE</span>' +
-    `<div class="sf-tip" id="${tipId}" data-tip="speed">Speed in world units per second. REF is the hull reference, not a speed limit.</div>` +
+    '<span class="sf-speed__extent" aria-hidden="true">NO CRUISE</span>' +
+    `<div class="sf-tip" id="${tipId}" data-tip="speed">Speed in meters per second. CRUISE is your hull's comfortable speed, not a limit.</div>` +
   '</div>';
 }
 
@@ -187,7 +187,7 @@ export function setKitGauge(el, value, reference) {
   const aboveReference = available && hasReference && reading > referenceReading;
   figures(p, reading);
   if (referenceChanged) text(p.reference, hasReference ? formatSpeedFigure(reference) : '—');
-  text(p.extent, !available ? 'NO SIGNAL' : aboveReference ? 'ABOVE REF' : hasReference ? 'REFERENCE' : 'NO REFERENCE');
+  text(p.extent, !available ? 'NO SIGNAL' : aboveReference ? 'ABOVE CRUISE' : hasReference ? 'CRUISE' : 'NO CRUISE');
   attr(el, 'data-available', available);
   attr(el, 'data-over-reference', aboveReference);
   attr(el, 'data-has-reference', hasReference);
@@ -210,9 +210,9 @@ export function setKitGauge(el, value, reference) {
     attr(el, 'aria-valuenow', reading);
     attr(el, 'aria-valuemax', Math.max(1, reading, referenceReading));
     const earnedWords = earned > 0 ? `; ${earned} earned past the governed mark` : '';
-    attr(el, 'aria-valuetext', `${reading} world units per second; ` + (hasReference
-      ? `reference ${Math.round(reference)}${aboveReference ? '; above reference, not a speed limit' : ''}${earnedWords}`
-      : 'reference unavailable'));
+    attr(el, 'aria-valuetext', `${reading} meters per second; ` + (hasReference
+      ? `cruise ${Math.round(reference)}${aboveReference ? '; above cruise, not a speed limit' : ''}${earnedWords}`
+      : 'cruise reference unavailable'));
   } else {
     attr(el, 'role', 'group'); attr(el, 'aria-label', 'Speed unavailable');
     for (const key of ['aria-valuemin', 'aria-valuemax', 'aria-valuenow', 'aria-valuetext']) {

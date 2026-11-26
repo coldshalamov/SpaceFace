@@ -4,6 +4,7 @@ import { KILL_MACHINE_BY_ID } from '../data/environmentalMachinery.js';
 import { MISSION_TUNING } from '../data/missions.js';
 import { WRECK_COLLIDER_PROPORTIONS } from '../data/wreckClasses.js';
 import { makeEnemySpawnSpec } from './combat.js';
+import { slotFitFor } from './cargo.js';
 
 const MACHINE = KILL_MACHINE_BY_ID.excavator_jaws;
 const OFFER_ID = 'working_battlefield:excavator_jaws';
@@ -58,9 +59,8 @@ export function workingBattlefieldPreflight(state) {
     return { ok: false, reason: 'Fit a mining beam and a gun at the Helios shipyard before taking this job.' };
   }
   if (!state.story?.flags?.workingBattlefieldPolymers) {
-    const hold = state.player.cargo;
-    if (hold.capVolume - hold.usedVolume < ALLOTMENT * 1.2) {
-      return { ok: false, reason: 'Make 2.4u of cargo room for the two job polymers before accepting.' };
+    if (slotFitFor(state, 'cmdty_polymers') < ALLOTMENT) {
+      return { ok: false, reason: 'Make room in the hold for the two job polymers before accepting.' };
     }
   }
   return { ok: true };
@@ -194,7 +194,7 @@ export const WORKING_BATTLEFIELD_RUNTIME = Object.freeze({
       reward_cr: MISSION_TUNING.BASE.demolition, collateral_cr: 0,
       brief: 'Time the crusher into the tower, or cut its plate and use guns. Then contain it or leave.',
       summary: 'No fee. Bring a mining beam and a gun; both are available at the Helios shipyard. '
-        + 'Two job polymers need 2.4u free hold space, once only. Lost output deducts 180 cr. Abandon from the Mission Log.',
+        + 'Two job polymers need 2.4 units of free hold space, once only. Lost output deducts 180 cr. Abandon from the Mission Log.',
       params: { workingBattlefield: { machineId: MACHINE.id }, physicalVerb: 'knock_down',
         completionMethods: ['wrecking_ball', 'cut_down'] },
     });

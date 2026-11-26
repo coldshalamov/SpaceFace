@@ -8,7 +8,7 @@ import { regionalTrafficDensityMultiplier, regionalTrafficRoleWeights } from '..
 import { RECORD_KIND, stableRecordId } from '../world/worldRecords.js';
 
 export const MAX_PER_SECTOR = 8;
-export const CORE_MIN_TRAFFIC = 6;    // high-security / high-tpm cores never feel empty
+export const CORE_MIN_TRAFFIC = 4;    // high-sec cores keep a legible floor; Helios' authored cast is 4
 export const DEFAULT_TRAFFIC = 3;     // sectors without explicit trafficPerMin get a small ambient count
 
 export function priorityCourierServiceForSector(sectorId) {

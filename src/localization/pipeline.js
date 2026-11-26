@@ -368,11 +368,11 @@ const PHRASES = Object.freeze({
   'FREE CAPACITY': L('CAPACIDAD LIBRE', 'CAPACITÉ LIBRE', 'FREIE KAPAZITÄT', 'CAPACIDADE LIVRE'),
   Commodity: L('Mercancía', 'Marchandise', 'Ware', 'Mercadoria'),
   credits: L('créditos', 'crédits', 'Credits', 'créditos'),
-  'No item selected. Select a block to inspect.': L(
-    'Nada seleccionado. Elige un bloque para inspeccionar.',
-    'Rien de sélectionné. Choisissez un bloc à inspecter.',
-    'Nichts gewählt. Block zum Prüfen wählen.',
-    'Nada selecionado. Escolha um bloco para inspecionar.',
+  'Nothing on the slate yet — pick a block from the hold.': L(
+    'Nada en la pizarra todavía — elige un bloque de la bodega.',
+    'Rien à l\'ardoise pour l\'instant — choisissez un bloc dans la cale.',
+    'Noch nichts auf dem Bord — wähle einen Block aus dem Laderaum.',
+    'Nada na prancheta ainda — escolha um bloco do porão.',
   ),
   'SHIP DESTROYED': L('NAVE DESTRUIDA', 'VAISSEAU DÉTRUIT', 'SCHIFF ZERSTÖRT', 'NAVE DESTRUÍDA'),
   CONTRACT: L('CONTRATO', 'CONTRAT', 'VERTRAG', 'CONTRATO'),

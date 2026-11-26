@@ -8,7 +8,7 @@ import { aftermathChoices, applyAftermathChoice } from '../combat/aftermathChoic
 import { compactKillCausality, KillCause } from '../combat/killCausality.js';
 import { selectionIsRecycled } from '../combat/targetIdentity.js';
 import { occupantGenerationOf } from '../core/entity.js';
-import { validateRunState } from '../core/runState.js';
+import { validateRunStateForTick } from '../core/runState.js';
 import { isHostileToPlayer } from './scanner.js';
 import { shouldRunOnTick } from '../core/activityScheduler.js';
 import { indexedShipLikeScan, indexedTypeScan, entityIndexVersion, entityIndexLaneVersion } from '../world/livingWorldViews.js';
@@ -46,7 +46,7 @@ function liveSurvivalRun(state) {
   const run = state && state.run;
   if (!run || typeof run !== 'object' || Array.isArray(run)) return false;
   if (run.kind !== 'survival' || run.phase === 'inactive') return false;
-  return validateRunState(run).ok === true;
+  return validateRunStateForTick(run, state.tick).ok === true;
 }
 
 const STATE_VERSION = 2;
@@ -167,38 +167,29 @@ function retargetChosenOffRecycledHull(state, own, offer) {
   chosen.entityId = nextId != null && nextId !== entity.id ? nextId : null;
 }
 
-function sectorWreckIds(state, sectorId) {
+function wreckMarkerId(marker) {
+  return marker?.markerId ?? marker?.id ?? null;
+}
+
+function sectorWreckMarkers(state, sectorId) {
   const bag = state && state.aftermathWrecks && state.aftermathWrecks.bySector;
   const list = bag && sectorId ? bag[sectorId] : null;
   if (!Array.isArray(list)) return [];
-  const ids = [];
-  for (const marker of list) {
-    // Same player-hull exclusion as aftermathWrecks.isPlayerWreckMarker. Inlined so this
-    // observer does not load the wreck spawner.
-    if (!marker || marker.playerWreck === true || marker.kind === 'player_wreck') continue;
-    const id = marker.markerId != null ? marker.markerId : marker.id;
-    if (id != null) ids.push(id);
-  }
-  return ids;
+  return list.filter(marker => {
+    if (wreckMarkerId(marker) == null || marker.playerWreck === true || marker.kind === 'player_wreck') return false;
+    // Authored sites retain their canonical records after terminal salvage or destruction.
+    if (marker.siteOutcome === 'exhausted' || marker.siteOutcome === 'destroyed') return false;
+    return marker.salvagePool == null || Object.values(marker.salvagePool).some(quantity => Number(quantity) > 0);
+  });
 }
 
-function wreckMarkerForVictim(state, sectorId, victimId) {
-  if (victimId == null) return null;
-  const bag = state && state.aftermathWrecks && state.aftermathWrecks.bySector;
-  const list = bag && sectorId ? bag[sectorId] : null;
-  if (!Array.isArray(list)) return null;
-  for (const marker of list) {
-    if (!marker || marker.playerWreck === true || marker.kind === 'player_wreck') continue;
-    if (marker.victimId !== victimId) continue;
-    const id = marker.markerId != null ? marker.markerId : marker.id;
-    if (id != null) return id;
-  }
-  return null;
-}
-
-function compactRecord(state, entity, payload, outcome, reason) {
+function compactRecord(state, entity, payload, outcome, reason, sourceEvent, entityId) {
   const data = entity && entity.data || {};
-  const id = entity && entity.id != null ? entity.id : payload && (payload.entityId || payload.id);
+  // `entityId`/`sourceEvent` ride beside `payload` now — the callers used to mint a
+  // `{ ...payload, entityId, sourceEvent }` literal per event just to carry these two
+  // overrides; the field values are identical, nothing is spread.
+  const mergedEntityId = entityId !== undefined ? entityId : (payload && payload.entityId);
+  const id = entity && entity.id != null ? entity.id : mergedEntityId || (payload && payload.id);
   return {
     schemaVersion: STATE_VERSION,
     entityId: id,
@@ -213,7 +204,7 @@ function compactRecord(state, entity, payload, outcome, reason) {
     victimClass: (payload && payload.victimClass) || data.shipClass || data.class || (entity && entity.type) || null,
     label: data.name || data.shipName || data.callsign || data.callSign || (payload && payload.label) || null,
     bountyCr: Math.max(0, Math.round(Number((payload && payload.bountyCr) || data.bountyCr || 0) || 0)),
-    sourceEvent: payload && payload.sourceEvent || null,
+    sourceEvent: sourceEvent !== undefined ? sourceEvent : (payload && payload.sourceEvent || null),
     destruction: outcome === 'killed' ? compactKillCausality(payload, state.playerId) : null,
   };
 }
@@ -266,6 +257,9 @@ export const combatOutcome = {
       if (this.bus && typeof this.bus.emit === 'function') this.bus.emit('combat:aftermathChosen', chosen);
     };
     if (this.bus && typeof this.bus.on === 'function') {
+      const onWreckSettled = (payload) => {
+        if (payload?.sectorId && payload.sectorId === this.state?.world?.currentSectorId) this._publishAftermath();
+      };
       this.bus.on('entity:killed', this._onKilled);
       this.bus.on('ai:flee', this._onFlee);
       this.bus.on('combat:subsystemDisabled', this._onDisabled);
@@ -273,6 +267,8 @@ export const combatOutcome = {
       this._unsubs = [
         this.bus.on('entity:spawned', (payload) => this._onEntitySpawned(payload)),
         this.bus.on('entity:destroyed', (payload) => this._onEntityDestroyed(payload)),
+        this.bus.on('aftermathWreck:completed', onWreckSettled),
+        this.bus.on('aftermathWreck:retired', onWreckSettled),
         this.bus.on('save:loaded', () => this._wakeCombatOutcomeQuiet()),
         // Run boundary: byEntity dedup must not leak into the next game — entity ids recycle
         // (nextEntityId resets to 1), so stale dedup rows would silently drop new records.
@@ -352,7 +348,7 @@ export const combatOutcome = {
       if (prior && sameOccupant(prior, entity)) continue;
       const ai = entity.data && entity.data.ai;
       if (ai && (ai.forceFlee || ai.fsm === 'flee') && isCandidate(entity, state)) {
-        this._record(entity, { entityId: entity.id, sourceEvent: 'forceFlee' }, 'fled', ai.forceFlee ? 'forceFlee' : 'fsm:flee');
+        this._record(entity, null, 'fled', ai.forceFlee ? 'forceFlee' : 'fsm:flee', 'forceFlee', entity.id);
         recorded++;
       }
     }
@@ -402,14 +398,14 @@ export const combatOutcome = {
   _killed(payload) {
     const entity = entityFor(this.state, payload.id);
     if (!isCandidate(entity, this.state, payload)) return;
-    this._record(entity, { ...payload, sourceEvent: 'entity:killed' }, 'killed', 'entity:killed');
+    this._record(entity, payload, 'killed', 'entity:killed', 'entity:killed');
   },
 
   _flee(payload) {
     const entityId = payload.entityId != null ? payload.entityId : payload.id;
     const entity = entityFor(this.state, entityId);
     if (!entity || !isCandidate(entity, this.state, payload)) return;
-    this._record(entity, { ...payload, entityId, sourceEvent: 'ai:flee' }, 'fled', 'ai:flee');
+    this._record(entity, payload, 'fled', 'ai:flee', 'ai:flee', entityId);
   },
 
   _disabled(payload) {
@@ -422,20 +418,22 @@ export const combatOutcome = {
     if (!DISABLE_OUTCOME_SUBSYSTEMS.has(subsystemId)) return;
     const entity = entityFor(this.state, entityId);
     if (!entity || !isCandidate(entity, this.state, payload)) return;
-    this._record(entity, { ...payload, entityId, sourceEvent: 'combat:subsystemDisabled' }, 'disabled', subsystemId);
+    this._record(entity, payload, 'disabled', subsystemId, 'combat:subsystemDisabled', entityId);
   },
 
   _surrendered(payload) {
     const entityId = payload.entityId != null ? payload.entityId : payload.id;
     const entity = entityFor(this.state, entityId);
     if (!entity || !isCandidate(entity, this.state, payload)) return;
-    this._record(entity, { ...payload, entityId, sourceEvent: 'combat:surrendered' }, 'surrendered', 'combat:surrendered');
+    this._record(entity, payload, 'surrendered', 'combat:surrendered', 'combat:surrendered', entityId);
   },
 
-  _record(entity, payload, outcome, reason) {
+  _record(entity, payload, outcome, reason, sourceEvent, entityId) {
     const state = this.state;
     const own = ensureState(state);
-    const id = entity && entity.id != null ? entity.id : payload && (payload.entityId || payload.id);
+    // Same merged `entityId || id` the old `{ ...payload, entityId }` literal produced.
+    const mergedEntityId = entityId !== undefined ? entityId : (payload && payload.entityId);
+    const id = entity && entity.id != null ? entity.id : mergedEntityId || (payload && payload.id);
     if (id == null) return null;
     const prior = own.byEntity[id];
     if (prior && entity && !sameOccupant(prior, entity)) {
@@ -446,7 +444,7 @@ export const combatOutcome = {
     } else if (prior) {
       // A later death marks this same body. A despawn does not set dead.
       // The receipt stays one object, but this death is now the latest salvage.
-      if (payload && payload.sourceEvent === 'entity:killed') {
+      if (sourceEvent === 'entity:killed') {
         prior.dead = true;
         // A trimmed receipt is still in byEntity and would block this death. Put it
         // back at the end so the latest destruction is the salvage again.
@@ -460,7 +458,7 @@ export const combatOutcome = {
       this._publishAftermath();
       return null;
     }
-    const record = compactRecord(state, entity, payload, outcome, reason);
+    const record = compactRecord(state, entity, payload, outcome, reason, sourceEvent, entityId);
     own.byEntity[id] = record;
     own.outcomes.push(record);
     if (own.outcomes.length > MAX_OUTCOMES) own.outcomes.splice(0, own.outcomes.length - MAX_OUTCOMES);
@@ -507,19 +505,19 @@ export const combatOutcome = {
       return null;
     }
     const sectorId = state.world && state.world.currentSectorId || null;
-    const wreckIds = sectorWreckIds(state, sectorId);
+    const wrecks = sectorWreckMarkers(state, sectorId);
+    const wreckIds = wrecks.map(wreckMarkerId);
     const outcomes = [];
     for (const record of own.outcomes) {
       if (!record || record.sectorId !== sectorId) continue;
       const entity = entityFor(state, record.entityId);
       const same = sameOccupant(record, entity);
-      const livingOther = !!(entity && entity.alive !== false && !same);
       const killReceipt = record.outcome === 'killed' || record.dead === true;
-      // The number is not this body. A living reuse is never the focus. Once a wreck is
-      // here, destroying that body keeps salvage on that ship's own hulk, not the newest one.
-      const notThisBody = killReceipt && !same && (livingOther || wreckIds.length > 0);
-      const ownWreck = notThisBody ? wreckMarkerForVictim(state, sectorId, record.entityId) : null;
-      const entityId = notThisBody ? ownWreck : record.entityId;
+      // After the victim leaves the entity store, its hulk must still exist in the wreck owner.
+      // The historical outcome can stay while the last legal salvage target disappears.
+      const entityId = killReceipt && !same
+        ? wreckMarkerId(wrecks.find(marker => marker.victimId === record.entityId))
+        : record.entityId;
       outcomes.push({
         outcome: record.outcome,
         entityId,
@@ -581,20 +579,21 @@ export const combatOutcome = {
     own.aftermath = offer;
     const sig = `${sectorId}|${offer.choices.map((choice) => `${choice.id}:${choice.label}`).join(',')}`;
     const verbsChanged = sig !== this._choiceSig;
-    // Presentation follows the actual selected target, never the nearby observation anchor.
-    // A missing body or an unverified wreck marker retains a generic noun.
+    // The actual target supplies its label. The nearby observation only admits the card.
     const identities = {};
     const presented = offer.choices.map((choice) => {
       const target = offer.targets[choice.id] ?? null;
-      const entity = target == null ? null : entityFor(state, target);
-      const record = target == null ? null : own.byEntity[target];
+      const marker = choice.id === 'salvage' ? wrecks.find(row => wreckMarkerId(row) === target) : null;
+      const entity = target == null || marker ? null : entityFor(state, target);
+      const record = target == null || marker ? null : own.byEntity[target];
       const matches = record && sameOccupant(record, entity);
       const generation = entity ? occupantGenerationOf(entity) : null;
       const identity = JSON.stringify([sectorId, choice.id, target, generation,
         matches ? record.tick : null, matches ? record.occupantGeneration : null]);
       identities[choice.id] = identity;
-      const name = matches && Number.isSafeInteger(generation) && generation > 0 && record.label
-        ? String(record.label).replace(/\s+/g, ' ').slice(0, 80) : null;
+      const markerName = marker?.victimLabel !== marker?.victimClass ? marker?.victimLabel : null;
+      const entityName = matches && Number.isSafeInteger(generation) && generation > 0 ? record.label : null;
+      const name = String(markerName || entityName || '').replace(/\s+/g, ' ').trim().slice(0, 80);
       const noun = choice.id === 'salvage' ? 'Wreck' : choice.id === 'pursuit' ? 'Fled' : choice.id === 'rescue' ? 'Survivor' : null;
       return { id: choice.id, label: choice.label, targetIdentity: identity,
         context: noun && name ? `${noun}: ${name}` : null };

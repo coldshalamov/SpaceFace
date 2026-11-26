@@ -74,7 +74,6 @@ export function mountProExperiencesBrowser(ctx = {}) {
     }
     if (!disaster) {
       scene = nextScene; renderer = nextRenderer;
-      ninthMouthWorld = createCeresNinthMouthVisuals({ state, scene });
       disaster = createIndustrialDisastersPresentation({ ...ctx, scene, renderer });
       rig = createRigWorkshopView({ state, bus, scene });
       breakwaterWorld = mountBreakwaterSpurPresentation({ ...ctx, scene, THREE });
@@ -119,7 +118,14 @@ export function mountProExperiencesBrowser(ctx = {}) {
     present(alpha = 1) {
       if (destroyed) return;
       ensureDisaster()?.update(alpha);
-      ninthMouthWorld?.update(alpha);
+      const run = state.run;
+      if (run?.kind === 'survival' && run.phase !== 'inactive') {
+        ninthMouthWorld?.destroy();
+        ninthMouthWorld = null;
+      } else if (scene) {
+        ninthMouthWorld ??= createCeresNinthMouthVisuals({ state, scene });
+        ninthMouthWorld.update(alpha);
+      }
       rig?.frame(1 / 60, state);
       breakwaterWorld?.update(alpha);
       updateCounterweightCircuitPresentation(state, bus);

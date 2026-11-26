@@ -8,6 +8,14 @@
 //   summarizeMainThread(events, { windows: [{ id, fromUs, toUs }] }) ->
 //     { pid, tid, windows: [{ id, wallUs, busyUs, rows: [{ name, selfUs, share, count }] }] }
 
+import { gunzipSync } from 'node:zlib';
+
+export function decodeTraceEvents(bytes) {
+  const compressed = bytes[0] === 0x1f && bytes[1] === 0x8b;
+  const json = compressed ? gunzipSync(bytes) : bytes;
+  return traceEventsOf(JSON.parse(json.toString('utf8')));
+}
+
 /** Trace event arrays come either bare or wrapped as { traceEvents }. */
 export function traceEventsOf(parsed) {
   if (Array.isArray(parsed)) return parsed;

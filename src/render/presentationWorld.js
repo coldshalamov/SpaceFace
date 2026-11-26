@@ -2,6 +2,7 @@
 // Simulation never reads this object. Journal publication and renderer bindings are the only writers.
 
 import { projectileSkipsVisualFactoryMesh } from './weapons/recipes.js';
+import { POSE_ROW, POSE_ROW_STRIDE } from '../core/simPoseTable.js';
 
 export const PRESENTATION_DIRTY = Object.freeze({
   NONE: 0,
@@ -200,6 +201,7 @@ export function createPresentationWorld(options = {}) {
     // BINDING/VISIBILITY/VISUAL marks stop paying the full scalar write per
     // presented frame.
     packDirty: new Uint8Array(0),
+    sharedPoseSeen: new Uint32Array(0),
     radii: new Float64Array(0),
     prevX: new Float64Array(0),
     prevY: new Float64Array(0),
@@ -263,6 +265,7 @@ export function createPresentationWorld(options = {}) {
     world.dirtyMasks = growTyped(world.dirtyMasks, Uint8Array, capacity);
     world.doomed = growTyped(world.doomed, Uint8Array, capacity);
     world.packDirty = growTyped(world.packDirty, Uint8Array, capacity);
+    world.sharedPoseSeen = growTyped(world.sharedPoseSeen, Uint32Array, capacity);
     dirtyPositions = growTyped(dirtyPositions, Int32Array, capacity, INVALID_INDEX);
     world.radii = growTyped(world.radii, Float64Array, capacity);
     world.prevX = growTyped(world.prevX, Float64Array, capacity);
@@ -783,6 +786,64 @@ export function createPresentationWorld(options = {}) {
       if (typeNames[world.typeCodes[slot]] === 'asteroid') asteroidDirty = true;
     }
     return slot;
+  }
+
+  function writeSharedPose(slot, x, y, z, rot, bank, pitch) {
+    const changed = writePoseScalars(slot, x, y, z, world.x[slot], world.y[slot], world.z[slot],
+      rot, bank, pitch, world.rot[slot], world.bank[slot], world.pitch[slot]);
+    if (changed) {
+      markDirtyBits(slot, PRESENTATION_DIRTY.TRANSFORM);
+      if (typeNames[world.typeCodes[slot]] === 'asteroid') asteroidDirty = true;
+    }
+    return changed;
+  }
+
+  let sharedPoseStamp = 0;
+  function applySharedPoseTable(snapshot, retireMissing = true) {
+    const { rows, count, overflow } = snapshot;
+    const retire = retireMissing && !overflow;
+    const seen = world.sharedPoseSeen;
+    if (retire) {
+      // A visit marks either the same/older life or a newer occupant.
+      sharedPoseStamp = (sharedPoseStamp + 2) >>> 0;
+      if (sharedPoseStamp === 0) { seen.fill(0); sharedPoseStamp = 2; }
+    }
+    let applied = 0;
+    for (let i = 0, o = 0; i < count; i++, o += POSE_ROW_STRIDE) {
+      const slot = byId.get(rows[o + POSE_ROW.ID]);
+      if (slot === undefined || world.alive[slot] !== 1) continue;
+      const generation = rows[o + POSE_ROW.GENERATION] >>> 0;
+      const occupant = rows[o + POSE_ROW.OCCUPANT];
+      const sourceGen = world.sourceGenerations[slot];
+      const occupantGen = world.occupantGenerations[slot];
+      if (retire) {
+        seen[slot] = generation <= sourceGen || occupant === occupantGen ? sharedPoseStamp : sharedPoseStamp + 1;
+      }
+      // A transport rebuild may remint the journal generation for the same
+      // body. When present on both sides, the occupant token decides identity.
+      const matches = occupant > 0 && occupantGen > 0
+        ? occupant === occupantGen
+        : generation === sourceGen || (sourceGen === 0 && occupantGen === occupant);
+      if (matches && writeSharedPose(slot, rows[o + POSE_ROW.X], rows[o + POSE_ROW.Y],
+        rows[o + POSE_ROW.Z], rows[o + POSE_ROW.ROT], rows[o + POSE_ROW.BANK], rows[o + POSE_ROW.PITCH])) applied++;
+    }
+    if (!retire) return applied;
+
+    // Hide old bodies until the ordered destroy arrives. A fallback row with
+    // no source generation can only be retired by an observed replacement.
+    let hidden = 0;
+    for (let s = 0; s < activeCount; s++) {
+      const slot = world.activeSlots[s];
+      if (world.alive[slot] !== 1 || world.doomed[slot] === 1) continue;
+      if (seen[slot] === sharedPoseStamp) continue;
+      if (seen[slot] !== sharedPoseStamp + 1 && world.sourceGenerations[slot] === 0) continue;
+      world.doomed[slot] = 1;
+      world.visible[slot] = 0;
+      markDirtyBits(slot, PRESENTATION_DIRTY.VISIBILITY);
+      hidden++;
+    }
+    if (hidden) diagnostics.tableRetiredHidden = (diagnostics.tableRetiredHidden | 0) + hidden;
+    return applied;
   }
 
   function applyVisual(record, entity = null) {
@@ -1534,6 +1595,7 @@ export function createPresentationWorld(options = {}) {
     retire,
     applyTransform,
     applyVisual,
+    applySharedPoseTable,
     canRetainOccupant,
     rebuildRecord,
     retireUnpublishedRecords,

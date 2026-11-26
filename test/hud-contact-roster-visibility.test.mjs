@@ -12,17 +12,25 @@ function overlaps(a, b) {
     && a.y + a.height > b.y;
 }
 
-test('the contacts list stays out of the flight HUD until the player locks something', () => {
+test('the contacts list waits for a lock or an explicit populated pin', () => {
   assert.equal(typeof hud.contactRosterVisible, 'function',
     'HUD must expose the contact-roster visibility contract');
   assert.equal(hud.contactRosterVisible({
     locked: false,
     eligibleContactCount: 1,
-    pinned: true,
+    pinned: false,
     nearbyHostile: true,
     revealActive: true,
-  }), false, 'a pin, a hostile, or a scan does not mount the list');
+  }), false, 'a hostile or a scan does not mount the unpinned list');
+  assert.equal(hud.contactRosterVisible({ pinned: true, eligibleContactCount: 1 }), true,
+    'a deliberate pin opens a populated list without a lock');
+  assert.equal(hud.contactRosterVisible({ pinned: true }), false, 'an empty pin does not mount a plate');
   assert.equal(hud.contactRosterVisible({ locked: true }), true, 'a lock mounts the list');
+  // 08 §4: scanner lists are off during a fight; only the player's own pin holds one up.
+  assert.equal(hud.contactRosterVisible({ locked: true, fight: true, eligibleContactCount: 3 }), false,
+    'in a fight a lock no longer mounts the list (the target card and radar carry it)');
+  assert.equal(hud.contactRosterVisible({ pinned: true, fight: true, eligibleContactCount: 3 }), true,
+    'a deliberate pin still holds the list in a fight');
 
   const parent = { children: [], insertBefore(node, before) {
     const at = this.children.indexOf(before);
@@ -308,10 +316,13 @@ test('selected-target projections retain exact per-HUD center and radius records
       assert.equal(targetArcs.style.width, '62px');
       assert.equal(targetArcs.style.height, '62px');
       assert.equal(svg.getAttribute('viewBox'), '0 0 62 62');
+      // Three horizontal micro-bars under the target instead of concentric circles
+      // (no rings around things, owner 2026-11-23).
+      assert.equal(targetArcs.querySelector('circle'), null, 'no rings around things, owner 2026-11-23');
       assert.deepEqual(
         ['.sf-arc-shield', '.sf-arc-armor', '.sf-arc-hull']
-          .map((selector) => targetArcs.querySelector(selector).getAttribute('r')),
-        ['26', '23', '20'],
+          .map((selector) => targetArcs.querySelector(selector).getAttribute('y1')),
+        ['59', '63', '67'],
       );
     } finally {
       fixture.restore();
@@ -405,8 +416,9 @@ test('moving waypoint marker retains its projection record and exact edge presen
         edge: 'bottom',
         edgeClass: true,
         onScreenClass: false,
-        label: 'GOAL · TEST VECTOR · 1.0k u · ETA —',
-        aria: 'Current objective: TEST VECTOR, 1.0k u, ETA —',
+        // Tests follow df01ea648d: plain units — the goal line prints km, not the "k u" shorthand.
+        label: 'GOAL · TEST VECTOR · 1.0 km · ETA —',
+        aria: 'Current objective: TEST VECTOR, 1.0 km, ETA —',
       });
       if (expectedPresentation == null) expectedPresentation = presentation;
       else assert.deepEqual(presentation, expectedPresentation,

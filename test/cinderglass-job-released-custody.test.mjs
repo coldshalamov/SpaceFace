@@ -59,8 +59,15 @@ test('continuous Dione membership retains the original radio reply and accepted 
     t.step(2);
     const identity = { id: pod.id, generation: pod.occupantGeneration };
     // Exercise the actual membership producer with no body relocation or renderer receipt.
-    t.sim.registry.get('world').enterSector('sector_dione_lane', { continuous: true, noTeleport: true });
+    const worldSystem = t.sim.registry.get('world');
+    worldSystem.enterSector('sector_dione_lane', { continuous: true, noTeleport: true });
     t.sys.update(1 / 60, t.state);
+    // Sliced sector enters (owner freeze bug 2026-11-21): neighbors land one residency job per
+    // world tick — a neighbor's planned REDUCED tier is stamped when its job drains, so settle
+    // the backlog before reading the tier map.
+    for (let i = 0; i < 64 && worldSystem._pendingResidency && worldSystem._pendingResidency.length; i++) {
+      worldSystem._drainResidencyQueue(64);
+    }
     assert.equal(t.state.world.currentSectorId, 'sector_dione_lane');
     assert.equal(t.state.world.residentSectors.sector_tethys_junction.tier, 'REDUCED');
     assert.equal(t.body('podId'), pod); assert.ok(nativeCinderglassPose(t.sys, t.state, pod));

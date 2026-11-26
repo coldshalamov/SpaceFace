@@ -63,6 +63,7 @@ export function isGivingWay(playerSpeedWu, distToBeaconWu, strangerDistWu, tunin
 }
 
 export const sameTimeTomorrowPlant = {
+  modes: ['flight'],
   name: 'plants208',
 
   init(ctx) {

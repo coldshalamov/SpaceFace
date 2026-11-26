@@ -6,6 +6,7 @@ import { createSimHost } from '../scripts/lib/simWorkerHost.mjs';
 import { createSimCommandRing, pushLaneCommand } from '../scripts/lib/simCommandChannel.mjs';
 import { applyDomainPathUpdate, createDomainMirroringProfile } from '../scripts/lib/simReadModel.mjs';
 import { consumeStationTradeReceipt, tradeClearedReceipt, TRADE_EXPECTATION_KEY } from '../src/ui/station/tradeReceipt.js';
+import { addCargo } from '../src/systems/cargo.js';
 
 const GOOD = 'cmdty_ore_iron', STATION = 'station_helios';
 
@@ -43,10 +44,10 @@ test('worker delayed same-lot completion cannot consume a different pending conf
     mirror.ui[TRADE_EXPECTATION_KEY] = {intentId:'market:later', commodityId:GOOD, side:'buy', qty:2,
       total:later.total, stationId:STATION, afterSequence:0, atSimTime:mirror.simTime || 0};
     const first = tradeClearedReceipt(mirror, earlier);
-    assert.doesNotMatch(first.detail, /settled as confirmed/);
+    assert.doesNotMatch(first.detail, /as quoted/);
     assert.equal(mirror.ui[TRADE_EXPECTATION_KEY]?.intentId, 'market:later', 'late earlier receipt cannot consume the new confirmation');
     const second = tradeClearedReceipt(mirror, later);
-    assert.match(second.detail, /settled as confirmed/);
+    assert.match(second.detail, /as quoted/);
     assert.equal(mirror.ui[TRADE_EXPECTATION_KEY], null);
     assert.equal(state.player.cargo.items[GOOD], 6, 'only the three real worker settlements move cargo');
   } finally { worker.shutdown(); }
@@ -90,8 +91,10 @@ test('worker partial receipt preserves six of ten confirmed before the warm ledg
     }
     const confirmed = economy.quote(STATION, GOOD, 'buy', 10);
     assert.equal(confirmed.ok, true); assert.equal(confirmed.qty, 10);
-    const volume = state.player.cargo.usedVolume / state.player.cargo.items[GOOD];
-    state.player.cargo.capVolume = state.player.cargo.usedVolume + 6 * volume;
+    // Slot law (CARGO-BUILD-1): capacity is slots, not a volume edge. One partial iron stack
+    // (14/20, six free) plus eleven full slots elsewhere admits exactly six more units.
+    addCargo(state, GOOD, 6);
+    addCargo(state, 'cmdty_food', 220);
     const intentId = 'market:partial-after-eight';
     const expectation = { intentId, stationId: STATION, commodityId: GOOD, side: 'buy', qty: 10,
       total: confirmed.total, atSimTime: mirror.simTime, afterSequence: mirror.player.tradeLedger[0]?.tradeSequence || 0 };
@@ -108,7 +111,7 @@ test('worker partial receipt preserves six of ten confirmed before the warm ledg
     assert.equal(mirror.ui[TRADE_EXPECTATION_KEY], expectation, 'an unrelated same-lot terminal receipt cannot consume these terms');
     const before = JSON.stringify({ player: mirror.player, economy: mirror.economy });
     const receipt = consumeStationTradeReceipt(mirror, event, options);
-    assert.match(receipt.line, /BOUGHT 6 OF THE 10 CONFIRMED/);
+    assert.match(receipt.line, /Bought 6 of the 10 you asked for/);
     assert.ok(receipt.detail.includes(`${event.total} cr`), 'show the native settled total');
     assert.equal(mirror.ui[TRADE_EXPECTATION_KEY], null);
     assert.equal(shownIntentIds.has(intentId), true);

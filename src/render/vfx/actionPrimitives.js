@@ -150,7 +150,7 @@ void main(){
   // A committed lane is the one primitive that spans a whole firing corridor, so it is the one
   // that needs its own optical caps: the shared body limits are sized for an event the player
   // stands next to, not for a wedge that reaches 2000 WU past the bow.
-  float coverageCap=0.68;
+  float coverageCap=0.44;
   float emissionGain=1.0;
   if(kind>1.5&&kind<2.5){
     bool shoulder=abs(vConductor)>.5;
@@ -200,11 +200,11 @@ void main(){
   float light=.40+.60*abs(dot(normalize(vNormal),normalize(vec3(-.4,.8,.3))));
   float grazing=1.0-abs(dot(normalize(vNormal),normalize(cameraPosition-vWorld)));
   vec3 pigment=vTint.rgb*(.12+.15*flow)*(1.0-dark*.75)*light;
-  // Optical coverage stays translucent; the small transported crests must still
-  // carry HDR energy after alpha compositing, or the volume reads like dyed plastic.
+  // Optical coverage stays translucent; transported crests carry punchy HDR without whiting out ships.
   float core=pow(max(0.0,hot-.52),2.0);
-  vec3 emission=vTint.rgb*hot*vAction.w*uFlash*(3.7+.65*grazing)*emissionGain
-    +mix(vec3(1.0),vTint.rgb,.24)*core*2.2*vAction.w*uFlash*emissionGain;
+  vec3 emission=vTint.rgb*hot*vAction.w*uFlash*(2.1+.40*grazing)*emissionGain
+    +mix(vec3(1.0),vTint.rgb,.30)*core*1.0*vAction.w*uFlash*emissionGain;
+  emission=min(emission,vec3(2.2));
   float coverage=min(coverageCap,body+hot*.13)*(1.0-dark*.28);
   float alpha=edge*ends*arrival*cutoff*vTint.a*coverage;
   if(alpha<.003)discard;

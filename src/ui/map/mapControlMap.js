@@ -10,8 +10,11 @@ export const MAP_CONTROLS = Object.freeze({
   'set-course': { label: 'Set Waypoint' },
   'return-ship': { label: 'Return to ship' },
   'frame-both': { label: 'Zoom: ship and destination' },
+  'browse-places': { label: 'Browse places and services' },
+  'locate-goal': { label: 'Locate goal' },
   'sort-deck': { label: 'Sort' },
   layer: { label: 'Layer' },
+  lens: { label: 'Layer lens' },
   lane: { label: 'Lane' },
   'world-site': { label: 'Site' },
   'frontier-rumor': { label: 'Rumor' },
@@ -69,6 +72,8 @@ function inferMapControlId(attrs) {
   if (has(/data-focus="galaxy"/)) return 'scale-galaxy';
   if (has(/\bgm-hint-btn\b/)) return 'controls';
   if (has(/\bgm-close\b/)) return 'close';
+  if (has(/\bgm-places-btn\b/)) return 'browse-places';
+  if (has(/\bgm-locate-goal\b/)) return 'locate-goal';
   if (has(/id="gm-engage-route-btn"/)) return 'engage';
   if (has(/id="gm-plot-course-btn"/)) return 'plot';
   if (has(/id="gm-set-course-btn"/)) return 'set-course';
@@ -76,6 +81,7 @@ function inferMapControlId(attrs) {
   if (has(/id="gm-frame-both-btn"/)) return 'frame-both';
   if (has(/id="gm-deck-sort"/)) return 'sort-deck';
   if (has(/data-layer="/)) return 'layer';
+  if (has(/data-lens="/)) return 'lens';
   if (has(/data-ribbon-action="engage"/)) return 'engage';
   if (has(/data-ribbon-action="resume"/)) return 'resume';
   if (has(/data-ribbon-action="disengage"/)) return 'disengage';

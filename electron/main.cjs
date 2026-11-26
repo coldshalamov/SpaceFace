@@ -10,6 +10,9 @@
 const electron = require('electron');
 const { app, BrowserWindow, ipcMain, powerMonitor, dialog, screen } = electron;
 const path = require('path');
+// Earliest wall clock the shell can stamp: handed to the renderer via argv so the
+// page's boot timeline can place 'electron-process-start' ahead of navigation-start.
+const SHELL_PROCESS_STARTED_AT = Date.now();
 // Bytecode-cache the shell's own module graph under userData so launches after the first skip
 // recompiling the main-process modules below. Isolated evidence keeps its cache inside the
 // throwaway profile (its setPath override has not run yet). No-op where the host lacks support.
@@ -87,7 +90,27 @@ const allowEvidenceBackgroundExecution = launchConfig.isolatedEvidence === true
   && process.env.SPACEFACE_EVIDENCE_ALLOW_BACKGROUND_EXECUTION === '1';
 const hideEvidenceWindow = launchConfig.isolatedEvidence === true
   && process.env.SPACEFACE_EVIDENCE_HIDE_WINDOW === '1';
+// A visible-but-never-activated probe window (2026-11-21, owner: test windows must not pop in
+// front of what he is watching). Shown with showInactive(), never focused; it renders on screen
+// through the normal GPU path (unlike the offscreen hide mode) so timings match a player window.
+const inactiveEvidenceWindow = launchConfig.isolatedEvidence === true
+  && process.env.SPACEFACE_EVIDENCE_SHOW_INACTIVE === '1';
 const backgroundThrottling = !allowEvidenceBackgroundExecution;
+// The player's game is fullscreen; an isolated probe window is a framed 1480x920 that the work
+// area clamps smaller. SPACEFACE_EVIDENCE_CONTENT_SIZE=1536x864 (isolated evidence only) opens a
+// frameless window whose CONTENT is exactly that many CSS pixels at the display's top-left, so a
+// probe draws the same number of pixels the player's fullscreen does. Never applies to a player launch.
+const evidenceContentSize = (() => {
+  if (launchConfig.isolatedEvidence !== true) return null;
+  const m = /^(\d{3,5})x(\d{3,5})$/.exec(String(process.env.SPACEFACE_EVIDENCE_CONTENT_SIZE || '').trim());
+  return m ? { width: Number(m[1]), height: Number(m[2]) } : null;
+})();
+if (allowEvidenceBackgroundExecution) {
+  // The window may be unfocused or occluded; keep Chromium from backgrounding it.
+  app.commandLine.appendSwitch('disable-renderer-backgrounding');
+  app.commandLine.appendSwitch('disable-backgrounding-occluded-windows');
+  app.commandLine.appendSwitch('disable-background-timer-throttling');
+}
 const RECEIPT_PATH = process.env.SPACEFACE_LAUNCH_RECEIPT || '';
 const receipt = (status, details = {}) => appendLaunchReceipt(RECEIPT_PATH, status, details);
 const SHELL_LIFECYCLE_CHANNEL = 'spaceface:shell-lifecycle';
@@ -394,10 +417,19 @@ if (process.platform === 'win32') {
 // js-flags is forwarded to every isolate the shell spawns (renderer + decode
 // workers); commit follows use, so the cost is reserved address space, not RSS.
 // SPACEFACE_SEMI_SPACE_MB overrides the size for probe boxes; 'default' unsets it.
-const SEMI_SPACE_MB = Number(String(process.env.SPACEFACE_SEMI_SPACE_MB || '64').trim());
-if (Number.isInteger(SEMI_SPACE_MB) && SEMI_SPACE_MB >= 8 && SEMI_SPACE_MB <= 512) {
-  app.commandLine.appendSwitch('js-flags',
-    `--min-semi-space-size=${SEMI_SPACE_MB} --max-semi-space-size=${SEMI_SPACE_MB}`);
+const SEMI_SPACE_MB = Number(String(process.env.SPACEFACE_SEMI_SPACE_MB || '128').trim());
+{
+  const jsFlags = [];
+  if (Number.isInteger(SEMI_SPACE_MB) && SEMI_SPACE_MB >= 8 && SEMI_SPACE_MB <= 512) {
+    jsFlags.push(`--min-semi-space-size=${SEMI_SPACE_MB}`, `--max-semi-space-size=${SEMI_SPACE_MB}`);
+  }
+  // Isolated evidence only: a garbage-collector trace on stdout (every isolate, the sim worker
+  // included) so a probe can price collector pauses. Never on a player launch.
+  if (launchConfig.isolatedEvidence === true && process.env.SPACEFACE_EVIDENCE_TRACE_GC === '1') jsFlags.push('--trace-gc');
+  // Isolated evidence only: an old-generation size experiment (heap-shape probe).
+  const oldMb = Number(String(process.env.SPACEFACE_EVIDENCE_OLD_SPACE_MB || '').trim());
+  if (launchConfig.isolatedEvidence === true && Number.isInteger(oldMb) && oldMb >= 64 && oldMb <= 4096) jsFlags.push(`--max-old-space-size=${oldMb}`);
+  if (jsFlags.length) app.commandLine.appendSwitch('js-flags', jsFlags.join(' '));
 }
 // Browser-chrome subsystems a localhost game shell never uses — keeps their periodic
 // discovery/sync work out of the process.
@@ -463,14 +495,23 @@ function ensureGameServerPort() {
 async function listenGameServer(root, requestedPort) {
   let devSimWorkerBundleProvider = null;
   // Development source launches use the measured bundle. Production installs can omit its compiler.
-  const devSimWorkerBundleEnabled = (process.env.SPACEFACE_DEV_SIM_WORKER_BUNDLE === '1'
+  // Player parity for probes: the owner's `npm run electron` serves the sim worker as ONE bundled
+  // file, while every isolated probe used to load it as loose source modules, so no test ever ran
+  // the worker artifact the player runs. SPACEFACE_EVIDENCE_PLAYER_WORKER_BUNDLE=1 lets an
+  // isolated probe (throwaway profile, own port) serve the same bundle the player gets.
+  const playerParityWorkerBundle = launchConfig.isolatedEvidence === true
+    && process.env.SPACEFACE_EVIDENCE_PLAYER_WORKER_BUNDLE === '1'
+    && !app.isPackaged
+    && !sourceOverlayManifest
+    && !String(process.env.SPACEFACE_BASELINE_SOURCE_MANIFEST || '').trim();
+  const devSimWorkerBundleEnabled = playerParityWorkerBundle || ((process.env.SPACEFACE_DEV_SIM_WORKER_BUNDLE === '1'
     || (process.env.SPACEFACE_DEV_SIM_WORKER_BUNDLE !== '0' && process.env.NODE_ENV !== 'production'))
     && !app.isPackaged
     && !launchConfig.isolatedEvidence
     && !sourceOverlayManifest
     && !String(process.env.SPACEFACE_BASELINE_SOURCE_MANIFEST || '').trim()
     && process.env.SPACEFACE_EVIDENCE_ALLOW_BACKGROUND_EXECUTION !== '1'
-    && process.env.SPACEFACE_EVIDENCE_HIDE_WINDOW !== '1';
+    && process.env.SPACEFACE_EVIDENCE_HIDE_WINDOW !== '1');
   if (devSimWorkerBundleEnabled) {
     const { pathToFileURL } = require('node:url');
     const providerUrl = pathToFileURL(path.join(PROJECT_ROOT, 'scripts', 'lib', 'devSimWorkerBundle.mjs')).href;
@@ -539,7 +580,8 @@ function systemLifecycleSuspended() {
 function deriveWindowLifecycleState(win) {
   if (systemLifecycleSuspended()) return 'system-suspended';
   // An explicitly hidden isolated probe presents offscreen without stealing focus.
-  if (hideEvidenceWindow && allowEvidenceBackgroundExecution && win && !win.isDestroyed()) {
+  if ((hideEvidenceWindow || inactiveEvidenceWindow) && allowEvidenceBackgroundExecution
+    && win && !win.isDestroyed()) {
     return 'foreground-visible';
   }
   if (!win || win.isDestroyed() || win.isMinimized() || !win.isVisible()) {
@@ -569,6 +611,33 @@ function publishWindowLifecycle(win, reason) {
     }
     return false;
   }
+}
+
+// While the player's own window is focused: a heartbeat the fleet's game lock reads (test launches
+// wait, so a second copy of the game never competes for this laptop's one integrated GPU while
+// someone is playing), and above-normal scheduling priority for the game's processes so background
+// work yields the CPU to it. Player launches only; probes neither announce nor raise themselves.
+let stopPlayerPresenceHeartbeat = null;
+function startPlayerPresenceHeartbeat() {
+  if (launchConfig.isolatedEvidence || stopPlayerPresenceHeartbeat) return;
+  let presence = null;
+  try { presence = require('../scripts/lib/playerPresence.cjs'); } catch (_) { return; }
+  try {
+    stopPlayerPresenceHeartbeat = presence.startPlayerPresence({
+      isFocused: () => BrowserWindow.getAllWindows().some((w) => !w.isDestroyed()
+        && w.isVisible() && !w.isMinimized() && w.isFocused()),
+      processIds: () => [process.pid, ...app.getAppMetrics().map((m) => m.pid)],
+      // One line in the desktop log each time the game's scheduling state changes.
+      onScheduling: (line, details) => {
+        console.log(`[electron] scheduling: ${line}`);
+        try { receipt('scheduling', details); } catch (_) { /* the log is a courtesy */ }
+      },
+    });
+    app.once('will-quit', () => {
+      try { if (stopPlayerPresenceHeartbeat) stopPlayerPresenceHeartbeat(); } catch (_) {}
+      stopPlayerPresenceHeartbeat = null;
+    });
+  } catch (_) { /* presence is a courtesy; the game runs without it */ }
 }
 
 function publishAllWindowLifecycles(reason) {
@@ -1281,10 +1350,11 @@ async function createWindow() {
     ? sanitizeWindowState(readWindowStateFile(windowStatePath), collectDisplayAreas())
     : null;
   const win = new BrowserWindow({
-    width: rememberedWindow ? rememberedWindow.width : 1480,
-    height: rememberedWindow ? rememberedWindow.height : 920,
-    x: rememberedWindow && rememberedWindow.mode === 'windowed' ? rememberedWindow.x : undefined,
-    y: rememberedWindow && rememberedWindow.mode === 'windowed' ? rememberedWindow.y : undefined,
+    width: evidenceContentSize ? evidenceContentSize.width : rememberedWindow ? rememberedWindow.width : 1480,
+    height: evidenceContentSize ? evidenceContentSize.height : rememberedWindow ? rememberedWindow.height : 920,
+    x: evidenceContentSize ? 0 : rememberedWindow && rememberedWindow.mode === 'windowed' ? rememberedWindow.x : undefined,
+    y: evidenceContentSize ? 0 : rememberedWindow && rememberedWindow.mode === 'windowed' ? rememberedWindow.y : undefined,
+    ...(evidenceContentSize ? { useContentSize: true, frame: false, resizable: false } : {}),
     minWidth: 1024, minHeight: 640,
     backgroundColor: '#05070d', title: 'SpaceFace', show: false, icon: APP_ICON,
     fullscreen: rememberedWindow
@@ -1301,6 +1371,7 @@ async function createWindow() {
       // off skips the hunspell/dictionary service entirely instead of per-element opt-outs.
       spellcheck: false,
       preload: path.join(__dirname, 'preload.cjs'),
+      additionalArguments: [`--sf-shell-boot-at=${SHELL_PROCESS_STARTED_AT}`],
       backgroundThrottling,
       offscreen: hideEvidenceWindow,
       // Each module is fetched once per launch, so the 'code' heat check never arms on
@@ -1336,7 +1407,8 @@ async function createWindow() {
   };
   let focusWhenReady = false;
   const focusGameWindow = () => {
-    if (startupAbandoned || win.isDestroyed() || appQuitting || hideEvidenceWindow) return;
+    if (startupAbandoned || win.isDestroyed() || appQuitting || hideEvidenceWindow
+      || inactiveEvidenceWindow) return;
     if (win.isMinimized()) win.restore();
     win.focus();
   };
@@ -1511,7 +1583,8 @@ async function createWindow() {
       evidenceBackgroundOverride: allowEvidenceBackgroundExecution,
       fullscreen: !launchConfig.isolatedEvidence,
     });
-    if (!hideEvidenceWindow) win.show();
+    if (inactiveEvidenceWindow) win.showInactive();
+    else if (!hideEvidenceWindow) win.show();
     if (focusWhenReady) {
       focusWhenReady = false;
       focusGameWindow();
@@ -1550,13 +1623,91 @@ async function createWindow() {
     if (initialCanonicalLoadPending) canonicalRetryAvailable = false;
     receipt('navigation-failed', failure);
   });
+  // NO-FREEZE recorder (owner bug 2026-11-21): every freeze the game itself detects
+  // lands in userData/freeze-log.jsonl — one JSON line per episode, carrying what
+  // the simulation was waiting on (the detector's own attribution) and which input
+  // devices were connected. The owner's next real session is then the reproduction
+  // no synthetic test can stand in for. Isolated evidence launches write to their
+  // own temp userData, so probes never pollute the owner's log.
+  const freezeLogPath = path.join(app.getPath('userData'), 'freeze-log.jsonl');
+  let freezeLogWrites = 0;
+  const FREEZE_LOG_MAX_LINES = 400;
+  function appendFreezeRecord(record) {
+    try {
+      if (freezeLogWrites === 0 && fs.existsSync(freezeLogPath)
+        && fs.statSync(freezeLogPath).size > 2 * 1024 * 1024) {
+        try { fs.renameSync(freezeLogPath, `${freezeLogPath}.1`); } catch (_) { /* keep appending */ }
+      }
+      if (freezeLogWrites >= FREEZE_LOG_MAX_LINES) return;
+      freezeLogWrites++;
+      fs.appendFileSync(freezeLogPath, `${JSON.stringify(record)}\n`, 'utf8');
+    } catch (_) { /* the recorder must never disturb the game */ }
+  }
+  // A device list is fetched per episode (never per frame): a phantom pad or a
+  // drifting stick is a freeze suspect, so its presence belongs on the record.
+  async function freezeDeviceSnapshot() {
+    try {
+      const source = await Promise.race([
+        win.webContents.executeJavaScript(
+          '(() => { try { return JSON.stringify([...(navigator.getGamepads ? navigator.getGamepads() : [])].filter(Boolean).map((g) => g.id)); } catch (_) { return "[]"; } })()',
+          true,
+        ),
+        new Promise((resolve) => setTimeout(() => resolve('[]'), 1500)),
+      ]);
+      const ids = JSON.parse(source);
+      return Array.isArray(ids) ? ids : [];
+    } catch (_) { return []; }
+  }
+  let recordedVersion = null;
+  try { recordedVersion = (publicBuildInfo && publicBuildInfo().version) || app.getVersion(); } catch (_) { /* cosmetic */ }
+  appendFreezeRecord({
+    at: new Date().toISOString(),
+    kind: 'session-start',
+    version: recordedVersion,
+    note: 'freeze recorder armed: world-motion holds and sim-lane freeze episodes land here with connected input devices',
+  });
   let motionHoldReceipts = 0;
+  // Ordinary frame rate (src/core/frameRateLog.js): one line per ten live seconds. It goes to the
+  // launch log and to its own file, never to the freeze log (it would fill that in an hour) and
+  // never against the eight-row hold cap. About 360 lines an hour; capped at four hours a session.
+  const frameRateLogPath = path.join(app.getPath('userData'), 'frame-rate-log.jsonl');
+  let frameRateLines = 0;
+  function appendFrameRate(message) {
+    if (frameRateLines >= 1440) return;
+    let row = null;
+    try { row = JSON.parse(message.slice('[frame-rate] '.length)); } catch (_) { return; }
+    if (!row || typeof row !== 'object') return;
+    delete row.schema; // the launch receipt keeps its own schema field
+    frameRateLines++;
+    receipt('frame-rate', row);
+    try {
+      if (frameRateLines === 1) {
+        if (fs.existsSync(frameRateLogPath) && fs.statSync(frameRateLogPath).size > 1024 * 1024) {
+          try { fs.renameSync(frameRateLogPath, `${frameRateLogPath}.1`); } catch (_) { /* keep appending */ }
+        }
+        fs.appendFileSync(frameRateLogPath, `${JSON.stringify({ at: new Date().toISOString(), kind: 'session-start', version: recordedVersion })}\n`, 'utf8');
+      }
+      fs.appendFileSync(frameRateLogPath, `${JSON.stringify({ at: new Date().toISOString(), ...row })}\n`, 'utf8');
+    } catch (_) { /* the recorder must never disturb the game */ }
+  }
   win.webContents.on('console-message', (details) => {
     const message = details && details.message;
+    if (typeof message === 'string' && message.startsWith('[frame-rate] ')) { appendFrameRate(message); return; }
     if (typeof message === 'string' && message.startsWith('[world-motion-hold] ')
       && motionHoldReceipts < 8) {
       motionHoldReceipts++;
       receipt('world-motion-hold', { message: message.slice(0, 8192) });
+    }
+    if (typeof message === 'string'
+      && (message.startsWith('[world-motion-hold] ') || message.includes('[simLane] freeze episode'))) {
+      freezeDeviceSnapshot().then((devices) => {
+        appendFreezeRecord({
+          at: new Date().toISOString(),
+          kind: message.includes('freeze episode') ? 'freeze-episode' : 'motion-hold',
+          devices,
+          message: message.slice(0, 8192),
+        });
+      });
     }
     if (isAssetPreloadFailureMessage(message)) {
       receipt('asset-preload-failed', { message: receiptText(message) });
@@ -1735,6 +1886,7 @@ if (!app.requestSingleInstanceLock()) {
   app.whenReady()
     .then(() => {
       void requestGameWindow();
+      startPlayerPresenceHeartbeat();
       // Auto-update is a packaged-route citizen: check once after boot, download quietly, and
       // offer Restart-or-Later when a build lands. Fail-closed everywhere else, and isolated
       // evidence launches (including packaged-startup probes) never touch the feed at all.

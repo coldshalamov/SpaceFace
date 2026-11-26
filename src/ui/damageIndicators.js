@@ -11,6 +11,7 @@
 // is failing? No damage numbers, speech, modal, or sim mutation lives here.
 
 import { getFlashReduced, getMotionReduced } from './accessibility.js';
+import { createAvoidRects } from './hudAvoidRects.js';
 
 const STYLE_ID = 'sf-dmgind-style';
 const MAX_MARKERS = 3;
@@ -20,7 +21,8 @@ const MERGE_ANGLE_RAD = 0.52;
 const LAYER_CUES = Object.freeze({
   shield: Object.freeze({ glyph: 'S', tone: 'shield', ttl: 0.75 }),
   armor: Object.freeze({ glyph: 'A', tone: 'warning', ttl: 0.90 }),
-  hull: Object.freeze({ glyph: 'H', tone: 'danger', ttl: 1.10 }),
+  // DEMO-SWARM-UX-2: the lone red 'H' had no legend. The word is the legend.
+  hull: Object.freeze({ glyph: 'Hull', tone: 'danger', ttl: 1.10 }),
 });
 
 // INF-049 — close-shave tick. Not damage: a neutral dash on the side the round crossed,
@@ -55,14 +57,14 @@ const WEDGE_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"
   + '<path fill="currentColor" fill-opacity="0.85" d="M60,60 L60,6 A54,54 0 0,1 98,22 Z"/></svg>';
 
 // One shared layer plate per marker; CSS reveals exactly the shape the cue names, so a pooled
-// marker swaps meaning by class alone (no per-hit DOM mutation). Shapes: ring=shield,
-// diamond=armor, solid square=hull, dash=near miss — meaning survives without the letter.
+// marker swaps meaning by class alone (no per-hit DOM mutation). Shapes: shield crest=shield,
+// diamond=armor, solid square=hull, dash=near miss — no rings around marks (owner 2026-11-23).
 const LAYER_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" aria-hidden="true">'
-  + '<circle class="sf-dmgind-shape sf-dmgind-shape-shield" cx="12" cy="12" r="6.4" stroke="currentColor" stroke-width="2.6"/>'
+  + '<path class="sf-dmgind-shape sf-dmgind-shape-shield" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" d="M12 3.8 L19.2 6.8 V12.4 C19.2 16.2 16.0 19.0 12 20.4 C8.0 19.0 4.8 16.2 4.8 12.4 V6.8 Z"/>'
   + '<path class="sf-dmgind-shape sf-dmgind-shape-armor" stroke="currentColor" stroke-width="2.6" d="M12 3.9 L20.1 12 L12 20.1 L3.9 12 Z"/>'
   + '<rect class="sf-dmgind-shape sf-dmgind-shape-hull" x="4.9" y="4.9" width="14.2" height="14.2" fill="currentColor"/>'
   + '<rect class="sf-dmgind-shape sf-dmgind-shape-nearmiss" x="4" y="10.8" width="16" height="2.4" rx="1.2" fill="currentColor"/>'
-  + '<circle class="sf-dmgind-ring" cx="12" cy="12" r="10.9" stroke="currentColor" stroke-width="1.5"/></svg>';
+  + '<path class="sf-dmgind-ring" stroke="currentColor" stroke-width="1.8" d="M2.5 7.5 V2.5 H7.5 M16.5 2.5 H21.5 V7.5 M21.5 16.5 V21.5 H16.5 M7.5 21.5 H2.5 V16.5"/></svg>';
 
 function pct(value, max) {
   return max > 0 ? Math.max(0, Math.min(100, Math.round((Number(value) || 0) / max * 100))) : 0;
@@ -177,6 +179,19 @@ export function createDamageIndicators() {
 
   // Retained worldToScreen scratch — projection results are consumed synchronously.
   const _diScreen = { x: 0, y: 0, onScreen: false };
+  // The HUD panels a hit wedge must not land on (the shared cached avoid snapshot, read after the
+  // frame's own layout pass — never a rect read here). A wedge whose spot on the ring falls on an
+  // instrument slides inward along its own direction until it is clear.
+  const avoid = typeof document !== 'undefined' ? createAvoidRects(document) : null;
+  const WEDGE_HALF_PX = 18;
+  function onInstrument(x, y, rects) {
+    for (let i = 0; i < rects.length; i++) {
+      const r = rects[i];
+      if (x + WEDGE_HALF_PX > r.x && x - WEDGE_HALF_PX < r.x + r.w
+        && y + WEDGE_HALF_PX > r.y && y - WEDGE_HALF_PX < r.y + r.h) return true;
+    }
+    return false;
+  }
   const markers = [];
   for (let index = 0; index < MAX_MARKERS; index++) {
     const element = document.createElement('div');
@@ -320,6 +335,7 @@ export function createDamageIndicators() {
     const extentX = width * 0.36;
     const extentY = height * 0.36;
     const reduced = getFlashReduced() || getMotionReduced();
+    const instruments = avoid ? avoid.get() : null;
 
     for (const marker of markers) {
       if (marker.age === Infinity || !marker.cue) continue;
@@ -356,8 +372,13 @@ export function createDamageIndicators() {
         dx = -Math.cos(marker.angle);
         dy = Math.sin(marker.angle);
       }
-      const x = width * 0.5 + dx * extentX;
-      const y = height * 0.5 + dy * extentY;
+      let reach = 1;
+      while (instruments && instruments.length && reach > 0.3
+        && onInstrument(width * 0.5 + dx * extentX * reach, height * 0.5 + dy * extentY * reach, instruments)) {
+        reach -= 0.05;
+      }
+      const x = width * 0.5 + dx * extentX * reach;
+      const y = height * 0.5 + dy * extentY * reach;
       const screenAngle = Math.atan2(dy, dx);
       const fadeIn = reduced ? 1 : Math.min(1, marker.age / FADE_IN_S);
       const fadeOut = Math.max(0, 1 - marker.age / marker.cue.ttl);

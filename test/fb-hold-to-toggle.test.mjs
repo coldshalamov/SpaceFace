@@ -30,6 +30,13 @@ function flightState(toggles = {}) {
     id: 1, type: 'ship', alive: true, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, rot: 0,
   }]]);
   state.settings.accessibility.holdToToggle = toggles;
+  // Bind the verbs under test to fixed keys — the latch contract is what matters here, not
+  // whatever seat a shipped table currently gives an unbound/wheel verb.
+  state.settings.controls = state.settings.controls || {};
+  state.settings.controls.bindings = {
+    brake: ['Digit0'], bulletTime: ['CapsLock'], reelIn: ['BracketLeft'],
+    reelOut: ['BracketRight'], gyreSnare: ['Quote'], tether: ['Space'],
+  };
   return state;
 }
 

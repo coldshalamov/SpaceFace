@@ -266,6 +266,12 @@ test('the three rhythms render at the beam contact, from the seams mining alread
     t.hud.update(1 / 60, t.state);
     assert.equal(t.dom.word.textContent, 'OFF SEAM');
     assert.ok(classesOf(t.mark).includes('mining-seam-off'));
+    t.bus.emit('mining:tick', { seamGradePct: 30, seamHit: false, sourceEntityId: 'player' });
+    t.hud.update(1 / 60, t.state);
+    assert.equal(t.dom.word.textContent, 'SHELL · 30% YIELD');
+    t.bus.emit('mining:tick', { seamGradePct: 100, cutBonusPct: 8, seamHit: true, sourceEntityId: 'player' });
+    t.hud.update(1 / 60, t.state);
+    assert.equal(t.dom.word.textContent, 'ON SEAM · +8% SPEED');
 
     // Drone heat never renders — the instrument reads the PLAYER's beam.
     t.bus.emit('mining:heatChanged', { minerId: 'drone_7', heat: 99, heatMax: 100, pct: 0.99, band: 'vent' });

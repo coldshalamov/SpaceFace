@@ -56,6 +56,7 @@ export function createIndustryPlanner(host, { getContext = () => ({}), onOpen } 
   }
   const productGroup = element('optgroup'); productGroup.label = 'Manufacture from raw materials';
   for (const recipe of SITE_RECIPES) {
+    if (recipe.output?.pod || recipe.outOfLane) continue;
     const id = Object.keys(recipe.output)[0];
     const option = element('option', name(id)); option.value = `product:${id}`; productGroup.appendChild(option);
   }

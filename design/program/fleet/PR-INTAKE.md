@@ -1,3 +1,9 @@
+<!-- HISTORY-2026-11-20 -->
+> **History, not instructions (2026-11-20).** This file no longer assigns, orders or blocks any work.
+> States such as READY, TAKEN, HOLD, PARKED and NEEDS-PACKET mean nothing now. Read it for facts
+> about what was built or planned. The rule and the live board are in the root `AGENTS.md` and
+> `design/overhaul/12_PIPELINE.md`.
+
 # PR intake — landing the open pull requests properly (lead program, 2026-11-14)
 
 The owner asked for every open pull request to be reviewed, built the way a senior engineer would

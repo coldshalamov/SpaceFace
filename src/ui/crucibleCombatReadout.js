@@ -5,6 +5,8 @@ import { WEAPONS } from '../data/weapons.js';
 import { MODULES } from '../data/modules.js';
 import { ATTACK_TRAIT_BY_ID } from '../data/attackTraits.js';
 import { resolveActionLabel } from '../systems/input.js';
+import { verbBindingLabel } from '../onboarding/verbSpeech.js';
+import { getPromptDevice } from './bindings.js';
 import { el } from './kit/index.js';
 import { indexedTypeScan } from '../world/livingWorldViews.js';
 import { PHASE_BLINK, phaseBlinkCommitCost } from '../data/phaseBlink.js';
@@ -15,6 +17,9 @@ const modules = new Map(MODULES.map(def => [def.id, def]));
 const FLIGHT_PHASES = new Set(['wave_intro', 'active', 'cleanup']);
 
 function binding(state, action) {
+  const device = state?.input?.promptDevice || getPromptDevice();
+  if (device === 'gamepad') return verbBindingLabel(state, action, device, { keyboardFallback: false }) || 'unbound';
+  if (device === 'touch' && action === 'fire') return 'Fire button';
   return resolveActionLabel(state || {}, action, { arrows: 'word', empty: 'unbound' });
 }
 
@@ -54,10 +59,12 @@ export function crucibleFittingDescription(defId, state) {
 function gunReadiness(state, ship, accepts, emptyText = 'no primary weapon') {
   const guns = (ship?.data?.weapons || []).filter(w => accepts(w.defId));
   if (!guns.length) return { status: 'empty', text: emptyText };
-  if ((ship.data.weaponVentUntil || 0) > (state.simTime || 0)) {
+  const simT = state.simTime || 0;
+  if ((ship.data.weaponVentUntil || 0) > simT) {
     return { status: 'cooldown', text: 'cooling' };
   }
   const ready = guns.some(w => {
+    if ((w._lockUntil || 0) > simT) return false;
     const def = weapons.get(w.defId) || {};
     const heatCost = w.heat ?? def.heatPerShot ?? def.heatPerSec ?? 0;
     const heatMax = w.heatMax ?? def.heatMax ?? Infinity;
@@ -66,7 +73,8 @@ function gunReadiness(state, ship, accepts, emptyText = 'no primary weapon') {
     return !(w._cooldown > 0) && !(heatCost > 0 && (w._heat || 0) >= heatMax)
       && cap >= cost * ((w.continuous ?? def.continuous) ? 1 / 60 : 1);
   });
-  return ready ? { status: 'armed', text: 'armed' } : { status: 'cooldown', text: 'recharging' };
+  const anyLocked = guns.some(w => (w._lockUntil || 0) > simT);
+  return ready ? { status: 'armed', text: 'armed' } : { status: 'cooldown', text: anyLocked ? 'cooling' : 'recharging' };
 }
 
 function trapReadiness(state, ship) {
@@ -141,7 +149,7 @@ export function crucibleCombatLines(state) {
         ? 'no clear landing'
         : energy < commitCost ? `needs ${Math.ceil(commitCost)} energy to release` : 'release to jump';
       rows.push({ id: 'veil-step', status: canRelease ? 'armed' : 'cooldown',
-        text: `Veil Step — ${binding(state, 'boost')} held · ${runtime.active ? `${Math.round(runtime.dist)} WU` : 'no clear landing'} · ${releaseStatus}` });
+        text: `Veil Step — ${binding(state, 'boost')} held · ${runtime.active ? `${Math.round(runtime.dist)} m` : 'no clear landing'} · ${releaseStatus}` });
     } else {
       const ready = !cooling && energy >= PHASE_BLINK.minEnergy;
       const reason = cooling ? 'cooling' : energy < PHASE_BLINK.minEnergy
@@ -182,7 +190,7 @@ export function crucibleCombatLines(state) {
 /** Mounted and released by crucibleFocus, never a second animation loop or input owner. */
 export function mountCrucibleCombatReadout(host) {
   const root = el('ul', 'k-text k-t-data sf-crucible-combat');
-  root.setAttribute('aria-label', 'Crucible combat fittings');
+  root.setAttribute('aria-label', 'Swarm combat fittings');
   root.setAttribute('aria-live', 'off');
   root.hidden = true;
   host.appendChild(root);

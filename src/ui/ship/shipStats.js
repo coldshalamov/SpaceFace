@@ -72,7 +72,7 @@ export const SHIP_STAT_DEFS = Object.freeze([
     meaning: 'How fast you fly at full throttle, and how much a burner adds.',
     floor: 130,
     ceiling: 430,
-    unit: 'wu/s',
+    unit: 'm/s',
   }),
   Object.freeze({
     id: 'handling',

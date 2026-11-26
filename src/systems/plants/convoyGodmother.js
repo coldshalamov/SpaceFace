@@ -74,6 +74,7 @@ export function pacePointFor(playerPos, playerRot, side, tuning = CONVOY_GODMOTH
 }
 
 export const convoyGodmotherPlant = {
+  modes: ['flight'],
   name: 'plants292',
 
   init(ctx) {

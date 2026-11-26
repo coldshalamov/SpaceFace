@@ -9,16 +9,16 @@ import {
   closeOwnedElectronRuntime,
   createElectronCanonicalUrlTracker,
   createElectronProcessMonitor,
-} from './scripts/lib/alphaLiveBaselineElectronContracts.mjs';
+} from './lib/alphaLiveBaselineElectronContracts.mjs';
 import {
   assertIsolatedElectronRootUrl,
   createIsolatedElectronLaunch,
-} from './scripts/lib/electronTestIsolation.mjs';
-import { loadPlaywright } from './scripts/lib/load-playwright.mjs';
-import { installCspSafePlaywrightPolling } from './scripts/lib/playwrightCspPolling.mjs';
-import { installFirstLightPromptHandler } from './scripts/player-truth/routes.mjs';
+} from './lib/electronTestIsolation.mjs';
+import { loadPlaywright } from './lib/load-playwright.mjs';
+import { installCspSafePlaywrightPolling } from './lib/playwrightCspPolling.mjs';
+import { installFirstLightPromptHandler } from './player-truth/routes.mjs';
 
-const ROOT = fileURLToPath(new URL('.', import.meta.url));
+const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const OUT = path.join(ROOT, '.devshots', 'worker-physics-probe');
 const RUN_MS = Number(process.env.HEAVY_PROBE_MS || 60_000);
 
@@ -170,21 +170,27 @@ const actions = async () => {
   }
 };
 
-// Worker CPU profile: attach to the sim worker target once found.
+// Worker CPU profile: attach to THE SIM worker target (its URL names the lane). The first
+// attached worker can be the save/boot-ring worker — profiling it produced a main-thread-
+// looking summary (three.js, DOM) and hid the real step hot spots.
+const isSimWorkerTarget = (info) => typeof info?.url === 'string'
+  && /wholeSimBrowserWorker|simLane/i.test(info.url);
 let workerProf = null;
-const workerProfDeadline = Date.now() + 15_000;
-while (Date.now() < workerProfDeadline && workerSessions.size === 0) {
-  await page.waitForTimeout(250);
-}
-for (const [sessionId] of workerSessions) {
-  try {
-    const ws = await page.context().newCDPSession(page); // page-level session for routing
-    await cdp.send('Profiler.enable', {}, sessionId);
-    await cdp.send('Profiler.start', {}, sessionId);
-    workerProf = sessionId;
-    log(`worker CPU profiling started (session ${sessionId})`);
-    break;
-  } catch (e) { log(`worker profiler failed: ${e.message}`); }
+let workerProfUrl = null;
+const workerProfDeadline = Date.now() + 30_000;
+while (Date.now() < workerProfDeadline && workerProf === null) {
+  for (const [sessionId, info] of workerSessions) {
+    if (!isSimWorkerTarget(info)) continue;
+    try {
+      await cdp.send('Profiler.enable', {}, sessionId);
+      await cdp.send('Profiler.start', {}, sessionId);
+      workerProf = sessionId;
+      workerProfUrl = info.url;
+      log(`sim worker CPU profiling started (${workerProfUrl})`);
+      break;
+    } catch (e) { log(`worker profiler failed: ${e.message}`); }
+  }
+  if (workerProf === null) await page.waitForTimeout(250);
 }
 
 await actions();

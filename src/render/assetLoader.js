@@ -29,6 +29,7 @@ import {
   dropPackageDetachManifest,
 } from './packageCpuDetach.js';
 import { createAsyncAdmission } from './asyncAdmission.js';
+import { frameCostFixOn } from './frameCostSwitches.js';
 
 export const ASSET_AUTHORING_CONTRACT = Object.freeze({
   version: 2,
@@ -361,14 +362,9 @@ async function createDefaultKtx2Loader() {
   const { KTX2Loader } = await import('three/addons/loaders/KTX2Loader.js');
   const ktx2 = new KTX2Loader();
   ktx2.setTranscoderPath(ASSET_RUNTIME_DECODER_CONTRACT.ktx2TranscoderPath);
-  const configured = configureCspSafeKtx2Loader(ktx2);
-  // Warm the transcoder while the runtime is still being assembled: the WASM fetch and
-  // worker creator install otherwise sit inside the first texture decode's critical path.
-  // A failed warm clears the latch so the first real decode retries instead of inheriting
-  // a rejected pending promise.
-  const warm = configured.init();
-  warm.catch(() => { if (configured.transcoderPending === warm) configured.transcoderPending = null; });
-  return configured;
+  // Runtime setup can run behind the loading films. The first Basis texture starts the
+  // shared transcoder request through the loader's parse path.
+  return configureCspSafeKtx2Loader(ktx2);
 }
 
 /**
@@ -519,6 +515,24 @@ function installWorkerFailureDrain(worker, MessageEventImpl) {
 
 /** Module-lifetime shared KTX2 owner used by every authored-asset runtime in this process. */
 const sharedKtx2LoaderOwner = createSharedKtx2LoaderOwner();
+
+/**
+ * Soft-failure acquire for the world-texture loaders (deep-sky plates, painted planets,
+ * rock families). They hold the reference for the session — the shared pool's transcode
+ * work replaces their per-boot image decode — and must never fail a load because the
+ * transcoder could not start; callers fall back to the plain TextureLoader path on null.
+ */
+export function acquireSharedKtx2Loader(renderer) {
+  // `worldKtx2` kill switch (?rfx=-worldKtx2 or __sfRfx.worldKtx2=false): callers receive
+  // null and take their ordinary raster path, the same shape as an absent .ktx2.
+  if (!frameCostFixOn('worldKtx2')) return Promise.resolve(null);
+  return sharedKtx2LoaderOwner.acquire(renderer).catch(() => null);
+}
+
+/** Pair for `acquireSharedKtx2Loader`; callers that hold the loader for object lifetime release on dispose. */
+export function releaseSharedKtx2Loader(loader) {
+  sharedKtx2LoaderOwner.release(loader);
+}
 
 const authoredAssetRuntimeRegistry = createAuthoredAssetRuntimeRegistry(createRuntime);
 const authoredAssetPerfCountersByRenderer = new WeakMap();
@@ -1562,6 +1576,22 @@ export async function loadAuthoredRenderPackagePilot(runtime, pilot, url, option
         sectorId: options.sectorId || null,
         ...(ownerlessWarm ? { softLease: true, decodeWarm: true } : {}),
       });
+      // Same decode-cache lease the GLB lane takes above (:858): a boundary-scoped serve used
+      // to leave a strictly package-cache-only residue — first casualty of the idle sweep and
+      // of byte pressure — and the staleness hook then dropped the deduped task, so every
+      // same-kind repeat ship paid a whole re-decode. The served lease keeps the blueprint
+      // mountable for the next boundary while staying soft (byte-budgeted) itself.
+      const decodeResidency = getAssetResidency(options.renderer);
+      if (decodeResidency && options.residencyOwner
+          && record.residency && record.residency.key) {
+        const warmRole = WARM_PURPOSE_RESIDENCY_ROLE.test(String(options.residencyRole || ''));
+        decodeResidency.retain(record.residency.key, runtime.decodeCacheOwner, {
+          role: 'decode-cache',
+          sectorId: options.sectorId || null,
+          decodeWarm: warmRole,
+          decodeServed: !warmRole,
+        });
+      }
     }
     if (handoff) {
       if (runtime.retiring || !authoredConsumerIsActive(options) || cachedPackage.evicted || cachedPackage.released

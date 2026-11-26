@@ -8,6 +8,9 @@ import { runSession } from '../src/systems/runSession.js';
 import { combat } from '../src/systems/combat.js';
 import { projectBridgeEvent } from '../scripts/lib/simEventBridge.mjs';
 import { noteSwarmPilotAction } from '../src/systems/swarmSafety.js';
+import { createScreenManager } from '../src/ui/screenManager.js';
+import { deathLineFor } from '../src/ui/survivalHud.js';
+import { installDom } from './helpers/mini-dom.mjs';
 import {
   deathSentence,
   outcomeSentence,
@@ -16,6 +19,7 @@ import {
 import {
   CRUCIBLE_ARENA_ID,
   clearCrucibleSetup,
+  crucibleHullSetupFor,
   crucibleLaunchConfig,
   crucibleSetupFor,
   crucibleStarterIdForSetup,
@@ -30,8 +34,10 @@ import {
   buildLead,
   buildSteps,
   comboLead,
+  crucibleScreen,
   crucibleResultsScreen,
   damageBreakdown,
+  deathDialSpec,
   featDiagram,
   killChainRows,
   lastSecondsLead,
@@ -51,6 +57,13 @@ import {
   saveCrucibleMeta,
 } from '../src/systems/survivalRecords.js';
 import { PRODUCTION_UPDATE_ORDER } from '../src/runtime/authoritativeSystemManifest.js';
+import {
+  clearKillcamTape,
+  isKillcamTape,
+  killcamRecorder,
+  killcamStageRequestFor,
+  takeKillcamTape,
+} from '../src/sim/killcamTape.js';
 
 const SEED = 7;
 
@@ -82,8 +95,8 @@ function named(emitted, event) {
   return emitted.filter((entry) => entry.event === event);
 }
 
-function beginActive(harness) {
-  harness.bus.emit('run:beginRequested', { kind: 'survival', ruleset: 'scored', seed: SEED, arenaId: CRUCIBLE_ARENA_ID });
+function beginActive(harness, ruleset = 'scored') {
+  harness.bus.emit('run:beginRequested', { kind: 'survival', ruleset, seed: SEED, arenaId: CRUCIBLE_ARENA_ID });
   let from = 'loadout';
   for (const next of ['arena_intro', 'wave_intro', 'active']) {
     harness.bus.emit('run:transitionRequested', { expectedPhase: from, nextPhase: next, reason: 't', tick: 0 });
@@ -196,6 +209,22 @@ test('a real scarred-hull defeat produces a bounded results wakeup for the worke
   assert.ok(result.wreck.livingHull.scars.length, 'full result remains available to the UI snapshot');
 });
 
+test('a fatal arena collision reaches results as impact damage', () => {
+  const h = boot();
+  beginActive(h);
+  h.state.run.wave = 1;
+  h.player.vel = { x: 0, z: 0 };
+  combat.init(h.ctx);
+  combat.kill(h.player, null, { context: 'collision_terrain' });
+
+  const [{ payload: result }] = named(h.emitted, 'run:resultsReady');
+  assert.equal(result.defeat.source.kind, 'environment');
+  const rows = new Map(killChainRows(result.defeat, result.death));
+  assert.equal(rows.get('Damage cause'), 'arena impact');
+  assert.equal(rows.has('Its weapon'), false);
+  assert.match(deathDialSpec(result).caption.detail, /^arena impact/);
+});
+
 test('brood kill receipts count into the run total and the wave that earned them', () => {
   // Brood are not entities — their deaths arrive only as swarm:broodKills batches, and the
   // results plate's KILLS figure must include them beside "112 BEST KILL CHAIN".
@@ -290,6 +319,84 @@ test('the damage trail is bounded and only records hits on the player', () => {
   assert.ok(result.damageTrail.every((entry) => entry.amount !== 999), 'the player\'s own hits are not in the trail');
 });
 
+test('the debrief preserves the cause of a heavy arena impact before a later weapon defeat', () => {
+  const harness = boot();
+  beginActive(harness);
+  harness.bus.emit('combat:damage', {
+    targetId: 1, attackerId: 9, applied: 181.714, type: 'kinetic',
+    origin: { kind: 'arena_slam', id: 'foundry_plate_1' },
+  });
+  harness.bus.emit('combat:damage', {
+    targetId: 1, attackerId: 9, applied: 22, type: 'thermal', weaponId: 'wpn_pulse_laser_m',
+  });
+  harness.bus.emit('player:death', { ...DEFEAT_RECEIPT });
+  const result = named(harness.emitted, 'run:resultsReady')[0].payload;
+  assert.match(result.moments.map(moment => moment.text).join(' '), /182 damage from arena impact/);
+  assert.deepEqual(damageBreakdown(result.damageTrail).rows.map(row => row.weapon),
+    ['arena impact', 'Pulse Laser M']);
+});
+
+test('the Foundry rim death report uses the hit, while a Wasp gun kill names the Wasp', () => {
+  const h = boot(4242);
+  beginActive(h, 'swarm');
+  h.state.run.wave = 3;
+  h.state.tick = 4263;
+  h.state.simTime = 71.033333;
+  Object.assign(h.player, {
+    pos: { x: -828.6651, z: -2445.7800 }, vel: { x: 147.7378, z: 52.9053 },
+    rot: 0.3682329, radius: 12,
+  });
+  const wasp = {
+    id: 716, alive: true, type: 'ship', data: { defId: 'ship_wasp' },
+    pos: { x: -963.7298, z: -2576.6118 }, vel: { x: 95.8936, z: 17.7109 },
+  };
+  h.state.entities.set(wasp.id, wasp);
+  const tell = { attackerId: wasp.id, kind: 'burst', simTime: 70.9 };
+  h.bus.emit('ai:telegraph', { ...tell, entityId: wasp.id, targetId: h.player.id });
+  combat.init(h.ctx);
+  combat.kill(h.player, wasp.id, {
+    origin: { kind: 'arena_slam', id: 'foundry_rim_2' },
+    packet: {
+      hit: { pos: { x: -834.4586, z: -2435.0308 } },
+      source: { kind: 'arena_slam', hullId: 'foundry_rim_2' },
+    },
+  });
+
+  const receipt = named(h.emitted, 'player:death')[0].payload;
+  const result = named(h.emitted, 'run:resultsReady')[0].payload;
+  assert.equal(receipt.killerId, wasp.id);
+  assert.equal(result.headline, 'A collision with the Foundry rim destroyed your ship on round 3.');
+  assert.match(result.death.counterplay, /room to brake/);
+  assert.equal(result.death.closingHullsPerS, null);
+  assert.doesNotMatch(result.death.causeText, /closing|Wasp/);
+  assert.equal(result.death.telegraphName, null);
+  assert.doesNotMatch(deathLineFor(receipt, tell, h.state.simTime), /missed|Wasp/);
+  const rows = new Map(killChainRows(result.defeat, result.death));
+  assert.equal(rows.get('Killed by'), 'Foundry rim');
+  assert.equal(rows.get('Damage cause'), 'arena impact');
+  assert.equal(rows.get('It came from'), 'To starboard');
+  assert.equal(rows.has('Its weapon'), false);
+  // Run Over (04_SWARM.md §8) names the killer and says the bearing in plain words.
+  const { lines } = mountResults(result);
+  assert.ok(lines.includes('Foundry rim'));
+  assert.ok(lines.some(line => line.includes('from the right')));
+
+  const gun = boot(4242);
+  beginActive(gun, 'swarm');
+  gun.state.entities.set(wasp.id, wasp);
+  gun.state.simTime = h.state.simTime;
+  combat.init(gun.ctx);
+  combat.kill(gun.player, wasp.id, {
+    weaponId: 'wpn_pulse_laser_s', origin: { kind: 'weapon', id: 'wpn_pulse_laser_s' },
+  });
+  const gunReceipt = named(gun.emitted, 'player:death')[0].payload;
+  const gunResult = named(gun.emitted, 'run:resultsReady')[0].payload;
+  const gunRows = new Map(killChainRows(gunResult.defeat, gunResult.death));
+  assert.equal(gunRows.get('Killed by'), 'Wasp');
+  assert.equal(gunRows.get('Its weapon'), 'Pulse Laser S');
+  assert.match(deathLineFor(gunReceipt, tell, gun.state.simTime), /missed Burst/);
+});
+
 test('survivalResults is inert outside a live survival run, and New Game forgets the last one', () => {
   const harness = boot();
   harness.bus.emit('player:death', { ...DEFEAT_RECEIPT });
@@ -314,8 +421,8 @@ test('the results grid states outcome, depth, kills, score, run purse, level and
   assert.equal(map.get('Outcome'), 'Lost');
   assert.equal(map.get('Reached'), 'Wave 6 of 30');
   assert.equal(map.get('Kills'), '31');
-  // "Run purse" is the shipped label: credits are the run's stake, not salvage you towed home.
-  assert.equal(map.get('Run purse'), '88 cr');
+  // One Swarm money word (director 2026-11-20): what is left in the run, in Scrap.
+  assert.equal(map.get('Scrap left'), '88 Scrap');
   assert.equal(map.get('Seed'), '4242');
   assert.equal(new Map(resultRows({ outcome: 'victory', deepestWave: 10 })).get('Outcome'), 'Survived');
   assert.deepEqual(resultRows(null), []);
@@ -432,8 +539,9 @@ test('a weapon id becomes the name in the catalog, and an unknown one still read
   // Not in the catalog: humanised, never printed raw as wpn_snake_case.
   assert.equal(weaponDisplayName('wpn_scrap_thrower_l'), 'Scrap Thrower L');
   // The trail records weaponId: null constantly — collision, environment, anything unattributed.
-  assert.equal(weaponDisplayName(null), 'Unidentified fire');
-  assert.equal(weaponDisplayName(''), 'Unidentified fire');
+  // W2-3 (04_SWARM.md §8): never print "Unidentified fire" on screen.
+  assert.equal(weaponDisplayName(null), 'Direct fire');
+  assert.equal(weaponDisplayName(''), 'Direct fire');
 });
 
 test('the damage trail aggregates by weapon, heaviest first, and rounds once at display', () => {
@@ -447,7 +555,8 @@ test('the damage trail aggregates by weapon, heaviest first, and rounds once at 
   assert.equal(hits, 5);
   assert.equal(total, 74); // 54.7 + 12.2 + 7.1 = 74.0
   assert.equal(rows.length, 3);
-  assert.deepEqual(rows.map((r) => r.weapon), ['Heavy Autocannon M', 'Pulse Laser M', 'Unidentified fire']);
+  // A hit with no weapon names what it did (04_SWARM.md §8: never "unknown"); untyped reads Impact.
+  assert.deepEqual(rows.map((r) => r.weapon), ['Heavy Autocannon M', 'Pulse Laser M', 'Impact']);
   assert.equal(rows[0].hits, 3);
   assert.equal(rows[0].amount, 55); // 54.7 rounds once, at the end, not per hit
   assert.ok(rows[0].share > rows[1].share, 'the share drives the bar and follows the damage');
@@ -516,10 +625,11 @@ test('the kill chain names who, with what, from where, and through which layer',
   assert.equal(rows.get('It came from'), 'Astern');
   assert.equal(rows.get('It got in'), 'Through the hull');
 
-  // A receipt missing every optional field still produces four complete rows, never a blank value.
+  // A receipt missing every optional field still produces four complete rows, never a blank value
+  // or "Unidentified attacker" (W2-3, 04_SWARM.md §8).
   const bare = new Map(killChainRows({}));
-  assert.equal(bare.get('Killed by'), 'Unidentified attacker');
-  assert.equal(bare.get('Its weapon'), 'Unidentified weapon');
+  assert.equal(bare.get('Killed by'), 'Enemy fire');
+  assert.equal(bare.get('Its weapon'), 'Its own hull — a ram or a blast', 'the death screen always names what killed you');
   assert.equal(bare.size, 4);
   assert.equal(new Map(killChainRows({ attacker: 'Wreck' })).get('Killed by'), 'Wreck');
 
@@ -549,15 +659,16 @@ test('a clear and a death are not the same plate with a different word', () => {
   assert.equal(resultTitle(victory), 'Arena Cleared');
   assert.equal(resultTitle(defeat), 'Run Over');
   assert.equal(resultTitle(null), 'Run Over');
-  assert.equal(resultStamp(victory), 'CRUCIBLE / ARENA CLEARED');
-  assert.equal(resultStamp(defeat), 'CRUCIBLE / FLIGHT RECORD');
+  // Plain words, design/overhaul/08_INTERFACE.md §5: the mode is Swarm, never its old name.
+  assert.equal(resultStamp(victory), 'SWARM / ARENA CLEARED');
+  assert.equal(resultStamp(defeat), 'SWARM / FLIGHT RECORD');
 
   // 'aborted' is published BOTH when the player leaves and when the arena fails to build a wave,
   // and nothing published tells them apart. So the title stays neutral: "Run Abandoned" over the
   // headline "The arena could not build wave 4" would be the biggest text on the screen calling
   // the player a quitter for someone else's data regression.
   assert.equal(resultTitle(aborted), 'Run Ended');
-  assert.equal(resultStamp(aborted), 'CRUCIBLE / FLIGHT RECORD');
+  assert.equal(resultStamp(aborted), 'SWARM / FLIGHT RECORD');
   assert.equal(resultTitle(aborted).includes('Abandon'), false);
 
   // A clear leads with the build that got you there and carries no kill chain at all; a death
@@ -602,6 +713,14 @@ function fakeDom() {
       appendChild(child) { child.parentNode = this; this.children.push(child); return child; },
       setAttribute(name, value) { this.attributes[name] = String(value); },
       addEventListener(name, fn) { (this.listeners[name] = this.listeners[name] || []).push(fn); },
+      removeEventListener(name, fn) {
+        const list = this.listeners[name];
+        if (!list) return;
+        this.listeners[name] = list.filter((entry) => entry !== fn);
+      },
+      click() {
+        for (const fn of this.listeners.click || []) fn({ type: 'click', target: this });
+      },
       focus() {},
     };
     node.classList = {
@@ -613,9 +732,16 @@ function fakeDom() {
   const head = make('head');
   head.id = 'head';
   const roots = [head];
+  const listeners = {};
   return {
     head,
+    listeners,
     createElement: make,
+    addEventListener(name, fn) { (listeners[name] = listeners[name] || []).push(fn); },
+    removeEventListener(name, fn) {
+      if (!listeners[name]) return;
+      listeners[name] = listeners[name].filter((entry) => entry !== fn);
+    },
     getElementById(id) {
       const visit = (node) => {
         if (node.id === id) return node;
@@ -686,11 +812,44 @@ const WAVE_6_DEATH = Object.freeze({
   ],
 });
 
+test('a Gauntlet debrief names the settled salvage and the Swarm wallet', () => {
+  const result = { ...WAVE_6_DEATH, ruleset: 'scored', bankedBounty: 44, hangarBounty: 120 };
+  const deposit = '44 cr added to the Swarm hangar.';
+  assert.ok(mountResults(result).lines.includes(deposit));
+  assert.ok(!mountResults({ ...result, bankedBounty: NaN }).lines.some(line => line.includes('added to the Swarm hangar')));
+  const practice = mountResults({ ...result, recordRules: { mode: 'practice' } });
+  assert.ok(practice.lines.includes('Practice run. No ranked score or rewards.'));
+  assert.ok(!practice.lines.includes(deposit));
+});
+
+test('the first Swarm results describe the free gun as starting equipment', () => {
+  const h = boot();
+  try {
+    beginActive(h, 'swarm');
+    h.state.run.telemetry.zeroScrapOpening = true;
+    const defId = 'wpn_autocannon_s';
+    h.state.player.ownedShips = [{ defId: 'ship_hornet', fittings: [defId],
+      fittedInstances: [{ defId, instanceId: 'starter-1' }] }];
+    h.state.run.modifiers.push({ defId, offerId: 'sidearm', instanceId: 'starter-1', wave: 1, startingEquipment: true });
+    h.bus.emit('run:waveStarted', { wave: 1 });
+    h.bus.emit('player:death', DEFEAT_RECEIPT);
+
+    const result = survivalResults.lastResult();
+    assert.equal(result.openingEquipment?.gun?.defId, defId);
+    // Rewritten to Run Over (04_SWARM.md §8): the build is one line — hull, free starting gun,
+    // the Pilot Tree branches. The between-round armory's draft ledger is retired (§2).
+    const { lines } = mountResults(result);
+    assert.ok(lines.includes('Your build'));
+    assert.ok(lines.some(line => line.includes('Hornet') && line.includes('Autocannon S')), lines.join('\n'));
+    assert.doesNotMatch(lines.join('\n'), /draft changed|Every shot arrived|Build code W1|W1:Autocannon S/);
+  } finally { survivalResults.destroy(); runSession.destroy(); }
+});
+
 test('a wave-6 death plate explains every link of the kill', () => {
   const { lines, stamp } = mountResults(WAVE_6_DEATH);
   const text = lines.join('\n');
 
-  assert.equal(stamp, 'CRUCIBLE / FLIGHT RECORD');
+  assert.equal(stamp, 'SWARM / FLIGHT RECORD');
   assert.equal(lines[0], 'Run Over');
   assert.equal(lines[1], WAVE_6_DEATH.headline, 'the owner\'s sentence is reproduced verbatim');
 
@@ -710,7 +869,7 @@ test('a wave-6 death plate explains every link of the kill', () => {
   assert.ok(text.includes('Heavy Autocannon M'));
   assert.ok(text.includes('3 hits'));
   assert.ok(text.includes('55 damage'));
-  assert.ok(text.includes('Unidentified fire'));
+  assert.ok(text.includes('Collision'), 'a weaponless hit names what it did, never "unidentified"');
   assert.ok(text.includes('1 hit\n'), 'a single hit is not pluralised');
 
   // The ledger and the build both survive.
@@ -735,7 +894,7 @@ test('a victory plate leads with the build and carries no kill chain', () => {
   });
   const text = lines.join('\n');
 
-  assert.equal(stamp, 'CRUCIBLE / ARENA CLEARED');
+  assert.equal(stamp, 'SWARM / ARENA CLEARED');
   assert.equal(lines[0], 'Arena Cleared');
   assert.equal(lines[1], 'All 10 waves cleared. The arena is empty.');
   assert.equal(lines[2], 'What you built', 'the clear leads with the build that got you there');
@@ -793,7 +952,7 @@ test('the plate renders rather than throwing on every empty shape the owner can 
   }
 });
 
-test('the results plate is presentation only and the three actions are untouched', () => {
+test('mounting results is inert and departure returns through the title', () => {
   const { emitted, buttons } = mountResults(WAVE_6_DEATH);
   assert.equal(emitted.length, 0, 'mounting the plate emits nothing at all');
   assert.deepEqual(
@@ -810,11 +969,14 @@ test('the results plate is presentation only and the three actions are untouched
 
   const again = mountResults(WAVE_6_DEATH);
   fire(again, 'Run it again — same seed');
-  assert.deepEqual(again.emitted, [{ event: 'ui:replaceScreen', payload: { id: 'crucible' } }]);
+  assert.deepEqual(again.emitted.slice(-2), [
+    { event: 'ui:pushScreen', payload: { id: 'mainMenu' } },
+    { event: 'ui:pushScreen', payload: { id: 'crucible' } },
+  ]);
 
   const fresh = mountResults(WAVE_6_DEATH);
   fire(fresh, 'New run');
-  assert.deepEqual(fresh.emitted, [{ event: 'ui:replaceScreen', payload: { id: 'crucible' } }]);
+  assert.deepEqual(fresh.emitted, again.emitted);
 
   const menu = mountResults(WAVE_6_DEATH);
   fire(menu, 'Main menu');
@@ -822,6 +984,119 @@ test('the results plate is presentation only and the three actions are untouched
     'game:over:dismissed', 'game:exitToMenu', 'ui:closeAll', 'ui:pushScreen',
   ]);
   assert.deepEqual(menu.emitted[3].payload, { id: 'mainMenu' });
+});
+
+test('Back from the Swarm hangar after a fatal hit returns to the title', () => {
+  const h = boot();
+  h.state.mode = 'flight';
+  h.player.vel = { x: 0, z: 0 };
+  beginActive(h, 'swarm');
+  combat.init(h.ctx);
+
+  const { document, restore } = installDom();
+  document.addEventListener = (...args) => document.body.addEventListener(...args);
+  document.removeEventListener = (...args) => document.body.removeEventListener(...args);
+  const createElement = document.createElement.bind(document);
+  document.createElement = tag => {
+    const node = createElement(tag);
+    node.prepend = child => node.insertBefore(child, node.firstChild);
+    node.removeChild = child => {
+      const index = node.childNodes.indexOf(child);
+      if (index >= 0) node.childNodes.splice(index, 1);
+      child.parentNode = null;
+      return child;
+    };
+    node.replaceChild = (child, previous) => {
+      previous.replaceWith(child);
+      return previous;
+    };
+    return node;
+  };
+  const screens = document.createElement('div');
+  screens.id = 'screens';
+  document.body.appendChild(screens);
+  const ctx = { ...h.ctx, registry: { get: name => name === 'survivalResults' ? survivalResults : null } };
+  const manager = createScreenManager(ctx);
+  try {
+    manager.register(crucibleResultsScreen);
+    manager.register(crucibleScreen);
+    manager.register({ id: 'mainMenu' });
+    h.bus.on('run:resultsReady', () => manager.pushScreen('crucibleResults'));
+    h.bus.on('game:exitToMenu', () => {
+      const previousMode = h.state.mode;
+      h.state.mode = 'menu';
+      h.bus.emit('mode:changed', { mode: 'menu', previousMode });
+    });
+    h.bus.on('ui:closeAll', () => manager.closeAll());
+    h.bus.on('ui:pushScreen', ({ id }) => manager.pushScreen(id));
+    h.bus.on('ui:replaceScreen', ({ id }) => manager.replaceScreen(id));
+    h.bus.on('ui:popScreen', () => manager.popScreen());
+
+    combat.kill(h.player, null, { context: 'collision_terrain' });
+    assert.equal(manager.top(), 'crucibleResults');
+    assert.equal(h.state.run.phase, 'ended');
+    assert.equal(h.player.alive, false);
+    const click = (screen, label, accessibleName) => {
+      const surface = screens.children.find(node => node.dataset.screen === screen);
+      const button = [...surface.querySelectorAll('button')]
+        .find(node => node.textContent.trim() === label);
+      assert.ok(button, `${screen} offers ${label}`);
+      if (accessibleName) assert.equal(button.getAttribute('aria-label'), accessibleName);
+      button.click();
+    };
+    // Run Over's ways out are Again, Hangar, Menu (04_SWARM.md §8).
+    click('crucibleResults', 'Hangar');
+    assert.equal(manager.top(), 'crucible');
+    click('crucible', 'Back', 'Back');
+    assert.equal(manager.top(), 'mainMenu');
+    assert.equal(h.state.mode, 'menu');
+    assert.equal(h.state.run.phase, 'inactive');
+    assert.equal(h.player.alive, false);
+  } finally {
+    manager.destroy();
+    restore();
+  }
+});
+
+test('Retry after a fatal hit requests one fresh run on the chosen Swarm hull', () => {
+  const h = boot();
+  const setup = crucibleHullSetupFor({ hullId: 'ship_hornet', seed: SEED, swarmStake: 'exhibition' });
+  assert.equal(setup.ok, true);
+  assert.equal(requestCrucibleRun(h.bus, setup.value, 'swarm'), true);
+  try {
+    h.state.mode = 'flight';
+    h.player.vel = { x: 0, z: 0 };
+    h.player.data = { defId: 'ship_hornet', fittings: ['wpn_pulse_laser_s'] };
+    beginActive(h, 'swarm');
+    h.state.run.wave = 1;
+    combat.init(h.ctx);
+    combat.kill(h.player, null, { context: 'collision_terrain' });
+
+    const result = survivalResults.lastResult();
+    assert.equal(result.stopReason, 'player_death');
+    const plate = mountResults(result);
+    // Run Over (04_SWARM.md §8): seed 7 is no Course seed, so Again deals a fresh layout and
+    // Same seed is the exact replay this test pins.
+    const retry = plate.buttons.find(button => button.dataset.action === 'same');
+    assert.ok(retry);
+    assert.ok(plate.buttons.some(button => button.dataset.action === 'again'));
+    for (const fn of retry.listeners.click) {
+      fn();
+      fn();
+    }
+    const requests = named(plate.emitted, 'game:new');
+    assert.equal(requests.length, 1);
+    assert.equal(requests[0].payload.crucibleLaunch, true);
+    const launch = requests[0].payload.crucibleSetup;
+    assert.equal(launch.survivalRuleset, 'swarm');
+    assert.equal(launch.swarmStake, 'exhibition');
+    assert.equal(launch.survivalSetup.seed, SEED);
+    assert.equal(launch.survivalSetup.hullId, 'ship_hornet');
+    assert.equal(launch.survivalSetup.arenaId, CRUCIBLE_ARENA_ID);
+    assert.deepEqual(launch.survivalSetup.loadout, []);
+  } finally {
+    clearCrucibleSetup();
+  }
 });
 
 
@@ -1044,27 +1319,274 @@ test('the share band is one aligned row per item: caption, single-line field, sa
   }
 });
 
-test('a round-30 swarm win offers exactly Take the win and Keep going', () => {
-  const { lines, stamp, buttons, emitted } = mountResults({
+test('a round-30 swarm win reads the Run Over plate and offers exactly Keep going and Take the win', () => {
+  // Superseded by design/overhaul/04_SWARM.md section 8: the win reads on the six-line plate
+  // (Kiln's line, best moment, the figures big, the build) instead of the full ledger.
+  const { lines, buttons, emitted } = mountResults({
     outcome: 'victory', ruleset: 'swarm', seed: 4242, wave: 30, deepestWave: 30,
-    wavesCleared: 30, kills: 412, score: 9100, credits: 540, xp: 2400, level: 12,
+    wavesCleared: 30, kills: 412, score: 9100, credits: 540, xp: 2400, level: 12, bestChain: 31,
     picks: [{ verb: 'Volume', defId: 'wpn_autocannon_m', wave: 10 }],
     headline: 'The Pit is yours. Thirty rounds, every champion down.',
     defeat: null, damageTrail: [],
   });
   const text = lines.join('\n');
-  assert.equal(stamp, 'CRUCIBLE / ARENA CLEARED');
-  assert.equal(lines[0], 'THE PIT IS YOURS');
-  const verbs = buttons.map((b) => b.textContent).filter((t) => !t.startsWith('Copy '));
-  assert.deepEqual(verbs, ['Take the win', 'Keep going'],
+  assert.equal(lines[0], 'The Pit is yours');
+  assert.match(text, /Thirty rounds, and you made it dance\./, 'Kiln speaks once');
+  assert.ok(text.includes('412'), 'the kills read big');
+  assert.ok(!text.includes('Killed by'), 'a win names no killer');
+  assert.ok(!/Deepest round|Run purse|Build code/.test(text), 'no ledger rows on the win plate');
+  const verbs = buttons.map((b) => b.dataset.action).filter(Boolean);
+  assert.deepEqual(verbs, ['keep-going', 'take-win'],
     'the win plate offers exactly the two authored choices');
-  assert.ok(text.includes('Deepest round'), 'the ledger names the run’s deepest round');
 
   // Keep going asks the run owner to resume the course; the plate only pops itself first.
-  const keep = buttons.find((b) => b.textContent === 'Keep going');
+  const keep = buttons.find((b) => b.dataset.action === 'keep-going');
   keep.listeners.click[0]();
   assert.deepEqual(emitted.map((e) => e.event), ['ui:popScreen', 'run:swarmDeepRequested']);
-  const take = buttons.find((b) => b.textContent === 'Take the win');
+  const take = buttons.find((b) => b.dataset.action === 'take-win');
   take.listeners.click[0]();
   assert.equal(emitted.at(-1).event, 'ui:replaceScreen', 'Take the win rides the ordinary exit');
+});
+
+test('End run from pause reads on the Run Over plate: Run ended, no killer, Again under Enter', () => {
+  const { lines, buttons } = mountResults({
+    outcome: 'aborted', stopReason: 'player_retired', ruleset: 'swarm', seed: 4242, wave: 4, deepestWave: 4,
+    kills: 22, bestChain: 9, durationS: 180, defeat: null, damageTrail: [],
+    bankLine: 'Retired run — unranked. Unbanked salvage does not carry back to the hangar.',
+  });
+  const text = lines.join('\n');
+  assert.equal(lines[0], 'Run ended');
+  assert.match(text, /Round 4, then you walked\. Noted\./);
+  assert.match(text, /Ended early, so this run is unranked\./);
+  assert.ok(!text.includes('Killed by'), 'an ended run names no killer');
+  assert.ok(!/salvage|hangar\.|Run ledger|Build code/.test(text), 'no ledger or salvage words');
+  const actions = buttons.map((b) => b.dataset.action).filter(Boolean);
+  assert.equal(actions[0], 'again', 'Again leads');
+  assert.ok(actions.includes('hangar') && actions.includes('menu'), actions.join(','));
+});
+
+function recordKillcamFight() {
+  clearKillcamTape();
+  const bus = createBus();
+  const ctx = { state: null, bus };
+  killcamRecorder.init(ctx);
+  for (let t = 0; t <= 40; t++) {
+    killcamRecorder.update(1 / 60, {
+      tick: t,
+      playerId: 'player',
+      run: { kind: 'survival', phase: 'wave', seed: 4242 },
+      entityList: [
+        { id: 'player', type: 'ship', alive: true, team: 0, pos: { x: t, z: 0 }, rot: 0, radius: 14, data: { defId: 'kestrel' } },
+        { id: 'wasp-0', type: 'ship', alive: true, team: 1, pos: { x: t + 30, z: 40 }, rot: 1.2, radius: 10, data: { defId: 'wasp' } },
+      ],
+    });
+  }
+}
+
+function firePlateConfirm(doc, key = 'Enter', target = null) {
+  const event = {
+    key,
+    code: key === ' ' ? 'Space' : 'Enter',
+    repeat: false,
+    target: target || {},
+    preventDefault() { this.defaultPrevented = true; },
+    stopPropagation() { this.propagationStopped = true; },
+  };
+  const fns = (doc.listeners && doc.listeners.keydown) || [];
+  assert.ok(fns.length, 'the plate owns document Enter/Space while it is top');
+  for (const fn of fns) fn(event);
+  return event;
+}
+
+test('one Again press on a Run Over plate with a running replay starts the next run', () => {
+  // DEMO-RUNOVER-1: the demo's first Enter was swallowed while the death film was still the
+  // picture. One press — Enter, Space, pad A (the declared primary), or a click — must both
+  // end the film and emit the next run's game:new.
+  const previousMatch = globalThis.matchMedia;
+  globalThis.matchMedia = () => ({ matches: false, addListener() {}, removeListener() {} });
+  const fakeBus = { emit() {}, on() { return () => {}; }, off() {}, once() {} };
+  const setup = crucibleSetupFor({ seed: 4242 });
+  assert.ok(setup.ok, 'a remembered Swarm setup lets Again launch');
+  requestCrucibleRun(fakeBus, setup.value, 'swarm');
+  try {
+    recordKillcamFight();
+    const tape = takeKillcamTape({ seed: 4242 });
+    assert.ok(isKillcamTape(tape), 'the death film is a real tape');
+    const state = {
+      ui: { screenStack: ['crucibleResults'], stageRequest: { scene: 'crucible-killcam' } },
+      settings: { video: {} },
+      run: { kind: 'survival', phase: 'ended' },
+    };
+    assert.ok(killcamStageRequestFor(state), 'the film is still requested when the plate mounts');
+    const result = { ...WAVE_6_DEATH, ruleset: 'swarm' };
+    const previousDocument = globalThis.document;
+    const doc = fakeDom();
+    globalThis.document = doc;
+    const emitted = [];
+    const bus = { emit(event, payload) { emitted.push({ event, payload }); }, on() {}, off() {}, once() {} };
+    const registry = { get: (name) => (name === 'survivalResults' ? { lastResult: () => result } : null) };
+    const root = doc._make('div');
+    try {
+      crucibleResultsScreen.mount(root, { bus, registry, state });
+      const buttons = findButtons(root);
+      const again = buttons.find((button) => button.dataset.action === 'again');
+      assert.ok(again, 'Again is on the plate');
+      assert.equal(again.attributes['aria-label'], 'Again', 'Again\'s accessible name is the word, not the key chip');
+      const keyChip = again.children.find((child) => String(child.className || '').includes('sf-runover__key'));
+      assert.equal(keyChip && keyChip.attributes['aria-hidden'], 'true', 'the Enter chip is not part of the name');
+      assert.equal(again.dataset.padPrimary, 'true', 'pad A has a declared primary when focus missed the plate');
+      assert.ok(buttons.some((button) => String(button.className || '').includes('sf-runover__skip')),
+        'Skip replay is offered because the film is running');
+
+      firePlateConfirm(doc, 'Enter', root);
+      const launches = named(emitted, 'game:new');
+      assert.equal(launches.length, 1, 'one Enter both ends the film and starts the next run');
+      assert.equal(named(emitted, 'ui:closeAll').length, 1, 'Again closes the Run Over plate right away instead of sitting over the loading screen');
+      assert.equal(launches[0].payload.crucibleLaunch, true);
+      assert.equal(killcamStageRequestFor(state), null, 'the first press ended the running replay');
+      assert.equal(state.ui.stageRequest, null);
+      assert.equal(root.dataset.kStage, 'plate');
+      assert.equal(again.disabled, true, 'Again does not queue a second launch from the same plate');
+      assert.equal((doc.listeners && doc.listeners.keydown ? doc.listeners.keydown.length : 0), 0,
+        'the plate removes its document key listener on launch so flight Space/Enter stays free');
+      assert.equal(root.hidden, true, 'Again takes the plate out of layout so a probe does not see it under the loading veil');
+      assert.equal(root.classList.contains('sf-runover'), false);
+      crucibleResultsScreen.refresh({ bus, registry, state });
+      assert.equal(named(emitted, 'game:new').length, 1, 'a refresh during the load does not rebuild the plate or launch again');
+      assert.equal(root.hidden, true);
+
+      // Simulate cached plate re-show via onShow, then onHide / empty screenStack cleanup.
+      state.ui.screenStack = ['crucibleResults'];
+      crucibleResultsScreen.onShow();
+      assert.ok((doc.listeners && doc.listeners.keydown ? doc.listeners.keydown.length : 0) > 0,
+        'onShow re-arms the plate key listener when the cached plate returns');
+      crucibleResultsScreen.onHide();
+      assert.equal((doc.listeners && doc.listeners.keydown ? doc.listeners.keydown.length : 0), 0,
+        'onHide tears down the document key listener');
+      // Even if a caller leaves an empty screenStack while hidden/unmounted, Space is never hijacked.
+      state.ui.screenStack = [];
+      crucibleResultsScreen.onShow();
+      const postHideSpace = {
+        key: ' ', code: 'Space', repeat: false, target: {},
+        preventDefault() { this.defaultPrevented = true; },
+        stopPropagation() { this.propagationStopped = true; },
+      };
+      for (const fn of (doc.listeners && doc.listeners.keydown) || []) fn(postHideSpace);
+      assert.equal(postHideSpace.defaultPrevented, undefined,
+        'an empty screenStack during flight never lets Run Over hijack Space');
+    } finally {
+      state.ui.screenStack = ['crucibleResults'];
+      try { crucibleResultsScreen.dispose(); } catch { /* dispose is best-effort in the stub */ }
+      globalThis.document = previousDocument;
+    }
+
+    // Space and a click are the same press on a fresh plate (the first one already disabled Again).
+    for (const surface of ['Space', 'click']) {
+      recordKillcamFight();
+      takeKillcamTape({ seed: 4242 });
+      state.ui.stageRequest = { scene: 'crucible-killcam' };
+      const nextDoc = fakeDom();
+      globalThis.document = nextDoc;
+      const nextEmitted = [];
+      const nextBus = { emit(event, payload) { nextEmitted.push({ event, payload }); }, on() {}, off() {}, once() {} };
+      const nextRoot = nextDoc._make('div');
+      try {
+        crucibleResultsScreen.mount(nextRoot, {
+          bus: nextBus,
+          registry: { get: (name) => (name === 'survivalResults' ? { lastResult: () => result } : null) },
+          state,
+        });
+        const again = findButtons(nextRoot).find((button) => button.dataset.action === 'again');
+        if (surface === 'click') again.click();
+        else firePlateConfirm(nextDoc, ' ', nextRoot);
+        assert.equal(named(nextEmitted, 'game:new').length, 1, `${surface} starts the next run`);
+        assert.equal(killcamStageRequestFor(state), null, `${surface} ended the running replay`);
+      } finally {
+        try { crucibleResultsScreen.dispose(); } catch { /* dispose is best-effort in the stub */ }
+        globalThis.document = previousDocument;
+      }
+    }
+  } finally {
+    clearKillcamTape();
+    try { killcamRecorder.destroy(); } catch { /* recorder may already be idle */ }
+    clearCrucibleSetup();
+    if (previousMatch === undefined) delete globalThis.matchMedia;
+    else globalThis.matchMedia = previousMatch;
+  }
+});
+
+test('a press while Run Over is still reading the run back starts the next run', () => {
+  // DEMO-RUNOVER-2: the first frame of the plate used to be a generic "Reading the run back…"
+  // with no Again. One Enter on that frame starts the next run, and the plate leaves the layout.
+  const previousMatch = globalThis.matchMedia;
+  globalThis.matchMedia = () => ({ matches: false, addListener() {}, removeListener() {} });
+  const setup = crucibleSetupFor({ seed: 4242 });
+  assert.ok(setup.ok);
+  const previousDocument = globalThis.document;
+  try {
+    requestCrucibleRun({ emit() {}, on() {}, off() {}, once() {} }, setup.value, 'swarm');
+    const doc = fakeDom();
+    globalThis.document = doc;
+    const emitted = [];
+    const bus = { emit(event, payload) { emitted.push({ event, payload }); }, on() {}, off() {}, once() {} };
+    const state = { ui: { screenStack: ['crucibleResults'] }, run: { kind: 'survival', phase: 'ended' } };
+    const registry = { get: (name) => (name === 'survivalResults' ? { lastResult: () => null } : null) };
+    const root = doc._make('div');
+    crucibleResultsScreen.mount(root, { bus, registry, state });
+    const again = findButtons(root).find((button) => button.dataset.action === 'again');
+    assert.ok(again, 'Again is live while the record is still settling');
+    assert.equal(again.attributes['aria-label'], 'Again');
+    const keyChip = again.children.find((child) => String(child.className || '').includes('sf-runover__key'));
+    assert.equal(keyChip && keyChip.attributes['aria-hidden'], 'true');
+    assert.ok(root.classList.contains('sf-runover'));
+    assert.ok(textLines(root).some((line) => line.includes('Reading the run back')));
+    firePlateConfirm(doc, 'Enter', root);
+    assert.equal(named(emitted, 'game:new').length, 1, 'one Enter during reading starts the next run');
+    assert.equal(named(emitted, 'ui:closeAll').length, 1);
+    assert.equal(root.hidden, true);
+    assert.equal(root.classList.contains('sf-runover'), false);
+    assert.equal((doc.listeners.keydown || []).length, 0);
+    crucibleResultsScreen.refresh({ bus, registry, state });
+    assert.equal(named(emitted, 'game:new').length, 1, 'the settling record does not put the plate back');
+  } finally {
+    try { crucibleResultsScreen.dispose(); } catch { /* dispose is best-effort in the stub */ }
+    globalThis.document = previousDocument;
+    clearCrucibleSetup();
+    if (previousMatch === undefined) delete globalThis.matchMedia;
+    else globalThis.matchMedia = previousMatch;
+  }
+});
+
+test('an Again press before the launch setup is remembered is acted on when the setup arrives', () => {
+  const previousMatch = globalThis.matchMedia;
+  globalThis.matchMedia = () => ({ matches: false, addListener() {}, removeListener() {} });
+  const previousDocument = globalThis.document;
+  try {
+    clearCrucibleSetup();
+    const doc = fakeDom();
+    globalThis.document = doc;
+    const emitted = [];
+    const bus = { emit(event, payload) { emitted.push({ event, payload }); }, on() {}, off() {}, once() {} };
+    const state = { ui: { screenStack: ['crucibleResults'] }, run: { kind: 'survival', phase: 'ended' } };
+    const registry = { get: (name) => (name === 'survivalResults' ? { lastResult: () => null } : null) };
+    const root = doc._make('div');
+    crucibleResultsScreen.mount(root, { bus, registry, state });
+    const again = findButtons(root).find((button) => button.dataset.action === 'again');
+    firePlateConfirm(doc, 'Enter', again);
+    assert.equal(named(emitted, 'game:new').length, 0, 'there is nothing to launch yet, so the press is kept');
+    assert.equal(root.hidden, false);
+    const setup = crucibleSetupFor({ seed: 4242 });
+    requestCrucibleRun({ emit() {}, on() {}, off() {}, once() {} }, setup.value, 'swarm');
+    crucibleResultsScreen.refresh({ bus, registry, state });
+    assert.equal(named(emitted, 'game:new').length, 1, 'the remembered press starts the run once the setup exists');
+    assert.equal(root.hidden, true);
+    crucibleResultsScreen.refresh({ bus, registry, state });
+    assert.equal(named(emitted, 'game:new').length, 1, 'the remembered press is not launched twice');
+  } finally {
+    try { crucibleResultsScreen.dispose(); } catch { /* dispose is best-effort in the stub */ }
+    globalThis.document = previousDocument;
+    clearCrucibleSetup();
+    if (previousMatch === undefined) delete globalThis.matchMedia;
+    else globalThis.matchMedia = previousMatch;
+  }
 });

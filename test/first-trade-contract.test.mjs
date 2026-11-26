@@ -31,6 +31,11 @@ import {
 import { addCargo, removeCargo, cargo as cargoSystem } from '../src/systems/cargo.js';
 import { createGameState } from '../src/core/gameState.js';
 import { createBus } from '../src/core/eventBus.js';
+import { resolveDockRange } from '../src/core/dockRange.js';
+import { resolveCollisionProxyManifest, resolveDockAnchor } from '../src/data/collisionProxyManifests.js';
+import { createAuthoritativeRuntime } from '../src/runtime/createAuthoritativeRuntime.js';
+import { makeShipEntitySpec } from '../src/systems/ships.js';
+import { resolveObjectiveGatePresentation, resolveWaypointPresentationPosition } from '../src/ui/navigationWaypoint.js';
 
 // Independent hard-coded payout / cargo footprint bounds (not derived from the live template
 // object for bound checks — kills Number.MAX_VALUE payout + cargo-cache desync mutants).
@@ -158,6 +163,45 @@ function makeHarness({ seed = 47 } = {}) {
 
   return { state, bus, missions, econ, helpers };
 }
+
+test('the tracked first-trade fix reaches the actual Tethys receiving berth', () => {
+  const runtime = createAuthoritativeRuntime({ profileId: 'production', nodeSafeOnly: true, seed: 47 });
+  try {
+    const { state, bus } = runtime;
+    state.mode = 'flight';
+    state.onboarding = { active: false, finished: true };
+    runtime.getSystem('ships').newGame();
+    const hull = state.player.ownedShips[state.player.activeShipIndex].defId;
+    const player = runtime.spawn(makeShipEntitySpec(hull, {
+      isPlayer: true, player: state.player, pos: { x: 0, z: 0 },
+    }));
+    state.playerId = player.id;
+    const world = runtime.getSystem('world');
+    world.enterSector('sector_helios_prime');
+    bus.emit('dock:docked', { stationId: FIRST_TRADE_CONTRACT_STATION_ID });
+    const offer = state.missions.boards[FIRST_TRADE_CONTRACT_STATION_ID].slots.find(o => o.source === FIRST_TRADE_CONTRACT_SOURCE);
+    assert.ok(offer, 'the actual Helios economy posts the first trade');
+    bus.emit('ui:acceptMission', { missionId: offer.id });
+    const mission = state.missions.active.find(m => m.sourceOfferId === offer.id);
+    assert.equal(mission?.params.sealedRemaining, EXPECTED_QTY);
+    assert.equal(state.nav.waypoint.pos, undefined, 'the receiving berth is in the next sector');
+    const departure = resolveObjectiveGatePresentation(state);
+    assert.equal(departure?.label, 'Gate → Tethys Junction');
+    assert.ok(departure.pos, 'the tracked objective retains a live gate fix in Helios');
+
+    world.enterSector(FIRST_TRADE_CONTRACT.destSectorId);
+    const station = state.entityIndex.byStationId.get(FIRST_TRADE_CONTRACT_DEST_STATION_ID);
+    const anchor = resolveDockAnchor(station, resolveCollisionProxyManifest(station), player);
+    const waypoint = state.nav.waypoint;
+    assert.equal(waypoint.missionId, mission.id);
+    assert.equal(waypoint.stationId, FIRST_TRADE_CONTRACT_DEST_STATION_ID);
+    assert.deepEqual(resolveWaypointPresentationPosition(state, waypoint), { x: anchor.x, z: anchor.z });
+    assert.match(waypoint.reason, /Dock at the berth/);
+    Object.assign(player.pos, waypoint.pos);
+    Object.assign(player.vel, { x: 0, z: 0 });
+    assert.equal(resolveDockRange(state).stationId, FIRST_TRADE_CONTRACT_DEST_STATION_ID);
+  } finally { runtime.dispose(); }
+});
 
 test('FIRST_TRADE_CONTRACT template carries reason, terms, cargo, and receipt shape', () => {
   assert.equal(FIRST_TRADE_CONTRACT.key, FIRST_TRADE_CONTRACT_KEY);
@@ -313,6 +357,10 @@ test('sim walk: accept → load → deliver → receipt via single writers', () 
   assert.equal(active.type, 'cargo_delivery');
   assert.equal(active.params.cmdtyId, EXPECTED_CMDTY_ID);
   assert.equal(active.params.qty, EXPECTED_QTY);
+  assert.equal(h.state.ui.trackedMissionId, active.id);
+  assert.equal(h.state.nav.waypoint.label, 'Tethys Trade Hub');
+  assert.equal(h.state.nav.waypoint.stationId, FIRST_TRADE_CONTRACT_DEST_STATION_ID);
+  assert.equal(h.state.nav.waypoint.sectorId, FIRST_TRADE_CONTRACT.destSectorId);
 
   // LOAD: preloaded cargo lands via cargo writer at accept.
   const holdQty = Number(h.state.player.cargo.items[EXPECTED_CMDTY_ID]) || 0;
@@ -328,9 +376,13 @@ test('sim walk: accept → load → deliver → receipt via single writers', () 
   // No credits mutation on accept (zero collateral authored).
   assert.equal(h.state.player.credits, creditsBeforeAccept);
 
-  // DELIVER at dest: dock Ceres with cargo still aboard.
-  h.state.world.currentSectorId = FIRST_TRADE_CONTRACT.destSectorId
-    || 'sector_ceres_belt';
+  h.state.world.currentSectorId = 'sector_ceres_belt';
+  h.bus.emit('dock:docked', { stationId: 'station_ceres' });
+  assert.equal(h.state.player.cargo.items[EXPECTED_CMDTY_ID], EXPECTED_QTY, 'Ceres does not take the Tethys manifest');
+  assert.equal(h.state.player.credits, creditsBeforeAccept, 'the wrong berth does not pay');
+
+  // DELIVER at Tethys with the sealed cargo still aboard.
+  h.state.world.currentSectorId = FIRST_TRADE_CONTRACT.destSectorId;
   const grantBefore = h.bus.emitLog.filter((e) => e.evt === 'economy:grantCredits').length;
   h.bus.emit('dock:docked', { stationId: FIRST_TRADE_CONTRACT_DEST_STATION_ID });
 

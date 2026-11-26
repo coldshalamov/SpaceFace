@@ -1,4 +1,6 @@
 import { pallasSeamInfoLine } from '../data/pallasSeamWork.js';
+import { rockAssayLine } from './asteroid/rockAssay.js';
+import { claimedRockLine } from './asteroid/rockReport.js';
 import { targetFrameHtml } from './views/targetFrame.js';
 import { commodityDisplayName } from './commodityNames.js';
 import { normalizePatrolPaperwork } from '../missions/patrolPaperwork.js';
@@ -116,7 +118,8 @@ function familyEffectiveness(channelMult, weights) {
 }
 
 const ROLE_LABEL = {
-  starter: 'Starter', mining: 'Miner', fighter: 'Fighter', freighter: 'Freighter',
+  // The player's own starting hull, flown by someone else, is just a light ship to a stranger.
+  starter: 'Light ship', mining: 'Miner', fighter: 'Fighter', freighter: 'Freighter',
   multirole: 'Multirole', interceptor: 'Interceptor', mining_barge: 'Mining Barge',
   corvette: 'Corvette', heavy_hauler: 'Heavy Hauler', explorer: 'Explorer',
   gunship: 'Gunship', battlecruiser: 'Battlecruiser', flagship: 'Flagship',
@@ -129,10 +132,10 @@ const ROLE_LABEL = {
 };
 
 const GIMMICK_LABELS = {
-  'tether-cutter': 'MASSLINE CUTTER',
-  'tether_cutter': 'MASSLINE CUTTER',
-  'massline-cutter': 'MASSLINE CUTTER',
-  'massline_cutter': 'MASSLINE CUTTER',
+  'tether-cutter': 'LINE CUTTER',
+  'tether_cutter': 'LINE CUTTER',
+  'massline-cutter': 'LINE CUTTER',
+  'massline_cutter': 'LINE CUTTER',
   'pd-screen': 'PD SCREEN',
   'pd_screen': 'PD SCREEN',
   'ram-plate': 'RAM-PLATE',
@@ -308,7 +311,7 @@ export function worldSiteTargetInfoLine(target, state, player, distance) {
  */
 function asteroidClassLine(e) {
   const mix = oreTableByWeight(oreTableForAsteroidType(e.data && e.data.typeId));
-  if (!mix.length) return 'Mineable Asteroid';
+  if (!mix.length) return 'Mineable';
   const yields = mix.map((row) => {
     const commodity = COMMODITY_BY_ID.get(row.commodityId);
     return (commodity && commodity.name) || row.commodityId;
@@ -329,15 +332,15 @@ export function richSeamTargetReadout(target, state) {
       return Object.freeze({
         state: 'open',
         text: opportunity.reservationId
-          ? `${seamLabel} · ALREADY CLAIMED · +${opportunity.bonusU}u`
-          : `${seamLabel} · +${opportunity.bonusU}u · OPEN`,
+          ? `${seamLabel} · ALREADY CLAIMED · +${opportunity.bonusU} units`
+          : `${seamLabel} · +${opportunity.bonusU} units · OPEN`,
         opportunityId: opportunity.opportunityId,
       });
     }
     if (opportunity.state === 'worked') {
       return Object.freeze({
         state: 'worked',
-        text: `WORKED SEAM · ${opportunity.claimedBonusU}u BONUS TAKEN`,
+        text: `WORKED SEAM · ${opportunity.claimedBonusU} units BONUS TAKEN`,
         opportunityId: opportunity.opportunityId,
       });
     }
@@ -392,6 +395,13 @@ export function lawfulInspectionStatusText(target, state) {
 // Tier 0 is "not a threat" and shows no badge at all. The words are the ship-scale language the
 // rest of the build already uses, so the badge teaches nothing new -- it just says it sooner.
 const THREAT_TIER_WORD = ['', 'LIGHT', 'HEAVY', 'CAPITAL'];
+
+/** Drop the printed tier word only when the class line is that word. 'Light ship' still says LIGHT. */
+export function classSaysThreatTier(classText, tierWord) {
+  const word = String(tierWord || '').trim().toLowerCase();
+  if (!word) return false;
+  return String(classText || '').trim().toLowerCase() === word;
+}
 
 function entityClass(e, state) {
   if (!e) return '';
@@ -523,8 +533,9 @@ export function engagedContactReadout(state) {
   const subject = liveSelection || (subjectIsEngaged ? engaged : null);
   const subjectId = subjectIsEngaged ? gunId : selId;
   let text = '';
-  if (subjectIsEngaged) text = '⌖ LINE TARGET · NO SELECTION';
-  else if (engaged && liveSelection) text = `⌖ LINE TARGET ▸ ${targetDisplayName(engaged, { state })}`;
+  // Plain words: the Line has the guns, so the row names where they fire.
+  if (subjectIsEngaged) text = '⌖ GUNS ON THIS SHIP';
+  else if (engaged && liveSelection) text = `⌖ GUNS ON ${targetDisplayName(engaged, { state })}`;
   return { subjectId, subject, engaged, subjectIsEngaged, text };
 }
 
@@ -822,7 +833,19 @@ export function objectInfoLine(t, state, p, dist) {
   const d = t.data || {};
   const facts = orchardThermalFacts(t, state);
   if (t.type === 'asteroid') {
-    facts.push(d.respawnAt != null ? 'Mined out' : 'Ore-bearing');
+    // A rock the pilot owns says what it has become before it says what is in it.
+    const claim = claimedRockLine(t, state);
+    if (claim) facts.push(claim);
+    if (d.respawnAt != null) facts.push('Mined out');
+    else {
+      // The scan reads the strata before the pilot commits: what is in there, how deep, how
+      // many pockets. The laser brings up the mix; this is what the rover can go and pick.
+      const assay = rockAssayLine(t, state, (id) => {
+        const c = COMMODITY_BY_ID.get(id);
+        return c && c.name;
+      });
+      facts.push(assay || 'Ore-bearing');
+    }
   } else if (t.type === 'fauna') {
     // The scanner ladder owns the name; at anatomy tier the earned field note rides here.
     const note = faunaFieldNote(t, state);
@@ -944,7 +967,7 @@ export function objectInfoLine(t, state, p, dist) {
     action = 'Inspect only';
   }
   facts.push(action);
-  if (t.type === 'asteroid') facts.push(`Tether, then ${BINDINGS.drill.label} · enter asteroid`);
+  if (t.type === 'asteroid') facts.push(`${BINDINGS.drill.label} · set the rover down`);
   return facts.join(' · ');
 }
 
@@ -1144,8 +1167,10 @@ export function createTargetPanel(ctx) {
       lastName = nextName;
       lastClass = nextClass;
       lastFactionId = t.factionId || null;
-      const classText = nextClass && nextClass.toLowerCase() !== nextName.toLowerCase()
-        ? ` · ${nextClass}`.toUpperCase()
+      // The class is a quiet second word, in the name's own case, and only when it says something
+      // the name does not ("Helios Station", never "Helios Station · STATION").
+      const classText = nextClass && !nextName.toLowerCase().includes(nextClass.toLowerCase())
+        ? ` · ${nextClass}`
         : '';
       setText(elName, `${nextName}${classText}`);
       if (el._sfAriaLabel !== `Current target: ${nextName}${nextClass ? `, ${nextClass}` : ''}`) {
@@ -1363,12 +1388,16 @@ export function createTargetPanel(ctx) {
       // not a word. Styling on [data-tier="high"] would have been dead CSS that looked correct.
       const tierNum = intel ? (intel.threatTier | 0) : 0;
       const tier = tierNum > 0 ? String(tierNum) : '';
-      const threatKey = tier + '|' + (intel ? intel.threatPips : '');
+      // The pips always carry the tier. The word drops only when the class line IS the tier
+      // ('LIGHT'), never when it merely contains it ('Light ship' left a bare pip).
+      const tierWord = THREAT_TIER_WORD[tierNum] || 'THREAT';
+      const classSaysTier = tierNum > 0 && classSaysThreatTier(nextClass, tierWord);
+      const threatKey = tier + '|' + (intel ? intel.threatPips : '') + '|' + (classSaysTier ? 1 : 0);
       if (threatKey !== lastThreatKey) {
         lastThreatKey = threatKey;
         if (intel && tier) {
           setText(elThreatPips, String(intel.threatPips || ''));
-          setText(elThreatWord, THREAT_TIER_WORD[tierNum] || 'THREAT');
+          setText(elThreatWord, classSaysTier ? '' : tierWord);
           if (elThreat.dataset.tier !== tier) elThreat.dataset.tier = tier;
           if (elThreat.hidden) elThreat.hidden = false;
         } else if (!elThreat.hidden) {

@@ -411,7 +411,6 @@ try {
   if (DIAGNOSTICS_ONLY) {
     console.log(`[crucible-cpu-profile] diagnostics-only capture complete: ${path.join(OUT_DIR, 'opening-diagnostics.json')}`);
   } else if (BARE_ACTIVE) {
-    await page.bringToFront();
     const activeAtStart = await page.evaluate(() => {
       const state = window.SF && window.SF.state;
       if (!state) return null;
@@ -507,7 +506,6 @@ try {
     console.log(`[crucible-cpu-profile] public Adventure route passed startup; diagnostics saved at ${path.join(OUT_DIR, 'opening-diagnostics.json')}`);
   } else {
 
-  await page.bringToFront();
   await page.mouse.move(1100, 300);
   await page.keyboard.down('KeyW');
 

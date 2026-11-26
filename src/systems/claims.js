@@ -56,7 +56,7 @@ import {
   DEPOT_SUPPORT_GRACE_S, DEPOT_PATROL_SHAPE_ID, DEPOT_PATROL_FACTION_ID,
   DEPOT_PATROL_ANCHOR_FRAC, DEPOT_PATROL_ZONE_RADIUS_WU, DEPOT_PATROL_ID_PREFIX,
   SECTOR_BY_ID, readyClaimRecipe, sumStore, raidTripChance, repelChance,
-  claimDefenseRating, claimsReadMethods, cachedRelayDestination,
+  claimDefenseRating, claimsReadMethods, cachedRelayDestination, relayDispatchReadiness,
 } from './claimsReadModel.js';
 export {
   SPEC_RAID_EVERY_S, RAID_SECURITY_FLOOR, SPEC_RAID_LOSS_FRAC, DEPOT_SUPPORT_GRACE_S,
@@ -340,6 +340,9 @@ export const claims = {
   saveSnapshotOwned: true,
 
   init(ctx) {
+    // drop stale handlers from a previous init on a live bus
+    for (const unsub of this._unsubs || []) { try { unsub(); } catch (_) {} }
+    this._unsubs = [];
     this.state = ctx.state;
     this.bus = ctx.bus;
     this.ctx = ctx;
@@ -348,35 +351,40 @@ export const claims = {
     if (!this.state.claims) this.state.claims = { bodies: [] };
     // World respawns POI entities on sector entry — re-stamp specialization identity on them.
     if (this.bus && typeof this.bus.on === 'function') {
-      this.bus.on('sector:enter', () => { this._ensureRetiredRefineryShells(); this._applyAllPoiLabels(); });
+      this._unsubs.push(this.bus.on('sector:enter', () => { this._ensureRetiredRefineryShells(); this._applyAllPoiLabels(); }));
       // PQ-170.01: world respawns stations on sector entry — re-stamp the growth they earned.
-      this.bus.on('sector:enter', () => this._stampAllStationGrowth());
+      this._unsubs.push(this.bus.on('sector:enter', () => this._stampAllStationGrowth()));
       // PQ-170.01: player-supplied throughput. Only the SELL side supplies a station.
-      this.bus.on('economy:tradeCompleted', (payload) => this._onTradeCompleted(payload || {}));
+      this._unsubs.push(this.bus.on('economy:tradeCompleted', (payload) => this._onTradeCompleted(payload || {})));
       // NXB-027: accepted contract freight is player-supplied throughput too — the same lot the
       // economy just stocked. The committed receipt dedupes canonical retries (and only them).
-      this.bus.on('economy:freightAccepted', (payload) => this._onFreightAccepted(payload || {}));
-      this.bus.on('mission:completed', (payload) => this._onEndgamePullCompleted(payload || {}));
+      this._unsubs.push(this.bus.on('economy:freightAccepted', (payload) => this._onFreightAccepted(payload || {})));
+      this._unsubs.push(this.bus.on('mission:completed', (payload) => this._onEndgamePullCompleted(payload || {})));
       // LAW-09: the raid marker's ignore verb — standing a claim down on purpose settles through
       // the same 'ignored' column the deadline lapse pays.
-      this.bus.on('claim:defenseIgnore', (payload) => this._onDefenseIgnore(payload || {}));
+      this._unsubs.push(this.bus.on('claim:defenseIgnore', (payload) => this._onDefenseIgnore(payload || {})));
       // FB-132: the flight prompt's other two doors. 'Go' re-affirms the alarm waypoint claims
       // already owns; 'delegate' spends a same-sector supported depot's patrol rotation early —
       // the depot answers instead of posting its scheduled beat.
-      this.bus.on('claim:defenseGo', (payload) => this._onDefenseGo(payload || {}));
-      this.bus.on('claim:defenseDelegate', (payload) => this._onDefenseDelegate(payload || {}));
-      this.bus.on('aceMemory:transition', (payload) => this._onAceTrophyDefeat(payload || {}));
+      this._unsubs.push(this.bus.on('claim:defenseGo', (payload) => this._onDefenseGo(payload || {})));
+      this._unsubs.push(this.bus.on('claim:defenseDelegate', (payload) => this._onDefenseDelegate(payload || {})));
+      this._unsubs.push(this.bus.on('aceMemory:transition', (payload) => this._onAceTrophyDefeat(payload || {})));
       // PQ-170.01: a Concord depot rotation resolving (beat elapsed, stood down) schedules the next.
-      this.bus.on('encounter:resolved', (payload) => this._onDepotPatrolResolved(payload || {}));
-      this.bus.on('encounter:resolved', (payload) => this._onDefenseEncounterResolved(payload || {}));
+      this._unsubs.push(this.bus.on('encounter:resolved', (payload) => this._onDepotPatrolResolved(payload || {})));
+      this._unsubs.push(this.bus.on('encounter:resolved', (payload) => this._onDefenseEncounterResolved(payload || {})));
       // Physical relay convoys: traffic manifests and routes the carrier hull; claims owns the
       // leg ledger. Manifestation flips the leg onto the physical track; a berth unload settles
       // the sale; a hull kill arrives through the ordinary freight:loss ledger.
-      this.bus.on('claim:convoyManifested', (payload) => this._onConvoyManifested(payload || {}));
-      this.bus.on('claim:convoyDocked', (payload) => this._onConvoyDocked(payload || {}));
-      this.bus.on('freight:loss', (payload) => this._onConvoyFreightLoss(payload || {}));
+      this._unsubs.push(this.bus.on('claim:convoyManifested', (payload) => this._onConvoyManifested(payload || {})));
+      this._unsubs.push(this.bus.on('claim:convoyDocked', (payload) => this._onConvoyDocked(payload || {})));
+      this._unsubs.push(this.bus.on('freight:loss', (payload) => this._onConvoyFreightLoss(payload || {})));
     }
     this._resumeDefenseIds = new Set();
+  },
+
+  destroy() {
+    for (const off of this._unsubs || []) if (typeof off === 'function') off();
+    this._unsubs = [];
   },
 
   // Claim the body at a POI. Validates credits + that it's unclaimed. POI def carries size/name/pos.
@@ -1267,6 +1275,15 @@ export const claims = {
     return moved;
   },
 
+  requestRelayDispatch(bodyId, expectedConvoySeq) {
+    const body = this._body(bodyId);
+    if (relayDispatchReadiness(body).state !== 'ready'
+      || expectedConvoySeq !== (body.spec.convoySeq || 0)
+      || !this._economyPeer() || !this._relayDestination(body)) return false;
+    body.spec.nextDispatchAt = this.state.simTime || 0;
+    return true;
+  },
+
   _tickSpecRelay(body, def, state) {
     const spec = body.spec;
     const t = state.simTime || 0;
@@ -1310,38 +1327,31 @@ export const claims = {
     // scheduled dispatch — only while staffed, only with a real destination + market truth
     if (!spec.convoy && spec.status === 'active' && t >= (spec.nextDispatchAt || 0)) {
       spec.nextDispatchAt = t + def.dispatchEveryS;
+      const load = relayDispatchReadiness(body);
       const dest = this._relayDestination(body);
-      const economy = this._economyPeer();
-      if (dest && economy) {
-        let bestGood = null, bestQty = 0;
-        for (const id in spec.store.input) {
-          const q = spec.store.input[id] || 0;
-          if (q > bestQty) { bestQty = q; bestGood = id; }
-        }
-        if (bestGood && bestQty >= def.minLoadU) {
-          const qty = Math.min(def.convoyLoadU, bestQty);
-          spec.store.input[bestGood] -= qty;
-          if (spec.store.input[bestGood] <= 0) delete spec.store.input[bestGood];
-          const convoySeq = (spec.convoySeq || 0) + 1;
-          spec.convoySeq = convoySeq;
-          spec.convoy = {
-            goodId: bestGood, qty, destStationId: dest, departedAt: t, arriveAt: t + def.transitS,
-            convoyId: body.id + ':cv' + convoySeq,
-            bodyId: body.id,
-            // Durable identity minted at dispatch: traffic materializes the carrier under this
-            // record id, so kill/shelf/relink paths all name the same ship.
-            worldRecordId: stableRecordId(
-              (state.meta && state.meta.seed) || 1,
-              body.sectorId || (state.world && state.world.currentSectorId) || 'sector',
-              RECORD_KIND.CONVOY,
-              'claim-convoy:' + body.id + ':' + convoySeq,
-            ),
-            manifested: false,
-            entityId: null,
-          };
-          this._receipt(body, 'convoy_dispatched', 'Convoy away — ' + qty + 'u to ' + (this._stationName(dest) || dest),
-            { goodId: bestGood, qty, destStationId: dest });
-        }
+      if (load.state === 'ready' && dest && this._economyPeer()) {
+        const { goodId, qty } = load;
+        spec.store.input[goodId] -= qty;
+        if (spec.store.input[goodId] <= 0) delete spec.store.input[goodId];
+        const convoySeq = (spec.convoySeq || 0) + 1;
+        spec.convoySeq = convoySeq;
+        spec.convoy = {
+          goodId, qty, destStationId: dest, departedAt: t, arriveAt: t + def.transitS,
+          convoyId: body.id + ':cv' + convoySeq,
+          bodyId: body.id,
+          // Durable identity minted at dispatch: traffic materializes the carrier under this
+          // record id, so kill/shelf/relink paths all name the same ship.
+          worldRecordId: stableRecordId(
+            (state.meta && state.meta.seed) || 1,
+            body.sectorId || (state.world && state.world.currentSectorId) || 'sector',
+            RECORD_KIND.CONVOY,
+            'claim-convoy:' + body.id + ':' + convoySeq,
+          ),
+          manifested: false,
+          entityId: null,
+        };
+        this._receipt(body, 'convoy_dispatched', 'Convoy away — ' + qty + 'u to ' + (this._stationName(dest) || dest),
+          { goodId, qty, destStationId: dest });
       }
     }
   },
@@ -1362,10 +1372,14 @@ export const claims = {
     const entry = stationMarket && stationMarket[convoy.goodId];
     const listed = listedMarketSell(entry);
     // The arrived lot already belongs to the convoy, separate from the player's hold.
-    const unit = listed != null && economy && economy.priceOf
-      ? economy.priceOf(convoy.destStationId, convoy.goodId, 'sell', { operationCustody: true })
+    // Quote the whole lot, not the one-unit spot price — the sell-side quote integrates the
+    // price curve over the stock interval, so a 40u landing no longer earns 40x spot.
+    const quoted = listed != null && economy && typeof economy.quote === 'function'
+      ? economy.quote(convoy.destStationId, convoy.goodId, 'sell', qty, { operationCustody: true })
       : null;
-    if (!(listed > 0) || !(unit > 0)) {
+    const saleTotal = quoted && quoted.ok === true && Number.isFinite(quoted.total) && quoted.total > 0
+      ? quoted.total : null;
+    if (!(listed > 0) || !(saleTotal > 0)) {
       spec.store.input[convoy.goodId] = (spec.store.input[convoy.goodId] || 0) + qty;
       if (convoy.qtyLedger) convoy.qtyLedger.returned = qty;
       this._receipt(
@@ -1378,7 +1392,7 @@ export const claims = {
     }
     // PQ-170.01: a station the player's freight grew keeps less of the sale.
     const saleFee = this._relaySaleFee(def, convoy.destStationId);
-    const revenue = Math.round(qty * unit * (1 - saleFee));
+    const revenue = Math.round(saleTotal * (1 - saleFee));
     if (convoy.qtyLedger) convoy.qtyLedger.sold = qty;
     this.bus.emit('economy:grantCredits', { amount: revenue, reason: 'claim_relay_sale' });
     this.bus.emit('economy:applyTradePressure', { stationId: convoy.destStationId, good: convoy.goodId, vol: qty });
@@ -2737,7 +2751,9 @@ export const claims = {
 
   _normalizeStationGrowth(raw) {
     if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
-    const out = {};
+    // Null-prototype map, same contract normalizeSupplyReceipts documents: an adversarial
+    // stationId ('__proto__') becomes an own key, never a prototype-setter write on `out`.
+    const out = Object.create(null);
     let any = false;
     for (const stationId of Object.keys(raw)) {
       const rec = raw[stationId];
@@ -3242,11 +3258,28 @@ export const claims = {
       _nextClaimId = 1;
       return;
     }
-    const bodies = Array.isArray(data.bodies) ? data.bodies : [];
+    const bodies = (Array.isArray(data.bodies) ? data.bodies : [])
+      .filter((b) => b && typeof b === 'object' && !Array.isArray(b));
     for (const b of bodies) {
       // versioned default: bodies from older saves have no spec — they stay unspecialized
       // Presence in the claims store is the ownership proof. Older saves predate the explicit bit.
       b.owned = true;
+      // A restored record is save data, not a live shape: heal the scalar fields the runtime
+      // gates trust verbatim. modules is always the built-id array (a crafted string would
+      // reach buildModule's push() after the credit charge, and satisfy the teleporter's
+      // .includes() for free). size must be a real BODY_SLOTS_BY_SIZE key — a crafted
+      // '__proto__' is truthy through the plain-object lookup and would hand Object.prototype
+      // to every `BODY_SLOTS_BY_SIZE[size] || 3` fallback downstream; then slots re-derives
+      // from size exactly like claim(). The rest coerce to string-or-null / finite.
+      if (!Object.prototype.hasOwnProperty.call(BODY_SLOTS_BY_SIZE, b.size)) b.size = 'M';
+      b.slots = BODY_SLOTS_BY_SIZE[b.size];
+      b.modules = Array.isArray(b.modules)
+        ? b.modules.filter((id) => typeof id === 'string' && BODY_MODULE_BY_ID.has(id))
+        : [];
+      b.id = typeof b.id === 'string' && b.id ? b.id : null;
+      b.linkedStationId = typeof b.linkedStationId === 'string' && b.linkedStationId ? b.linkedStationId : null;
+      b.x = Number.isFinite(Number(b.x)) ? Number(b.x) : 0;
+      b.z = Number.isFinite(Number(b.z)) ? Number(b.z) : 0;
       const needsRecipeNote = !!(b.spec && typeof b.spec === 'object'
         && b.spec.id === 'spec_refinery' && b.spec.recipeBook == null);
       b.spec = 'spec' in b ? this._normalizeSpec(b.spec) : null;

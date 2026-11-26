@@ -79,6 +79,7 @@ export function isInterfering(distWu, tuning = SILENT_MECHANICS_TUNING) {
 }
 
 export const silentMechanicsPlant = {
+  modes: ['flight'],
   name: 'plants293',
 
   init(ctx) {

@@ -91,3 +91,44 @@ test('canonical overlays do not excuse a wrong server response or other dirty as
   assert.ok(result.problems.some((p) => p.path === STARTER), 'the actual served sample remains canonical');
   assert.ok(result.problems.some((p) => p.path === LARGE), 'unpinned disk assets retain their existing checks');
 });
+
+test('a current-art candidate serves its hash-pinned file and rejects a same-size edit', async (t) => {
+  const { root, commit, large } = await fixture(t);
+  const file = path.join(root, LARGE);
+  const candidate = Buffer.from(large);
+  candidate[0] = 2;
+  await writeFile(file, candidate);
+  const videoPath = 'assets/cinematics/loading.mp4';
+  const video = Buffer.from('pinned loading movie bytes');
+  await mkdir(path.dirname(path.join(root, videoPath)), { recursive: true });
+  await writeFile(path.join(root, videoPath), video);
+  const sourceOverlay = manifest(commit, [['index.html', 'candidate runtime']]);
+  sourceOverlay.workingTree = true;
+  sourceOverlay.assetPins = manifest(commit, [[LARGE, candidate], [videoPath, video]])
+    .files.map(({ contentBase64, ...pin }) => pin);
+  sourceOverlay.sourceOverlayDigest = sourceOverlayDigest([...sourceOverlay.files, ...sourceOverlay.assetPins]);
+  const baseUrl = await listen(t, root, sourceOverlay);
+  const identity = await (await fetch(`${baseUrl}/__source_overlay_identity`)).json();
+  assert.equal(identity.assetPinCount, 2);
+  assert.equal(identity.sourceOverlayDigest, sourceOverlay.sourceOverlayDigest);
+  const original = await fetch(`${baseUrl}/${LARGE}`);
+  assert.equal(original.status, 200);
+  assert.deepEqual(Buffer.from(await original.arrayBuffer()), candidate);
+  const videoUrl = `${baseUrl}/${videoPath}`;
+  const segment = await fetch(videoUrl, { headers: { Range: 'bytes=7-13' } });
+  assert.equal(segment.status, 206);
+  assert.equal(segment.headers.get('accept-ranges'), 'bytes');
+  assert.equal(segment.headers.get('content-range'), `bytes 7-13/${video.length}`);
+  assert.deepEqual(Buffer.from(await segment.arrayBuffer()), video.subarray(7, 14));
+  assert.equal((await fetch(videoUrl, { headers: { Range: 'bytes=99-' } })).status, 416);
+  const verified = await verifyHarnessEnvironment({ root, baseUrl, sourceOverlay, candidateAssets: true });
+  assert.equal(verified.ok, true, JSON.stringify(verified.problems));
+  assert.equal(verified.candidateAssets, 2);
+  await assert.rejects(verifyHarnessEnvironment({ root, baseUrl, sourceOverlay }), /require --candidate-source/);
+
+  await writeFile(file, large);
+  assert.equal((await fetch(`${baseUrl}/${LARGE}`)).status, 412);
+  const changed = await verifyHarnessEnvironment({ root, baseUrl, sourceOverlay, candidateAssets: true });
+  assert.equal(changed.ok, false);
+  assert.ok(changed.problems.some((problem) => problem.path === LARGE && problem.kind === 'hash'));
+});

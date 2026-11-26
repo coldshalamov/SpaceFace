@@ -151,7 +151,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "b146dd5de85ee46da1ca860c52a890c59d8c669424909f57e52be7e591450ebe",
+  "contentHash": "4d11ff084ca0f9394dac6e9f8e60a704f24e69f28df569eb92d00e1ba5069ffb",
   "dynamicGroups": [
     {
       "id": "sf.render.borrowed-voice-b.node.lod0-motion-borrowed-voice-receiver-brushedmetal.dynamic",
@@ -1168,8 +1168,8 @@
       "uri": "borrowed_voice_b.glb"
     },
     "sourceManifest": {
-      "bytes": 340541,
-      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
+      "bytes": 352460,
+      "sha256": "7b29a65ee148539881ae9782eccdf6b975daa858f6ccb23db9554e3ec5c293f7",
       "uri": "pilots.json"
     }
   },
@@ -1755,7 +1755,7 @@
     "slot": "pod",
     "url": "assets/ships/release/parts/wholeships/borrowed_voice_b.glb"
   },
-  "runtimeHash": "8eac2d685f8d8d0c902a879198543322785fbb361551028c2ce896bb1789a0af",
+  "runtimeHash": "0bfa35716af015c942bc266776ec532300904f7099cfa8b46689d860e5c3ab46",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

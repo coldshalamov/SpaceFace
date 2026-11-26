@@ -153,7 +153,7 @@ for (const seed of SEEDS) {
       assert.equal(beatWindow(host), 0, 'a player contact must not arm a camera beat');
     }
     const answers = CLOSING_SPEEDS.map((speed) => {
-      const { bus, host, traumas, frame } = feelHost();
+      const { state, bus, host, traumas, frame } = feelHost();
       bus.emit('physics:impact', physicsImpact(speed, {
         aId: 3,
         bId: 4,
@@ -161,18 +161,25 @@ for (const seed of SEEDS) {
         provenance: { actorId: 1, rootId: 900, tick: 120 },
       }));
       frame();
-      return { trauma: traumas[0], hsDur: beatWindow(host) };
+      return {
+        traumas: traumas.length,
+        hsDur: beatWindow(host),
+        roomRefusals: state.render.cameraGate.counts().refused.collision || 0,
+      };
     });
     console.log(`[B5 live receipt] seed=${seed}`);
     answers.forEach((a, i) => console.log(
-      `closing ${String(CLOSING_SPEEDS[i]).padStart(3)} WU/s -> trauma ${a.trauma.toFixed(3)}, beat window ${(a.hsDur * 1000).toFixed(1)} ms`,
+      `closing ${String(CLOSING_SPEEDS[i]).padStart(3)} WU/s -> beat window ${(a.hsDur * 1000).toFixed(1)} ms, camera still (R10), refused room beats ${a.roomRefusals}`,
     ));
     for (let i = 1; i < answers.length; i++) {
       assert.ok(answers[i].hsDur > answers[i - 1].hsDur,
         'the beat window must strictly increase through the remote player-caused receipt');
-      assert.ok(answers[i].trauma > answers[i - 1].trauma,
-        'camera trauma must strictly increase through the remote player-caused receipt');
     }
+    // R10: a collision is a room event — every one of these beats lands as pacing plus one
+    // refused room trauma at the gate; the camera itself never shakes.
+    assert.deepEqual(answers.map((a) => a.traumas), [0, 0, 0], 'R10: a collision never shakes the camera');
+    assert.deepEqual(answers.map((a) => a.roomRefusals), [1, 1, 1],
+      'each player-caused beat flushed and was refused as room trauma');
     // A receipt missing the pre-solve field answers like the clamped 40 WU/s it carries —
     // the field, not the row's test setup, is what rescues the ram.
     const { bus, host, traumas, frame } = feelHost();
@@ -187,7 +194,7 @@ for (const seed of SEEDS) {
       mode: 'flight', playerDistance: 0, deltaV: SOLVER_CLAMP_DV,
     });
     assert.equal(beatWindow(host), clamped.hsDur, 'no pre-solve speed -> the solver-clamped answer');
-    assert.equal(traumas[0], clamped.trauma);
+    assert.equal(traumas.length, 0, 'R10: a collision never shakes the camera');
   });
 
   test(`seed ${seed}: collision audio pitch drops >= 1 octave from the light kiss to the heavy slam`, () => {

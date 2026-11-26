@@ -27,8 +27,7 @@ and must be rechecked before use.
   stand-in, an empty/box body, or a camera-facing soft square or disc; distant background stars are
   the exception.
 - Small measured visual budgets are allowed when they preserve the authored identity and the result
-  is checked at the gameplay camera. The Finish Program README §2 owns current hardware-tier and
-  measurement rulings; older absolute “never lower quality” statements do not override it.
+  is checked at the gameplay camera.
 - Treat a reported freeze or play-blocking defect at its real production path. Verify the cause is
   handled before claiming the freeze is fixed; do not mask it with catch-and-continue behavior or
   unrelated nearby edits.

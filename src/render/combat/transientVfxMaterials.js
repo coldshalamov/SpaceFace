@@ -125,12 +125,20 @@ const EVENT_BUCKET_VERTEX = /* glsl */`
   varying float vSection;
   varying float vKind;
   void main() {
-    vec3 scale = instanceScale();
+    // Keep flash/event volumes bounded to the hit and low enough vertically so they never
+    // tower toward the top-down camera or bury ship silhouettes under a white-out cloud.
+    float rawMax = max(aSpriteScale.x, aSpriteScale.y);
+    float bound = rawMax > 12.0 ? (12.0 + sqrt(rawMax - 12.0) * 2.2) / rawMax : 1.0;
+    vec2 horiz = aSpriteScale * bound;
+    float yScale = min(max(0.01, sqrt(horiz.x * horiz.y) * 0.20), 1.6);
+    vec3 scale = vec3(horiz.x, yScale, horiz.y);
     vec3 local = uEventKind > 3.5
       ? sfEventPressureLocal(uv, aEventSection, aSpritePhase.y, aSpritePhase.x, vec3(1.0))
       : sfEventLocal(uEventKind, uv, aEventSection, aSpritePhase.y, aSpritePhase.x, vec3(1.0));
     vec3 p = rotateHeading(local * scale, aSpriteAxis);
-    vec4 world = modelMatrix * vec4(aSpritePosition + p, 1.0);
+    // Medium/large flashes sit below ship roof height so opaque hulls cut cleanly in front.
+    float yDrop = -smoothstep(4.5, 11.0, max(horiz.x, horiz.y)) * 1.65;
+    vec4 world = modelMatrix * vec4(aSpritePosition + vec3(p.x, p.y + yDrop, p.z), 1.0);
     vWorld = world.xyz;
     vUv = uv;
     vSection = aEventSection.x;
@@ -153,7 +161,8 @@ const EVENT_BUCKET_FRAGMENT = /* glsl */`
   varying float vSpriteOpacity;
   void main() {
     vec4 event = sfEventSurface(vKind, vUv, vec2(vSection, vSection), vPhase.y, vPhase.x,
-      vWorld, vSpriteColor, vSpriteOpacity, 1.0);
+      vWorld, vSpriteColor, vSpriteOpacity, 0.72);
+    event.a = min(event.a * 0.68, 0.42);
     if (event.a < 0.003) discard;
     gl_FragColor = event;
     #include <tonemapping_fragment>

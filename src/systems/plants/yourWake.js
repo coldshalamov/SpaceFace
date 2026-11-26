@@ -91,6 +91,7 @@ export function wakeRowFor(memory, crewId, now, cap = WAKE_TUNING.memoryCap) {
  * wake, scatters their piles, and tallies the pass for the owe-three bill.
  */
 export const yourWakePlant = {
+  modes: ['flight'],
   name: 'plantsPl194',
   init(ctx) {
     this.state = ctx.state;

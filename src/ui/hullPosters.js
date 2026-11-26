@@ -10,11 +10,14 @@
 //         luminance, a crisp outline) for the flight cluster and the radar (ORRERY §5).
 //   jig:  the plan view as a bone line drawing in the plan view's own frame (so its marks land on
 //         it), for the refit jig (tools/art/jig_glyph.py, src/ui/orrery/hullSchematic.js).
+//   hud:  the same model's visible edges in a compact, nose-left flight schematic.
 // Provenance, framing and the projected hook positions live in
 // assets/ui/renders/hulls/manifest.json. The live WebGL stage draws over the hero render once the
 // authored hull has settled; until then (and wherever WebGL never arrives) the render is the stage.
 
-const RENDER_ROOT = new URL('../../assets/ui/renders/hulls/', import.meta.url).href;
+import { runtimeAssetUrl } from '../core/runtimeAssetUrl.js';
+
+const RENDER_ROOT = runtimeAssetUrl('assets/ui/renders/hulls/', import.meta.url);
 
 export const HULL_POSTERS = Object.freeze({
   ship_kestrel: Object.freeze({ hero: 'ship_kestrel.hero.webp', side: 'ship_kestrel.side.webp', top: 'ship_kestrel.top.webp', holo: 'ship_kestrel.holo.webp', jig: 'ship_kestrel.jig.webp' }),
@@ -35,7 +38,11 @@ export const HULL_POSTERS = Object.freeze({
 });
 
 /** URL of a hull's produced render, or null when that hull has none. */
-export function hullPosterUrl(shipId, view = 'hero') {
+export function hullPosterUrl(shipId, view = 'hero', variantId = null) {
   const entry = shipId && Object.prototype.hasOwnProperty.call(HULL_POSTERS, shipId) ? HULL_POSTERS[shipId] : null;
+  if (view === 'hud' && shipId === 'ship_hornet' && variantId === 'customs_cutter') {
+    return `${RENDER_ROOT}ship_hornet_customs_cutter.hud.webp`;
+  }
+  if (entry && view === 'hud') return `${RENDER_ROOT}${shipId}.hud.webp`;
   return entry && entry[view] ? RENDER_ROOT + entry[view] : null;
 }

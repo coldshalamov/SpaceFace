@@ -9,6 +9,7 @@ import {
 import { speedPhase } from '../src/ui/orrery/flightCluster.js';
 import { staticVerbSentence } from '../src/data/arsenalWords.js';
 import { RAIL_SLOTS, SUPPORT_SLOTS } from '../src/ui/powerRail.js';
+import { setPromptDeck } from '../src/ui/promptDeck.js';
 import { resolveImpulseChargeCapacity } from '../src/systems/impulseCharges.js';
 import { DEFAULTS } from '../src/systems/input.js';
 import { fakeDom, findAll } from './helpers/fake-dom.mjs';
@@ -101,33 +102,31 @@ test('the speed Scale phases against the displayed reading: asleep, flight, abov
   assert.equal(speedPhase(NaN, 180), 'rest', 'no reading, no light');
 });
 
-test('every ordnance key explains itself: bank sentence, live keys and live state in one tip', () => {
+test('every ordnance key explains itself: one plain name, one-line caption, live keys and state', () => {
   const bindings = {
     pull: ['Digit1'], shove: ['KeyR', 'Digit2'], bomb: ['KeyY', 'Digit4'], tether: ['Space', 'KeyF'],
   };
   const { state } = fakeState();
   state.player.cargo.items.cmdty_impulse_charge = 2;
   const ord = readOrdnanceModel(state, createCooldownTracker(), bindings);
-  const capacity = resolveImpulseChargeCapacity(state);
-  // The tip names the EFFECTIVE verb (what the next press does), the live keys, and why it is or is not ready.
-  assert.match(ord['4'].tip, /^Bomb · throw Charge ×2 — Next press: throw Impulse charge ×2\. /);
-  assert.match(ord['4'].tip, /\(4 · Y\)\nReady · up to \d+$/);
-  assert.ok(ord['4'].tip.endsWith(`Ready · up to ${capacity}`));
-  assert.equal(ord['4'].label, 'Bomb · throw Charge ×2');
-  assert.match(ord['6'].tip, /\(Space · F\)\nReady$/);
-  assert.match(ord['2'].tip, /\(2 · R\)\nReady$/, 'nothing armed: SHOVE is the repulsor, ready');
-  // A collapsed node answers "what is this" without unfolding it: a one-power band explains the
-  // power. The DRIVE lamp group rides ahead of the hotbar (FB-002 slot 0).
+  // One canonical name and one-line caption per flight power — no jargon leaks.
+  assert.equal(ord['4'].label, 'Bomb');
+  assert.equal(ord['4'].count, 2);
+  assert.equal(ord['4'].tip, 'Bomb — Sticks a charge. Press again to detonate (4 · Y)');
+  assert.equal(ord['4'].briefTip, 'Bomb · 4\nSticks a charge. Press again to detonate');
+  assert.equal(ord['6'].key, 'RMB / Space');
+  assert.equal(ord['6'].tip, 'Line — Hook anything: swing on heavy things, throw light ones (RMB / Space)');
+  assert.equal(ord['2'].tip, 'Shove — Blasts everything ahead of you away (2 · R)');
   const groups = buildOrdnanceGroups(bindings);
   const shove = groups.find((g) => g.name === 'Shove');
-  assert.equal(shove.tip, `Shove — ${staticVerbSentence('shove')} (2)`, 'a folded node explains its power in the arsenal\'s own sentence');
+  assert.equal(shove.tip, 'Shove — Blasts everything ahead of you away (2)');
   assert.equal(groups.find((g) => g.name === 'Pull').slots[0].key, '1', 'the shelf reads as the number-row hotbar the player reaches for');
-  assert.deepEqual(groups.map((g) => g.name), ['DRIVE', 'Pull', 'Shove', 'Pin', 'Bomb', 'Rig', 'Line', 'Gyre', 'Cloak']);
+  assert.deepEqual(groups.map((g) => g.name), ['DRIVE', 'Pull', 'Shove', 'Pin', 'Bomb', 'Plow', 'Line', 'Gyre', 'Cloak']);
   const drive = groups.find((g) => g.name === 'DRIVE');
   assert.ok(drive && drive.slots.length === 1, 'the travel-drive lamp is its own group');
 });
 
-test('the mounted Cluster follows live rebinds, including an intentionally unbound Line', () => {
+test('the mounted Cluster follows live rebinds, prompt key ownership, and an intentionally unbound Line', () => {
   const previous = globalThis.document;
   const doc = fakeDom();
   const create = doc.createElement;
@@ -145,36 +144,47 @@ test('the mounted Cluster follows live rebinds, including an intentionally unbou
   globalThis.document = doc;
   const { state, player } = fakeState({ settings: { gameplay: { controlScheme: 'pilot' }, controls: { bindings: {
     tether: ['KeyP'], forward: ['KeyI'], reverse: ['KeyK'], yawLeft: ['KeyJ'], yawRight: ['KeyL'], boost: ['KeyB'],
+    pull: ['Digit3'], shove: ['Digit2', 'KeyR'],
   } } } });
   state.player.tether = { active: true, targetId: 8, load: 0.2 };
   state.entities.set(8, { mass: 40 });
   const root = doc.createElement('div');
   let mounted;
-  const socket = () => findAll(root, node => node.getAttribute('data-slot') === '6')[0];
-  const key = () => findAll(socket(), node => node.tagName === 'b')[0]?.textContent;
+  const socket = (id = '6') => findAll(root, node => node.getAttribute('data-slot') === id)[0];
+  const key = (id) => findAll(socket(id), node => node.tagName === 'b')[0]?.textContent;
   try {
     // hud.js still passes the legacy default table; the live state is authoritative.
     mounted = mountOrreryCluster(root, state, { bindings: DEFAULTS.BINDINGS });
     mounted.update(state, player, true);
-    assert.equal(key(), 'P');
+    assert.equal(key(), 'RMB / P');
     assert.match(socket().getAttribute('data-why'), /I REEL.*K PAY OUT.*J\/L ORBIT.*B PUMP/);
     assert.match(socket().getAttribute('aria-label'), /I REEL/);
     assert.equal(socket().getAttribute('tabindex'), '0', 'the contextual controls remain focusable');
     state.settings.controls.bindings.tether = ['KeyU'];
     state.settings.controls.bindings.forward = ['KeyO'];
     mounted.update(state, player, true);
-    assert.equal(key(), 'U', 'a rebind after mount updates the visible key as well as its tip');
+    assert.equal(key(), 'RMB / U', 'a rebind after mount updates the visible key as well as its tip');
     assert.match(socket().getAttribute('data-why'), /O REEL/);
     assert.doesNotMatch(socket().getAttribute('data-why'), /I REEL|\(Space · F\)/);
     const settled = socket();
     mounted.update(state, player, false);
     assert.equal(socket(), settled, 'an unchanged frame does not rebuild the sockets');
+    assert.equal(key('1'), '3');
+    assert.equal(key('2'), '2');
+    setPromptDeck({ claimedDigits: [2, 3] });
+    mounted.update(state, player, false);
+    // R17 (2026-11-20): "Nothing may steal keys 1–5 in flight." Decisions answer on 6–9 and 0, so a
+    // live decision never takes a power's key away from its socket.
+    assert.equal(key('1'), '3', 'R17: a decision never borrows a power key');
+    assert.equal(key('2'), '2', 'R17: a decision never borrows a power key');
+    assert.equal(key(), 'RMB / U', 'Line does not change while a decision is up');
+    setPromptDeck(null);
+    mounted.update(state, player, false);
+    assert.equal(key('1'), '3');
+    assert.equal(key('2'), '2');
     state.settings.controls.bindings.tether = [];
     mounted.update(state, player, true);
-    assert.equal(key(), '—', 'unbinding cannot silently restore a default key');
-    // G18-02 (b931aac851) made RMB the Line in every door and left the keyboard seat empty by
-    // default, so an empty `tether` binding now means "the mouse owns it", not "no Line". The axes
-    // stay advertised because RMB really does control them; only the key label clears.
+    assert.equal(key(), 'RMB', 'clearing the keyboard binding leaves the mouse binding');
     assert.match(socket().getAttribute('data-why'), /Hold RMB for line control: .*REEL/,
       'the mouse Line still names the axes it really has');
     state.settings.controls.bindings.tether = ['KeyU'];
@@ -182,7 +192,7 @@ test('the mounted Cluster follows live rebinds, including an intentionally unbou
     mounted.update(state, player, true);
     assert.doesNotMatch(socket().getAttribute('data-why'), /REEL|PAY OUT|ORBIT|PUMP/,
       'the active-line context disappears when the line is cut');
-  } finally { mounted?.dispose(); globalThis.document = previous; }
+  } finally { setPromptDeck(null); mounted?.dispose(); globalThis.document = previous; }
 });
 
 test('the Cluster writes each tip to a hoverable, focusable socket (the tier-2 seat)', () => {
@@ -238,8 +248,12 @@ test('D240: the live context strip is a measured obstacle again, for arrows and 
     'doctrine tells yield to the same measured strip');
   // ...and the tells resolve their seat from that reserved pool (74e6020171 replaced the per-frame
   // obstacle array with a reused blocker pool, so the call takes `reserved`, not a spread literal).
-  assert.match(src, /resolveDoctrineTellPlacement\(w, h, proj, slotIndex, reserved,/,
-    'the tell seat is solved against the reserved strip and touch controls');
+  // dbe362bec1 / HUD-2 item 9: on desktop only the most urgent threat gets a chip, anchored at
+  // the edge it comes from (slot 0, edgeAnchor) and still solved against the reserved pool.
+  assert.match(src, /resolveDoctrineTellPlacement\(\s*w, h, proj, 0, reserved, null, slot\.geometry,\s*\{ edgeAnchor: true/,
+    'the desktop threat chip is edge-anchored and solved against the reserved strip and touch controls');
+  assert.match(src, /resolveDoctrineTellPlacement\(w, h, proj, slotIndex, blockers,/,
+    'the phone seat solves against the reserved strip plus the deck avoid rects');
 });
 
 test('a settled Cluster frame writes nothing: springs at rest ignore a repeat target', async () => {

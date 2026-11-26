@@ -46,10 +46,14 @@ ${ST} > .sf-statistics.k-stage, ${ST} > .sf-statistics.k-hang { grid-area:stage 
   animation:none !important; max-width:min(780px, 100%) !important; ${PLAIN} }
 ${ST} > .sf-statistics.k-stage::before { content:""; position:absolute; z-index:-1; inset:-24px -48px -20px -40px; pointer-events:none;
   background:radial-gradient(closest-side, rgb(4 6 9 / .78), rgb(4 6 9 / .52) 60%, rgb(4 6 9 / 0)); }
-/* each reading band is one hairline card (shadcn-ish), matching the empty-state promise-scale */
+/* each reading band is one hairline card (shadcn-ish), matching the empty-state promise-scale.
+   The face uses the house E0 tokens — at the first alphas (.18/.025) the cards vanished against
+   the lit backdrop and the wall read as loose hairlines (bench 2026-11-14). */
 ${ST} .sf-statistics__group {
   margin:0 0 clamp(12px, 1.8vh, 22px); padding:clamp(10px, 1.3vh, 16px) clamp(12px, 1.4vw, 18px);
-  border:1px solid rgb(${BONE} / .18); border-radius:10px; background:rgb(${BONE} / .025);
+  border:1px solid rgb(${BONE} / .3); border-radius:10px;
+  background:var(--sf-face, rgb(8 11 16 / .8));
+  box-shadow:var(--sf-edge, inset 0 1px 0 rgb(236 230 216 / .1), inset 0 -1px 0 rgb(0 0 0 / .5));
   box-sizing:border-box; }
 ${ST} .sf-statistics__group > .k-caps {
   ${LABEL} margin:0 0 clamp(6px, .9vh, 12px); padding:0; display:flex; align-items:center; gap:12px;
@@ -67,10 +71,38 @@ ${ST} .sf-statistics .k-row {
   border:0 !important; border-top:1px solid rgb(${BONE} / .14) !important; ${PLAIN} }
 ${ST} .sf-statistics .k-rows > .k-row:first-child { border-top:0 !important; padding-top:2px !important; }
 ${ST} .sf-statistics .k-rows > .k-row:last-child { border-bottom:0 !important; padding-bottom:2px !important; }
-/* career instrument: same hairline card language as the reading bands (pool stays behind) */
+/* a fresh ledger: the same cards, with the count and the next real mark — never a "not yet" tag */
+${ST} .orr-statistics__marks { display:flex; flex-direction:column; gap:clamp(12px, 1.8vh, 22px); min-width:0; }
+${ST} .orr-statistics__mark-group {
+  margin:0; padding:clamp(10px, 1.3vh, 16px) clamp(12px, 1.4vw, 18px);
+  border:1px solid rgb(${BONE} / .3); border-radius:10px;
+  background:var(--sf-face, rgb(8 11 16 / .8));
+  box-shadow:var(--sf-edge, inset 0 1px 0 rgb(236 230 216 / .1), inset 0 -1px 0 rgb(0 0 0 / .5));
+  box-sizing:border-box; }
+${ST} .orr-statistics__mark-group > .k-caps {
+  ${LABEL} margin:0 0 clamp(6px, .9vh, 12px); padding:0; display:flex; align-items:center; gap:12px;
+  font-size:12px !important; letter-spacing:.22em !important; color:rgb(${BONE} / .9) !important; ${HALO} }
+${ST} .orr-statistics__mark-rows { list-style:none; margin:0; padding:0; }
+${ST} .orr-statistics__mark {
+  display:grid; grid-template-columns:minmax(0, 1fr) auto; grid-template-areas:"name value" "next next";
+  column-gap:16px; row-gap:2px; align-items:baseline;
+  padding:clamp(6px, .7vh, 10px) 0; border-top:1px solid rgb(${BONE} / .14); }
+${ST} .orr-statistics__mark-rows > .orr-statistics__mark:first-child { border-top:0; padding-top:2px; }
+${ST} .orr-statistics__mark-name { grid-area:name; ${BODY} font-size:clamp(14px, .9vw, 17px); font-weight:550; color:rgb(${WARM}); }
+${ST} .orr-statistics__mark-value { grid-area:value; ${NUMERAL} font-size:clamp(16px, 1.2vw, 22px); color:var(--dp-phos, #dfeeff); text-align:right; }
+${ST} .orr-statistics__mark-next { grid-area:next; ${BODY} font-size:clamp(12px, .8vw, 14.5px); line-height:1.35; color:rgb(${BONE} / .78); }
+@media (max-height:460px) {
+  ${ST} .orr-statistics__mark-group { padding:6px 8px; border-radius:6px; }
+  ${ST} .orr-statistics__mark { padding:2px 0; }
+  ${ST} .orr-statistics__mark-name, ${ST} .orr-statistics__mark-next { font-size:12px; }
+  ${ST} .orr-statistics__mark-value { font-size:12px; }
+}
+/* career instrument: same card language as the reading bands (pool stays behind) */
 ${ST} .orr-statistics__career {
-  border:1px solid rgb(${BONE} / .18) !important; border-radius:10px !important;
-  background:rgb(${BONE} / .025) !important; box-sizing:border-box !important;
+  border:1px solid rgb(${BONE} / .3) !important; border-radius:10px !important;
+  background:var(--sf-face, rgb(8 11 16 / .8)) !important;
+  box-shadow:var(--sf-edge, inset 0 1px 0 rgb(236 230 216 / .1), inset 0 -1px 0 rgb(0 0 0 / .5)) !important;
+  box-sizing:border-box !important;
   padding:clamp(12px, 1.5vh, 20px) clamp(14px, 1.5vw, 22px) !important; }
 ${ST} .sf-statistics .k-row__name {
   ${BODY} font-size:clamp(14px, min(.95vw, 1.7vh), 18px) !important; font-weight:500; line-height:1.3;

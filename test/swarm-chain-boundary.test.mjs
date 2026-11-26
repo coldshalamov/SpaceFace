@@ -152,7 +152,7 @@ test('the settlement beat is shorter than the lapse window — the structural ha
   );
 });
 
-test('a live chain crosses the real boundary — cleanup drains, draft and intro do not', () => {
+test('a live chain crosses the real boundary — cleanup drains, the breath and intro do not', () => {
   const h = boot();
   reachFirstWave(h);
   for (let i = 0; i < 3; i++) { kill(h, 'direct'); ticks(h, 10); }
@@ -165,19 +165,11 @@ test('a live chain crosses the real boundary — cleanup drains, draft and intro
   tick(h);
   assert.equal(h.state.run.phase, 'cleanup');
   ticks(h, SWARM_CLEANUP_TICKS);
-  assert.equal(h.state.run.phase, 'draft', 'the armory opens on the beat');
+  // R3: round 1 has no shop — the run passes through the breath straight into the next intro.
+  assert.ok(['draft', 'wave_intro'].includes(h.state.run.phase), `the breath, got ${h.state.run.phase}`);
   assert.equal(swarmChain.chainState().chain, chain, 'cleanup alone cannot eat the window');
-
-  // The player reads the shelf for ten sim-seconds — pinned, so the clock cannot drain.
-  ticks(h, 600);
-  assert.equal(h.state.run.phase, 'draft', 'the armory waits on the player');
-  assert.equal(swarmChain.chainState().chain, chain, 'shopping is not killing the chain');
   assert.equal(named(h, 'swarm:chainBroken').length, breaksBefore, 'no lapse mid-stop');
-
-  resolveDraft(h);
-  tick(h);
-  assert.equal(h.state.run.phase, 'wave_intro');
-  ticks(h, SURVIVAL_WAVE_INTRO_TICKS + 2);
+  ticks(h, SURVIVAL_WAVE_INTRO_TICKS + 4);
   assert.equal(h.state.run.phase, 'active');
   assert.equal(h.state.run.wave, 2);
 
@@ -222,11 +214,8 @@ test('cleanup is live fight time — a straggler kill there feeds the SAME chain
     chain + 2,
     'a cleanup kill continues the chain — and re-arms the window for the crossing',
   );
-  ticks(h, 20);
-  assert.equal(h.state.run.phase, 'draft');
-
-  resolveDraft(h);
-  ticks(h, SURVIVAL_WAVE_INTRO_TICKS + 4);
+  // R3: no shop after round 1 — the breath passes straight into round 2's intro.
+  ticks(h, 20 + SURVIVAL_WAVE_INTRO_TICKS + 4);
   assert.equal(h.state.run.phase, 'active');
   assert.equal(h.state.run.wave, 2);
   assert.equal(swarmChain.chainState().chain, chain + 2, 'and it lands intact on wave two');

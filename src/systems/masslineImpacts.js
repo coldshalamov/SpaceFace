@@ -27,11 +27,12 @@
 
 import { isIntactMawWorksiteBody } from '../missions/mawWorksite.js';
 import { massline2Flag } from '../data/featureFlags.js';
+import { pilotHas } from '../data/pilotTree.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { isHostileToPlayer } from './scanner.js';
 
 const WHIP_IMPACT_MIN_SPEED = 25;   // wu/s — mirrors SNAP_CATCH_MIN_SPEED ("genuinely moving")
-const WHIP_IMPACT_SOLID = 55;       // wu/s relSpeed — rating floor for a 'solid' hit
+export const WHIP_IMPACT_SOLID = 55; // wu/s relSpeed — rating floor for a 'solid' hit
 const WHIP_IMPACT_CRUSHING = 95;    // wu/s relSpeed — 'crushing' floor; also the severity ceiling
 const WHIP_SLING_WINDOW_S = 6;      // s — a released mass stays "the player's whip" this long
 const WHIP_CONTACT_PAD = 0.5;       // wu — overlap tolerance (physics rests solids at ~touching)
@@ -64,6 +65,7 @@ export const masslineImpacts = {
   init(ctx) {
     this.state = ctx.state;
     this.bus = ctx.bus || null;
+    this.registry = ctx.registry;
     // Per-run trackers. System-private, like masslineThreats' throttle state.
     // _latch tracks the mass while it is on the line; _sling tracks the last released mass for a
     // bounded ballistic window. Both carry per-victim throttles; the sling inherits them so a
@@ -131,6 +133,11 @@ export const masslineImpacts = {
     if (this._sling) {
       const mass = getEntity(state, this._sling.massId);
       if (mass && mass.pos && mass.vel) {
+        // The visible mouth can take the released body before the hull envelope's whip recoil.
+        if (state.run?.wave === 5) {
+          const bossId = this.registry?.get?.('capitalBossEncounters')?.trySwarmMawIntake?.(mass);
+          if (bossId != null) this._sling.warned.add(bossId);
+        }
         this._scanForImpacts(runtime, state, dt, now, mass, this._sling.warned, true);
       }
     }
@@ -268,6 +275,13 @@ export const masslineImpacts = {
   _emitImpact(runtime, state, now, mass, victim, relSpeed, massSpeed, slung) {
     const tick = Number.isFinite(state.tick) ? state.tick : null;
     const massKg = Math.max(0, finite(mass.mass, 0));
+    // OVH-01c2 rigger_crane — a body still ON your line hits as if it were twice as heavy. This
+    // record's momentum is the damage-relevant read every consumer routes (combat.js's whip
+    // damage on the struck body, masslineImpactDamage's recoil on the club), so the towed mass
+    // reads double there and nowhere else: `mass` above stays the honest tonnage, a released
+    // sling (slung) is the plain throw it always was, and the tracker only ever follows the
+    // player's own line.
+    const towedMassMult = !slung && pilotHas(state, 'rigger_crane') ? 2 : 1;
     const rating = relSpeed >= WHIP_IMPACT_CRUSHING ? 'crushing'
       : relSpeed >= WHIP_IMPACT_SOLID ? 'solid'
       : 'glance';
@@ -289,7 +303,8 @@ export const masslineImpacts = {
       relSpeed,
       massSpeed,
       mass: massKg,
-      momentum: massKg * relSpeed,     // the damage-relevant read for the rung-14 consumer
+      momentum: massKg * relSpeed * towedMassMult, // the damage-relevant read for the rung-14 consumer
+      towedMassMult,
       slung,
       severity: clamp01(relSpeed / WHIP_IMPACT_CRUSHING),
       rating,
@@ -357,10 +372,12 @@ export const masslineImpacts = {
 // Contact this tick: already inside the padded combined radius, OR the relative ballistic path
 // crosses the (unpadded) combined radius within dt (swept test — same closest-approach math as
 // masslineThreats' timeToImpact, horizon = one tick, so a fast crossing can't tunnel).
-function whipContactRadius(e) {
-  // The authored Maw has a breathing-footprint collider wider than its nominal
-  // gameplay radius. Detect contact at that real shell, before physics separates it.
-  return Math.max(0, isIntactMawWorksiteBody(e) && Number.isFinite(e.physicsBody?.radius)
+export function whipContactRadius(e) {
+  // The authored Maw and the opening's throw rock have wider physical shells.
+  // Their contacts must be readable at those shells after collision separation.
+  const raidRock = e.type === 'asteroid' && e.data?.onboarding === true
+    && e.data.raidRole === 'throwRock' && e.data.typeId === 'ast_raid_throw_rock';
+  return Math.max(0, (raidRock || isIntactMawWorksiteBody(e)) && Number.isFinite(e.physicsBody?.radius)
     ? e.physicsBody.radius : finite(e.radius, 0));
 }
 function inContact(mass, e, rvx, rvz, dt) {

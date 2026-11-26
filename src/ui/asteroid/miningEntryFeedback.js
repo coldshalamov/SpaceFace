@@ -12,7 +12,7 @@ export function firstTunnelControl(drill, controls, tier = 1) {
   if (!Array.isArray(field) || !Number.isInteger(avatar?.col) || !Number.isInteger(avatar?.row)) return null;
   for (const [direction, dc, dr] of CANDIDATES) {
     const tile = field[avatar.col + dc]?.[avatar.row + dr];
-    if (!tile?.type || (tile.type === 'empty' && tile.structure)
+    if (!tile?.type || tile.type === 'gas' || (tile.type === 'empty' && tile.structure)
       || (tile.type !== 'empty' && (tile.tierReq || 1) > tier)) continue;
     const code = (controls?.[direction] || []).find(key =>
       !['Escape', 'Tab', 'KeyB', 'KeyZ'].includes(key) && !/^Digit[1-9]$/.test(key)

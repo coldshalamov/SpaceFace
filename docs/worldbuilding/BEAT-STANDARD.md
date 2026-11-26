@@ -25,8 +25,6 @@ The reader is `src/story/beatStandard.js`. The gate is:
 node scripts/check-beat-standard.mjs
 ```
 
-Do not register that gate in dirty `scripts/check-program-docs.mjs`.
-
 Required keys:
 
 | Key | Meaning |

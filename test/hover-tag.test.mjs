@@ -162,11 +162,36 @@ test('comparison modes reject typos and can switch on an already-visible tag', (
   }
 });
 
-import { hoverTagVitals } from '../src/ui/orrery/hoverTag.js';
+import { hoverTagVitals, createHoverTag, paintHoverTagVitals } from '../src/ui/orrery/hoverTag.js';
 
 test('vitals report only the layers a body actually has, clamped to 0..1', () => {
   assert.equal(hoverTagVitals(null), null);
   assert.equal(hoverTagVitals({ type: 'asteroid' }), null, 'a rock carries no hull stat');
   const v = hoverTagVitals({ hull: 30, hullMax: 60, shield: 90, shieldMax: 60, armorHp: 0, armorMax: 0 });
   assert.deepEqual(v, { shield: 1, armor: null, hull: 0.5 });
+});
+
+test('hover tag renders straight horizontal micro-bars with zero circular arc dials (no rings around things, owner 2026-11-23)', () => {
+  const createdTags = [];
+  const makeNode = (tag) => {
+    createdTags.push(tag);
+    const node = { tag, children: [], style: {}, attrs: {}, className: '', hidden: false,
+      setAttribute(k, v) { this.attrs[k] = v; },
+      appendChild(c) { this.children.push(c); return c; } };
+    return node;
+  };
+  const head = makeNode('head');
+  const doc = {
+    head,
+    getElementById: () => null,
+    createElement: (t) => makeNode(t),
+    createElementNS: (_ns, t) => makeNode(t),
+  };
+  const tag = createHoverTag(doc);
+  assert.equal(tag.fills.shield.gauge, null, 'no circular arcGauge on hover tag vitals');
+  assert.equal(tag.fills.hull.gauge, null, 'no circular arcGauge on hover tag vitals');
+  assert.ok(!createdTags.includes('circle'), 'leader anchor uses diamond polygon, not circle');
+  paintHoverTagVitals(tag, { hull: 50, hullMax: 100, shield: 25, shieldMax: 100 });
+  assert.equal(tag.fills.hull.fill.style.transform, 'scaleX(0.500)');
+  assert.equal(tag.fills.shield.fill.style.transform, 'scaleX(0.250)');
 });

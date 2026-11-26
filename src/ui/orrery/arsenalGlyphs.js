@@ -24,6 +24,8 @@ const raw = {
   shunt: [P('M3 5H8L13 12 8 19H3L8 12Z M14 5 20 12 14 19 M20 3V8 M20 16V21')],
   'vector-mine': [C(12,12,4), P('M12 2V6 M12 18V22 M2 12H6 M18 12H22 M8 4 12 2 16 4 M20 8 22 12 20 16 M8 20 12 22 16 20 M4 8 2 12 4 16')],
   carom: [P('M4 19 11 12 4 5 M11 12 18 19 M11 12 18 5'), C(18,12,2)],
+  // The Tumbler: a long bolt into a body that spins end over end.
+  tumble: [P('M2 12H10'), P('M16 6A6 6 0 1 1 11 15'), P('M11 15 14 16 13 13')],
   swarm: [P('M5 19V9L7 5 9 9V19Z M11 19V9L13 5 15 9V19Z M17 19V9L19 5 21 9V19Z M3 22H9 M11 22H17 M17 22H23')],
   // The plasma fan is a WEAPON (a spread of bolts); the Rig's forward plow below keeps `cone`. They were
   // both literally `cone`, the later literal silently replaced the earlier, and two different jobs
@@ -56,14 +58,14 @@ const raw = {
   ballast: [P('M7 4H17L20 9V18L16 21H8L4 18V9Z M8 8H16 M8 12H16 M8 16H16 M2 4V9 M22 4V9')],
   charge: [P('M6 7 12 3 18 7V15L12 19 6 15Z M9 9H15 M12 6V12 M3 18H7 M17 18H21 M8 22H16')],
   detonate: [P('M12 2 14 8 21 5 17 11 23 14 16 15 16 22 11 17 5 22 7 15 1 12 8 10 6 3Z')],
-  massline: [C(4,19,2), P('M5 17 17 5 M13 3H21V11 M17 5 21 3 M9 11 13 15')],
+  massline: [C(5,19,2.4), C(19,5,2.4), P('M6.7 17.3 17.3 6.7 M9 11 13 15 M11 9 15 13')],
   seed: [C(12,12,4), P('M12 2V6 M12 18V22 M2 12H6 M18 12H22 M5 5 7 7 M17 17 19 19 M5 19 7 17 M17 7 19 5')],
-  well: [C(12,12,3), P('M3 8Q5 2 11 3 M3 8H8V3 M21 16Q19 22 13 21 M21 16H16V21 M8 21Q2 19 3 13 M16 3Q22 5 21 11')],
-  repulsor: [C(12,12,3), P('M9 9 3 3 M3 8V3H8 M15 15 21 21 M16 21H21V16 M15 9 21 3 M16 3H21V8 M9 15 3 21 M3 16V21H8')],
-  cone: [P('M3 10 20 3V21L3 14Z M9 8V16 M15 6V18 M4 12H20 M17 10 20 12 17 14')],
+  well: [C(12,12,1.1), P('M8 4C3 7 3 17 8 20 M16 4C21 7 21 17 16 20 M6.5 9.5 9 12 6.5 14.5 M17.5 9.5 15 12 17.5 14.5')],
+  repulsor: [C(12,12,2.5), P('M8 8 3.5 3.5V7.5 M3.5 3.5H7.5 M16 16 20.5 20.5V16.5 M20.5 20.5H16.5 M16 8 20.5 3.5V7.5 M20.5 3.5H16.5 M8 16 3.5 20.5V16.5 M3.5 20.5H7.5')],
+  cone: [P('M9 5Q12 3 15 5 M7 9Q12 5.5 17 9 M4.5 13Q12 7.5 19.5 13 M2 18Q12 10.5 22 18')],
   skim: [P('M3 15 7 20H17L21 15Z M5 4V12 M10 3V12 M15 5V12 M20 4V12 M8 9 10 12 12 9')],
   snare: [C(12,12,3), P('M4 5Q22 0 20 12Q18 24 5 18 M4 5 4 11 9 8 M5 18 10 17 M12 5V8 M19 12H16')],
-  gyre: [P('M2 10 11 5 M2 14 11 19 M3 12H8'), C(15,12,5), C(12,8,2), C(19,11,2), C(15,16,2), P('M17 3 21 6 M19 2 21 6 17 6')],
+  gyre: [C(12,12,2.4), P('M4 13A8 8 0 0 1 17 6L19.5 8.5V4.5 M19.5 8.5H15.5 M20 11A8 8 0 0 1 7 18L4.5 15.5V19.5 M4.5 15.5H8.5')],
   scan: [C(6,18,2), P('M6 12A6 6 0 0 1 12 18 M6 6A12 12 0 0 1 18 18 M6 2A16 16 0 0 1 22 18 M7 17 18 6')],
   time: [C(12,12,9), P('M12 5V12L16 15 M2 12H5 M19 12H22 M12 19V22')],
   bumper: [P('M7 21 12 13 17 21 M5 14Q12 4 19 14 M3 9Q12-2 21 9 M12 3V8')],
@@ -122,10 +124,10 @@ for (const [id, [base, extra]] of Object.entries(variants)) raw[id] = [...raw[ba
 const equipment = {
   callin_smart_bomb: 'smart-bomb', callin_orbital_lance: 'orbital-lance',
   mod_mining_laser_s: 'mining', mod_mining_beam_m: 'mining', mod_mining_pulverizer_l: 'mining', mod_mining_industrial_l: 'mining',
-  mod_repulsion_trap_s: 'trap', mod_tractor_beam_m: 'tractor', unique_tideline_tractor: 'tractor',
-  mod_elastic_whip_m: 'whip', unique_broken_ring_whip: 'whip', mod_frame_coupler_m: 'coupler',
-  mod_monofilament_sweep_m: 'filament', unique_no_cut_filament: 'filament', mod_transverse_snare_m: 'transverse',
-  mod_twin_bridle_m: 'bridle', unique_toll_saint_bridle: 'bridle', mod_mass_flail_rig_m: 'flail',
+  mod_repulsion_trap_s: 'trap', mod_tractor_beam_s: 'tractor', mod_tractor_beam_m: 'tractor', unique_tideline_tractor: 'tractor',
+  mod_elastic_whip_m: 'whip', mod_snap_whip_s: 'whip', unique_broken_ring_whip: 'whip', mod_frame_coupler_m: 'coupler',
+  mod_monofilament_sweep_m: 'filament', mod_serrated_sweep_s: 'filament', unique_no_cut_filament: 'filament', mod_transverse_snare_m: 'transverse',
+  mod_twin_bridle_m: 'bridle', mod_line_head_multi_latch: 'bridle', unique_toll_saint_bridle: 'bridle', mod_mass_flail_rig_m: 'flail',
   mod_swing_drive_s: 'swing', mod_swing_drive_m: 'swing', mod_veil_step: 'blink',
   mod_cloak_mk1: 'cloak', mod_cloak_mk2: 'cloak', unique_quietcloak: 'cloak',
   mod_charge_rack: 'charge', mod_charge_vector_rack: 'vector-mine',
@@ -198,8 +200,63 @@ export function arsenalGlyphKey(id) {
 
 const escape = value => String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
 
-export function arsenalIcon(id, size = 24, label = '') {
-  const paths = arsenalGlyph(id);
+const flightGlyphs = Object.freeze({
+  // Pull: converging arrows on a point.
+  field_well_standard: [
+    { ...P('M12 1.5v6.8m-3.1-3L12 8.5l3.1-3.2M22.5 12h-6.8m3-3.1L15.5 12l3.2 3.1M12 22.5v-6.8m-3.1 3L12 15.5l3.1 3.2M1.5 12h6.8m-3-3.1L8.5 12l-3.2 3.1'), 'stroke-linecap': 'square' },
+    { ...C(12, 12, 1.8), fill: 'currentColor', stroke: 'none' },
+  ],
+  // Shove: a pressure front bursting forward from a ship bow.
+  field_repulsor_standard: [
+    { ...P('M2 8.2L8.2 12 2 15.8 4.4 12Z'), fill: 'currentColor', stroke: 'none' },
+    { ...P('M10.4 5.2Q14.6 12 10.4 18.8'), 'stroke-width': '1.9' },
+    { ...P('M13.8 12h7.6M18.6 9.2L21.4 12l-2.8 2.8M13.2 7.2L19.4 4.2M13.2 16.8L19.4 19.8'), 'stroke-width': '1.65' },
+  ],
+  // Pin: a stake driven through a point with a small orbit arc.
+  field_seed_standard: [
+    { ...P('M8.2 3h7.6'), 'stroke-width': '1.9' },
+    { ...P('M10.5 3h3l-1 13.8L12 21l-.5-4.2Z'), fill: 'currentColor', stroke: 'none' },
+    { ...C(12, 13.6, 2.2), 'stroke-width': '1.5' },
+    { ...P('M4 12A8.4 3.8 -12 1 0 19.9 15.1'), 'stroke-width': '1.4' },
+    { ...C(19.6, 14.3, 1.3), fill: 'currentColor', stroke: 'none' },
+  ],
+  // Bomb: a charge with a blinking fuse lamp.
+  power_charge: [
+    { ...P('M6.8 9.6L9.2 7.2h5.6l2.4 2.4v8.2l-2.4 2.4H9.2l-2.4-2.4Z'), 'stroke-width': '1.65' },
+    { ...P('M6.8 14h10.4M10.2 11h3.6M10.5 7.2V5.4h3v1.8'), 'stroke-width': '1.45' },
+    { tag: 'circle', class: 'arsenal-fuse-lamp', cx: '12', cy: '3.2', r: '1.9', fill: 'currentColor', stroke: 'none' },
+    { tag: 'path', class: 'arsenal-fuse-rays', d: 'M7.2 3.2h1.6M15.2 3.2h1.6M9.1 1.1l1.1 1.1M14.9 1.1l-1.1 1.1', 'stroke-width': '1.25' },
+  ],
+  bomb_frag: [
+    { ...P('M6.8 9.6L9.2 7.2h5.6l2.4 2.4v8.2l-2.4 2.4H9.2l-2.4-2.4Z'), 'stroke-width': '1.65' },
+    { ...P('M6.8 14h10.4M10.2 11h3.6M10.5 7.2V5.4h3v1.8'), 'stroke-width': '1.45' },
+    { tag: 'circle', class: 'arsenal-fuse-lamp', cx: '12', cy: '3.2', r: '1.9', fill: 'currentColor', stroke: 'none' },
+    { tag: 'path', class: 'arsenal-fuse-rays', d: 'M7.2 3.2h1.6M15.2 3.2h1.6M9.1 1.1l1.1 1.1M14.9 1.1l-1.1 1.1', 'stroke-width': '1.25' },
+  ],
+  // Plow: a wedge at a bow pushing three rocks.
+  field_cone_standard: [
+    { ...P('M9.2 21.5L12 17.8l2.8 3.7'), 'stroke-width': '1.75' },
+    { ...P('M2.8 16.2L12 11.4l9.2 4.8M6.2 17.6L12 14.6l5.8 3'), 'stroke-width': '1.75' },
+    { ...P('M10 6.4L12 4.1l2.2 1.8-.8 2.8h-2.8Z M3.8 10.4L6 8l2.5 1.4-.8 2.7H4.8Z M15.5 9.4L18 8l2.2 2.4-.9 1.7h-2.9Z'), fill: 'currentColor', 'stroke-width': '1.1' },
+  ],
+  field_skim_standard: [
+    { ...P('M9.2 21.5L12 17.8l2.8 3.7'), 'stroke-width': '1.75' },
+    { ...P('M2.8 16.2L12 11.4l9.2 4.8M6.2 17.6L12 14.6l5.8 3'), 'stroke-width': '1.75' },
+    { ...P('M10 6.4L12 4.1l2.2 1.8-.8 2.8h-2.8Z M3.8 10.4L6 8l2.5 1.4-.8 2.7H4.8Z M15.5 9.4L18 8l2.2 2.4-.9 1.7h-2.9Z'), fill: 'currentColor', 'stroke-width': '1.1' },
+  ],
+  // Line: a hook on a cable (clear open J-hook + barb on a taut diagonal cable).
+  power_massline: [
+    { ...C(3.8, 19.6, 1.8), 'stroke-width': '1.65' },
+    { ...P('M5.3 18.2C8.4 15.2 10.6 13.8 13.6 10.8'), 'stroke-width': '1.75' },
+    { ...P('M12.4 9.6l2.4 2.4'), 'stroke-width': '1.6' },
+    { ...P('M13.6 10.8l3.5-3.5c1.8-1.8 4.4-.9 4.5 1.5.1 2.2-1.8 4.2-4.2 3.9l1.3-1.8'), 'stroke-width': '1.9' },
+  ],
+});
+
+export function arsenalIcon(id, size = 24, label = '', flight = false) {
+  const flightKey = flight && typeof id === 'string' && !Object.hasOwn(flightGlyphs, id) && id.startsWith('bomb_')
+    ? 'power_charge' : id;
+  const paths = (flight && Object.hasOwn(flightGlyphs, flightKey) && flightGlyphs[flightKey]) || arsenalGlyph(id);
   if (!paths) return '';
   const dimension = Number.isFinite(Number(size)) ? Math.max(8, Math.min(128, Number(size))) : 24;
   return `<svg xmlns="http://www.w3.org/2000/svg" class="dp-icon arsenal-icon" viewBox="0 0 24 24" width="${dimension}" height="${dimension}" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" ${label ? `role="img" aria-label="${escape(label)}"` : 'aria-hidden="true" focusable="false"'} data-arsenal="${escape(id)}">${paths.map(({ tag, ...attrs }) => `<${tag} ${Object.entries(attrs).map(([key, value]) => `${key}="${escape(value)}"`).join(' ')}/>`).join('')}</svg>`;

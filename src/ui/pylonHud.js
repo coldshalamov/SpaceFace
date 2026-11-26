@@ -107,8 +107,8 @@ export function resolvePylonHud(state) {
     // Moving the aim makes the compact/strong versus long/thin tradeoff visible without a press.
     preview = { span: next.span, capacity: pylonCapacityForSpan(next.span), cost: DEF.endpointCostCredits };
     const span = Math.round(preview.span), capacity = Math.round(preview.capacity);
-    if (!status || status === 'PYLON DOWN') status = `${span} u · ${capacity} SHIELD · ${preview.cost} CR`;
-    else op += ` · ${span}u/${capacity}SP`; // a standing wall's resource/warning remains first
+    if (!status || status === 'PYLON DOWN') status = `${span} m · ${capacity} SHIELD · ${preview.cost} CR`;
+    else op += ` · ${span} m · ${capacity} SP`; // a standing wall's resource/warning remains first
   } else if (!next.ok && PLACEMENT_HINTS[next.reason]) {
     op = PLACEMENT_HINTS[next.reason];
   }

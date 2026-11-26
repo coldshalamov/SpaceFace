@@ -117,6 +117,52 @@ test('live chase publishes the displayed industrial pose for the worker projecto
   assert.notEqual(camera.composition().mode,CameraDirectorMode.INDUSTRIAL);
 });
 
+test('the live opening camera fits the ship and its marked mining rock at the saved approach', () => {
+  const h = fixture();
+  h.player.pos = { x: 577.55, z: -99.35 };
+  h.player.radius = 14;
+  h.clamp.type = 'asteroid';
+  h.clamp.pos = { x: 658, z: -236 };
+  h.clamp.radius = 22;
+  h.clamp.data = {};
+  h.state.player.targetId = null;
+  h.state.settings = { video: { fov: 50 }, gameplay: { steeringView: 'overhead' } };
+  h.state.camera = { zoom: 144, tilt: 60, lookAhead: 18, lerp: 6, trauma: 0 };
+  h.state.input = {};
+  const viewport = { width: 1280, height: 720 };
+  const camera = createChaseCamera(h.state, { innerWidth: viewport.width, innerHeight: viewport.height });
+  camera.snapToPlayer();
+  const project = (body) => tableWorldToScreen(h.state, viewport, body.pos, {});
+  for (let i = 0; i < 120; i++) camera.follow(dt);
+  assert.equal(project(h.clamp).onScreen, false, 'the saved close approach puts the rock below the old frame');
+
+  h.state.nav = { waypoint: { onboarding: true, markerId: 'onboarding:seam', pos: h.clamp.pos,
+    presentationEntityId: h.clamp.id, presentationEntityGeneration: h.clamp.occupantGeneration } };
+  for (let i = 0; i < 120; i++) camera.follow(dt);
+  assert.equal(camera.composition().mode, CameraDirectorMode.INDUSTRIAL);
+  for (const body of [h.player, h.clamp]) {
+    const mark = project(body);
+    assert.ok(mark.onScreen && mark.x > 64 && mark.x < 1216 && mark.y > 36 && mark.y < 684);
+  }
+  assert.equal(h.state.player.targetId, null, 'camera composition leaves aiming selection to the pilot');
+  assert.equal(h.state.settings.gameplay.steeringView, 'overhead');
+
+  const course = { kind: 'nav', label: '47-A Recovery Site', pos: { ...h.clamp.pos } };
+  h.state.onboarding = { active: true, plottedSeam: { ...h.state.nav.waypoint, label: course.label, coursePos: course.pos } };
+  h.state.nav.waypoint = course;
+  for (let i = 0; i < 120; i++) camera.follow(dt);
+  assert.equal(camera.composition().mode, CameraDirectorMode.INDUSTRIAL,
+    'selecting the real site in the Chart keeps work framing');
+  assert.equal(h.state.nav.waypoint, course);
+
+  // The same recyclable id may immediately belong to an unrelated asteroid.
+  h.state.entities.set(h.clamp.id, { ...h.clamp, occupantGeneration: 2, pos: { x: 700, z: -160 } });
+  camera.follow(dt);
+  assert.equal(camera.composition().mode, CameraDirectorMode.RECOVER);
+  for (let i = 0; i < 60; i++) camera.follow(dt);
+  assert.equal(camera.composition().mode, CameraDirectorMode.FOLLOW);
+});
+
 test('reduced-motion work framing remains continuous and returns to ordinary flight', () => {
   const h=fixture();h.state.settings={video:{fov:50,motionReduce:true},gameplay:{steeringView:'overhead'}};
   h.state.camera={zoom:144,tilt:60,lookAhead:18,lerp:6,trauma:0};h.state.input={aimWorld:null};

@@ -188,3 +188,19 @@ test('the actual catalog request cannot spend or chart RATCHET while guidance de
   assert.ok(f.state.rigWorkshop.bench);
   assert.deepEqual(f.state.encounterDirector.live, {}, 'charting leaves no empty encounter blocking the story');
 });
+
+test('the first job after the opening keeps the harbour calm for a few minutes of flight', async () => {
+  const { isOpeningSettling, OPENING_SETTLE_S } = await import('../src/onboarding/opportunityAdmission.js');
+  const base = { settings: { gameplay: { tutorialHints: true } }, missions: { active: [] } };
+  assert.equal(isOpeningSettling({ ...base, simTime: 5, onboarding: { active: true, finished: false } }), true,
+    'the rail itself is calm');
+  assert.equal(isOpeningSettling({ ...base, simTime: 100, onboarding: { active: false, finished: true, finishedAt: 90 } }), true,
+    'a job taken at the first berth still has the harbour to itself');
+  assert.equal(isOpeningSettling({ ...base, simTime: 90 + OPENING_SETTLE_S, onboarding: { active: false, finished: true, finishedAt: 90 } }), false,
+    'the world resumes after the settle window');
+  assert.equal(isOpeningSettling({ ...base, simTime: 9999, onboarding: { active: false, finished: true } }), false,
+    'a loaded save with no finish stamp starts settled');
+  const freight = { source: 'firstTradeContract', status: 'active', deadline_s: 2000 };
+  assert.equal(isOpeningSettling({ ...base, simTime: 1500, missions: { active: [freight] }, onboarding: { finished: true, finishedAt: 10 } }), true,
+    'the live first trade run keeps the hold');
+});

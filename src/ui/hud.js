@@ -20,22 +20,28 @@ import { mountIonStormHud } from './ionStormHud.js';
 import { mountTravelVectorHud } from './travelVectorHud.js';
 import { createTargetPanel, targetDisplayName, authoredSiteRosterDetail, isWorldSiteWorkTarget as isWorldSiteWorkTargetEntity } from './targetPanel.js';
 import { createFloatingText } from './floatingText.js';
-import { createAvoidRects, invalidateAvoidRects } from './hudAvoidRects.js';
+import { afterLayout, createAvoidRects, invalidateAvoidRects } from './hudAvoidRects.js';
+import { frameCostFixOn } from '../render/frameCostSwitches.js';
+import { createFrameTaskScheduler } from '../core/frameTaskScheduler.js';
 import { seatPhoneTell } from './phoneTellSeat.js';
 import { createDamageIndicators } from './damageIndicators.js';
 import { buildReducedMotionContactCue } from './reducedMotionInformation.js';
 import { createHudMeta, HUD_META_CSS } from './hudMeta.js';
 import { icon } from './station/icons.js';
 import { glyphSvg, hasGlyph } from './glyphs.js';
-import { wantedAlertText, wantedReasonText } from './wantedReason.js';
+import { itemThumbHtml, injectItemThumbnailStyles } from './icons/itemThumbnails.js';
+import { wantedAlertText, wantedKindText } from './wantedReason.js';
 import { formatCount } from './numberFormat.js';
-import { reservedCargoQty, salvageBayReading, sellableCargoQty } from '../systems/cargo.js';
+import { reservedCargoQty, salvageBayReading, sellableCargoQty, unitsPerSlotFor } from '../systems/cargo.js';
+import { freeSlotCount, packItemsIntoSlots } from '../data/cargoSlots.js';
 import { planFuelCrack, FUEL_CELL_ID, FUEL_CELL_SIP } from '../systems/fuelCrack.js';
 import { COMMODITIES } from '../data/commodities.js';
+import { FIRST_TRADE_CONTRACT_SOURCE } from '../data/economyContractTemplates.js';
 import { laneInputWrite, laneWriteSetting } from '../core/simLaneCommands.js';
 import { SECTORS } from '../data/sectors.js';
 import { STORY_BEATS } from '../data/missions.js';
 import { CONTRACT_47A_B0_TAG } from '../systems/missionShared.js';
+import { CINDER_TAG, isCinderObjectiveContact } from '../missions/cinderRoute.js';
 import { PERSISTENT_CARGO } from '../data/narrative.js';
 import { SHIPS } from '../data/ships.js';
 import { evaluateArrivalCue, isEarnedSpeed, resolveThrusterCap } from '../core/flight/flightTelemetry.js';
@@ -49,8 +55,13 @@ import { localizeText } from '../localization/sourceText.js';
 import { journeyActForBeat, journeyActLabel, journeyActStoryClosed, journeyActTrackerLabel } from '../data/journeyActs.js';
 import { VENUE_SECTOR_ID as COUNTERWEIGHT_SECTOR_ID } from '../features/counterweightCircuit/definition.js';
 import { isRunSealed } from '../core/runSeal.js';
+import { WEAPONS } from '../data/weapons.js';
 import { SEMANTIC_PALETTE, getMotionReduced, getFlashReduced } from './accessibility.js';
-import { resolveWaypointPresentationPosition, resolveObjectiveGatePresentation } from './navigationWaypoint.js';
+import { enemyMindTell } from '../presentation/enemyMindTells.js';
+import { resolvePlottedSeamWorkpoint, resolveWaypointPresentationPosition, resolveObjectiveGatePresentation } from './navigationWaypoint.js';
+import { createVisorDockCue } from './orrery/visorDockCue.js';
+import { createFlightHelm } from './flightHelm.js';
+import { createCargoBag } from './cargoBag.js';
 import { crackerRunEntryGuidance } from './crackerRunGuidance.js';
 import { objectiveIsOffSector } from './objectiveSector.js';
 import { contactThreatTier, contactStateWord, isHostileToPlayer, isWreckLike, wreckScanned } from '../systems/scanner.js';
@@ -58,7 +69,8 @@ import { livingWorkStatusText } from '../data/contactHail.js';
 import { fuelReserveWarning } from './fuelReserveWarning.js';
 import { holdLeanChips } from './cargoConscience.js';
 import { verbAcceptsType } from '../data/interactionDescriptorCatalog.js';
-import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
+import { indexedTypeScan } from '../world/livingWorldViews.js';
+import { contactCensus } from './contactCensus.js';
 import { resolveWorldPresentationEntity } from '../world/presentationSources.js';
 import { presentationAllowsTargetLock } from '../core/presentationAdmission.js';
 import { objectiveText } from './sim/missionRecap.js';
@@ -72,7 +84,7 @@ import { ensureStuntCallout, releaseStuntCallout } from './stuntCallout.js';
 import { ensureFirstBeatCentre, releaseFirstBeatCentre } from './firstBeatCentre.js';
 import { settle as kitSettle, cue as kitCue, reducedMotion as kitReducedMotion } from './kit/index.js';
 import { createThreatHalo } from './threatHalo.js';
-import { isSwarmGlass } from './swarmGlass.js';
+import { isSwarmGlass, isSwarmHudActive } from './swarmGlass.js';
 import { targetBracketShape } from './targetBracket.js';
 import { flightBearingAngle, resolveFlightEdgePlacement, resolveSelectedTargetMarker } from './flightViewProjection.js';
 import { resolveSteeringView } from '../systems/racingSteer.js';
@@ -113,6 +125,7 @@ import {
   firstUseAttachKind,
   formatRosterCount,
   hudJobFromState,
+  resolveHudAttention,
   markFirstUseHint,
   noteFirstWantedMark,
   shouldShowFirstUseHint,
@@ -122,10 +135,16 @@ import {
   masslineInstrumentVisible,
   openingInstructionSolo,
   placeHudString,
+  alertVoiceChannel,
   receiptLaneRect,
+  resolveVoiceSeat,
   shipGlyphBox,
 } from './hudAttention.js';
+import { getStage } from './stage.js';
 import { counted, pluralWord } from './numberFormat.js';
+import { verbChipKey } from './controlPrompts.js';
+import { taughtLatchKey } from '../onboarding/verbSpeech.js';
+import { openingQuiet } from '../onboarding/openingQuiet.js';
 
 
 // ---- Aerospace Optical G-Lag & G-LOC simulation helpers (Blueprint Category D) ----
@@ -299,7 +318,7 @@ export function respawnToastText(payload = {}) {
   const refund = Math.max(0, Math.round(Number(payload.refundCr) || 0));
   if (refund > 0) parts.push('insurance +' + formatCount(refund, payload, { locale }) + ' cr');
   const cargoLostQty = Math.max(0, Math.round(Number(payload.cargoLostQty) || 0));
-  if (cargoLostQty > 0) parts.push('cargo lost ' + cargoLostQty + 'u');
+  if (cargoLostQty > 0) parts.push('cargo lost ' + cargoLostQty + ' units');
   else if (payload.cargoLost) parts.push('cargo lost');
   const invulnS = Math.max(0, Math.round(Number(payload.invulnS) || 0));
   if (invulnS > 0) parts.push(invulnS + 's shields online');
@@ -325,7 +344,7 @@ function mtRouteGuidance(state, waypoint) {
   }
   return {
     next: `Plot route to ${mtSectorName(waypoint.sectorId)}`,
-    summary: `${BINDINGS.starmap.label} Star Map`,
+    summary: `${BINDINGS.localmap.label} · Chart`,
   };
 }
 
@@ -421,7 +440,7 @@ export function objectiveTravelReadout(state, wp, out = null) {
     ? ((Number(vel.x) || 0) * (pos.x - player.pos.x) + (Number(vel.z) || 0) * (pos.z - player.pos.z)) / dist
     : 0;
   const etaS = closingSpeed > 5 ? dist / closingSpeed : null;
-  const distanceText = dist >= 1000 ? `${(dist / 1000).toFixed(1)}k u` : `${Math.round(dist)} u`;
+  const distanceText = dist >= 1000 ? `${(dist / 1000).toFixed(1)} km` : `${Math.round(dist)} m`;
   const etaText = etaS == null
     ? 'ETA —'
     : `ETA ${etaS < 60 ? `${Math.max(1, Math.round(etaS))}s` : `${Math.round(etaS / 60)}m`}`;
@@ -686,10 +705,38 @@ export function announceTermBreak(bus, payload) {
   return true;
 }
 
+/** Strip stale baked-in distance suffixes ("Beacon 419 u", "Relay 1.2 km") so the objective
+ *  never prints two competing distance units alongside the live metric readout. */
+export function sanitizeObjectiveLabel(text) {
+  const raw = String(text || '').replace(/\s+/g, ' ').trim();
+  if (!raw) return '';
+  const stripped = raw
+    .replace(/\s*(?:[·—–-]\s*)?\b\d+(?:\.\d+)?\s*(?:k?m|wu|u)\b\s*$/i, '')
+    .trim();
+  return stripped || raw;
+}
+
+const OBJECTIVE_ACTION_LEAD_VERB = /^(?:reach|fly|dock|deliver|recover|return|follow|escort|defend|clear|destroy|investigate|inspect|scan|mine|salvage|hail|open|enter|leave|head|approach|hold|break|collect|pick|bring|take|meet|find|track|tow|pull|catch|stop|protect|secure|assist|support|board|land|jump|cross|race|finish|check|visit|report|claim|build|repair|refit|buy|sell|trade|extract)\b/i;
+
+/** Ensure a navigation waypoint reads as a clear player verb ("Reach the beacon", "Fly to Helios
+ *  Station") rather than a bare noun with a stale unit ("Beacon 419 u"). */
+export function formatNavigationObjectiveAction(rawAction, wp = null) {
+  const clean = sanitizeObjectiveLabel(rawAction);
+  if (!clean) return 'Follow the marked route';
+  if (OBJECTIVE_ACTION_LEAD_VERB.test(clean)) return clean;
+  if (/^beacon$/i.test(clean)) return 'Reach the beacon';
+  if (/^(?:jump\s+gate|gate)$/i.test(clean)) return 'Reach the jump gate';
+  if (/^waypoint$/i.test(clean)) return 'Follow the marked route';
+  if (wp && wp.stationId && /station|hub|depot|yard|outpost|port/i.test(clean)) {
+    return `Fly to ${clean}`;
+  }
+  return `Fly to ${clean}`;
+}
+
 function mtObjectiveAction(action, wp) {
-  const verb = String(action || 'Open the Mission Log').trim();
+  const verb = sanitizeObjectiveLabel(action || 'Open the Mission Log') || 'Open the Mission Log';
   // Prefer the physical target label; sector name is the fallback for cross-sector guidance.
-  const destination = String(wp && (wp.label || wp.mapLabel || wp.sectorName) || '').trim();
+  const destination = sanitizeObjectiveLabel(wp && (wp.label || wp.mapLabel || wp.sectorName) || '');
   if (!destination || /\b(to|at|near)\b/i.test(verb) || verb.toLowerCase().includes(destination.toLowerCase())) return verb;
   return `${verb} · ${destination}`;
 }
@@ -756,7 +803,7 @@ export function resolveFlightObjectiveCommand(
  * can be flown to. Owned here so the arrow, its label and its accessible name share one gate.
  */
 export function objectiveMarkerLabel(label) {
-  return String(label).replace(/\s+/g, ' ').trim().toUpperCase().slice(0, 28) || 'OBJECTIVE';
+  return sanitizeObjectiveLabel(label).toUpperCase().slice(0, 28) || 'OBJECTIVE';
 }
 
 export function objectiveMarkerLine(state, label, travel) {
@@ -866,7 +913,7 @@ export function flightDestinationSurface(state, command, temporaryCircuit = fals
     const routeGuide = mtRouteGuidance(state, waypoint);
     if (routeGuide) {
       readings = [routeGuide.next, routeGuide.destination,
-        `${BINDINGS.starmap.label} Star Map`, deadline].filter(Boolean).join(' · ');
+        `${BINDINGS.localmap.label} · Chart`, deadline].filter(Boolean).join(' · ');
     } else if (travel.distanceText === 'ROUTE PENDING') {
       const gateFix = resolveObjectiveGatePresentation(state);
       if (gateFix && gateFix.pos) {
@@ -898,13 +945,18 @@ export function flightDestinationSurface(state, command, temporaryCircuit = fals
       return { show: true, urgent: false, actLine,
         line: `${localizeText(entry.label)}\n${localizeText('Entry buoy')} ${entryReading} · ${localizeText('Mouth')} ${reading}\n${localizeText(entry.instruction)}` };
     }
-    const travel = objectiveTravelReadout(state, wp);
+    const localLesson = resolvePlottedSeamWorkpoint(state, wp);
+    const displayFix = localLesson || wp;
+    const travel = objectiveTravelReadout(state, displayFix);
     const routeGuide = mtRouteGuidance(state, wp);
-    const action = mtObjectiveAction((wp && (wp.reason || wp.label)) || 'Follow the marked route', wp);
+    const rawAction = localLesson?.reason || (wp && (wp.reason || wp.label)) || 'Follow the marked route';
+    const action = localLesson?.reason || (wp && wp.reason)
+      ? mtObjectiveAction(rawAction, wp)
+      : formatNavigationObjectiveAction(rawAction, wp);
     const readings = routeGuide
       ? [routeGuide.next, routeGuide.destination,
-        `${BINDINGS.starmap.label} Star Map`].filter(Boolean).join(' · ')
-      : mtReadingsLine(objectiveBearingGlyph(state, wp), travel.distanceText,
+        `${BINDINGS.localmap.label} · Chart`].filter(Boolean).join(' · ')
+      : mtReadingsLine(objectiveBearingGlyph(state, displayFix), travel.distanceText,
         travel.etaS == null ? '' : travel.etaText);
     const dest = {
       show: true,
@@ -1060,14 +1112,15 @@ export function contactDisplayLimit(width, height) {
   return 5;
 }
 
-/** Selected contact, active threats and allies must never be buried under ambient traffic. */
+/** Selected contact and active objectives lead; threats and allies precede ambient traffic. */
 export function contactDisplayBand(contact, targetId) {
-  if (!contact) return 5;
+  if (!contact) return 6;
   if (contact.e && contact.e.id === targetId) return 0;
-  if (contact.hostile) return 1;
-  if (contact.ally) return 2;
-  if (contact.isWreck) return 3;
-  return 4;
+  if (contact.cinderObjective) return 1;
+  if (contact.hostile) return 2;
+  if (contact.ally) return 3;
+  if (contact.isWreck) return 4;
+  return 5;
 }
 
 /** Compact, truthful receipt for contacts omitted by the responsive row cap. */
@@ -1090,17 +1143,23 @@ export function contactOverflowSummary(contacts, visibleCount) {
 }
 
 /**
- * Wave G7 — the contacts list stays out of the flight HUD until the player locks something.
- * A pin, a nearby hostile, or a scan does not mount it. Half opacity is not hidden.
+ * Wave G7 — automatic reveals wait for a lock. An explicit pin can open a populated
+ * list before the pilot has selected a contact.
  */
-export function contactRosterVisible({ locked = false } = {}) {
-  return locked === true;
+export function contactRosterVisible({ locked = false, pinned = false, eligibleContactCount = 0, fight = false, opening = false } = {}) {
+  // The opening rail is the one voice. Unscanned wrecks, site-collar prompts and the
+  // "+N wrecks · others" census wait until that rail is finished.
+  if (opening === true) return false;
+  // 08 §4: scanner lists are off during a fight (the target card and the radar carry it); a
+  // deliberate pin still holds. In calm flight a lock mounts the list (G7).
+  if (fight === true) return pinned === true && eligibleContactCount > 0;
+  return locked === true || (pinned === true && eligibleContactCount > 0);
 }
 
-/** Detach the roster until a lock exists, then seat it in front of the radar. */
-export function mountContactRoster(parent, roster, radar, locked) {
+/** Seat the admitted roster in front of the radar. */
+export function mountContactRoster(parent, roster, radar, visible) {
   if (!parent || !roster) return false;
-  if (!contactRosterVisible({ locked })) {
+  if (!visible) {
     if (roster.parentNode) roster.parentNode.removeChild(roster);
     return false;
   }
@@ -1159,23 +1218,25 @@ export function buildVelocityReadout(playerOrSpeed, profileOrCap, out = null) {
   result.speed = speed;
   result.thrusterCap = thrusterCap;
   result.earnedSpeed = earnedSpeed;
-  result.text = `${Math.max(0, Math.round(speed))} u/s${earnedSpeed ? ' · EARNED' : ''}`;
+  result.text = `${Math.max(0, Math.round(speed))} m/s${earnedSpeed ? ' · EARNED' : ''}`;
   result.spoken = speedUnitSpeech(speed, earnedSpeed);
   return result;
 }
 
-/** Spelled-out speed. The visible unit stays u/s. */
+/** Spelled-out speed. The visible unit stays m/s. */
 export function speedUnitSpeech(speed, earned = false) {
   const n = Math.max(0, Math.round(Number(speed) || 0));
-  return earned ? `${n} world units per second, earned` : `${n} world units per second`;
+  return earned ? `${n} meters per second, earned` : `${n} meters per second`;
 }
 
-/** Spelled-out distance. The visible unit stays WU or u. Empty when the text is not a distance. */
+/** Spelled-out distance. The visible unit stays m. Empty when the text is not a distance. */
 export function distanceUnitSpeech(distanceText) {
   const raw = String(distanceText || '').trim();
   if (!raw || raw === 'ROUTE PENDING') return '';
-  if (/\bWU\b/.test(raw)) return raw.replace(/\bWU\b/g, 'world units');
-  if (/\d(?:\.\d+)?\s*u\b/i.test(raw)) return raw.replace(/(\d(?:\.\d+)?)\s*u\b/i, '$1 world units');
+  if (/\bWU\b/.test(raw)) return raw.replace(/\bWU\b/g, 'meters');
+  if (/\d(?:\.\d+)?\s*km\b/i.test(raw)) return raw.replace(/(\d(?:\.\d+)?)\s*km\b/gi, '$1 kilometers');
+  if (/\d(?:\.\d+)?\s*m\b/i.test(raw)) return raw.replace(/(\d(?:\.\d+)?)\s*m\b/gi, '$1 meters');
+  if (/\d(?:\.\d+)?\s*u\b/i.test(raw)) return raw.replace(/(\d(?:\.\d+)?)\s*u\b/gi, '$1 meters');
   return '';
 }
 
@@ -1211,15 +1272,42 @@ function applyDistanceSpeech(el, distanceText) {
   return spoken;
 }
 
+/**
+ * Captions a Swarm fight already shows another way, or that narrate a moment the player
+ * just saw. Adventure (glass off) keeps every one. Admission is the presentation-caption
+ * handler below — one door, this list.
+ */
+export const SWARM_QUIET_CAPTIONS = Object.freeze([
+  'Ship lost.',
+  'Swing threat detected.',
+  "Watch out — it's swinging.",
+  'Line strain.',
+  "Easy — she's straining.",
+  'Target destroyed.',
+  "That's her done.",
+]);
+const SWARM_QUIET_CAPTION_SET = new Set(SWARM_QUIET_CAPTIONS);
+
+export function swarmDeniesCaption(state, text) {
+  return isSwarmGlass(state) && SWARM_QUIET_CAPTION_SET.has(String(text || '').trim());
+}
+
+/** Adventure death recovery. A Swarm death goes to Run Over and does not say this. */
+export function deathRecoverySubtitle(state) {
+  return isSwarmGlass(state) ? '' : 'Emergency recovery online…';
+}
+
 /** The first cargo:changed that fills an empty hold, once per profile. Does not open the panel. */
 export function noteFirstCargoLanding(state, { wasEmpty = false, cargo = null, bindingLabel = '' } = {}) {
   if (!state || !state.player || !wasEmpty || !cargoOccupied(cargo)) return '';
   const gameplay = state.settings && state.settings.gameplay;
   if (gameplay && gameplay.tutorialHints === false) return '';
   if (!shouldShowFirstUseHint(state.player.hints, 'firstCargoManifest')) return '';
+  // A Swarm fight has no cargo manifest. Refuse before the hint is spent so Adventure
+  // can still teach it later. Info receipts otherwise pass the glass as "system".
+  if (isSwarmGlass(state)) return '';
   const key = String(bindingLabel || '').trim();
   const line = key ? `Cargo aboard. Manifest ${key}.` : 'Cargo aboard. Open the manifest.';
-  // state is passed so a live Swarm round (no open-world notices) refuses it and the hint stays unspent.
   if (!admitReceipt({ text: line, kind: 'info', combat: receiptCombatNow(), state }).admit) return '';
   state.player.hints = markFirstUseHint(state.player.hints, 'firstCargoManifest');
   return line;
@@ -1236,8 +1324,8 @@ export function speakPlottedRouteTeach(state, bus) {
   const engaged = !!(nav.executor && nav.executor.engaged === true);
   const line = plottedRouteEngageTeach(nav.route, {
     engaged,
-    mapHome: 'Star Map',
-    mapLabel: promptLabel('starmap'),
+    mapHome: 'Chart',
+    mapLabel: promptLabel('localmap'),
   });
   if (!line) return '';
   if (!admitReceipt({ text: line, kind: 'info', combat: receiptCombatNow() }).admit) return '';
@@ -1354,6 +1442,46 @@ function threatArcPath(a, r = 48, s = 0.28) {
   const y1 = (r * Math.sin(a + s)).toFixed(1);
   return `M${x0} ${y0}A${r} ${r} 0 0 1 ${x1} ${y1}`;
 }
+// A tracker line that ends in a real key token: words (trailing full stop dropped) + the key.
+// Progress marks ('1/3') and prose asides ('Field Build') are not keys.
+const TRACKER_KEY_TOKEN = '(?:[A-Z0-9]|F\\d{1,2}|RMB|LMB|MMB|Space|Tab|Shift|Ctrl|Alt|Enter|Esc)';
+const TRACKER_KEY_SUFFIX = new RegExp(`^(.*?)[.\\s]*\\((${TRACKER_KEY_TOKEN}(?:\\s*\\/\\s*${TRACKER_KEY_TOKEN})*)\\)\\s*$`);
+export function splitTrackerActionKey(actionLine) {
+  const line = actionLine == null ? '' : String(actionLine);
+  const keyed = TRACKER_KEY_SUFFIX.exec(line);
+  if (!keyed) return null;
+  return { text: keyed[1], key: keyed[2] };
+}
+// A latch line's key cap is the form Help and the loading card already teach (F / RMB).
+// The line's author writes that form; leftover keyboard-only suffixes are expanded here
+// so the tracker never names a different key than the spoken beat.
+const TRACKER_LATCH_LINE = /\blatch\b/i;
+export function resolveTrackerActionKey(state, actionLine) {
+  const keyed = splitTrackerActionKey(actionLine);
+  if (!keyed || !TRACKER_LATCH_LINE.test(keyed.text)) return keyed;
+  const taught = taughtLatchKey(state) || verbChipKey(state, 'tether');
+  return taught ? { text: keyed.text, key: taught } : keyed;
+}
+/** True when a world tag's subject centre already sits inside a HUD avoid rect. */
+export function worldTagCenterCovered(x, y, rects) {
+  if (!rects) return false;
+  for (let i = 0; i < rects.length; i++) {
+    const r = rects[i];
+    if (!r) continue;
+    const rx = r.x ?? r.left;
+    const ry = r.y ?? r.top;
+    const w = r.w ?? r.width;
+    const h = r.h ?? r.height;
+    if (x >= rx && x <= rx + w && y >= ry && y <= ry + h) return true;
+  }
+  return false;
+}
+/** Degrees for the tell chip's chevron, or null when the chip is already the edge arrow. */
+export function tellBearingMark(placement) {
+  if (!placement || placement.onScreen || placement.edgeAnchored) return null;
+  const deg = Number(placement.directionDeg);
+  return Number.isFinite(deg) ? deg : null;
+}
 // M1 doctrine player-tells: map live ai:telegraph kinds (+ doctrineId fallback) to HUD tell ids.
 const DOCTRINE_TELL_BY_KIND = Object.freeze({
   engine_flare: 'FLYBY',
@@ -1367,6 +1495,18 @@ const DOCTRINE_TELL_BY_KIND = Object.freeze({
   field_spool: 'ANCHOR',
   sensor_ghost: 'GHOST',
   detonator_fuse: 'FUSE',
+  // CW-TELLS (INV-21 item 3): every live attack cue kind the action VFX paints now lands a chip
+  // too — a tell that only draws in-world (or only speaks on the halo) is not a complete tell.
+  broadside_charge: 'BROADSIDE',
+  swarmer_vent: 'VENT',
+  broadside_desperation: 'FINAL',
+  pd_curtain: 'CURTAIN',
+  furnace_preheat: 'FURNACE',
+  mothlight_iris: 'IRIS',
+  pirate_stalk: 'STALK',
+  scan_sweep: 'SCAN',
+  return_fire_warning: 'RETURN',
+  lawful_interdict: 'SEAL',
 });
 const DOCTRINE_TELL_BY_ID = Object.freeze({
   interceptor_flyby: 'FLYBY',
@@ -1377,14 +1517,31 @@ const DOCTRINE_TELL_BY_ID = Object.freeze({
 const DOCTRINE_TELL_HINT = Object.freeze({
   FLYBY: 'Break the beam',
   TETHER: 'Deny the latch',
-  CHARGE: 'Close or break LOS',
-  LAUNCH: 'Mass inbound — move',
+  CHARGE: 'Close in or get behind cover',
+  LAUNCH: 'Heavy mass incoming — move',
   INCOMING: 'Sidestep or send it back',
   CALL: 'Kill the caller first',
   MINES: 'Keep one flank clear',
   ANCHOR: 'Displace it or stay outside',
   GHOST: 'It relocates after the shot',
   FUSE: 'It goes off where it dies',
+  // CW-TELLS: the words name the player's decision, matching each cue's authored fiction.
+  BROADSIDE: 'Stay off its broadside',
+  VENT: 'Brood incoming — clear out',
+  FINAL: 'Its last stand — stay clear',
+  CURTAIN: 'Missiles will be shot down',
+  FURNACE: 'Get off its nose line',
+  IRIS: 'Only the iris fires',
+  STALK: 'It will call its pack',
+  SCAN: 'Scan sweep — comply or run',
+  RETURN: 'It fires back — keep moving',
+  SEAL: 'Break the lane emitters',
+  // CW-TELLS (INV-21 item 5): the Enemy Mind's decisions, same chip family.
+  FLANK: 'Crossfire — turn with it',
+  BAIT: 'Bait — do not chase it',
+  PUNISH: 'A trap — break off the chase',
+  COVER: 'Shielding its wounded — push',
+  PEEL: 'Hit them before they regroup',
 });
 const DOCTRINE_TELL_ICON = Object.freeze({
   // Fallback literals carry \uFE0E (monochrome text presentation) themselves because ⚠/⛔ default
@@ -1399,6 +1556,21 @@ const DOCTRINE_TELL_ICON = Object.freeze({
   ANCHOR: SEMANTIC_PALETTE.warning?.icon || '⚠\uFE0E',
   GHOST: SEMANTIC_PALETTE.info?.icon || '⚠\uFE0E',
   FUSE: SEMANTIC_PALETTE.danger?.icon || '⛔\uFE0E',
+  BROADSIDE: SEMANTIC_PALETTE.danger?.icon || '⛔\uFE0E',
+  VENT: SEMANTIC_PALETTE.danger?.icon || '⛔\uFE0E',
+  FINAL: SEMANTIC_PALETTE.danger?.icon || '⛔\uFE0E',
+  CURTAIN: SEMANTIC_PALETTE.warning?.icon || '⚠\uFE0E',
+  FURNACE: SEMANTIC_PALETTE.danger?.icon || '⛔\uFE0E',
+  IRIS: SEMANTIC_PALETTE.danger?.icon || '⛔\uFE0E',
+  STALK: SEMANTIC_PALETTE.warning?.icon || '⚠\uFE0E',
+  SCAN: SEMANTIC_PALETTE.warning?.icon || '⚠\uFE0E',
+  RETURN: SEMANTIC_PALETTE.danger?.icon || '⛔\uFE0E',
+  SEAL: SEMANTIC_PALETTE.warning?.icon || '⚠\uFE0E',
+  FLANK: SEMANTIC_PALETTE.danger?.icon || '⛔\uFE0E',
+  BAIT: SEMANTIC_PALETTE.warning?.icon || '⚠\uFE0E',
+  PUNISH: SEMANTIC_PALETTE.danger?.icon || '⛔\uFE0E',
+  COVER: SEMANTIC_PALETTE.warning?.icon || '⚠\uFE0E',
+  PEEL: SEMANTIC_PALETTE.warning?.icon || '⚠\uFE0E',
 });
 // The same tells, drawn: accessibility.js names each palette state's drawn equivalent in its
 // `glyph` column (a station/icons.js name), so the chip renders the mark as an ELEMENT through
@@ -1411,26 +1583,44 @@ const DOCTRINE_TELL_GLYPH_ALIAS = Object.freeze({
   info: 'info',
   chevron: 'iff_ally',
 });
+// Warning-family tells render the amber drawn mark; every other tell is the red danger mark.
+const TELL_WARNING_KINDS = new Set([
+  'TETHER', 'LAUNCH', 'CURTAIN', 'STALK', 'SCAN', 'SEAL', 'BAIT', 'COVER', 'PEEL',
+]);
 function tellGlyphName(tellId) {
-  const paletteState = (tellId === 'TETHER' || tellId === 'LAUNCH') ? 'warning' : 'danger';
+  // Every tell is a warning about to happen, so every chip carries the drawn triangle; the family
+  // is the mark's colour (red danger, amber caution — see .sf-tell__icon). The palette's danger
+  // mark has no drawn path and its stand-in is an X, which a stranger reads as a close button.
+  if (hasGlyph('warn')) return 'warn';
+  const paletteState = TELL_WARNING_KINDS.has(tellId) ? 'warning' : 'danger';
   const named = SEMANTIC_PALETTE[paletteState] && SEMANTIC_PALETTE[paletteState].glyph;
   const name = named && DOCTRINE_TELL_GLYPH_ALIAS[named];
   return name && hasGlyph(name) ? name : null;
 }
 const TELL_POOL_SIZE = 3;
-const DEFAULT_TELEGRAPH_TICKS = 30;
+// CW-TELLS: the HUD chip never under-telegraphs the sim's hold-fire window — the doctrine beat
+// is the design's 0.6 s floor (36 fixed ticks, 03_COMBAT §9), so the chip's fallback floor and
+// default window are the same 36.
+const DEFAULT_TELEGRAPH_TICKS = 36;
 const TELL_VISUAL_WIDTH = 240;
 const TELL_VISUAL_HEIGHT = 30;
 const TELL_LAYOUT_GAP = 8;
+// Every tell id that can dress a chip slot. Swap/retire paths clear the whole set so a reused
+// slot never carries two kind classes at once.
+const TELL_KIND_CLASSES = Object.freeze([
+  'sf-tell--FLYBY', 'sf-tell--TETHER', 'sf-tell--CHARGE', 'sf-tell--LAUNCH', 'sf-tell--INCOMING',
+  'sf-tell--CALL', 'sf-tell--MINES', 'sf-tell--ANCHOR', 'sf-tell--GHOST', 'sf-tell--FUSE',
+  'sf-tell--BROADSIDE', 'sf-tell--VENT', 'sf-tell--FINAL', 'sf-tell--CURTAIN', 'sf-tell--FURNACE',
+  'sf-tell--IRIS', 'sf-tell--STALK', 'sf-tell--SCAN', 'sf-tell--RETURN', 'sf-tell--SEAL',
+  'sf-tell--FLANK', 'sf-tell--BAIT', 'sf-tell--PUNISH', 'sf-tell--COVER', 'sf-tell--PEEL',
+]);
 const TELL_OBSTACLE_OWNERS = new Set([
   'vitals', 'hud-rail', 'orrery', 'radar', 'caption', 'flight-caption',
   'receipt', 'alert', 'swarm-callout', 'touch-control', 'responsive-overlay',
 ]);
-const LEAD_PIP_RADIUS = 8.5;
-const LEAD_PIP_CIRCUMFERENCE = Math.PI * 2 * LEAD_PIP_RADIUS;
-const LEAD_PIP_ARC_FRACTION = 0.72;
-const LEAD_PIP_ARC_LENGTH = LEAD_PIP_CIRCUMFERENCE * LEAD_PIP_ARC_FRACTION;
-const LEAD_PIP_GAP_CENTER_OFFSET = (LEAD_PIP_ARC_FRACTION + (1 - LEAD_PIP_ARC_FRACTION) * 0.5) * (Math.PI * 2);
+// The lead pip's open chevron (.sf-leadpip__arc) opens to the left of its 22-unit box, at 180°.
+// The pose pass rotates that open side to face the aim reticle, as the old arc's gap did.
+const LEAD_PIP_GAP_CENTER_OFFSET = Math.PI;
 
 export function doctrineTellKind(payload) {
   if (!payload) return null;
@@ -1438,6 +1628,12 @@ export function doctrineTellKind(payload) {
   // releases are different player decisions, so they carry different tells.
   if (payload.phase === 'body_launch') return 'LAUNCH';
   if (payload.phase === 'incoming_mass') return 'INCOMING';
+  // CW-TELLS (INV-21 item 5): an Enemy Mind fact rides the same chip family through the pure
+  // presentation mapper — the mind's decisions are player-facing tells, not debug output.
+  if (payload.kind === 'mind_decision' || payload.kind === 'mind_mistake') {
+    const fact = { ...payload, kind: payload.kind === 'mind_mistake' ? 'mistake' : 'decision' };
+    return enemyMindTell(fact)?.tellId || null;
+  }
   const byKind = DOCTRINE_TELL_BY_KIND[String(payload.kind || '')];
   if (byKind) return byKind;
   return DOCTRINE_TELL_BY_ID[String(payload.doctrineId || '')] || null;
@@ -1469,12 +1665,40 @@ function rectsOverlap(a, b) {
     && a.y + a.height > b.y;
 }
 
+/** Return true when screen coordinate (x, y) falls inside any padded HUD panel rectangle. */
+export function pointInHudPanels(x, y, rects, pad = 12) {
+  if (!Number.isFinite(x) || !Number.isFinite(y) || !Array.isArray(rects)) return false;
+  for (let i = 0; i < rects.length; i++) {
+    const r = rects[i];
+    if (!r) continue;
+    const left = Number(r.left ?? r.x);
+    const top = Number(r.top ?? r.y);
+    const right = Number.isFinite(r.right) ? r.right : left + Number(r.width ?? r.w ?? 0);
+    const bottom = Number.isFinite(r.bottom) ? r.bottom : top + Number(r.height ?? r.h ?? 0);
+    if (![left, top, right, bottom].every(Number.isFinite)) continue;
+    if (right <= left || bottom <= top) continue;
+    if (x >= left - pad && x <= right + pad && y >= top - pad && y <= bottom + pad) return true;
+  }
+  return false;
+}
+
 /**
  * Place one transient doctrine tell without covering the persistent objective/vitals/action/radar
  * anchors. `projected` is the authoritative worldToScreen result; the returned direction always
  * follows that original projection even when the chip yields to a reserved HUD rectangle.
+ * Pass `{ edgeAnchor: true, origin }` to pin the chip to the viewport edge in the threat's
+ * direction (no playfield wire across the ship).
  */
-export function resolveDoctrineTellPlacement(width, height, projected, slotIndex = 0, extraReserved = null, previousOffset = null, dimensions = null) {
+export function resolveDoctrineTellPlacement(
+  width,
+  height,
+  projected,
+  slotIndex = 0,
+  extraReserved = null,
+  previousOffset = null,
+  dimensions = null,
+  opts = null,
+) {
   const w = Math.max(320, Number(width) || 1280);
   const h = Math.max(240, Number(height) || 720);
   const px = Number(projected && projected.x);
@@ -1487,8 +1711,11 @@ export function resolveDoctrineTellPlacement(width, height, projected, slotIndex
   const halfH = chipHeight / 2;
   const centerX = w / 2;
   const centerY = h / 2;
-  let dx = px - centerX;
-  let dy = py - centerY;
+  const edgeAnchor = !!(opts && opts.edgeAnchor === true);
+  const originX = edgeAnchor && Number.isFinite(opts?.origin?.x) ? opts.origin.x : centerX;
+  const originY = edgeAnchor && Number.isFinite(opts?.origin?.y) ? opts.origin.y : centerY;
+  let dx = px - originX;
+  let dy = py - originY;
   const length = Math.hypot(dx, dy);
   if (length < 0.001) {
     dx = 0;
@@ -1503,19 +1730,21 @@ export function resolveDoctrineTellPlacement(width, height, projected, slotIndex
     * (chipHeight + 6);
   let x;
   let y;
-  if (onScreen) {
+  if (onScreen && !edgeAnchor) {
     x = Math.max(halfW + TELL_LAYOUT_GAP, Math.min(w - halfW - TELL_LAYOUT_GAP, px));
     y = Math.max(halfH + TELL_LAYOUT_GAP,
       Math.min(h - halfH - TELL_LAYOUT_GAP, py - 38 - stackOffset));
   } else {
-    const extentX = Math.max(1, centerX - halfW - TELL_LAYOUT_GAP);
-    const extentY = Math.max(1, centerY - halfH - TELL_LAYOUT_GAP);
+    const edgePad = edgeAnchor ? 24 : TELL_LAYOUT_GAP;
+    const extentX = Math.max(1, centerX - halfW - edgePad);
+    const extentY = Math.max(1, centerY - halfH - edgePad);
     const tx = Math.abs(dx) > 0.001 ? extentX / Math.abs(dx) : Infinity;
     const ty = Math.abs(dy) > 0.001 ? extentY / Math.abs(dy) : Infinity;
     const edgeDistance = Math.min(tx, ty);
     x = centerX + dx * edgeDistance;
     y = centerY + dy * edgeDistance - stackOffset;
-    y = Math.max(halfH + TELL_LAYOUT_GAP, Math.min(h - halfH - TELL_LAYOUT_GAP, y));
+    x = Math.max(halfW + edgePad, Math.min(w - halfW - edgePad, x));
+    y = Math.max(halfH + edgePad, Math.min(h - halfH - edgePad, y));
   }
 
   const layout = resolveObjectiveHudLayout(w, h);
@@ -1534,12 +1763,12 @@ export function resolveDoctrineTellPlacement(width, height, projected, slotIndex
   // Retain a valid offset from this same projected body as it moves. This avoids
   // labels swapping sides on successive frames while still yielding immediately
   // to another label or a newly opened HUD/control region.
-  if (onScreen && previousOffset && Number.isFinite(previousOffset.x) && Number.isFinite(previousOffset.y)) {
+  if (onScreen && !edgeAnchor && previousOffset && Number.isFinite(previousOffset.x) && Number.isFinite(previousOffset.y)) {
     const priorX = px + previousOffset.x, priorY = py + previousOffset.y;
     if (priorX >= halfW + TELL_LAYOUT_GAP && priorX <= w - halfW - TELL_LAYOUT_GAP
       && priorY >= halfH + TELL_LAYOUT_GAP && priorY <= h - halfH - TELL_LAYOUT_GAP
       && reserved.every((anchor) => !rectsOverlap(asRect(priorX, priorY), anchor))) {
-      return { x: priorX, y: priorY, width: chipWidth, height: chipHeight, onScreen, directionDeg };
+      return { x: priorX, y: priorY, width: chipWidth, height: chipHeight, onScreen, directionDeg, edgeAnchored: false };
     }
   }
   for (let pass = 0; pass < reserved.length; pass++) {
@@ -1576,7 +1805,7 @@ export function resolveDoctrineTellPlacement(width, height, projected, slotIndex
     y = candidates[0].y;
   }
 
-  return { x, y, width: chipWidth, height: chipHeight, onScreen, directionDeg };
+  return { x, y, width: chipWidth, height: chipHeight, onScreen, directionDeg, edgeAnchored: edgeAnchor };
 }
 
 // JS-side last-written cache — mirror setStyle. Reading el.textContent every call forces a
@@ -2080,6 +2309,7 @@ export function createHud(ctx, alerts) {
     // set must re-measure on the next snapshot refresh.
     flightTextObstacleGeomStale = true;
     invalidateAvoidRects(document);
+    staleKeptQueries();
     if (clearGeometry) {
       receiptGeometryReusable = false;
       receiptGeometryKeep = false;
@@ -2093,13 +2323,17 @@ export function createHud(ctx, alerts) {
     if (!clearGeometry) {
       // Content-only change (toast/alert/caption text or show/hide): unrelated HUD obstacles did
       // not move, so keep their measured rects and re-measure only the lane/card/caption through
-      // the style-write eviction. Selector membership can change, so drop the query lists. The
-      // measured map survives the flush so the next content change can reuse it.
+      // the style-write eviction. Keep structural selector membership and drop only dynamic keys.
       receiptGeometryReusable = true;
       receiptGeometryKeep = true;
       receiptGeometryRects.bm = null;
-      receiptGeometryRects.q = null;
-      receiptGeometryRects.resp = null;
+      if (receiptGeometryRects.q) {
+        receiptGeometryRects.q.delete('.sf-vtape--on, .sf-tell.is-on');
+        receiptGeometryRects.q.delete('.sf-stuntcall:not([hidden])');
+        receiptGeometryRects.q.delete('#alerts .sf-alert:not([hidden])');
+        receiptGeometryRects.q.delete('.sf-caption.show, .sf-toast:not(.sf-toast--out)');
+        receiptGeometryRects.q.delete('.sf-crun, .sf-sj__col');
+      }
       return;
     }
     // A layout/settings/content invalidation makes every cached rect and selector list stale.
@@ -2177,6 +2411,15 @@ export function createHud(ctx, alerts) {
   // They are adopted into a quiet frequency tape at the head of the contextual column: one row,
   // a channel label, and the two live nodes re-parented rather than rebuilt. Re-parenting is the
   // same trick the feed above uses, and it keeps every listener those modules installed.
+  // HUD-2 Item 4: unified top-right calm utility bar. Adopts Field Build, compact Overhead,
+  // COMMS, HAIL, and RADIO into one aligned horizontal row right-aligned with the minimap.
+  const utilityRow = document.createElement('div');
+  utilityRow.id = 'sf-visor-utility-row';
+  utilityRow.className = 'sf-visor-utility-row';
+  utilityRow.setAttribute('role', 'toolbar');
+  utilityRow.setAttribute('aria-label', 'Flight utilities');
+  root.appendChild(utilityRow);
+
   const commsTape = document.createElement('div');
   commsTape.className = 'sf-commtape';
   commsTape.innerHTML = '<span class="sf-commtape__band">RADIO</span>'
@@ -2184,13 +2427,59 @@ export function createHud(ctx, alerts) {
     + '<span class="sf-commtape__slots"></span>';
   const newsTickerHost = commsTape.querySelector('#news-ticker');
   const commsTapeSlots = commsTape.querySelector('.sf-commtape__slots');
-  // Both modules mount into #ui-root during boot. If either has not arrived yet, adopt it on the
-  // next frame rather than leaving an empty housing behind (SCREENS_A 1.4: contextual surfaces
-  // never leave an empty housing).
+  // Order left-to-right inside the top-right utility row:
+  // Field Build · Overhead · COMMS · HAIL · RADIO
+  // Class lookups ride live collections (an index into a list the DOM keeps current), so the
+  // once-a-second adoption pass never runs a selector scan.
+  const liveByClass = (cls) => {
+    let list = null;
+    return () => {
+      if (!list && typeof document.getElementsByClassName === 'function') list = document.getElementsByClassName(cls);
+      return list ? (list[0] || null) : (document.querySelector?.(`.${cls}`) || null);
+    };
+  };
+  const fieldBuildPill = liveByClass('fb-pill-btn');
+  const commBacklogBtn = liveByClass('sf-comm-backlog-btn');
+  const UTILITY_ROW_SPECS = [
+    () => fieldBuildPill(),
+    () => {
+      const rt = document.getElementById('race-tape');
+      return rt && rt.dataset?.compact === 'true' ? rt : null;
+    },
+    () => document.getElementById('sf-comm-backlog-btn') || commBacklogBtn(),
+    () => document.getElementById('sf-contact-hail'),
+    () => document.getElementById('sf-comm-trace-host'),
+    () => {
+      const band = document.getElementById('sf-band-hud');
+      const dragged = !!(state.settings?.ui?.hudLayout?.band);
+      return band && !dragged ? band : null;
+    },
+  ];
+  let adoptCommsTicks = 0;
   const adoptCommsChrome = () => {
-    for (const id of ['sf-comm-backlog-btn', 'sf-contact-hail', 'sf-comm-trace-host']) {
-      const node = document.getElementById(id) || document.querySelector('.' + id);
-      if (node && node.parentNode !== commsTapeSlots) commsTapeSlots.appendChild(node);
+    const mobileFlight = document.documentElement?.getAttribute?.('data-sf-mobile-flight') === '1';
+    const host = mobileFlight ? commsTapeSlots : utilityRow;
+    if (host === utilityRow) {
+      for (const resolve of UTILITY_ROW_SPECS) {
+        const node = resolve();
+        if (!node) continue;
+        if (node.parentNode !== utilityRow) utilityRow.appendChild(node);
+      }
+      // Keep the left-to-right order deterministic even when controls mount asynchronously.
+      let prev = null;
+      for (const resolve of UTILITY_ROW_SPECS) {
+        const node = resolve();
+        if (!node || node.parentNode !== utilityRow) continue;
+        if (prev && prev.nextSibling !== node) {
+          utilityRow.insertBefore(node, prev.nextSibling);
+        }
+        prev = node;
+      }
+    } else {
+      for (const id of ['sf-comm-backlog-btn', 'sf-contact-hail', 'sf-comm-trace-host']) {
+        const node = document.getElementById(id) || document.querySelector('.' + id);
+        if (node && node.parentNode !== commsTapeSlots) commsTapeSlots.appendChild(node);
+      }
     }
     if (!commsTapeSlots.childElementCount && (!newsTickerHost || newsTickerHost.hidden)) commsTape.setAttribute('hidden', '');
     else commsTape.removeAttribute('hidden');
@@ -2264,9 +2553,25 @@ export function createHud(ctx, alerts) {
   const mtTitle = missionTracker.querySelector('.sf-mt-title');
   const mtObj = missionTracker.querySelector('.sf-mt-obj');
   const mtTime = missionTracker.querySelector('.sf-mt-time');
+  const mtDelivery = document.createElement('div');
+  mtDelivery.className = 'sf-mt-delivery';
+  mtDelivery.hidden = true;
+  const mtDeliveryTitle = document.createElement('b');
+  const mtDeliveryPlace = document.createElement('span');
+  const mtDeliveryStep = document.createElement('span');
+  mtDeliveryStep.className = 'sf-mt-delivery__step';
+  mtDelivery.append(mtDeliveryTitle, mtDeliveryPlace, mtDeliveryStep);
+  missionTracker.insertBefore(mtDelivery, mtTime);
   const mtCompact = document.createElement('div');
   mtCompact.className = 'sf-mt-compact';
   const mtAction = document.createElement('div'); mtAction.className = 'sf-mt-compact-action';
+  // The opening's taught-verb line names its key in brackets ('Latch the loose rock. (F / RMB)');
+  // the line prints the words and the key as a key cap, the way every other prompt shows a key.
+  const mtActionText = document.createElement('span');
+  const mtActionKey = document.createElement('kbd');
+  mtActionKey.className = 'dp-kbd sf-mt-key';
+  mtActionKey.hidden = true;
+  mtAction.append(mtActionText, mtActionKey);
   const mtReadings = document.createElement('div'); mtReadings.className = 'sf-mt-compact-readings';
   mtCompact.append(mtAction, mtReadings);
   const mtDetailsButton = document.createElement('button');
@@ -2445,6 +2750,17 @@ export function createHud(ctx, alerts) {
   elOverview.className = 'sf-overview';
   
   const radar = createRadar(ctx);
+  const visorDockCue = createVisorDockCue(root);
+  // HUD-2 items 12-13: the one flight-mode chip and the "[E] Fly to berth" offer + approach lane.
+  let helmDockInRange = false;
+  on('dock:range', (p) => { helmDockInRange = !!(p && p.inRange); });
+  on('dock:docked', () => { helmDockInRange = false; });
+  const flightHelm = createFlightHelm(root, state, {
+    worldToScreen: (w, o) => (helpers && typeof helpers.worldToScreen === 'function' ? helpers.worldToScreen(w, o) : null),
+    dockInRange: () => helmDockInRange,
+    attention: () => root.getAttribute('data-hud-attention') || 'calm',
+  });
+  if (typeof window !== 'undefined') window.addEventListener('resize', () => flightHelm.resize());
   mountRadarKit(radar.el);
   rightDock.append(targetPanel.el, elOverview, radar.el);
   root.appendChild(rightDock);
@@ -2472,16 +2788,16 @@ export function createHud(ctx, alerts) {
   const existingSectorLaw = document.getElementById('sf-sector-law');
   if (existingSectorLaw && document.documentElement?.dataset?.sfMobile !== '1') rightDock.prepend(existingSectorLaw);
 
-  // Target Arcs Overlay (§3)
+  // Target Status Micro-Bars Overlay (no concentric circles around targets — owner 2026-11-23)
   const targetArcs = document.createElement('div');
   targetArcs.id = 'sf-target-arcs';
   targetArcs.className = 'sf-target-arcs';
   targetArcs.style.display = 'none';
   targetArcs.innerHTML = `
     <svg xmlns="http://www.w3.org/2000/svg" style="display:block; overflow:visible;">
-      <circle class="sf-arc-shield" />
-      <circle class="sf-arc-armor" />
-      <circle class="sf-arc-hull" />
+      <line class="sf-arc-shield" />
+      <line class="sf-arc-armor" />
+      <line class="sf-arc-hull" />
     </svg>
   `;
   root.appendChild(targetArcs);
@@ -2541,12 +2857,12 @@ export function createHud(ctx, alerts) {
   elNavReadout.style.display = 'none';
   elNavReadout.innerHTML =
     '<div class="sf-nav-label mono">—</div>' +
-    '<div class="sf-nav-meta"><span class="sf-nav-dist">0 u</span> · ETA <span class="sf-nav-eta">—</span></div>';
+    '<div class="sf-nav-meta"><span class="sf-nav-dist">0 m</span> · ETA <span class="sf-nav-eta">—</span></div>';
   leftContext.appendChild(elNavReadout);
   const elNavLabel = elNavReadout.querySelector('.sf-nav-label');
   const elNavDist = elNavReadout.querySelector('.sf-nav-dist');
   const elNavEta = elNavReadout.querySelector('.sf-nav-eta');
-  applyDistanceSpeech(elNavDist, '0 u');
+  applyDistanceSpeech(elNavDist, '0 m');
   const elDecision = document.createElement('div');
   elDecision.className = 'sf-nav-label';
   elDecision.style.display = 'none';
@@ -2669,17 +2985,16 @@ export function createHud(ctx, alerts) {
   // states ride warm bone → paper readings → the Hand amber (hudStyles owns the state tones).
   const lockRing = document.createElement('div');
   lockRing.className = 'sf-lockring';
-  const LOCK_R = 30, LOCK_C = Math.PI * 2 * LOCK_R;
-  // Brackets quote the kit reticle-lock arms, rescaled from its 56 grid to this 72 grid
-  // (inset 10→13, arm 8→11): four L-strokes on one path family, never border divs.
+  // Linear lock progress bar inside the converging corner brackets (no concentric circles —
+  // owner 2026-11-23). LOCK_C is the horizontal bar span (x=15..57) so stroke-dashoffset works identically.
+  const LOCK_C = 42;
   lockRing.innerHTML =
     `<svg viewBox="0 0 72 72" xmlns="http://www.w3.org/2000/svg">` +
-    `<circle cx="36" cy="36" r="34" class="sf-lockring__scale"/>` +
-    `<circle cx="36" cy="36" r="${LOCK_R}" class="sf-lockring__track"/>` +
-    `<circle cx="36" cy="36" r="${LOCK_R}" class="sf-lockring__fill" ` +
-    `stroke-dasharray="${LOCK_C}" stroke-dashoffset="${LOCK_C}" ` +
-    `transform="rotate(-90 36 36)"/>` +
-    `<circle cx="36" cy="36" r="5" class="sf-lockring__pip"/>` +
+    `<line x1="15" y1="64" x2="57" y2="64" class="sf-lockring__scale"/>` +
+    `<line x1="15" y1="64" x2="57" y2="64" class="sf-lockring__track"/>` +
+    `<line x1="15" y1="64" x2="57" y2="64" class="sf-lockring__fill" ` +
+    `stroke-dasharray="${LOCK_C}" stroke-dashoffset="${LOCK_C}"/>` +
+    `<polygon points="36,31 41,36 36,41 31,36" class="sf-lockring__pip"/>` +
     `</svg>` +
     `<div class="sf-lockring__brackets" aria-hidden="true">` +
     `<svg viewBox="0 0 72 72" xmlns="http://www.w3.org/2000/svg">` +
@@ -2699,6 +3014,10 @@ export function createHud(ctx, alerts) {
   // only on the frames where the state actually leaves them, not every idle frame.
   let _lockStageApplied = false;
   let _latchApplied = false;
+  // Latch animation restart token: the one-shot classes are re-armed on the next animation
+  // frame instead of a `void offsetWidth` reflow (the restart forced a synchronous layout of
+  // the whole HUD at the combat climax — the round-6 profile's forced-layout spike).
+  let _latchToken = 0;
   lockRing.addEventListener('animationend', () => {
     lockRing.classList.remove('sf-lockring--latch');
     // The latch flag tracks both elements; the ring just cleared itself, so the flag now
@@ -2754,9 +3073,17 @@ export function createHud(ctx, alerts) {
     }
     root.classList.remove('sf-hud--glitch');
     if (glitchOverlay) glitchOverlay.classList.remove('active');
-    void root.offsetWidth; // force animation restart
-    root.classList.add('sf-hud--glitch');
-    if (glitchOverlay) glitchOverlay.classList.add('active');
+    // Restart the glitch animation by re-adding the class on the next animation frame
+    // (a `void offsetWidth` read here forced a synchronous layout of the whole HUD).
+    if (typeof requestAnimationFrame === 'function') {
+      requestAnimationFrame(() => {
+        root.classList.add('sf-hud--glitch');
+        if (glitchOverlay) glitchOverlay.classList.add('active');
+      });
+    } else {
+      root.classList.add('sf-hud--glitch');
+      if (glitchOverlay) glitchOverlay.classList.add('active');
+    }
     if (disruptionTimeout) clearTimeout(disruptionTimeout);
     disruptionTimeout = setTimeout(() => {
       root.classList.remove('sf-hud--glitch');
@@ -2765,10 +3092,22 @@ export function createHud(ctx, alerts) {
     }, 180);
   }
 
-  // EMP / Shield collapse listeners on event bus
+  let lastPlayerHullHitAt = -Infinity;
+  let lastObservedPlayerHull = null;
+
+  // EMP / Shield collapse + hull-hit attention window listeners on event bus
   if (ctx.bus && typeof ctx.bus.on === 'function') {
     on('combat:damage', (p) => {
       if (!p) return;
+      if (p.targetId === state.playerId) {
+        const hullHit = (Number(p.hullDamage) > 0)
+          || (Number(p.hullDelta) < 0)
+          || (p.kind === 'hull')
+          || (!p.shieldHit && Number(p.damage) > 0);
+        if (hullHit && Number.isFinite(state.simTime)) {
+          lastPlayerHullHitAt = state.simTime;
+        }
+      }
       if (p.targetId === state.playerId && (p.brokeShield || p.shieldBroke || p.damageType === 'emp' || p.emp)) {
         triggerElectronicDisruption(p.damageType === 'emp' ? 'emp' : 'shield_collapse');
       }
@@ -2823,10 +3162,10 @@ export function createHud(ctx, alerts) {
   lockDiamond.innerHTML =
     '<div class="sf-lockdiamond__inner">' +
     '<svg viewBox="0 0 28 28" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
-    // hostile: two interlocking triangles (the hexagram) inside a twelve-point tick burst
+    // hostile: two interlocking triangles (the hexagram) framed by four corner ticks (no circle)
     '<g class="sf-lockdiamond__emblem sf-lockdiamond__emblem--hostile">' +
     '<path d="M14 4 5.34 19 22.66 19Z M14 24 22.66 9 5.34 9Z"/>' +
-    '<circle cx="14" cy="14" r="11.5" stroke-dasharray="1.5 1.51"/>' +
+    '<path d="M3.5 8.5V3.5H8.5 M19.5 3.5H24.5V8.5 M24.5 19.5V24.5H19.5 M8.5 24.5H3.5V19.5"/>' +
     '</g>' +
     // friendly: the hexagon rosette — outer hexagon, six spokes, closed counter-phase hub
     '<g class="sf-lockdiamond__emblem sf-lockdiamond__emblem--friendly">' +
@@ -3007,9 +3346,9 @@ export function createHud(ctx, alerts) {
   leadPip.className = 'sf-leadpip';
   leadPip.innerHTML =
     `<svg class="sf-leadpip__svg" viewBox="0 0 22 22" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">` +
-      `<circle class="sf-leadpip__full" cx="11" cy="11" r="${LEAD_PIP_RADIUS}"/>` +
-      `<circle class="sf-leadpip__arc" cx="11" cy="11" r="${LEAD_PIP_RADIUS}" ` +
-        `stroke-dasharray="${LEAD_PIP_ARC_LENGTH.toFixed(2)} ${LEAD_PIP_CIRCUMFERENCE.toFixed(2)}"/>` +
+      // Diamond + open aiming chevron instead of a circle reticle (owner 2026-11-23).
+      `<polygon class="sf-leadpip__full" points="11,3 19,11 11,19 3,11"/>` +
+      `<path class="sf-leadpip__arc" d="M6.5 4.5 L11 3 L17.5 9.5 M17.5 12.5 L11 19 L6.5 17.5"/>` +
       `<line class="sf-leadpip__tick" x1="11" y1="2.2" x2="11" y2="5.4"/>` +
       `<line class="sf-leadpip__tick" x1="2.2" y1="11" x2="5.4" y2="11"/>` +
       // Packet 02: drawn only while the shot line is BLOCKED (shape, not colour: a struck-through pip)
@@ -3020,7 +3359,7 @@ export function createHud(ctx, alerts) {
   // Packet 02 target truth. ONE projection (src/combat/targetTruth.js) says what is selected and
   // what the guns will actually address; the bracket, the pip and this tag all read it. When the
   // Massline owns the guns the effective hull can differ from the selection, and a confident
-  // bracket or pip on the selected hull would lie — so that hull wears a small LINE TARGET tag
+  // bracket or pip on the selected hull would lie — so that hull wears a small GUNS tag
   // (shape + words, never colour alone) and the lead pip rides it with the tether-constrained solve.
   const targetTruth = createTargetTruth();
   const lineTargetTag = document.createElement('div');
@@ -3029,9 +3368,30 @@ export function createHud(ctx, alerts) {
   lineTargetTag.innerHTML =
     '<svg class="sf-aimtag__mark" viewBox="0 0 16 10" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
     '<path d="M0 5H9.5"/><path d="M9.5 5 12.5 2 15.5 5 12.5 8Z"/></svg>' +
-    '<span class="sf-aimtag__text">LINE TARGET</span>';
+    '<span class="sf-aimtag__text">GUNS</span>';
   root.appendChild(lineTargetTag);
   const lineTargetText = lineTargetTag.querySelector('.sf-aimtag__text');
+  // A world tag's box, estimated from its words (no layout read): the mark, the gap and the
+  // tracked capitals of the data face. Clear means inside the screen's safe margin and off every
+  // HUD panel a world label must not sit in (the shared cached avoid snapshot: read after the
+  // frame's own layout, re-read on resize and HUD invalidation, never per frame).
+  const WORLD_TAG_PAD_PX = 26;
+  const WORLD_TAG_CHAR_PX = 8;
+  const WORLD_TAG_H_PX = 18;
+  const WORLD_TAG_MARGIN_PX = 12;
+  const worldTagAvoid = createAvoidRects(document);
+  function worldTagClear(left, top, w, h) {
+    const vw = (typeof window !== 'undefined' && window.innerWidth) || 1280;
+    const vh = (typeof window !== 'undefined' && window.innerHeight) || 720;
+    if (left < WORLD_TAG_MARGIN_PX || top < WORLD_TAG_MARGIN_PX
+      || left + w > vw - WORLD_TAG_MARGIN_PX || top + h > vh - WORLD_TAG_MARGIN_PX) return false;
+    const rects = worldTagAvoid.get();
+    for (let i = 0; i < rects.length; i++) {
+      const r = rects[i];
+      if (left < r.x + r.w + 4 && left + w > r.x - 4 && top < r.y + r.h + 4 && top + h > r.y - 4) return false;
+    }
+    return true;
+  }
   let gunLineBlocked = false; // refreshed on the overlay cadence (a line-of-sight query per 30 Hz tick)
   // Minimal contact marks (packet 02): a living contact whose hull is too small on screen to read as
   // a ship by silhouette gets one restrained mark in the radar's own IFF shapes — triangle
@@ -3093,13 +3453,20 @@ export function createHud(ctx, alerts) {
   deathBanner.setAttribute('role', 'alert');
   deathBanner.innerHTML = '<div class="sf-death__big">SHIP DESTROYED</div><div class="sf-death__sub">Emergency recovery online…</div>';
   root.appendChild(deathBanner);
+  const deathSub = deathBanner.querySelector('.sf-death__sub');
   let deathHideTimer = 0;
   on('player:death', () => {
+    const recovery = deathRecoverySubtitle(state);
+    if (deathSub) {
+      deathSub.textContent = recovery;
+      deathSub.hidden = !recovery;
+    }
     clearTimeout(deathHideTimer);
     deathBanner.hidden = false;
     deathBanner.removeAttribute('aria-hidden');
-    deathBanner.classList.remove('show'); void deathBanner.offsetWidth; // restart animation
-    deathBanner.classList.add('show');
+    deathBanner.classList.remove('show');
+    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => deathBanner.classList.add('show'));
+    else deathBanner.classList.add('show');
     document.body.classList.add('sf-deathflash');
     setTimeout(() => document.body.classList.remove('sf-deathflash'), 700);
     deathHideTimer = setTimeout(() => {
@@ -3165,6 +3532,8 @@ export function createHud(ctx, alerts) {
   const releaseCaptionFlush = () => { captionFlushedThisFrame = false; };
   on('presentation:caption', (p) => {
     if (!p || !p.text) return;
+    // Swarm deny-list: robotic narration and the death line that repeats SHIP DESTROYED.
+    if (swarmDeniesCaption(state, p.text)) return;
     clearTimeout(captionHideTimer);
     clearTimeout(captionFadeTimer);
     externalCaptionsStale = true;
@@ -3187,18 +3556,24 @@ export function createHud(ctx, alerts) {
     caption.textContent = p.text;
     caption.hidden = false;
     caption.classList.toggle('assertive', !!p.assertive);
+    // HUD-2 item 15: the fade-in restarts on the next animation frame (remove, then re-add the
+    // class) instead of forcing a synchronous layout with offsetWidth inside the event handler.
     caption.classList.remove('show');
     if (!captionFlushedThisFrame) {
-      void caption.offsetWidth; // restart fade-in (one forced layout per frame at most)
       captionFlushedThisFrame = true;
-      if (typeof requestAnimationFrame === 'function') requestAnimationFrame(releaseCaptionFlush);
-      else setTimeout(releaseCaptionFlush, 16);
+      const reshow = () => { releaseCaptionFlush(); if (!caption.hidden) caption.classList.add('show'); };
+      if (typeof requestAnimationFrame === 'function') requestAnimationFrame(reshow);
+      else setTimeout(reshow, 16);
+    } else {
+      caption.classList.add('show');
     }
-    caption.classList.add('show');
     invalidateReceiptLane(false);
     // A voice body carries its real duration — the caption outlives a long slow-register bark
     // instead of dying mid-word (assertive/polite defaults stand for non-voice captions).
-    const readableTtl = Math.max(2400, Math.min(12000, Math.ceil((caption.scrollHeight || 0) / 19) * 900));
+    // Reading time from the words (about 58 characters a line), not a scrollHeight read that
+    // forced layout right after the text write.
+    const captionLines = Math.max(1, Math.ceil(String(p.text || '').length / 58));
+    const readableTtl = Math.max(2400, Math.min(12000, captionLines * 900));
     const ttl = Number.isFinite(p.durationMs) && p.durationMs > 0
       ? Math.max(2400, p.durationMs)
       : Math.max(p.assertive ? 3200 : 2400, readableTtl);
@@ -3235,16 +3610,31 @@ export function createHud(ctx, alerts) {
     }
     .sf-tell.is-on { display:inline-flex; opacity:1; }
     .sf-tell.is-compact :is(.sf-tell__icon, .sf-tell__hint, .sf-tell__dir) { display:none; }
-    .sf-tell__icon { font-size:var(--k-fs-data); flex:0 0 auto; display:inline-flex; align-items:center; }
+    .sf-tell__icon { font-size:var(--k-fs-data); flex:0 0 auto; display:inline-flex; align-items:center;
+      color:var(--k-red); }
+    .sf-tell--TETHER .sf-tell__icon, .sf-tell--LAUNCH .sf-tell__icon,
+    .sf-tell--CURTAIN .sf-tell__icon, .sf-tell--STALK .sf-tell__icon,
+    .sf-tell--SCAN .sf-tell__icon, .sf-tell--SEAL .sf-tell__icon,
+    .sf-tell--BAIT .sf-tell__icon, .sf-tell--COVER .sf-tell__icon,
+    .sf-tell--PEEL .sf-tell__icon { color:var(--k-signal); }
     .sf-tell__glyph { display:block; }
     .sf-tell__kind { font-weight:700; font-size:var(--k-fs-data); color:var(--k-red); }
-    .sf-tell--TETHER .sf-tell__kind { color:var(--k-signal); }
-    .sf-tell--LAUNCH .sf-tell__kind { color:var(--k-signal); }
+    .sf-tell--TETHER .sf-tell__kind, .sf-tell--LAUNCH .sf-tell__kind,
+    .sf-tell--CURTAIN .sf-tell__kind, .sf-tell--STALK .sf-tell__kind,
+    .sf-tell--SCAN .sf-tell__kind, .sf-tell--SEAL .sf-tell__kind,
+    .sf-tell--BAIT .sf-tell__kind, .sf-tell--COVER .sf-tell__kind,
+    .sf-tell--PEEL .sf-tell__kind { color:var(--k-signal); }
     .sf-tell__hint { color:var(--k-bone-62); font-size:var(--k-fs-data);
       overflow:hidden; text-overflow:ellipsis; }
-    .sf-tell__dir { color:var(--k-bone-62); font-size:var(--k-fs-data); margin-left:2px; flex:0 0 auto; }
-    .sf-tell.is-offscreen .sf-tell__dir { display:inline; }
-    .sf-tell:not(.is-offscreen) .sf-tell__dir { display:none; }
+    /* A phone's chip is narrower than the longest answer: the hint wraps to a second line
+       instead of losing its last words to an ellipsis. */
+    html[data-sf-mobile-flight="1"] .sf-tell { white-space:normal; }
+    html[data-sf-mobile-flight="1"] .sf-tell__hint { text-overflow:clip; }
+    .sf-tell__dir { color:var(--k-bone-62); margin-left:2px; flex:0 0 auto; transform-origin:50% 50%; }
+    .sf-tell__dir svg { display:block; width:10px; height:10px; }
+    .sf-tell.is-offscreen:not(.is-edge) .sf-tell__dir { display:inline-flex; }
+    .sf-tell:not(.is-offscreen) .sf-tell__dir,
+    .sf-tell.is-edge .sf-tell__dir { display:none; }
     .sf-tell.is-pulse { animation:sf-tell-pulse .45s ease-out 1; }
     @keyframes sf-tell-pulse {
       0% { filter:brightness(1.35); }
@@ -3307,7 +3697,9 @@ export function createHud(ctx, alerts) {
       '<span class="sf-tell__icon" aria-hidden="true"></span>' +
       '<span class="sf-tell__kind"></span>' +
       '<span class="sf-tell__hint"></span>' +
-      '<span class="sf-tell__dir" aria-hidden="true">▸</span>';
+      '<span class="sf-tell__dir" aria-hidden="true">' +
+      '<svg viewBox="0 0 10 10" aria-hidden="true"><path d="M3 1.6 7.2 5 3 8.4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
+      '</span>';
     tellRoot.appendChild(el);
     tellSlots.push({
       el, linkEl, layoutOffset: null, geometry: { width: TELL_VISUAL_WIDTH, height: TELL_VISUAL_HEIGHT },
@@ -3352,8 +3744,7 @@ export function createHud(ctx, alerts) {
     slot.expiresAtTick = -1;
     slot.age = Infinity;
     slot.announced = '';
-    slot.el.classList.remove('is-on', 'is-offscreen', 'is-pulse', 'is-compact',
-      'sf-tell--FLYBY', 'sf-tell--TETHER', 'sf-tell--CHARGE', 'sf-tell--LAUNCH', 'sf-tell--INCOMING');
+    slot.el.classList.remove('is-on', 'is-offscreen', 'is-pulse', 'is-compact', ...TELL_KIND_CLASSES);
     slot.el.hidden = true;
     slot.linkEl.hidden = true;
     slot.layoutOffset = null;
@@ -3386,8 +3777,9 @@ export function createHud(ctx, alerts) {
     if (payload.targetId != null && payload.targetId !== state.playerId) return;
     const tick = Number.isInteger(payload.tick) ? payload.tick
       : (Number.isInteger(state.tick) ? state.tick : 0);
-    // Floor to ≥30 sim ticks so HUD never under-telegraphs the sim hold-fire window.
-    const durationTicks = Math.max(30, Math.floor(Number(payload.durationTicks) || DEFAULT_TELEGRAPH_TICKS));
+    // CW-TELLS: floor to the design's 0.6 s tell beat so the HUD never under-telegraphs the sim
+    // hold-fire window (03_COMBAT §9: every attack telegraphs ≥ 0.6 s).
+    const durationTicks = Math.max(DEFAULT_TELEGRAPH_TICKS, Math.floor(Number(payload.durationTicks) || DEFAULT_TELEGRAPH_TICKS));
     const slot = acquireTellSlot(entityId);
     const wasSame = slot.entityId === entityId && slot.tellId === tellId && slot.age < Infinity;
     if (!wasSame) slot.layoutOffset = null;
@@ -3403,8 +3795,7 @@ export function createHud(ctx, alerts) {
       && other.tellId === tellId && other.entityId !== entityId && other.hintEl && other.hintEl.textContent);
     const hint = sameKindLive ? '' : (DOCTRINE_TELL_HINT[tellId] || '');
     const icon = DOCTRINE_TELL_ICON[tellId] || '⚠';
-    slot.el.classList.remove('sf-tell--FLYBY', 'sf-tell--TETHER', 'sf-tell--CHARGE',
-      'sf-tell--LAUNCH', 'sf-tell--INCOMING');
+    slot.el.classList.remove(...TELL_KIND_CLASSES);
     slot.el.classList.add(`sf-tell--${tellId}`);
     // The drawn mark renders as an element (innerHTML with internally-authored markup from
     // glyphs.js); the text icon stays a textContent write. Labels below remain text either way.
@@ -3455,21 +3846,38 @@ export function createHud(ctx, alerts) {
   }
 
   on('ai:telegraph', (p) => pushDoctrineTell(p || {}));
+  // CW-TELLS (INV-21 item 5): the Enemy Mind's facts ride the same chip machinery. Only
+  // decisions aimed at the player pass pushDoctrineTell's existing target filter, and the
+  // pure mapper decides which verbs earn a chip at all (press/regroup stay silent).
+  on('ai:mind:decision', (p) => pushDoctrineTell({ ...(p || {}), kind: 'mind_decision' }));
+  on('ai:mind:mistake', (p) => pushDoctrineTell({ ...(p || {}), kind: 'mind_mistake' }));
 
-  function updateDoctrineTells(frameDt) {
+  function updateDoctrineTells(frameDt, swarm) {
     if (!tellSlots.some(slot => slot.age < Infinity)) return;
     const w2s = helpers && helpers.worldToScreen;
     const tick = Number.isInteger(state.tick) ? state.tick : 0;
     const w = (typeof window !== 'undefined' && window.innerWidth) || 1280;
     const h = (typeof window !== 'undefined' && window.innerHeight) || 720;
-    refreshFlightTextObstacleSnapshot();
+    // The tells seat against the last published obstacles; a stale set is re-read after this
+    // frame's own layout pass, where the rectangles are already computed.
+    if (!refreshObstaclesAfterLayout()) refreshFlightTextObstacleSnapshot();
     // Deferred tell measures land here, in the frame's read phase, instead of a forced
     // layout inside the push handler. Seating uses the result in the same pass.
+    const tellGeomCache = updateDoctrineTells._geomCache || (updateDoctrineTells._geomCache = new Map());
     for (const slot of tellSlots) {
       if (slot.needsGeometry && slot.age < Infinity) {
         slot.needsGeometry = false;
-        const tellBox = slot.el.getBoundingClientRect?.();
-        if (tellBox?.width > 0 && tellBox?.height > 0) slot.geometry = { width: tellBox.width + 8, height: tellBox.height + 8 };
+        const geomKey = `${slot.tellId || slot.kindEl?.textContent || ''}\u0000${slot.hintEl?.textContent ? 1 : 0}`;
+        const cached = geomKey ? tellGeomCache.get(geomKey) : null;
+        if (cached) {
+          slot.geometry = cached;
+        } else {
+          const tellBox = slot.el.getBoundingClientRect?.();
+          if (tellBox?.width > 0 && tellBox?.height > 0) {
+            slot.geometry = { width: tellBox.width + 8, height: tellBox.height + 8 };
+            if (geomKey) tellGeomCache.set(geomKey, slot.geometry);
+          }
+        }
       }
     }
     const phoneTells = document.documentElement?.getAttribute?.('data-sf-mobile-flight') === '1';
@@ -3485,10 +3893,25 @@ export function createHud(ctx, alerts) {
     }
     const measuredLeft = objectiveEdgeObstacles().left;
     if (measuredLeft) reserved.push(measuredLeft);
-    // Danger tier in a Swarm round: ONE line (20_THE_FIRST_HOUR rule 2). Live tells of one kind
-    // merge into the nearest carrier's chip with a count; of several kinds only the most urgent
-    // kind speaks (a thrown mass outranks a launch, which outranks the rest).
-    const lead = isSwarmGlass(state) ? pickLeadTell(tellSlots, state) : null;
+    const floorLabelStart = reserved.length;
+    const floorLabels = swarm ? floatingText.getFloorPadLabelRects() : null;
+    if (floorLabels) {
+      for (const label of floorLabels) {
+        reserved.push(tellBlockerAt(reserved.length, label.x, label.y, label.w, label.h));
+      }
+    }
+    // HUD-2 Item 9: ONE threat direction prompt at a time (most urgent kind, nearest carrier),
+    // anchored cleanly to the viewport edge in the threat's direction — never stacking multiple
+    // floating threat boxes and never drawing a red stabbing wire across the ship.
+    const lead = pickLeadTell(tellSlots, state);
+    const playerEnt = state.entities?.get?.(state.playerId);
+    let playerOrigin = null;
+    if (w2s && playerEnt && playerEnt.pos) {
+      tellProjectionWorld.x = playerEnt.pos.x;
+      tellProjectionWorld.z = playerEnt.pos.z;
+      const pp = w2s(tellProjectionWorld, { x: 0, y: 0, onScreen: false });
+      if (pp && Number.isFinite(pp.x) && Number.isFinite(pp.y)) playerOrigin = { x: pp.x, y: pp.y };
+    }
     for (let slotIndex = 0; slotIndex < tellSlots.length; slotIndex++) {
       const slot = tellSlots[slotIndex];
       if (slot.age >= Infinity) continue;
@@ -3498,7 +3921,7 @@ export function createHud(ctx, alerts) {
       if (!ent || ent.alive === false || !ent.pos) { retireTell(slot); continue; }
       if (lead) {
         if (slot !== lead.slot) { setDisplay(slot.el, false); slot.linkEl.hidden = true; continue; }
-        const label = lead.count > 1 ? `${slot.tellId} ×${lead.count}` : slot.tellId;
+        const label = lead.count > 1 ? `${slot.tellId} · ${lead.count}` : slot.tellId;
         setText(slot.kindEl, label);
         setText(slot.hintEl, DOCTRINE_TELL_HINT[slot.tellId] || '');
       }
@@ -3521,34 +3944,46 @@ export function createHud(ctx, alerts) {
         for (let i = 0; i < reserved.length; i++) tellPhoneBlockers.push(reserved[i]);
         for (let i = 0; i < avoid.length; i++) tellPhoneBlockers.push(avoid[i]);
         const blockers = tellPhoneBlockers;
-        const seat = seatPhoneTell((dims) => resolveDoctrineTellPlacement(w, h, proj, slotIndex, blockers, slot.layoutOffset, dims),
-          blockers, slot.geometry);
+        const countPad = lead && lead.slot === slot && lead.count > 1 ? 28 : 0;
+        const dims = countPad
+          ? { width: slot.geometry.width + countPad, height: slot.geometry.height }
+          : slot.geometry;
+        const place = (d) => resolveDoctrineTellPlacement(w, h, proj, slotIndex, blockers, slot.layoutOffset, d);
+        let seat = seatPhoneTell(place, blockers, dims);
+        if (!seat && floorLabels?.length) {
+          // Preserve the danger cue if a narrow deck has no belt of space clear of the prices.
+          blockers.splice(floorLabelStart, floorLabels.length);
+          seat = seatPhoneTell(place, blockers, dims);
+        }
         placement = seat && seat.placement;
         setClass(slot.el, 'is-compact', !!(seat && seat.compact));
       } else {
-        placement = resolveDoctrineTellPlacement(w, h, proj, slotIndex, reserved, slot.layoutOffset, slot.geometry);
+        placement = resolveDoctrineTellPlacement(
+          w, h, proj, 0, reserved, null, slot.geometry,
+          { edgeAnchor: true, origin: playerOrigin },
+        );
+        // The pack count ('FLYBY · 3') is written after the chip was measured; keep the wider
+        // word inside the frame instead of clipping at the left edge.
+        if (placement && lead && lead.slot === slot && lead.count > 1) {
+          const half = (placement.width + 28) / 2;
+          placement.x = Math.max(half + 24, Math.min(w - half - 24, placement.x));
+        }
       }
       if (!placement) { setDisplay(slot.el, false); slot.linkEl.hidden = true; continue; }
       reserved.push(tellBlockerAt(reserved.length,
         placement.x - placement.width / 2, placement.y - placement.height / 2,
         placement.width, placement.height));
-      slot.layoutOffset = placement.onScreen ? { x: placement.x - proj.x, y: placement.y - proj.y } : null;
+      slot.layoutOffset = null;
       setDisplay(slot.el, true, 'inline-flex');
-      setClass(slot.el, 'is-offscreen', !placement.onScreen);
+      setClass(slot.el, 'is-offscreen', !placement.onScreen || !!placement.edgeAnchored);
+      setClass(slot.el, 'is-edge', !!placement.edgeAnchored);
       setHudScreenTransform(slot.el, placement.x, placement.y, tellTransformCentered);
-      const anchorX = Math.max(0, Math.min(w, proj.x)), anchorY = Math.max(0, Math.min(h, proj.y));
-      const lineX = anchorX - placement.x, lineY = anchorY - placement.y;
-      const edge = Math.min(Math.abs(lineX) > .001 ? placement.width / 2 / Math.abs(lineX) : Infinity,
-        Math.abs(lineY) > .001 ? placement.height / 2 / Math.abs(lineY) : Infinity);
-      const startFraction = Math.min(1, edge);
-      const lineLength = Math.hypot(lineX, lineY) * (1 - startFraction);
-      slot.linkEl.hidden = !placement.onScreen || lineLength < 4;
-      if (!slot.linkEl.hidden) {
-        setStyle(slot.linkEl, 'width', `${lineLength.toFixed(1)}px`);
-        const startX = placement.x + lineX * startFraction, startY = placement.y + lineY * startFraction;
-        setStyle(slot.linkEl, 'transform', `translate(${startX.toFixed(1)}px,${startY.toFixed(1)}px) rotate(${Math.atan2(lineY, lineX)}rad)`);
+      slot.linkEl.hidden = true;
+      const bearing = tellBearingMark(placement);
+      if (slot.dirEl) {
+        setHidden(slot.dirEl, bearing == null);
+        if (bearing != null) setStyle(slot.dirEl, 'transform', `rotate(${bearing.toFixed(1)}deg)`);
       }
-      if (slot.dirEl) setStyle(slot.dirEl, 'transform', `rotate(${placement.directionDeg.toFixed(1)}deg)`);
       setHidden(slot.el, false);
       setClass(slot.el, 'is-on', true);
     }
@@ -3575,10 +4010,26 @@ export function createHud(ctx, alerts) {
     transform: translate(-50%, -50%);
     width: min(980px, calc(100vw - 32px));
     height: min(600px, calc(100vh - 32px));
-    background: color-mix(in srgb, var(--panel) 96%, transparent);
-    border: 1px solid var(--visor-cyan);
-    border-radius: 12px;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.85), 0 0 30px color-mix(in srgb, var(--visor-cyan) 15%, transparent);
+    /* the hold wears the station's instrument palette: the panel scope re-points the legacy cool
+       tokens to the warm bone/amber deck (ui.css --panel/--visor are compatibility tokens), so the
+       whole sheet reads one language without rewriting forty rules (fresh-eyes pass 2026-11-15) */
+    --panel: rgb(10 12 16);
+    --panel-2: rgb(15 18 23);
+    --panel-edge: rgb(236 230 216 / .16);
+    --visor-cyan: rgb(236 230 216 / .62);
+    --visor-cyan-dim: rgb(236 230 216 / .3);
+    --warn: var(--dp-hand, #f2b950);
+    --danger: var(--dp-danger, #ff5038);
+    --accent-2: var(--dp-phos, #dfeeff);
+    --good: var(--dp-phos, #dfeeff);
+    --accent: var(--dp-hand, #f2b950);
+    --ink: #e8e2d4;
+    --ink-dim: rgb(232 226 212 / .62);
+    --ink-mute: rgb(232 226 212 / .42);
+    background: rgb(8 11 16 / .92);
+    border: 1px solid rgb(236 230 216 / .3);
+    border-radius: 10px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgb(236 230 216 / .1);
     z-index: 1000;
     pointer-events: auto;
     font-family: var(--mono, monospace);
@@ -3588,10 +4039,24 @@ export function createHud(ctx, alerts) {
   .sf-cargo-panel.open {
     display: flex;
   }
+  /* the hold dims the world behind it (fresh-eyes 2026-11-15: HUD contact text sliced through the
+     panel edges) — a non-interactive veil one step under the panel, shown and hidden with it. The
+     hold stays a live HUD surface: no ui-modal-open, the world keeps running behind the veil. */
+  .sf-cargo-scrim {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 999;
+    pointer-events: none;
+    background: radial-gradient(120% 90% at 50% 44%, rgb(5 7 10 / .55), rgb(5 7 10 / .82));
+  }
+  .sf-cargo-scrim.open { display: block; }
   /* Same HUD-overlay contract as the comms feed: a modal screen owns the frame while it is up;
      the hold stays open in state and returns when the screen closes. */
   body.ui-modal-open .sf-cargo-panel.open,
   body.ui-live-screen .sf-cargo-panel.open { display: none; }
+  body.ui-modal-open .sf-cargo-scrim.open,
+  body.ui-live-screen .sf-cargo-scrim.open { display: none; }
   .sf-cargo-panel__head {
     display: flex;
     align-items: center;
@@ -3605,10 +4070,12 @@ export function createHud(ctx, alerts) {
     flex-direction: column;
   }
   .sf-cargo-panel__title {
-    font-size: 16px;
-    font-weight: bold;
-    letter-spacing: .06em;
-    color: var(--visor-cyan);
+    font-family: var(--dp-face-label, "Archivo", sans-serif);
+    font-stretch: 112%;
+    font-size: 15px;
+    font-weight: 650;
+    letter-spacing: .14em;
+    color: rgb(248 244 234);
   }
   .sf-cargo-status-tag {
     font-size: 12px;
@@ -3635,8 +4102,19 @@ export function createHud(ctx, alerts) {
     font-weight: bold;
     color: var(--visor-cyan);
   }
-  .sf-cargo-lean--warm { color: var(--visor-cyan); }
-  .sf-cargo-lean--cool { color: var(--warn); }
+  /* the lean verdict is a stamped tag, not a link (fresh-eyes 2026-11-15: "Drift approving" read
+     as an anchor): hairline chip, mono caps, the lean's own temperature */
+  .sf-cargo-lean {
+    font-family: var(--dp-face-num, monospace);
+    font-size: 12px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    padding: 1px 8px;
+    border: 1px solid rgb(236 230 216 / .24);
+    border-radius: 2px;
+  }
+  .sf-cargo-lean--warm { color: var(--dp-hand, #f2b950); border-color: rgb(242 185 80 / .4); }
+  .sf-cargo-lean--cool { color: var(--dp-phos, #dfeeff); border-color: rgb(223 238 255 / .35); }
   .sf-cargo-panel__head { --k-signal: var(--dp-lamp); }
   .sf-cargo-panel__close:hover,
   .sf-cargo-panel__close:active { translate: none; box-shadow: none; filter: none; }
@@ -3661,12 +4139,56 @@ export function createHud(ctx, alerts) {
   .sf-cargo-rail-btn { width: 100%; text-align: left; white-space: normal; }
   .sf-cargo-rail-btn:hover,
   .sf-cargo-rail-btn:active { translate: none; box-shadow: none; filter: none; }
+  /* the open tab wears the Hand: an amber notch on the rail's left edge (the station rows'
+     selection grammar), not a link colour */
+  .sf-cargo-rail-btn.active {
+    color: rgb(250 247 238);
+    box-shadow: inset 3px 0 0 var(--dp-hand, #f2b950);
+  }
   .sf-cargo-panel .k-word:hover,
   .sf-cargo-panel .k-word:focus-visible,
   .sf-cargo-panel .k-word:active { color: var(--k-text-live); }
+  /* the inspector's verbs are keys, not hyperlinks (fresh-eyes 2026-11-15 read the resting
+     underline as a 2005 link): Set course keeps the primary amber word grammar; Jettison is the
+     hazard key — bone word with a red rule at rest, and the red arrives only on intent (deckplate
+     .dp-key--hazard). The rail's tab buttons stay bare — they are tabs, not keys. */
   .sf-cargo-panel .k-word--primary:is(:hover, :focus-visible, :active),
   .sf-cargo-panel .k-word[aria-current="true"] { color: var(--k-signal, var(--dp-lamp)); }
-  .sf-cargo-panel .k-word--danger:is(:hover, :focus-visible, :active) { color: var(--k-red); }
+  .sf-cargo-inspector .sf-btn-route {
+    min-height: 40px;
+    border: 1px solid rgb(242 185 80 / .45);
+    border-radius: 6px;
+    background: rgb(242 185 80 / .1);
+    color: var(--dp-ink-hot, #faf6ea);
+    font-size: 15px;
+    font-weight: 600;
+    padding: 8px 12px;
+  }
+  .sf-cargo-inspector .sf-btn-route:enabled:is(:hover, :focus-visible, :active) {
+    border-color: var(--dp-lamp, #f2b950);
+    background: rgb(242 185 80 / .2);
+    color: var(--dp-lamp, #f2b950);
+  }
+  .sf-cargo-inspector .sf-btn-route:disabled {
+    border-color: rgb(236 230 216 / .16);
+    background: rgb(236 230 216 / .03);
+    color: var(--ink-mute);
+  }
+  .sf-cargo-inspector .sf-btn-jettison {
+    color: var(--dp-ink, #e8e2d4);
+    border: 1px solid rgb(255 80 56 / .28);
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    padding: 7px 12px;
+    box-shadow: inset 0 -2px 0 rgb(255 80 56 / .55);
+  }
+  .sf-cargo-inspector .sf-btn-jettison:is(:hover, :focus-visible, :active) {
+    color: var(--dp-danger-hot, #ff8a70);
+    border-color: rgb(255 80 56 / .65);
+    background: rgb(255 80 56 / .16);
+    box-shadow: inset 0 -2px 0 var(--dp-danger, #ff5038);
+  }
   .sf-cargo-panel .k-word:focus-visible { outline: 2px solid var(--dp-lamp) !important; outline-offset: 3px; }
   .sf-cargo-centerpiece {
     flex: 1;
@@ -3707,12 +4229,14 @@ export function createHud(ctx, alerts) {
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    padding: 14px;
+    gap: 8px;
+    padding: 12px 13px;
     border-radius: 8px;
     cursor: pointer;
     transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-    min-width: 140px;
-    height: 120px;
+    min-width: 164px;
+    min-height: 118px;
+    height: auto;
     box-sizing: border-box;
     z-index: 10;
     position: relative;
@@ -3730,8 +4254,8 @@ export function createHud(ctx, alerts) {
     background: repeating-linear-gradient(45deg, color-mix(in srgb, var(--danger) 5%, transparent), color-mix(in srgb, var(--danger) 5%, transparent) 10px, color-mix(in srgb, var(--danger) 15%, transparent) 10px, color-mix(in srgb, var(--danger) 15%, transparent) 20px);
   }
   .sf-cargo-block.free-space {
-    border: 1px dashed var(--ink-mute);
-    background: transparent;
+    border: 1px solid rgb(236 230 216 / .18);
+    background: rgb(236 230 216 / .02);
     cursor: default;
   }
   .sf-cargo-block:hover, .sf-cargo-block.selected {
@@ -3753,23 +4277,37 @@ export function createHud(ctx, alerts) {
     background: repeating-linear-gradient(45deg, color-mix(in srgb, var(--danger) 10%, transparent), color-mix(in srgb, var(--danger) 10%, transparent) 10px, color-mix(in srgb, var(--danger) 25%, transparent) 10px, color-mix(in srgb, var(--danger) 25%, transparent) 20px);
     box-shadow: 0 0 15px color-mix(in srgb, var(--danger) 20%, transparent);
   }
+  /* the Hand marks the picked block: the amber border rides over every legality's hover tint */
+  .sf-cargo-block.selected { border-color: var(--dp-hand, #f2b950); }
   .sf-cargo-block-top {
     display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 5px;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 9px;
+    width: 100%;
+    min-width: 0;
+  }
+  .sf-cargo-block-thumb {
+    --sf-thumb-size: 40px;
+    flex: 0 0 auto;
   }
   .sf-cargo-block-name {
-    font-size: 12px;
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 13px;
+    line-height: 1.25;
     font-weight: bold;
     color: var(--ink);
     overflow: hidden;
     text-overflow: ellipsis;
+    overflow-wrap: anywhere;
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
   }
   .sf-cargo-lock-icon {
+    flex: 0 0 auto;
     display: flex;
     align-items: center;
     color: var(--warn);
@@ -3778,7 +4316,8 @@ export function createHud(ctx, alerts) {
   .sf-cargo-block-bottom {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 3px;
+    width: 100%;
   }
   .sf-cargo-block-qty {
     font-size: 12px;
@@ -3851,13 +4390,24 @@ export function createHud(ctx, alerts) {
     gap: 15px;
     height: 100%;
   }
+  .sf-ins-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-bottom: 1px solid var(--panel-edge);
+    padding-bottom: 12px;
+  }
+  .sf-ins-thumb {
+    flex: 0 0 auto;
+    display: inline-flex;
+  }
   .sf-ins-name {
     font-size: 16px;
     font-weight: bold;
     color: var(--visor-cyan);
     margin: 0;
-    border-bottom: 1px solid var(--panel-edge);
-    padding-bottom: 8px;
+    min-width: 0;
+    overflow-wrap: anywhere;
   }
   .sf-ins-meta {
     display: flex;
@@ -4012,7 +4562,6 @@ export function createHud(ctx, alerts) {
     border: 1px solid var(--visor-cyan-dim, rgba(79, 143, 221, 0.3));
     border-radius: 2px;
     letter-spacing: 0.04em;
-    white-space: nowrap;
     margin-top: 4px;
     font-family: var(--dp-face-read, var(--k-mono, monospace));
   }
@@ -4024,8 +4573,12 @@ export function createHud(ctx, alerts) {
     ms.textContent = CARGO_HOLD_CSS;
     document.head.appendChild(ms);
   }
+  injectItemThumbnailStyles(document);
 
   // ---- cargo panel overlay ----
+  const cargoScrim = document.createElement('div');
+  cargoScrim.className = 'sf-cargo-scrim';
+  cargoScrim.setAttribute('aria-hidden', 'true');
   const cargoPanel = document.createElement('div');
   cargoPanel.className = 'sf-cargo-panel';
   cargoPanel.setAttribute('role', 'dialog');
@@ -4039,12 +4592,13 @@ export function createHud(ctx, alerts) {
       </div>
       <div class="sf-cargo-gauges">
         <div class="sf-cargo-gauge-item" id="sf-gauge-used">
-          <span class="sf-gauge-label">CAPACITY: <span class="sf-cargo-summary-used">0 / 40 u</span></span>
+          <span class="sf-gauge-label">CAPACITY: <span class="sf-cargo-summary-used">0 / 40</span></span>
         </div>
         <div class="sf-cargo-gauge-item" id="sf-gauge-lean">
           <span class="sf-gauge-label">In the hold: <span class="sf-cargo-summary-lean"></span></span>
         </div>
       </div>
+      <button class="k-word k-word--emph sf-cargo-sort" type="button" aria-label="Consolidate cargo stacks">Sort</button>
       <button class="k-word k-word--emph sf-cargo-panel__close" type="button" aria-label="Close cargo hold">Close · Esc</button>
     </div>
     <div class="sf-cargo-body">
@@ -4061,12 +4615,15 @@ export function createHud(ctx, alerts) {
         <div class="sf-cargo-schematic"></div>
         <div class="sf-cargo-supply-tree"></div>
       </div>
-      <div class="sf-cargo-inspector">
-        <div class="sf-inspector-empty">No item selected. Select a block to inspect.</div>
+        <div class="sf-cargo-inspector">
+        <div class="sf-inspector-empty">Nothing on the slate yet — pick a block from the hold.</div>
         <div class="sf-inspector-content" style="display:none;">
-          <h3 class="sf-ins-name">Commodity</h3>
+          <div class="sf-ins-head">
+            <span class="sf-ins-thumb" aria-hidden="true"></span>
+            <h3 class="sf-ins-name">Commodity</h3>
+          </div>
           <div class="sf-ins-meta">
-            <div class="sf-ins-meta-row"><span>Units/Vol:</span><span class="sf-ins-qty">0 u / 0 u</span></div>
+            <div class="sf-ins-meta-row"><span>Units/Vol:</span><span class="sf-ins-qty">0 / 0</span></div>
             <div class="sf-ins-meta-row"><span>Legality:</span><span class="sf-ins-legal">LEGAL</span></div>
             <div class="sf-ins-meta-row"><span>You paid:</span><span class="sf-ins-basis">N/A</span></div>
           </div>
@@ -4076,12 +4633,14 @@ export function createHud(ctx, alerts) {
           </div>
           <div class="sf-ins-actions">
             <button class="k-word k-word--emph k-word--primary sf-btn-route" type="button">Set course</button>
+            <button class="k-word k-word--emph sf-btn-split" type="button">Split</button>
             <button class="k-word k-word--danger sf-btn-jettison" type="button">Jettison</button>
           </div>
         </div>
       </div>
     </div>
   `;
+  root.appendChild(cargoScrim);
   root.appendChild(cargoPanel);
 
   // mount route beam overlay
@@ -4157,6 +4716,7 @@ export function createHud(ctx, alerts) {
   if (state.ui) state.ui.cargoPanelOpen = false;
   let activeTab = 'cargo';
   let selectedCommodityId = null;
+  let selectedSlotIndex = null;
 
   const CMDTY_MAP = new Map();
   function buildCmdtyMap() {
@@ -4251,8 +4811,15 @@ export function createHud(ctx, alerts) {
     const vol = def ? (def.volPerU || 1) * qty : qty;
     const name = cargoDisplayName(commodityId);
 
+    const thumbEl = contentEl.querySelector('.sf-ins-thumb');
+    if (thumbEl) {
+      thumbEl.innerHTML = itemThumbHtml(
+        { id: commodityId, kind: 'commodity', category: def?.category, legality: def?.legality },
+        { size: 'hero', showCrest: false }
+      );
+    }
     contentEl.querySelector('.sf-ins-name').textContent = name;
-    contentEl.querySelector('.sf-ins-qty').textContent = `${qty} u / ${vol.toFixed(1)} u`;
+    contentEl.querySelector('.sf-ins-qty').textContent = `${qty} units / ${vol.toFixed(1)} units`;
 
     const legalEl = contentEl.querySelector('.sf-ins-legal');
     const legality = def ? def.legality : 'legal';
@@ -4323,9 +4890,33 @@ export function createHud(ctx, alerts) {
           danger: true
         });
         if (ok) {
-          ctx.bus.emit('cargo:jettison', { commodityId, qty: dumpQty });
+          ctx.bus.emit('cargo:jettison', {
+            commodityId,
+            qty: dumpQty,
+            slotIndex: Number.isInteger(selectedSlotIndex) && selectedSlotIndex >= 0
+              ? selectedSlotIndex : undefined,
+          });
         }
       };
+    }
+
+    // Stack split — the selected stack halves into the next free slot. A stack of one or a
+    // bag without an open slot has nothing to split into, so the control disables itself.
+    const splitBtn = contentEl.querySelector('.sf-btn-split');
+    if (splitBtn) {
+      const hold = (state.player && state.player.cargo) || {};
+      const stack = Number.isInteger(selectedSlotIndex) && selectedSlotIndex >= 0
+        ? (hold.slots || [])[selectedSlotIndex] : null;
+      const canSplit = !!(stack && stack.commodityId === commodityId && stack.qty > 1
+        && (hold.slots || []).length < (hold.slotCount || 0));
+      splitBtn.disabled = !canSplit;
+      splitBtn.title = canSplit
+        ? `Split ${stack.qty}× ${name} into a second stack`
+        : 'Split unavailable — no free slot or stack is one unit';
+      splitBtn.onclick = canSplit ? () => {
+        ctx.bus.emit('audio:cue', { id: 'ui_click' });
+        ctx.bus.emit('cargo:splitStack', { slotIndex: selectedSlotIndex });
+      } : null;
     }
 
     const crackBtn = contentEl.querySelector('.sf-btn-crack');
@@ -4396,11 +4987,23 @@ export function createHud(ctx, alerts) {
       inertia: playerEntity && playerEntity.flightModel && playerEntity.flightModel.inertia,
     };
     const items = c.items || {};
+    // CARGO-BUILD-1: the gauge reads the bag — stacks aboard over slots the hull grants.
+    // Volume stays a physical readout in each stack's footer and the free-capacity line.
+    const slots = Array.isArray(c.slots) ? c.slots : [];
+    const slotCount = Math.max(0, Math.floor(Number(c.slotCount) || 0));
+    // Stacks aboard: the packed list counts itself (an over-cap tail shows past the bound);
+    // an un-packed hold counts the stacks its item mirror would claim.
+    const impliedSlots = slots.length
+      ? null
+      : packItemsIntoSlots(items, (id) => unitsPerSlotFor(state, id));
+    const usedSlots = slots.length ? slots.length : (impliedSlots ? impliedSlots.length : 0);
     const used = Math.round(c.usedVolume || 0);
     const cap = Math.round(c.capVolume || 40);
 
-    applySettledCircularGauge(cargoGaugeSettle.used, gaugeUsedFx, cap > 0 ? used / cap : 0, settleMeta, { label: `${used}/${cap} u` });
-    cargoPanel.querySelector('.sf-cargo-summary-used').textContent = `${used} / ${cap} u`;
+    applySettledCircularGauge(cargoGaugeSettle.used, gaugeUsedFx, slotCount > 0 ? usedSlots / slotCount : 0, settleMeta, { label: `${usedSlots}/${slotCount}` });
+    const summaryUsed = cargoPanel.querySelector('.sf-cargo-summary-used');
+    summaryUsed.textContent = `${usedSlots} / ${slotCount} slots`;
+    summaryUsed.title = `${used} / ${cap} u volume used`;
 
     // In the hold — the Cargo Conscience's moral leans, surfaced as chips. A lean is a read,
     // never a rep delta; a neutral hold renders '—' rather than a fake label.
@@ -4489,9 +5092,8 @@ export function createHud(ctx, alerts) {
     if (led) led.style.display = 'none';
 
     const missionCmdtyIds = getMissionCargoIds(state);
-    const keys = Object.keys(items).filter(id => {
-      if (items[id] <= 0) return false;
-      const def = CMDTY_MAP.get(id);
+    const slotPassesTab = (stack) => {
+      const def = CMDTY_MAP.get(stack.commodityId);
       if (activeTab === 'materials') {
         return def && (def.category === 'raw ore' || def.category === 'gas' || def.category === 'crystal');
       }
@@ -4499,36 +5101,36 @@ export function createHud(ctx, alerts) {
         return def && def.category === 'salvage';
       }
       if (activeTab === 'mission') {
-        return missionCmdtyIds.has(id);
+        return missionCmdtyIds.has(stack.commodityId);
       }
       return true;
-    });
+    };
+    // One block per stack: the bag is the law, so a hold renders its slot list (with the
+    // legacy items mirror as the fallback view for a hold that has not packed yet).
+    const view = slots.length
+      ? slots.map((s, i) => ({ index: i, commodityId: s.commodityId, qty: s.qty }))
+      : Object.entries(items).filter(([, qty]) => qty > 0)
+        .map(([commodityId, qty], i) => ({ index: -1 - i, commodityId, qty }));
+    const rows = view.filter(s => s.qty > 0 && slotPassesTab(s));
+    const freeSlots = freeSlotCount(slots.length ? slots : (impliedSlots || []), slotCount);
 
     schematicEl.innerHTML = '';
 
-    if (!keys.length) {
+    if (!rows.length && freeSlots <= 0) {
       schematicEl.innerHTML = `<div class="sf-cargo-empty-msg">No items in this category.</div>`;
       updateInspector(null);
       beamFx.setPath([], { active: false });
       return;
     }
 
-    let totalFilteredVolume = 0;
-    const itemVolumes = {};
-    for (const id of keys) {
-      const qty = items[id];
-      const def = CMDTY_MAP.get(id);
-      const vol = cargoVolumeForRow(state, id, qty, def);
-      itemVolumes[id] = vol;
-      totalFilteredVolume += vol;
-    }
-
     const frag = document.createDocumentFragment();
-    for (const id of keys) {
-      const qty = items[id];
+    for (const stack of rows) {
+      const id = stack.commodityId;
+      const qty = stack.qty;
       const def = CMDTY_MAP.get(id);
       const name = escapeHtml(cargoDisplayName(id));
-      const vol = itemVolumes[id];
+      const vol = cargoVolumeForRow(state, id, qty, def);
+      const ups = unitsPerSlotFor(state, id);
       const persistent = isPersistentCargoId(state, id);
       // NXB-025 — the lock marks units that cannot leave; a partly-sealed lot still
       // carries its contract badge but is not all locked.
@@ -4541,10 +5143,14 @@ export function createHud(ctx, alerts) {
       const block = document.createElement('button');
       block.type = 'button';
       block.className = `sf-cargo-block ${legalClass}`;
-      block.setAttribute('aria-pressed', String(selectedCommodityId === id));
-      if (selectedCommodityId === id) block.classList.add('selected');
+      const isSelected = selectedCommodityId === id && selectedSlotIndex === stack.index;
+      block.setAttribute('aria-pressed', String(isSelected));
+      if (isSelected) block.classList.add('selected');
       block.dataset.id = id;
-      block.style.flex = `${Math.max(1, Math.round(vol))} ${Math.max(1, Math.round(vol))} 140px`;
+      block.dataset.slotIndex = String(stack.index);
+      block.style.flex = '1 1 140px';
+      block.draggable = stack.index >= 0;
+      block.setAttribute('aria-label', `${name} — ${qty} of ${ups} in this stack`);
 
       let badgeHtml = '';
       if (def) {
@@ -4562,12 +5168,13 @@ export function createHud(ctx, alerts) {
 
       block.innerHTML = `
         <span class="sf-cargo-block-top">
+          ${itemThumbHtml({ id, kind: 'commodity', category: def?.category, legality: def?.legality }, { size: 'md', showCrest: false, className: 'sf-cargo-block-thumb' })}
           <span class="sf-cargo-block-name">${name}</span>
           ${isLocked ? `<span class="sf-cargo-lock-icon" title="Locked — needed for an active contract or the story">${icon('lock', 12)}</span>` : ''}
-        </div>
-        <div class="sf-cargo-block-bottom">
-          <span class="sf-cargo-block-qty">${name} · ${qty} · ≈ ${formatCount(rowWorth, state)} cr</span>
-          <span class="sf-cargo-block-vol">${vol.toFixed(1)} space</span>
+        </span>
+        <span class="sf-cargo-block-bottom">
+          <span class="sf-cargo-block-qty">${qty} / ${ups} · ≈ ${formatCount(rowWorth, state)} cr</span>
+          <span class="sf-cargo-block-vol">${vol.toFixed(1)} u</span>
           ${badgeHtml}
         </span>
       `;
@@ -4575,6 +5182,7 @@ export function createHud(ctx, alerts) {
       block.addEventListener('click', (ev) => {
         ev.stopPropagation();
         selectedCommodityId = id;
+        selectedSlotIndex = stack.index;
         for (const item of schematicEl.querySelectorAll('button.sf-cargo-block')) {
           item.classList.toggle('selected', item === block);
           item.setAttribute('aria-pressed', String(item === block));
@@ -4583,20 +5191,25 @@ export function createHud(ctx, alerts) {
         ctx.bus.emit('audio:cue', { id: 'ui_click' });
       });
 
+      // Drag-out: a stack dropped off the bag grid is a jettison intent; dropped onto
+      // another slot it is a move (the owner merges same-commodity stacks itself).
+      block.addEventListener('dragstart', (ev) => {
+        ev.dataTransfer.setData('text/plain', String(stack.index));
+        ev.dataTransfer.effectAllowed = 'move';
+      });
+
       frag.appendChild(block);
     }
 
-    const freeVol = Math.max(0, cap - used);
-    if (freeVol > 0 && activeTab === 'cargo') {
+    for (let i = 0; i < freeSlots && activeTab === 'cargo'; i++) {
       const freeBlock = document.createElement('div');
       freeBlock.className = 'sf-cargo-block free-space';
-      freeBlock.style.flex = `${Math.max(1, Math.round(freeVol))} ${Math.max(1, Math.round(freeVol))} 140px`;
       freeBlock.innerHTML = `
         <div class="sf-cargo-block-top">
-          <span class="sf-cargo-block-name" style="color:var(--ink-mute);">FREE CAPACITY</span>
+          <span class="sf-cargo-block-name" style="color:var(--ink-mute);">EMPTY SLOT</span>
         </div>
         <div class="sf-cargo-block-bottom">
-          <span class="sf-cargo-block-qty" style="color:var(--ink-mute);">${freeVol} u free</span>
+          <span class="sf-cargo-block-qty" style="color:var(--ink-mute);">open</span>
         </div>
       `;
       frag.appendChild(freeBlock);
@@ -4604,9 +5217,25 @@ export function createHud(ctx, alerts) {
 
     schematicEl.appendChild(frag);
 
-    if (!selectedCommodityId && keys.length > 0) {
-      selectedCommodityId = keys[0];
-      const firstBlock = schematicEl.querySelector(`.sf-cargo-block[data-id="${selectedCommodityId}"]`);
+    schematicEl.querySelectorAll('.sf-cargo-block[data-slot-index]').forEach((el) => {
+      el.addEventListener('dragover', (ev) => { ev.preventDefault(); ev.dataTransfer.dropEffect = 'move'; });
+      el.addEventListener('drop', (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        const from = Number(ev.dataTransfer.getData('text/plain'));
+        const to = Number(el.dataset.slotIndex);
+        if (Number.isInteger(from) && Number.isInteger(to) && from !== to && from >= 0 && to >= 0) {
+          // Same commodity stacks merge to the target's cap; different stacks swap places.
+          const same = slots[from] && slots[to] && slots[from].commodityId === slots[to].commodityId;
+          ctx.bus.emit(same ? 'cargo:mergeStacks' : 'cargo:moveStack', { from, to });
+        }
+      });
+    });
+
+    if (selectedCommodityId == null && rows.length > 0) {
+      selectedCommodityId = rows[0].commodityId;
+      selectedSlotIndex = rows[0].index;
+      const firstBlock = schematicEl.querySelector(`.sf-cargo-block[data-slot-index="${selectedSlotIndex}"]`);
       if (firstBlock) {
         firstBlock.classList.add('selected');
         firstBlock.setAttribute('aria-pressed', 'true');
@@ -4647,13 +5276,74 @@ export function createHud(ctx, alerts) {
     });
   });
 
+  const sortBtn = cargoPanel.querySelector('.sf-cargo-sort');
+  if (sortBtn) sortBtn.addEventListener('click', () => {
+    ctx.bus.emit('audio:cue', { id: 'ui_click' });
+    ctx.bus.emit('cargo:sortBag', {});
+  });
+
+  // Dropping a stack anywhere off the bag grid is the drag-out jettison gesture; the drop
+  // targets live on cargoPanel so the grid's own slots keep their move/merge handling.
+  cargoPanel.addEventListener('dragover', (ev) => {
+    if (!ev.target.closest('.sf-cargo-block[data-slot-index]')) ev.preventDefault();
+  });
+  cargoPanel.addEventListener('drop', (ev) => {
+    if (ev.target.closest('.sf-cargo-block[data-slot-index]')) return; // the slot's own drop ran
+    const from = Number(ev.dataTransfer.getData('text/plain'));
+    const list = (state.player && state.player.cargo && state.player.cargo.slots) || [];
+    const stack = Number.isInteger(from) && from >= 0 ? list[from] : null;
+    if (stack && stack.qty > 0) requestStackJettison(from, stack.commodityId, stack.qty);
+  });
+
+  // The stack-drag-out gesture shares the button's confirm, then emits the same intent.
+  // `cargo:jettison` stays the one lane-crossing event; slotIndex/confirmSealed ride options.
+  function requestStackJettison(slotIndex, commodityId, qty) {
+    const name = cargoDisplayName(commodityId);
+    const sealed = reservedCargoQty(state, commodityId);
+    confirm({
+      title: 'Confirm Jettison',
+      body: `Jettison ${qty}× ${name} from this stack? This action is permanent.${sealed > 0 ? ` (${sealed} units are sealed for a contract.)` : ''}`,
+      confirmLabel: 'Jettison',
+      danger: true,
+    }).then((ok) => {
+      if (ok) ctx.bus.emit('cargo:jettison', { commodityId, qty, slotIndex });
+    });
+  }
+
+  // Sealed-freight confirmation (CARGO-BUILD-1): the owner refuses a dump that reaches into
+  // contract-sealed units and hands the screen the numbers; this is the answer path.
+  let pendingSealedDump = null;
+  on('cargo:jettisonSealed', (p) => {
+    if (!p || pendingSealedDump) return;
+    const sealedQty = Math.max(0, Math.floor(Number(p.requested) - Number(p.sellable) || 0));
+    const name = cargoDisplayName(p.commodityId);
+    pendingSealedDump = p;
+    confirm({
+      title: 'Drop sealed freight?',
+      body: `${p.requested} ${name}: ${Math.max(0, Number(p.reserved) || sealedQty)} of them are sealed for a contract. The contract will fail.`,
+      confirmLabel: 'Drop it',
+      danger: true,
+    }).then((ok) => {
+      const pending = pendingSealedDump;
+      pendingSealedDump = null;
+      if (ok && pending) {
+        ctx.bus.emit('cargo:jettison', {
+          commodityId: pending.commodityId,
+          qty: pending.requested,
+          slotIndex: Number.isInteger(pending.slotIndex) ? pending.slotIndex : undefined,
+          confirmSealed: true,
+        });
+      }
+    });
+  });
+
   // Listen for the jettison event in case the cargo system doesn't handle it natively
-  on('cargo:jettison', ({ commodityId, qty }) => {
+  on('cargo:jettison', ({ commodityId, qty, slotIndex, confirmSealed }) => {
     const cargoSys = ctx.registry && ctx.registry.get('cargo');
     if (cargoSys && cargoSys.jettison) {
       // On the worker lane the facade returns a Promise of the dumped count;
       // main-side it resolves a number through the same await.
-      Promise.resolve(cargoSys.jettison(commodityId, qty || 1)).then((dumped) => {
+      Promise.resolve(cargoSys.jettison(commodityId, qty || 1, { slotIndex, confirmSealed })).then((dumped) => {
         if (dumped > 0) {
           const name = cargoDisplayName(commodityId);
           ctx.bus.emit('toast', { text: `Jettisoned ${dumped}× ${name}`, kind: 'warn', ttl: 2 });
@@ -4667,6 +5357,7 @@ export function createHud(ctx, alerts) {
     cargoPanelOpen = !cargoPanelOpen;
     if (state.ui) state.ui.cargoPanelOpen = cargoPanelOpen;
     cargoPanel.classList.toggle('open', cargoPanelOpen);
+    cargoScrim.classList.toggle('open', cargoPanelOpen);
     // The ORRERY skin lowers #alerts while the hold is up. A :has() mirror here re-scanned the
     // whole document on every alert/attribute change — a JS-toggled body class is the same fact.
     document.body?.classList.toggle('sf-cargo-open', cargoPanelOpen);
@@ -4698,6 +5389,7 @@ export function createHud(ctx, alerts) {
     cargoPanelOpen = false;
     if (state.ui) state.ui.cargoPanelOpen = false;
     cargoPanel.classList.remove('open');
+    cargoScrim.classList.remove('open');
     document.body?.classList.remove('sf-cargo-open');
     if (cargoOpener?.isConnected && !cargoOpener.closest('[inert]')) cargoOpener.focus?.({ preventScroll: true });
     cargoOpener = null;
@@ -4741,8 +5433,13 @@ export function createHud(ctx, alerts) {
   on('navigation:cleared', updateFlightCargoBar);
 
   // Expose toggle/close for the input system
-  on('ui:toggleCargo', toggleCargoPanel);
-  on('ui:closeCargo', closeCargoPanel);
+  // CARGO-BAG-UI: the cargo key opens the bag (cargoBag.js) — a compact slot grid at the side of
+  // the screen that never pauses flight. The old full-screen manifest no longer opens from flight.
+  const cargoBag = createCargoBag({ root, state, bus: ctx.bus, ctx });
+  if (typeof window !== 'undefined') window.__sfCargoBag = cargoBag;
+  hudUnsubscribers.push(() => { cargoBag.destroy(); if (typeof window !== 'undefined' && window.__sfCargoBag === cargoBag) window.__sfCargoBag = null; });
+  on('ui:toggleCargo', () => { if (cargoPanelOpen) closeCargoPanel(); cargoBag.toggle(); });
+  on('ui:closeCargo', () => { closeCargoPanel(); cargoBag.close(); });
 
   // Close on ESC when panel focus is inside it; ui/input.js handles the global flight case.
   cargoPanel.addEventListener('keydown', (ev) => {
@@ -4783,35 +5480,70 @@ export function createHud(ctx, alerts) {
   // the accepted receipt's kind, affected party, and witness/jurisdiction basis. Suspicion
   // without a receipt shows no reason at all, never a witness claim.
   let wantedActive = false;
-  if (alerts) {
-    on('heat:changed', (p) => {
-      const v = p && typeof p.value === 'number' ? p.value : (state.player && state.player.heat) || 0;
-      const wanted = v >= 0.15;
-      const reason = wantedReasonText(p, state.player);
-      if (wanted && !wantedActive) {
-        alerts.raise({ key: 'wanted', sev: 'danger', text: wantedAlertText(v, reason, false), ttl: Infinity });
+  let wantedReason = '';
+  let lastWantedText = '';
+  function wantedContext(packet = null) {
+    if (packet && packet.zone) return { ...state, zone: packet.zone };
+    return state;
+  }
+  function syncWantedAlert(packet = null) {
+    if (!alerts) return;
+    const v = packet && typeof packet.value === 'number'
+      ? packet.value
+      : (state.player && state.player.heat) || 0;
+    const wanted = v >= 0.15;
+    if (packet) wantedReason = wantedKindText(packet, state.player);
+    else if (wanted) wantedReason = wantedKindText(null, state.player) || wantedReason;
+    if (wanted) {
+      const ctxForWanted = wantedContext(packet);
+      if (!wantedActive) {
+        const text = wantedAlertText(v, wantedReason, false, ctxForWanted);
+        alerts.raise({ key: 'wanted', sev: 'danger', text, ttl: Infinity });
         wantedActive = true;
+        lastWantedText = text;
         const teach = noteFirstWantedMark(state, true);
         if (teach) ctx.bus.emit('toast', { text: teach, kind: 'info', ttl: 6 });
-      } else if (wanted && wantedActive) {
-        // refresh the text to show the new tier (raise dedups by key but updates text/sev)
-        alerts.raise({ key: 'wanted', sev: 'danger', text: wantedAlertText(v, reason, true), ttl: Infinity });
-      } else if (!wanted && wantedActive) {
-        alerts.clear('wanted');
-        wantedActive = false;
+      } else {
+        // Cooling heat is never an escalation. HUNTERS copy may only come from a live
+        // incoming-response fact; until one is published, the status stays plain WANTED.
+        const text = wantedAlertText(v, wantedReason, false, ctxForWanted);
+        if (text !== lastWantedText) {
+          alerts.raise({ key: 'wanted', sev: 'danger', text, ttl: Infinity });
+          lastWantedText = text;
+        }
       }
+    } else if (wantedActive) {
+      alerts.clear('wanted');
+      wantedActive = false;
+      wantedReason = '';
+      lastWantedText = '';
+    }
+  }
+  if (alerts) {
+    on('heat:changed', (p) => syncWantedAlert(p || {}));
+    on('save:loaded', () => {
+      wantedReason = '';
+      syncWantedAlert(null);
     });
   }
 
-  // Forced weapon-heat vent (Micro-Loops): when the player's guns peg heatMax, weapons.js locks them
-  // out for ~2s while heat dumps. Raise a top-center alert so the lockout
-  // reads as a rhythm beat ("vent, then resume"), not a dead trigger.
+  const WEAPON_NAME_BY_ID = new Map(WEAPONS.map((w) => [w.id, w.name]));
+  // Forced weapon-heat vent (OVH-08b): per-gun lock names the gun that locked for ~1.2 s so
+  // the player knows which mount is cooling; legacy ship-wide vents keep the generic word.
   on('weapons:vent', (p) => {
     if (!p || p.ownerId !== state.playerId) return;
     const venting = p.phase === 'start';
     if (alerts) {
-      if (venting) alerts.raise({ key: 'wpn-vent', sev: 'warn', text: 'WEAPONS VENTING', ttl: 2.3 });
-      else alerts.clear('wpn-vent');
+      if (venting) {
+        const gunName = p.perGun && p.weaponId ? (WEAPON_NAME_BY_ID.get(p.weaponId) || null) : null;
+        const text = gunName ? `${gunName.toUpperCase()} LOCKED` : 'WEAPONS VENTING';
+        const ttl = (Number.isFinite(p.until) && Number.isFinite(p.startedAt) && p.until > p.startedAt)
+          ? Math.max(1.2, p.until - p.startedAt)
+          : (p.perGun ? 1.2 : 2.3);
+        alerts.raise({ key: 'wpn-vent', sev: 'warn', text, ttl });
+      } else {
+        alerts.clear('wpn-vent');
+      }
     }
     if (venting) ctx.bus.emit('audio:cue', { id: 'ui_deny' });
   });
@@ -4835,14 +5567,35 @@ export function createHud(ctx, alerts) {
     for (let j = from; j < contactMarkEls.length; j++) setClass(contactMarkEls[j], 'visible', false);
   }
 
+  // The Swarm round panel, resolved once and re-looked-up at most every 250 ms while absent
+  // (Adventure) instead of a document-wide querySelector on every frame.
+  let contactCrunEl = null;
+  let contactCrunQueriedAt = -Infinity;
+  // A live class collection: the DOM keeps it current, so a lookup is an index, never a
+  // selector scan (steady flight runs no querySelector at all).
+  let contactCrunList = null;
+  function contactCrunElement() {
+    if (typeof document === 'undefined') return null;
+    if (contactCrunEl && contactCrunEl.isConnected) return contactCrunEl;
+    if (!contactCrunList && typeof document.getElementsByClassName === 'function') {
+      contactCrunList = document.getElementsByClassName('sf-crun');
+    }
+    if (contactCrunList) return (contactCrunEl = contactCrunList[0] || null);
+    const now = performance.now();
+    if (now - contactCrunQueriedAt < 250) return null;
+    contactCrunQueriedAt = now;
+    contactCrunEl = document.querySelector?.('.sf-crun') || null;
+    return contactCrunEl;
+  }
+
   function updateContactMarks(p, selectedId, effectiveId) {
     if (!p || !p.pos || !helpers.worldToScreen) { hideContactMarks(0); return; }
     let n = 0;
-    for (const e of indexedShipLikeScan(state)) {
-      if (!e || e === p || e.alive === false || !e.pos) continue;
-      const dx = e.pos.x - p.pos.x;
-      const dz = e.pos.z - p.pos.z;
-      const d2 = dx * dx + dz * dz;
+    // The shared census (src/ui/contactCensus.js) already walked the ship-like bucket this tick:
+    // rows exclude the player and carry distSq, so the halo pass and this one stop re-scanning.
+    for (const row of contactCensus(state, p).rows) {
+      const e = row.e;
+      const d2 = row.distSq;
       if (d2 > CONTACT_MARK_RANGE_SQ) continue;
       // keep the nearest few, sorted by range (insertion into a fixed pool: no allocation)
       let at = n < CONTACT_MARK_POOL ? n : CONTACT_MARK_POOL - 1;
@@ -4856,10 +5609,31 @@ export function createHud(ctx, alerts) {
       contactMarkNear[at].e = e;
       contactMarkNear[at].d2 = d2;
     }
+    const panelObstacles = objectiveEdgeObstacles();
+    const markClipRects = [];
+    if (panelObstacles.left) markClipRects.push(panelObstacles.left);
+    if (panelObstacles.right) markClipRects.push(panelObstacles.right);
+    if (panelObstacles.orrery) markClipRects.push(panelObstacles.orrery);
+    if (panelObstacles.rail && panelObstacles.rail !== panelObstacles.orrery) markClipRects.push(panelObstacles.rail);
+    // HUD-2 item 15: the utility row and the prompt deck move only on resize or when their
+    // content changes; their boxes are cached (re-read at most every 400 ms), not measured per frame.
+    const utilRect = utilityRow && utilityRow.style.display !== 'none' ? cachedMarkClipBox(markClipCache.util, utilityRow) : null;
+    if (utilRect) markClipRects.push(utilRect);
+    if (markClipCache.deckEl === undefined || (markClipCache.deckEl && !markClipCache.deckEl.isConnected)) {
+      markClipCache.deckEl = typeof document !== 'undefined' ? document.getElementById('sf-prompt-deck') : null;
+    }
+    const deckEl = markClipCache.deckEl;
+    const deckRect = deckEl && !deckEl.hidden ? cachedMarkClipBox(markClipCache.deck, deckEl) : null;
+    if (deckRect) markClipRects.push(deckRect);
+    const crunEl = contactCrunElement();
+    const crunRect = crunEl && !crunEl.hidden && crunEl.style?.display !== 'none'
+      ? cachedMarkClipBox(markClipCache.crun, crunEl) : null;
+    if (crunRect) markClipRects.push(crunRect);
+
     let used = 0;
     for (let i = 0; i < n && used < CONTACT_MARK_POOL; i++) {
       const e = contactMarkNear[i].e;
-      // the hull the guns address already wears the lead pip / LINE TARGET tag: no second mark
+      // the hull the guns address already wears the lead pip / GUNS tag: no second mark
       if (effectiveId != null && e.id === effectiveId) continue;
       const anchor = presentedEntityAnchor(e);
       if (!anchor) continue;
@@ -4871,6 +5645,11 @@ export function createHud(ctx, alerts) {
       contactMarkEdgeWorld.x = anchor.x + (Number(e.radius) || 8); contactMarkEdgeWorld.y = 0; contactMarkEdgeWorld.z = anchor.z;
       const edge = helpers.worldToScreen(contactMarkEdgeWorld, contactMarkEdgeScreen);
       const px = edge.onScreen ? Math.max(1, Math.abs(edge.x - c.x)) : 0;
+      const markX = c.x;
+      const markY = c.y - px - 11;
+      // HUD-2 Item 1: world-space contact marks yield to live HUD panels so no diamond or arrow
+      // paints over the bottom power bar, ship vitals, objective box, target panel, or minimap.
+      if (pointInHudPanels(markX, markY, markClipRects, 14) || pointInHudPanels(c.x, c.y, markClipRects, 8)) continue;
       const mark = contactMark(contactMarkClass, px);
       if (!mark) continue;
       const el = contactMarkEls[used++];
@@ -4881,7 +5660,101 @@ export function createHud(ctx, alerts) {
       setAttr(el, 'data-variant', mark.variant);
       setAttr(el, 'data-relation', mark.relation);
       setClass(el, 'visible', true);
-      setHudScreenTransform(el, c.x, c.y - px - 11);
+      setHudScreenTransform(el, markX, markY);
+    }
+    hideContactMarks(used);
+  }
+
+  // HUD-FRAME-BREADTH: which contacts earn a mark is decided by the 'contact-marks' scheduler
+  // job at 15 Hz into the spec pool below; the transforms are still written every frame so
+  // the marks track presented hulls at the render rate. The census scan and classification
+  // never run more than 15 times a second.
+  const contactMarkSpecs = [];
+  for (let i = 0; i < CONTACT_MARK_POOL; i++) contactMarkSpecs.push({ e: null, cls: null });
+  let contactMarkSpecCount = 0;
+
+  function solveContactMarks() {
+    contactMarkSpecCount = 0;
+    const p = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId) : null;
+    if (!p || !p.pos || !helpers.worldToScreen) return;
+    const selectedId = projectTargetTruth(state, targetTruth).selectedId;
+    let n = 0;
+    for (const row of contactCensus(state, p).rows) {
+      const e = row.e;
+      const d2 = row.distSq;
+      if (d2 > CONTACT_MARK_RANGE_SQ) continue;
+      let at = n < CONTACT_MARK_POOL ? n : CONTACT_MARK_POOL - 1;
+      if (n >= CONTACT_MARK_POOL && d2 >= contactMarkNear[at].d2) continue;
+      if (n < CONTACT_MARK_POOL) n += 1;
+      while (at > 0 && contactMarkNear[at - 1].d2 > d2) {
+        contactMarkNear[at].e = contactMarkNear[at - 1].e;
+        contactMarkNear[at].d2 = contactMarkNear[at - 1].d2;
+        at -= 1;
+      }
+      contactMarkNear[at].e = e;
+      contactMarkNear[at].d2 = d2;
+    }
+    for (let i = 0; i < n && contactMarkSpecCount < CONTACT_MARK_POOL; i++) {
+      const e = contactMarkNear[i].e;
+      classifyContact(state, e, contactMarkClass, { selectedId });
+      if (!contactMarkClass.living || !contactMarkClass.observed || contactMarkClass.selected) continue;
+      const spec = contactMarkSpecs[contactMarkSpecCount++];
+      spec.e = e;
+      spec.cls = Object.assign(spec.cls || (spec.cls = {}), contactMarkClass);
+    }
+  }
+
+  function paintContactMarks(p, selectedId, effectiveId) {
+    if (!p || !p.pos || !helpers.worldToScreen || !contactMarkSpecCount) { hideContactMarks(0); return; }
+    const panelObstacles = objectiveEdgeObstacles();
+    const markClipRects = [];
+    if (panelObstacles.left) markClipRects.push(panelObstacles.left);
+    if (panelObstacles.right) markClipRects.push(panelObstacles.right);
+    if (panelObstacles.orrery) markClipRects.push(panelObstacles.orrery);
+    if (panelObstacles.rail && panelObstacles.rail !== panelObstacles.orrery) markClipRects.push(panelObstacles.rail);
+    const utilRect = utilityRow && utilityRow.style.display !== 'none' ? cachedMarkClipBox(markClipCache.util, utilityRow) : null;
+    if (utilRect) markClipRects.push(utilRect);
+    if (markClipCache.deckEl === undefined || (markClipCache.deckEl && !markClipCache.deckEl.isConnected)) {
+      markClipCache.deckEl = typeof document !== 'undefined' ? document.getElementById('sf-prompt-deck') : null;
+    }
+    const deckEl = markClipCache.deckEl;
+    const deckRect = deckEl && !deckEl.hidden ? cachedMarkClipBox(markClipCache.deck, deckEl) : null;
+    if (deckRect) markClipRects.push(deckRect);
+    const crunEl = contactCrunElement();
+    const crunRect = crunEl && !crunEl.hidden && crunEl.style?.display !== 'none'
+      ? cachedMarkClipBox(markClipCache.crun, crunEl) : null;
+    if (crunRect) markClipRects.push(crunRect);
+
+    let used = 0;
+    for (let i = 0; i < contactMarkSpecCount && used < CONTACT_MARK_POOL; i++) {
+      const spec = contactMarkSpecs[i];
+      const e = spec.e;
+      // The pip target and a fresh selection are re-judged every frame: a mark must not
+      // linger the ~66 ms between solves on the hull the guns already address.
+      if (!e || (effectiveId != null && e.id === effectiveId) || e.id === selectedId) continue;
+      const anchor = presentedEntityAnchor(e);
+      if (!anchor) continue;
+      contactMarkWorld.x = anchor.x; contactMarkWorld.y = 0; contactMarkWorld.z = anchor.z;
+      const c = helpers.worldToScreen(contactMarkWorld, contactMarkScreen);
+      if (!c.onScreen) continue;
+      contactMarkEdgeWorld.x = anchor.x + (Number(e.radius) || 8); contactMarkEdgeWorld.y = 0; contactMarkEdgeWorld.z = anchor.z;
+      const edge = helpers.worldToScreen(contactMarkEdgeWorld, contactMarkEdgeScreen);
+      const px = edge.onScreen ? Math.max(1, Math.abs(edge.x - c.x)) : 0;
+      const markX = c.x;
+      const markY = c.y - px - 11;
+      if (pointInHudPanels(markX, markY, markClipRects, 14) || pointInHudPanels(c.x, c.y, markClipRects, 8)) continue;
+      const mark = contactMark(spec.cls, px);
+      if (!mark) continue;
+      const el = contactMarkEls[used++];
+      const markPath = CONTACT_MARK_PATH[mark.shape] || CONTACT_MARK_PATH.square;
+      setAttr(el._sfShapePath, 'd', markPath);
+      setAttr(el._sfBackPath, 'd', markPath);
+      setAttr(el, 'data-shape', mark.shape);
+      setAttr(el, 'data-variant', mark.variant);
+      setAttr(el, 'data-relation', mark.relation);
+      setClass(el, 'visible', true);
+      setHudScreenTransform(el, markX, markY);
     }
     hideContactMarks(used);
   }
@@ -4891,6 +5764,9 @@ export function createHud(ctx, alerts) {
       setClass(lockRing, 'active', false);
       setClass(lockRing, 'locked', false);
       setClass(lockRing, 'sf-lockring--latch', false);
+      if (lockDiamond) lockDiamond.classList.remove('sf-lockdiamond--locked');
+      _latchApplied = false;
+      _latchToken += 1; // cancel a latch re-add scheduled just before the player vanished
       setClass(lockDiamond, 'visible', false);
       setDisplay(targetEdge, false);
       setClass(leadPip, 'visible', false);
@@ -4957,22 +5833,30 @@ export function createHud(ctx, alerts) {
     if (isLocked && !_wasLocked) {
       ctx.bus.emit('audio:cue', { id: 'lock_acquired' });
       if (!getMotionReduced()) {
+        // Restart the one-shot latch animations without a forced sync layout: remove the
+        // classes now and re-add them on the next animation frame, the same pattern as
+        // restartCreditsChipPulse / the doctrine tell pulse. A newer lock or any cleanup
+        // path bumps _latchToken and cancels the stale scheduled re-add.
+        const token = ++_latchToken;
         lockRing.classList.remove('sf-lockring--latch');
-        void lockRing.offsetWidth;
-        lockRing.classList.add('sf-lockring--latch');
-        if (lockDiamond) {
-          lockDiamond.classList.remove('sf-lockdiamond--locked');
-          void lockDiamond.offsetWidth;
-          lockDiamond.classList.add('sf-lockdiamond--locked');
-        }
+        if (lockDiamond) lockDiamond.classList.remove('sf-lockdiamond--locked');
+        const nextFrame = typeof requestAnimationFrame === 'function'
+          ? requestAnimationFrame.bind(globalThis) : (fn) => setTimeout(fn, 0);
+        nextFrame(() => {
+          if (token !== _latchToken) return;
+          lockRing.classList.add('sf-lockring--latch');
+          if (lockDiamond) lockDiamond.classList.add('sf-lockdiamond--locked');
+        });
         _latchApplied = true;
       } else if (_latchApplied) {
         _latchApplied = false;
+        _latchToken += 1;
         lockRing.classList.remove('sf-lockring--latch');
         if (lockDiamond) lockDiamond.classList.remove('sf-lockdiamond--locked');
       }
     } else if (!isLocked && _latchApplied) {
       _latchApplied = false;
+      _latchToken += 1;
       lockRing.classList.remove('sf-lockring--latch');
       if (lockDiamond) lockDiamond.classList.remove('sf-lockdiamond--locked');
     }
@@ -5020,7 +5904,7 @@ export function createHud(ctx, alerts) {
           // Same presenter as the roster/panel: an unscanned wreck-like keeps its broadcast
           // callsign but never leaks its private name or scan label onto the edge ribbon.
           const name = String(targetDisplayName(tgt)).replace(/\s+/g, ' ').trim().slice(0, 26);
-          const text = `TARGET${marker.aft ? ' AFT' : ''} · ${name} · ${Math.round(marker.distance)} u`;
+          const text = `TARGET${marker.aft ? ' AFT' : ''} · ${name} · ${Math.round(marker.distance)} m`;
           setText(targetEdgeLabel, text);
           setAttr(targetEdge, 'aria-label', text);
           setDataEdge(targetEdge, marker.edge);
@@ -5099,9 +5983,12 @@ export function createHud(ctx, alerts) {
     if (overlayTick) gunLineBlocked = !!(leadEnt && leadEnt.alive && gunLineDenial(state, p, leadEnt));
     if (!leadEnt) gunLineBlocked = false;
     setAttr(leadPip, 'data-denial', gunLineBlocked ? 'blocked' : 'none');
-    setText(lineTargetText, gunLineBlocked ? 'LINE TARGET · BLOCKED' : 'LINE TARGET');
-    // LINE TARGET: shown only when the guns address a hull that is NOT the selection, so the
-    // player is never left reading a confident mark on the wrong ship.
+    const lineTagWords = gunLineBlocked ? 'GUNS BLOCKED' : 'GUNS';
+    setText(lineTargetText, lineTagWords);
+    // The GUNS tag: shown only when the guns address a hull that is NOT the selection (the Line
+    // has claimed them), so the player is never left reading a confident mark on the wrong ship.
+    // It sits under the hull, else over it, and never on an instrument: with neither side clear
+    // it drops its words and the lead pip alone rides the hull.
     let tagShown = false;
     if (truth.divergent && truth.reason === TARGET_REASON.LINE_TARGET && helpers.worldToScreen) {
       const effId = truth.effectiveGunTargetId;
@@ -5111,11 +5998,24 @@ export function createHud(ctx, alerts) {
         const effProj = projectTargetCenter(effAnchor);
         if (effProj.onScreen) {
           const effX = effProj.x;
-          const effY = effProj.y + Math.max(16, targetPixelRadius(effAnchor, Number(effEnt.radius) || 8, effProj)) + 8;
-          stampMarkLive(lineTargetTag);
-          setClass(lineTargetTag, 'visible', true);
-          setHudScreenTransform(lineTargetTag, effX, effY, { offset: 'translate(-50%,0)' });
-          tagShown = true;
+          const hullPx = Math.max(16, targetPixelRadius(effAnchor, Number(effEnt.radius) || 8, effProj)) + 8;
+          const tagW = WORLD_TAG_PAD_PX + lineTagWords.length * WORLD_TAG_CHAR_PX;
+          const below = effProj.y + hullPx;
+          const above = effProj.y - hullPx - WORLD_TAG_H_PX;
+          // The hull's own centre inside an instrument (the player's schematic) drops the
+          // words the same way a blocked seat does. The lead pip stays on the hull.
+          const centreBlocked = worldTagCenterCovered(effX, effProj.y, worldTagAvoid.get());
+          const effY = centreBlocked ? null
+            : (worldTagClear(effX - tagW / 2, below, tagW, WORLD_TAG_H_PX) ? below
+              : (worldTagClear(effX - tagW / 2, above, tagW, WORLD_TAG_H_PX) ? above : null));
+          if (effY !== null) {
+            stampMarkLive(lineTargetTag);
+            setClass(lineTargetTag, 'visible', true);
+            setHudScreenTransform(lineTargetTag, effX, effY, { offset: 'translate(-50%,0)' });
+            tagShown = true;
+          } else {
+            lineTargetTag._sfOkAt = 0;
+          }
         }
       }
     }
@@ -5124,8 +6024,11 @@ export function createHud(ctx, alerts) {
     // projected edge placement) are refreshed at 30 Hz alongside the other world-anchored DOM.
     if (overlayTick) {
       threatHalo.update(p, state, helpers.worldToScreen);
-      updateContactMarks(p, truth.selectedId, truth.effectiveGunTargetId);
+      if (!hudBreadthArmed) updateContactMarks(p, truth.selectedId, truth.effectiveGunTargetId);
     }
+    // Under breadth the marks solve on the 'contact-marks' job; their transforms still
+    // track the presented hulls every frame.
+    if (hudBreadthArmed) paintContactMarks(p, truth.selectedId, truth.effectiveGunTargetId);
   }
 
   // ---------------------------------------------------------------------------
@@ -5150,7 +6053,7 @@ export function createHud(ctx, alerts) {
   const numericClock = createHudClock(10);
   const targetClock = createHudClock(20);
   const overlayClock = createHudClock(30);
-  const radarClock = createHudClock(10);
+  const radarClock = createHudClock(8);
 
   function syncSafetyAlerts(p, hullFrac, shieldFrac, fuelFrac) {
     if (!alerts || !p) return;
@@ -5302,7 +6205,7 @@ export function createHud(ctx, alerts) {
     const until = performance.now() + ms;
     if (until > _overviewRevealUntil) _overviewRevealUntil = until;
   }
-  // A scan pulse is the player explicitly asking "what's out there" — surface the strip immediately.
+  // A scan holds the expanded roster once one is mounted.
   on('scan:completed', () => { revealOverview(OVERVIEW_SCAN_REVEAL_MS); updateOverview(); });
   on('scan:pulse', () => revealOverview(OVERVIEW_SCAN_REVEAL_MS));
 
@@ -5314,14 +6217,17 @@ export function createHud(ctx, alerts) {
   }
 
   on('ui:toggleOverview', () => {
-    laneWriteSetting(state, 'settings.ui.overviewOpen', !state.settings.ui.overviewOpen);
-    if (state.settings.ui.overviewOpen) revealOverview(OVERVIEW_SCAN_REVEAL_MS);
+    const pinned = !state.settings.ui.overviewOpen;
+    // Settings live on the main HUD. Send the same change to the worker for saves.
+    state.settings.ui.overviewOpen = pinned;
+    laneWriteSetting(state, 'settings.ui.overviewOpen', pinned);
+    if (pinned) revealOverview(OVERVIEW_SCAN_REVEAL_MS);
     updateOverview();
     ctx.bus.emit('toast', {
-      text: state.settings.ui.overviewOpen ? 'Contacts strip pinned' : 'Contacts strip on-demand',
+      text: pinned ? 'Contacts strip pinned' : 'Contacts strip on-demand',
       kind: 'info', ttl: 1.6,
     });
-    ctx.bus.emit('audio:cue', { id: state.settings.ui.overviewOpen ? 'ui_open' : 'ui_back' });
+    ctx.bus.emit('audio:cue', { id: pinned ? 'ui_open' : 'ui_back' });
   });
 
   // One-word state → CSS class for the row's state chip + tier pips.
@@ -5411,15 +6317,22 @@ export function createHud(ctx, alerts) {
       // Last value written to each field. A write happens only when one of these changes.
       name: '', iffColor: '', icon: '', glyph: '', stateWord: '', stateCls: '',
       tier: -1, dist: null, speed: '', detail: '', selected: false, unscanned: false,
+      objectiveGeneration: null,
     };
 
     // Bound ONCE for the life of the row. Re-binding a fresh closure per sample was part of the
     // teardown cost this rewrite removes; the record carries the live name so the toast stays current.
-    el.addEventListener('click', () => {
+    // The tab-focusable dock must not take the keyboard when its pointer-only row is picked.
+    el.addEventListener('mousedown', (event) => {
+      if (event.button === 0) event.preventDefault();
+    });
+    el.addEventListener('click', (event) => {
       const contact = state.entities && typeof state.entities.get === 'function'
         ? state.entities.get(rec.id)
         : null;
+      if (rec.objectiveGeneration != null && contact?.occupantGeneration !== rec.objectiveGeneration) return;
       if (!presentationAllowsTargetLock(contact, state)) return;
+      if (event.detail > 0 && document.activeElement === rightDock) rightDock.blur();
       if (!state.player) state.player = {};
       laneInputWrite(state, 'player.targetId', rec.id);
       laneInputWrite(state, 'input.targetAssistDisabled', false);
@@ -5433,6 +6346,7 @@ export function createHud(ctx, alerts) {
   /** Write only the fields of a retained row whose value actually changed this sample. */
   function syncOverviewRow(rec, c, playerTeam, player, targetId) {
     const e = c.e;
+    rec.objectiveGeneration = c.cinderObjective ? e.occupantGeneration : null;
     const iff = getIffData(e, playerTeam);
     const glyph = getClassGlyph(e);
     const siteDetail = authoredSiteRosterDetail(state, e, player, c.dist);
@@ -5507,7 +6421,7 @@ export function createHud(ctx, alerts) {
     if (rec.tier !== c.threatTier) { paintTierSegments(rec.tierEl, c.threatTier); rec.tier = c.threatTier; }
     if (rec.dist !== dist) {
       rec.distEl.textContent = String(dist);
-      applyDistanceSpeech(rec.distEl, `${dist} u`);
+      applyDistanceSpeech(rec.distEl, `${dist} m`);
       rec.dist = dist;
     }
     if (rec.speed !== speedText) { rec.speedEl.textContent = speedText; rec.speed = speedText; }
@@ -5542,7 +6456,10 @@ export function createHud(ctx, alerts) {
     // Retained scratch list: cleared and refilled, never reallocated (this runs at 5 Hz forever).
     const contacts = _overviewContacts;
     contacts.length = 0;
-    const consider = (e) => {
+    const trackedId = state.ui?.trackedMissionId;
+    const cinder = !swarmRound && trackedId != null && state.missions?.active?.find(m =>
+      m.id === trackedId && m.storyTag === CINDER_TAG && m.destSectorId === state.world?.currentSectorId);
+    const consider = (e, precalc = null) => {
       if (!e || !e.alive || e === player) return;
       // A live Swarm round lists the fight, not the campaign's set dressing: an Adventure world
       // work site (relay cradle, cargo brace…) beside the arena is not a thing to shoot, line or
@@ -5554,25 +6471,30 @@ export function createHud(ctx, alerts) {
       if (!isShip && !isWreck) return;
       if (!e.pos) return;
 
-      const dx = e.pos.x - player.pos.x;
-      const dz = e.pos.z - player.pos.z;
-      const dist = Math.hypot(dx, dz);
+      const dx = precalc ? precalc.dx : e.pos.x - player.pos.x;
+      const dz = precalc ? precalc.dz : e.pos.z - player.pos.z;
+      const dist = precalc ? Math.sqrt(precalc.distSq) : Math.hypot(dx, dz);
       // Retention band: a listed contact stays listed to 5500 so a ship riding the 5200 line
       // does not pop its roster row (and shift the target panel) every 5 Hz sample.
       if (dist > 5200 && !(dist <= 5500 && _knownContactIds.has(e.id))) return;
 
-      const hostile = isHostileToPlayer(e, playerTeam, state);
+      const hostile = precalc ? precalc.hostile : isHostileToPlayer(e, playerTeam, state);
       const ally = !hostile && !isWreck && playerTeam !== 0 && e.team === playerTeam;
       contacts.push({
         e, dist, dx, dz, isWreck, hostile, ally,
+        cinderObjective: cinder ? isCinderObjectiveContact(cinder, e) : false,
         threatTier: contactThreatTier(e, hostile),
       });
     };
+    // Ship-like contacts ride the shared per-tick census (src/ui/contactCensus.js) so hostility
+    // and distance are not re-derived here on top of the halo and contact-mark passes. Its rows
+    // are the same domain both paths walked (the shipLike bucket, or entityList without an
+    // index); wrecks and dressing rows keep their own buckets.
     const index = state.entityIndex;
     const indexed = !!(index && index.__spacefaceEntityIndexV1 && index.ready === true
       && Array.isArray(index.shipLike) && Array.isArray(index.wrecks));
+    for (const row of contactCensus(state, player).rows) consider(row.e, row);
     if (indexed) {
-      for (const e of indexedShipLikeScan(state)) consider(e);
       for (const e of indexedTypeScan(state, 'wrecks')) consider(e);
       const dressing = state.world && state.world.dressing;
       const dressingRows = dressing && Array.isArray(dressing.rows) ? dressing.rows : null;
@@ -5582,8 +6504,6 @@ export function createHud(ctx, alerts) {
           if (e && e.type === 'fx' && isWreckLike(e)) consider(e);
         }
       }
-    } else {
-      for (const e of state.entityList || []) consider(e);
     }
 
     // On-demand reveal bookkeeping: a fresh hostile/derelict arriving, or a hostile closing inside
@@ -5636,8 +6556,13 @@ export function createHud(ctx, alerts) {
     _overviewIdScratch = _knownContactIds;
     _knownContactIds = curIds;
 
-    const pinned = !!(state.settings && state.settings.ui && state.settings.ui.overviewOpen);
-    if (!mountContactRoster(rightDock, elOverview, radar.el, locked)) return;
+    const pinned = state.settings?.ui?.overviewOpen === true;
+    const fight = root.getAttribute('data-hud-attention') === 'fight';
+    const visible = contactRosterVisible({
+      locked, pinned, eligibleContactCount: contacts.length, fight,
+      opening: openingQuiet(state),
+    });
+    if (!mountContactRoster(rightDock, elOverview, radar.el, visible)) return;
     // A lock mounts the list (G7), but a lock on something the roster cannot list — a target that
     // died, drifted past 5200 WU, or is not a ship/derelict — leaves nothing to show. The inline
     // display below would beat the stylesheet's `:empty { display:none }`, so an empty list would
@@ -5787,8 +6712,13 @@ export function createHud(ctx, alerts) {
     }
   }
 
+  let reticleLookedAt = -Infinity;
   function resolveReticle() {
-    if (!elReticle) elReticle = document.getElementById('aim-reticle');
+    if (elReticle) return;
+    const now = performance.now();
+    if (now - reticleLookedAt < 1000) return;
+    reticleLookedAt = now;
+    elReticle = document.getElementById('aim-reticle');
   }
 
   function updateTargetArcs() {
@@ -5866,16 +6796,23 @@ export function createHud(ctx, alerts) {
     setSvgAttr(targetArcsSvg, 'height', size);
     setSvgAttr(targetArcsSvg, 'viewBox', `0 0 ${size} ${size}`);
 
+    // Three crisp horizontal micro-bars tucked under the target hull instead of three concentric
+    // circles around the ship/rock (owner 2026-11-23).
     const cx = size / 2;
     const cy = size / 2;
-
-    setSvgAttr(targetArcShield, 'cx', cx); setSvgAttr(targetArcShield, 'cy', cy); setSvgAttr(targetArcShield, 'r', rShield);
-    setSvgAttr(targetArcArmor, 'cx', cx);  setSvgAttr(targetArcArmor, 'cy', cy);  setSvgAttr(targetArcArmor, 'r', rArmor);
-    setSvgAttr(targetArcHull, 'cx', cx);   setSvgAttr(targetArcHull, 'cy', cy);   setSvgAttr(targetArcHull, 'r', rHull);
-
-    setTargetArcDash(targetArcShield, rShield, shieldFrac, cx, cy);
-    setTargetArcDash(targetArcArmor, rArmor, armorFrac, cx, cy);
-    setTargetArcDash(targetArcHull, rHull, hullFrac, cx, cy);
+    const barW = Math.max(24, Math.min(84, Math.round(rHull * 1.45)));
+    const x0 = cx - barW * 0.5;
+    const baseY = cy + rHull + 8;
+    const paintBar = (el, frac, rowY) => {
+      setSvgAttr(el, 'x1', x0);
+      setSvgAttr(el, 'y1', rowY);
+      setSvgAttr(el, 'x2', x0 + barW * frac);
+      setSvgAttr(el, 'y2', rowY);
+      setStyle(el, 'display', frac > 0.001 ? '' : 'none');
+    };
+    paintBar(targetArcShield, shieldFrac, baseY);
+    paintBar(targetArcArmor, armorFrac, baseY + 4);
+    paintBar(targetArcHull, hullFrac, baseY + 8);
   }
 
   // Travel Burn instrument update (D5 / W1-6 / W1-9).
@@ -5890,7 +6827,23 @@ export function createHud(ctx, alerts) {
   // not, and that asymmetry is deliberate.
   const VTAPE_HEADROOM = 1.14;   // scale runs to 114% of V-MAX so the ceiling is a line, not the edge
   let travelTapePhone = null; // MOB-02: the phone reads a shorter stop line; rewrite it the frame the layout flips
-  function updateTravelTape(p, dtS, slow) {
+  function updateTravelTape() {
+    // The drive cooldown / limit debug box is retired from the flight HUD; speed and drive
+    // lighting live directly on the Speed Dial in the visor cluster.
+    if (!vt.root) return;
+    if (_vtapeAlpha !== 0) {
+      _vtapeAlpha = 0;
+      setClass(vt.root, 'sf-vtape--on', false);
+      setClass(vt.root, 'sf-vtape--brake', false);
+      setClass(vt.root, 'sf-vtape--approach', false);
+      setClass(vt.root, 'sf-vtape--stopping', false);
+      setClass(vt.root, 'sf-vtape--overshoot', false);
+      _vtapeBrakeOn = false;
+    }
+    if (!vt.root.hidden) vt.root.hidden = true;
+    return;
+  }
+  function _retiredTravelTape(p, dtS, slow) {
     if (!vt.root) return;
     if (!travelFlag('travelBurn') || !p) {
       if (_vtapeAlpha !== 0) { _vtapeAlpha = 0; setClass(vt.root, 'sf-vtape--on', false); }
@@ -5955,7 +6908,7 @@ export function createHud(ctx, alerts) {
         : 'DRIVE ' + driveState.toUpperCase());
       let note = '';
       if (driveState === 'spooling') note = 'DRIVE SPINNING UP…';
-      else if (driveState === 'engaged') note = Math.round(speed) + ' / ' + Math.round(ceiling) + ' u/s';
+      else if (driveState === 'engaged') note = Math.round(speed) + ' / ' + Math.round(ceiling) + ' m/s';
       // The state label already prints DRIVE COOLDOWN — the note carries only WHY it broke.
       // Known reasons get a word a pilot would use; unknown ones still humanize, never a raw slug.
       else if (driveState === 'cooldown') {
@@ -5970,7 +6923,7 @@ export function createHud(ctx, alerts) {
       if (velocity.earnedSpeed) note = note ? `${note} · EARNED` : 'EARNED';
       const laneStatus = travelTapeLaneStatus(state.travelLanes);
       setText(vt.spool, [note, laneStatus].filter(Boolean).join(' · '));
-      if (note.includes('u/s') || velocity.earnedSpeed) applySpeedSpeech(vt.spool, velocity.spoken);
+      if (note.includes('m/s') || velocity.earnedSpeed) applySpeedSpeech(vt.spool, velocity.spoken);
     }
 
     // --- approach row: the stopping arc, manual burns and the held brake ---
@@ -6000,12 +6953,12 @@ export function createHud(ctx, alerts) {
       if (slow || phoneTape !== travelTapePhone) {
         travelTapePhone = phoneTape;
         const arcText = phoneTape
-          ? (cue.overshoot ? 'OVERSHOOT · STOP ' + Math.round(cue.stopDistance) + ' u'
-            : 'STOP ' + Math.round(cue.stopDistance) + ' u · ' + brakeModeWords(cue.bestMode).toUpperCase())
+          ? (cue.overshoot ? 'OVERSHOOT · STOP ' + Math.round(cue.stopDistance) + ' m'
+            : 'STOP ' + Math.round(cue.stopDistance) + ' m · ' + brakeModeWords(cue.bestMode).toUpperCase())
           : cue.overshoot
-          ? 'OVERSHOOT · STOP ' + Math.round(cue.stopDistance) + ' u / ARRIVAL ' + Math.round(cue.distance) + ' u'
-          : 'STOP ' + Math.round(cue.stopDistance) + ' u · ARRIVAL ' + Math.round(cue.distance)
-            + ' u · ' + brakeModeWords(cue.bestMode).toUpperCase();
+          ? 'OVERSHOOT · STOP ' + Math.round(cue.stopDistance) + ' m / ARRIVAL ' + Math.round(cue.distance) + ' m'
+          : 'STOP ' + Math.round(cue.stopDistance) + ' m · ARRIVAL ' + Math.round(cue.distance)
+            + ' m · ' + brakeModeWords(cue.bestMode).toUpperCase();
         setText(vt.arcLabel, arcText);
         applyDistanceSpeech(vt.arcLabel, arcText);
       }
@@ -6016,7 +6969,7 @@ export function createHud(ctx, alerts) {
       setStyle(vt.arcRing, 'left', endPct);
       setClass(vt.root, 'sf-vtape--overshoot', false);
       if (slow) {
-        const brakeText = 'BRAKING · SETTLES ~' + Math.round(brakeStop.stopDistance) + ' u';
+        const brakeText = 'BRAKING · SETTLES ~' + Math.round(brakeStop.stopDistance) + ' m';
         setText(vt.arcLabel, brakeText);
         applyDistanceSpeech(vt.arcLabel, brakeText);
       }
@@ -6033,26 +6986,369 @@ export function createHud(ctx, alerts) {
     }
   }
 
+  function paintTargetPanel(tgtId, target, targetSurrendered, slow) {
+    const player = state.entities.get(state.playerId);
+    const combatRelevant = target && (target.type === 'ship' || target.type === 'drone')
+      && isHostileToPlayer(target, player ? player.team : 0, state);
+    const miningRelevant = target && target.type === 'asteroid';
+    const stationRelevant = target && target.type === 'station';
+    const objectSelected = !!(state.ui && state.ui.objectSelection
+      && state.ui.objectSelection.targetId === tgtId);
+    const routeOwnsAttention = !!(state.nav && state.nav.waypoint);
+    let weakPoint = null;
+    if (tgtId != null && revealedWeakPoints.size) {
+      const wp = revealedWeakPoints.get(tgtId);
+      if (wp && (!wp.until || (state.simTime || 0) < wp.until)) weakPoint = wp;
+      else if (wp) revealedWeakPoints.delete(tgtId);
+    }
+    if (routeOwnsAttention && target && !combatRelevant && !miningRelevant && !stationRelevant
+      && !targetSurrendered && !objectSelected && target.data?.worldSiteTargetable !== true) {
+      setDisplay(targetPanel.el, false);
+    } else {
+      targetPanelUpdateOptions.slow = slow;
+      targetPanelUpdateOptions.weakPoint = weakPoint;
+      targetPanel.update(targetPanelUpdateOptions);
+    }
+  }
+
+  // The HUD's budgeted jobs (src/core/frameTaskScheduler.js): each has a wanted rate, the group
+  // has 1.5 ms a frame, the most overdue runs first and a starving job still runs. frame() runs
+  // them once, after everything that must track the picture frame for frame.
+  const hudTasks = createFrameTaskScheduler({ name: 'hud', budgetMs: 1.5 });
+  let targetPanelSlowDue = true;
+  let lastBudgetedTargetId;
+  let targetPanelRuns = 0;
+  const radarTask = hudTasks.register('scope', () => { radar.draw(); }, { hz: 8, priority: 2 });
+  const targetPanelTask = hudTasks.register('target-card', () => {
+    const tgtId = projectTargetTruth(state, targetTruth).selectedId;
+    const target = tgtId != null ? resolveWorldPresentationEntity(state, tgtId) : null;
+    // The card's own slow readings keep their old 10 Hz: every other 20 Hz run.
+    const slow = targetPanelSlowDue || (++targetPanelRuns % 2 === 0);
+    targetPanelSlowDue = false;
+    paintTargetPanel(tgtId, target, isSurrenderedContact(target), slow);
+  }, { hz: 20, priority: 3 });
+  const overviewTask = hudTasks.register('contact-roster', () => { updateOverview(); }, { hz: 5, priority: 1 });
+  // The two remaining DOM families (the `slow` and `overlayTick` gates below) keep their
+  // existing call sites but answer to metronome jobs under the budgeted path: a scheduled job
+  // can never run more often than its wanted hz, so at low frame rates the elapsed clocks can
+  // no longer collapse both families into every-frame DOM work — the flags simply arm less
+  // often. A job's flag is consumed at the top of the NEXT frame, which keeps every gated
+  // statement's order and the one-frame-old inputs the picture already tolerates.
+  let slowPassArmed = false;
+  let overlayPassArmed = false;
+  let overlayPassElapsed = 0;
+  const slowPassTask = hudTasks.register('hud-slow-pass', () => { slowPassArmed = true; }, { hz: 10 });
+  const overlayPassTask = hudTasks.register('hud-overlay-pass', () => { overlayPassArmed = true; }, { hz: 30 });
+  // HUD-FRAME-BREADTH (?rfx=-hudBreadth restores the single slow-flag path): the 10 Hz
+  // numeric block splits into three small jobs — readouts, mission tracker, context row —
+  // so each pays only its own cost inside the shared frame-task budget. Contact marks solve
+  // at 15 Hz while their transforms keep being written every frame.
+  let hudBreadthArmed = false;
+  const readoutsTask = hudTasks.register('hud-readouts', (elapsedS) => {
+    if (frameCostFixOn('hudBreadth')) runSlowReadouts(elapsedS);
+  }, { hz: 10 });
+  const missionTrackerTask = hudTasks.register('mission-tracker', () => {
+    if (frameCostFixOn('hudBreadth')) runMissionTrackerTick();
+  }, { hz: 10 });
+  const contextRowTask = hudTasks.register('context-row', () => {
+    if (frameCostFixOn('hudBreadth')) runContextRowTick();
+  }, { hz: 10 });
+  const contactMarksTask = hudTasks.register('contact-marks', () => {
+    if (frameCostFixOn('hudBreadth')) solveContactMarks();
+  }, { hz: 15 });
+
+  // The bodies below are the exact statements the `slow` gate used to run inline; the jobs
+  // call them so the same writes land on the scheduler's cadence inside its budget.
+  function runSlowReadouts(dtS) {
+    updateFlightCargoBar();
+    forkInstrument.update(state);
+    ionStormHud.update();
+    const p = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId) : null;
+    if (orreryCluster && typeof orreryCluster.updateSlow === 'function') {
+      orreryCluster.updateSlow(state, p);
+    }
+    if (!p) return;
+    runSlowTetherBlock(p, dtS);
+  }
+
+  function runSlowTetherBlock(p, dtS) {
+    // Tether readout: status + target while latched. Control chips paint separately so the
+    // instrument value never becomes a rebind encyclopedia that overflows the deck.
+    const localTether = state.player && state.player.tether;
+    const remoteTether = state.player && state.player.remoteMassline;
+    const tether = localTether && localTether.active ? localTether : remoteTether;
+    const ml = masslineInstrumentReadout(tether);
+    const latching = masslineInstrumentVisible(tether);
+    if (Number.isFinite(p.hull)) {
+      if (lastObservedPlayerHull !== null && p.hull < lastObservedPlayerHull && Number.isFinite(state.simTime)) {
+        lastPlayerHullHitAt = state.simTime;
+      }
+      lastObservedPlayerHull = p.hull;
+    }
+    const hudAttention = resolveHudAttention(state, { lastPlayerHullHitAt });
+    setAttr(root, 'data-hud-attention', hudAttention);
+    if (document.body && document.body.dataset) {
+      setAttr(document.body, 'data-hud-attention', hudAttention);
+      const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 1280;
+      const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : 720;
+      const hudLayout = resolveObjectiveHudLayout(viewportWidth, viewportHeight);
+      setAttr(document.body, 'data-sf-hud-job', hudJobFromState(state, tether, hudLayout));
+    }
+    // Arcade fights and temporary circuits carry their own flight context.
+    {
+      const swarmRadioOff = !!(state.run && state.run.kind === 'survival' && state.run.phase !== 'inactive');
+      const want = swarmRadioOff || temporaryCircuit ? 'none' : '';
+      if (commsTape.style.display !== want) commsTape.style.display = want;
+      if (utilityRow.style.display !== want) utilityRow.style.display = want;
+      // HUD-2 item 15: adoption walks six document lookups; chips mount once per session, so
+      // once a second is soon enough to pick up a late one (it was every 10 Hz tick).
+      if (!swarmRadioOff && !temporaryCircuit && (++adoptCommsTicks % 10 === 1)) adoptCommsChrome();
+    }
+    updateTetherFeedback(tether, latching, ml);
+    const auto = !!(state.input && state.input.autoFire);
+    if (elReticle) setClass(elReticle, 'autofire', auto);
+    // Reticle accuracy bloom: decay _recoilBloom toward 0 and scale the inner SVG. Sustained fire
+    // expands the crosshair (1 -> 1.25); it contracts as you stop. Purely cosmetic readability.
+    _recoilBloom = Math.max(0, _recoilBloom - dtS * 2.2);
+    if (elReticle) {
+      const inner = elReticle._sfInner || (elReticle._sfInner = elReticle.firstElementChild);
+      if (inner) {
+        const bloomQ = Math.round((1 + _recoilBloom * 0.25) * 1000);
+        const bloomScale = (bloomQ / 1000).toFixed(3);
+        setLagTranslate(inner, opticalGLag.x, opticalGLag.y, {
+          suffix: ` scale(${bloomScale})`,
+          plain: `scale(${bloomScale})`,
+        });
+      }
+    }
+  }
+
+  function runMissionTrackerTick() {
+    speakPlottedRouteTeach(state, ctx.bus);
+    // Resolve corridor fallback once, then let the owner resolver keep mission/nav data disjoint.
+    const navWaypoint = state.nav && state.nav.waypoint;
+    const wp = navWaypoint || buildCorridorOpeningWaypoint(state);
+    const onboardingVerb = navWaypoint && navWaypoint.reason;
+    const command = resolveFlightObjectiveCommand(state, wp);
+    const dest = flightDestinationSurface(state, command, temporaryCircuit);
+    if (lastFlightObjectiveOwner === 'counterweight-course' && command?.owner !== 'counterweight-course') {
+      // Recall can be pinned or dismissed while a course runs; it must not resurrect that
+      // course after the public attempt has ended or the pilot has left it.
+      objectiveRecall.text = dest.line || '';
+      objectiveRecall.snapshot = dest.line || '';
+    }
+    lastFlightObjectiveOwner = command?.owner || null;
+    // the dial's needle takes the nearest way round to the objective's bearing
+    const bearingDeg = command?.owner === 'counterweight-course'
+      ? null : objectiveBearingDeg(state, (command && command.waypoint) || wp);
+    if (bearingDeg != null && mtNeedle) {
+      let next = bearingDeg;
+      if (mtNeedleDeg != null) { while (next - mtNeedleDeg > 180) next -= 360; while (next - mtNeedleDeg < -180) next += 360; }
+      if (mtNeedleDeg == null || Math.abs(next - mtNeedleDeg) > 0.5) {
+        mtNeedleDeg = next;
+        mtNeedle.style.transform = `rotate(${next.toFixed(1)}deg)`;
+      }
+    }
+    setClass(missionTracker, 'sf-mt--nobearing', bearingDeg == null);
+    // mtTime's display is owned by paintTutorialTrackerCaption below; pre-hiding it here
+    // flipped its inline display none -> block on every tick while a caption was up.
+    if (dest.line) rememberObjective(objectiveRecall, dest.line);
+    const showObjective = objectiveVisible(objectiveRecall, dest.show);
+    // W1 Journey: the act is its own line above the objective, not a prefix buried in the
+    // action string (which prefers the beat-specific reason). The line also survives a
+    // dock-modal because the persistent `act:<n>` receipt is separate.
+    const actLine = dest.show && showObjective ? String(dest.actLine || '') : '';
+    setText(mtTitle, actLine);
+    // The 290px nowrap field shows the short act title; the full canon heading stays on the
+    // node's tooltip and accessible name so nothing is lost to the ellipsis.
+    const actFull = actLine ? journeyActTrackerFullLine(state) : '';
+    // Every other write here goes through a compared writer; these three did not, so an
+    // unchanged act line re-wrote the tooltip and the accessible name 10×/s (and cleared the
+    // label whenever the line went empty). setTitle/setAttr/clearAttr all keep their own cache.
+    setTitle(mtTitle, actFull);
+    if (actFull) setAttr(mtTitle, 'aria-label', actFull);
+    else clearAttr(mtTitle, 'aria-label');
+    setDisplay(mtTitle, !!actLine);
+    // The muted-safe tutorial caption rides the tracker's secondary line. It is additive:
+    // the objective's verb, distance and recall state above are untouched.
+    const showCaption = paintTutorialTrackerCaption(mtTime, temporaryCircuit ? null : state);
+    if (!showCaption) setClass(mtTime, 'sf-mt-urgent', dest.urgent);
+    if (!showObjective && !showCaption) {
+      if (!mtDetails.hidden) setMissionDetails(false);
+      setDisplay(missionTracker, false);
+    } else {
+      // A caption may be the only reason the tracker is up; never leave a stale objective
+      // line sitting above it.
+      const objective = showObjective ? (objectiveRecall.text || dest.line) : '';
+      setText(mtObj, objective);
+      const [action, ...readings] = objective.split('\n');
+      const station = command?.waypoint?.stationId && resolveHudNavStation(state, command.waypoint.stationId);
+      const destination = station?.data?.name || command?.waypoint?.label || '';
+      const marker = destination && ` to ${destination}. `;
+      const split = marker && /^Deliver\s/i.test(action) ? action.indexOf(marker) : -1;
+      const delivery = split > 0 && document.documentElement.dataset.sfMobileFlight !== '1';
+      setClass(missionTracker, 'sf-mt--delivery', delivery);
+      setClass(missionTracker, 'sf-mt--has-caption', showCaption);
+      setClass(missionTracker, 'sf-mt--caption-only', showCaption && !objective);
+      setHidden(mtDelivery, !delivery);
+      if (delivery) {
+        setText(mtDeliveryTitle, action.slice(0, split).replace(/^(Deliver\s+[\d,.]+)u\b/i, '$1'));
+        setText(mtDeliveryPlace, destination);
+        setText(mtDeliveryStep, action.slice(split + marker.length).replace(/\.$/, ''));
+      }
+      const actionLine = objective === dest.line ? dest.compactAction || action : action;
+      const keyed = resolveTrackerActionKey(state, actionLine);
+      setText(mtActionText, keyed ? keyed.text : actionLine);
+      setText(mtActionKey, keyed ? keyed.key : '');
+      setHidden(mtActionKey, !keyed);
+      setText(mtReadings, readings.join('\n'));
+      setText(mtDetailsText, [actFull, objective, showCaption ? mtTime.textContent : ''].filter(Boolean).join('\n\n'));
+      setDisplay(missionTracker, true);
+    }
+  }
+
+  function runContextRowTick() {
+    // Idle HUD (no receipt, caption, alert or external caption on screen): geometry only changes
+    // through the explicit invalidations (layout/settings/resize events), so re-placing on every
+    // 10 Hz tick just re-reads rects. Keep a 2 Hz safety refresh; stay at 10 Hz while any
+    // receipt-lane content is live.
+    // Count cards, not children: the Stage keeps its flow column (and the watchlist and live
+    // region) mounted in both lanes, so a child count read an empty lane as busy forever.
+    const laneBusy = (toastsLaneEl && liveToastEls(toastsLaneEl).length > 0)
+      || (alertsEl && liveAlertEls(alertsEl).length > 0)
+      || externalFlightCaptions.size > 0
+      || (caption && !caption.hidden && caption.classList.contains('show'));
+    receiptIdleSlowTicks = laneBusy ? 0 : receiptIdleSlowTicks + 1;
+    if (laneBusy) {
+      // Busy lane: keep the cadence but re-place from the last measured geometry. Real content
+      // and layout owners still invalidate; this tick is a safety net, not a re-measure.
+      refreshReceiptLanePlacement();
+    } else if (receiptIdleSlowTicks >= 5) {
+      receiptIdleSlowTicks = 0;
+      invalidateReceiptLane();
+    }
+    updateAdventureDecisionLine();
+    refreshLeftContextClasses();
+    seatFlightVoice();
+  }
+
+  // One voice per moment (hudAttention.resolveVoiceSeat): read which surfaces are speaking from
+  // live class collections (no selector scans, no layout reads), seat the highest, and publish
+  // the losers on <body> so styles/hud.css steps them aside. A card that arrives between passes
+  // is matched by the same selector at once, so it never flashes over the seated voice.
+  const voicePresent = { tell: false, danger: false, deck: false, speaker: false, floor: false, feed: false, dock: false, pill: false };
+  let voiceAlertCards = null;
+  let voiceStageCards = null;
+  let voiceToastCards = null;
+  let lastVoiceYields = '';
+  function seatFlightVoice() {
+    if (alertsEl === null) alertsEl = document.getElementById('alerts');
+    if (toastsLaneEl === null) toastsLaneEl = document.getElementById('toasts');
+    // Live class lists where the host has them; a partial DOM (headless harnesses) walks the lane.
+    if (alertsEl && !voiceAlertCards) {
+      voiceAlertCards = typeof alertsEl.getElementsByClassName === 'function'
+        ? alertsEl.getElementsByClassName('sf-alert') : null;
+      voiceStageCards = typeof alertsEl.getElementsByClassName === 'function'
+        ? alertsEl.getElementsByClassName('sf-stage__item') : [];
+    }
+    if (toastsLaneEl && !voiceToastCards && typeof toastsLaneEl.getElementsByClassName === 'function') {
+      voiceToastCards = toastsLaneEl.getElementsByClassName('sf-toast');
+    }
+    for (const k in voicePresent) voicePresent[k] = false;
+    for (const slot of tellSlots) {
+      if (slot.age < Infinity && slot.el.classList.contains('is-on')) { voicePresent.tell = true; break; }
+    }
+    if (voiceAlertCards) {
+      for (let i = 0; i < voiceAlertCards.length; i++) {
+        const el = voiceAlertCards[i];
+        if (el.hidden || el.style.visibility === 'hidden') continue;
+        // Standing lamps (ttl Infinity) are condition lights, never the danger voice.
+        voicePresent[alertVoiceChannel(el.classList)] = true;
+      }
+      for (let i = 0; i < voiceStageCards.length; i++) {
+        if (!voiceStageCards[i].hidden) { voicePresent.floor = true; break; }
+      }
+    }
+    if (voiceToastCards) {
+      for (let i = 0; i < voiceToastCards.length; i++) {
+        if (!voiceToastCards[i].classList.contains('sf-toast--out')) { voicePresent.feed = true; break; }
+      }
+    }
+    const body = document.body;
+    voicePresent.deck = !!body?.classList.contains('sf-flight-decision-open');
+    const stage = getStage();
+    voicePresent.speaker = !!(stage && stage.visible('speaker').length);
+    const dialogOpen = !!((stage && stage.visible('dialog').length) || body?.classList.contains('ui-modal-open'));
+    const { yields } = resolveVoiceSeat(voicePresent, { dialogOpen });
+    let list = '';
+    for (const name of yields) list = list ? `${list} ${name}` : name;
+    if (list !== lastVoiceYields) {
+      lastVoiceYields = list;
+      if (body) {
+        if (list) body.setAttribute('data-sf-voice-yields', list);
+        else body.removeAttribute('data-sf-voice-yields');
+      }
+    }
+  }
+
+  let lastSwarmHudClass = null;
+  function syncSwarmHudClass(active) {
+    const next = !!active;
+    if (lastSwarmHudClass === next) return;
+    lastSwarmHudClass = next;
+    document.body?.classList?.toggle('sf-swarm-hud', next);
+    flightTextObstaclesStale = true;
+    flightTextObstacleGeomStale = true;
+    alertLanePlacementStale = true;
+  }
+  if (ctx.bus && typeof ctx.bus.on === 'function') {
+    const clearSwarmHud = () => syncSwarmHudClass(false);
+    hudUnsubscribers.push(ctx.bus.on('run:ended', clearSwarmHud));
+    hudUnsubscribers.push(ctx.bus.on('game:exitToMenu', clearSwarmHud));
+    hudUnsubscribers.push(ctx.bus.on('save:restoring', clearSwarmHud));
+  }
+
   function frame(dt, deferReceiptPlacement = false) {
+    syncSwarmHudClass(isSwarmHudActive(state));
     // Read dirty obstacle geometry before this frame's HUD writes.
     if (objectiveEdgeBoxes.stale) objectiveEdgeObstacles();
     const frameDt = Number.isFinite(dt) && dt > 0 ? Math.min(dt, 0.25) : 1 / 60;
-    const numericDt = consumeHudClock(numericClock, frameDt);
-    const targetDt = consumeHudClock(targetClock, frameDt);
-    const overlayDt = consumeHudClock(overlayClock, frameDt);
-    const radarDt = consumeHudClock(radarClock, frameDt);
-    const overviewTick = consumeContactRosterClock(overviewClock, frameDt);
-    const slow = numericDt > 0;
+    // Under the main UI frame the jobs that only have to be recent (scope repaint, target card,
+    // contact roster) run from the HUD's budgeted scheduler at the end of this frame instead of
+    // on their own clocks: at 8 frames a second every 10/20/30 Hz clock fires on every frame, so
+    // the clocks saved nothing exactly when it mattered. A bare frame(dt) keeps the clocks.
+    const budgeted = deferReceiptPlacement === true && frameCostFixOn('hudTasks');
+    // Breadth: the 10 Hz families below are carried by their own scheduler jobs instead of
+    // this flag, so the inline copies skip (a family must never run twice in one frame).
+    const breadth = budgeted && frameCostFixOn('hudBreadth');
+    hudBreadthArmed = breadth;
+    const numericDt = budgeted ? 0 : consumeHudClock(numericClock, frameDt);
+    const targetDt = budgeted ? 0 : consumeHudClock(targetClock, frameDt);
+    const overlayDt = budgeted ? 0 : consumeHudClock(overlayClock, frameDt);
+    const radarDt = budgeted ? 0 : consumeHudClock(radarClock, frameDt);
+    const overviewTick = budgeted ? false : consumeContactRosterClock(overviewClock, frameDt);
+    // Budgeted cadence: the 10 Hz and 30 Hz families fire only on frames that follow a
+    // metronome run (armed at the end of the previous frame), so their real rate is the jobs'
+    // own — bounded at any frame rate instead of collapsing to every frame. The dt handed to
+    // the overlay family is the real elapsed time between its own passes.
+    overlayPassElapsed += frameDt;
+    const slow = budgeted ? slowPassArmed : numericDt > 0;
+    const overlayTick = budgeted ? overlayPassArmed : overlayDt > 0;
+    const overlayPassDt = overlayTick ? overlayPassElapsed : overlayDt;
+    if (overlayTick) overlayPassElapsed = 0;
+    slowPassArmed = false;
+    overlayPassArmed = false;
     const targetTick = targetDt > 0;
-    const overlayTick = overlayDt > 0;
     const radarTick = radarDt > 0;
 
     const p = state.entities && typeof state.entities.get === 'function'
       ? state.entities.get(state.playerId)
       : null;
     resolveReticle();
-    updateDoctrineTells(frameDt);
-    if (slow) updateFlightCargoBar();
+    const swarmTells = isSwarmGlass(state);
+    if (!swarmTells) updateDoctrineTells(frameDt, false);
+    if (slow && !breadth) updateFlightCargoBar();
 
     // --- Optical G-force lag & G-LOC simulation (Blueprint Category D) ---
     const isMotionReduced = getMotionReduced() || !!(state.settings && state.settings.video && state.settings.video.motionReduce);
@@ -6114,7 +7410,7 @@ export function createHud(ctx, alerts) {
       }
     }
 
-    if (!elReticle) elReticle = document.getElementById('aim-reticle');
+    resolveReticle();
     const reticleInner = elReticle && (elReticle._sfInner || (elReticle._sfInner = elReticle.firstElementChild));
     if (reticleInner) {
       setLagTranslate(reticleInner, opticalGLag.x, opticalGLag.y);
@@ -6122,11 +7418,11 @@ export function createHud(ctx, alerts) {
 
     // ORRERY Cluster: ordnance on the slow clock, speed/drift every frame; its own change detection
     // means a settled frame writes nothing.
-    if (orreryCluster) orreryCluster.update(state, p, slow);
+    if (orreryCluster) orreryCluster.update(state, p, breadth ? false : slow);
     // PQ-195.02: the fork instrument rides the slow clock like the rail — its own change detection
     // means a settled reading costs nothing, and a fast approach is heard within a tenth of a second.
-    if (slow) forkInstrument.update(state);
-    if (slow) ionStormHud.update();
+    if (slow && !breadth) forkInstrument.update(state);
+    if (slow && !breadth) ionStormHud.update();
     travelVectorHud.update(p);
 
     // Safety alerts stay live independently of the visual instrument owner.
@@ -6136,6 +7432,9 @@ export function createHud(ctx, alerts) {
       const fuelState = state.fuel || defaultFuel;
       const fuelFrac = fuelState.max > 0 ? clamp01(fuelState.current / fuelState.max) : 1;
       syncSafetyAlerts(p, hullFrac, shieldFrac, fuelFrac);
+      if (slow && (wantedActive || ((state.player && state.player.heat) || 0) >= 0.15)) {
+        syncWantedAlert();
+      }
 
       // FR-1: prograde tick — where inertia is carrying us, projected each frame. Fades below
       // 2 wu/s so a stationary ship shows nothing (never animates at rest).
@@ -6176,111 +7475,10 @@ export function createHud(ctx, alerts) {
 
     updateTravelTape(p, frameDt, slow);
 
-    if (slow && p) {
-      // Tether readout: status + target while latched. Control chips paint separately so the
-      // instrument value never becomes a rebind encyclopedia that overflows the deck.
-      const localTether = state.player && state.player.tether;
-      const remoteTether = state.player && state.player.remoteMassline;
-      const tether = localTether && localTether.active ? localTether : remoteTether;
-      const ml = masslineInstrumentReadout(tether);
-      const latching = masslineInstrumentVisible(tether);
-      if (document.body && document.body.dataset) {
-        const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 1280;
-        const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : 720;
-        const hudLayout = resolveObjectiveHudLayout(viewportWidth, viewportHeight);
-        setAttr(document.body, 'data-sf-hud-job', hudJobFromState(state, tether, hudLayout));
-      }
-      // Arcade fights and temporary circuits carry their own flight context.
-      {
-        const swarmRadioOff = !!(state.run && state.run.kind === 'survival' && state.run.phase !== 'inactive');
-        const want = swarmRadioOff || temporaryCircuit ? 'none' : '';
-        if (commsTape.style.display !== want) commsTape.style.display = want;
-      }
-      updateTetherFeedback(tether, latching, ml);
-      const auto = !!(state.input && state.input.autoFire);
-      if (elReticle) setClass(elReticle, 'autofire', auto);
-      // Reticle accuracy bloom: decay _recoilBloom toward 0 and scale the inner SVG. Sustained fire
-      // expands the crosshair (1 -> 1.25); it contracts as you stop. Purely cosmetic readability.
-      _recoilBloom = Math.max(0, _recoilBloom - frameDt * 2.2);
-      if (elReticle) {
-        const inner = elReticle._sfInner || (elReticle._sfInner = elReticle.firstElementChild);
-        if (inner) {
-          const bloomQ = Math.round((1 + _recoilBloom * 0.25) * 1000);
-          const bloomScale = (bloomQ / 1000).toFixed(3);
-          setLagTranslate(inner, opticalGLag.x, opticalGLag.y, {
-            suffix: ` scale(${bloomScale})`,
-            plain: `scale(${bloomScale})`,
-          });
-        }
-      }
-    }
+    if (slow && p && !breadth) runSlowTetherBlock(p, frameDt);
 
     // --- mission tracker @10Hz ---
-    if (slow) {
-      speakPlottedRouteTeach(state, ctx.bus);
-      // Resolve corridor fallback once, then let the owner resolver keep mission/nav data disjoint.
-      const navWaypoint = state.nav && state.nav.waypoint;
-      const wp = navWaypoint || buildCorridorOpeningWaypoint(state);
-      const onboardingVerb = navWaypoint && navWaypoint.reason;
-      const command = resolveFlightObjectiveCommand(state, wp);
-      const dest = flightDestinationSurface(state, command, temporaryCircuit);
-      if (lastFlightObjectiveOwner === 'counterweight-course' && command?.owner !== 'counterweight-course') {
-        // Recall can be pinned or dismissed while a course runs; it must not resurrect that
-        // course after the public attempt has ended or the pilot has left it.
-        objectiveRecall.text = dest.line || '';
-        objectiveRecall.snapshot = dest.line || '';
-      }
-      lastFlightObjectiveOwner = command?.owner || null;
-      // the dial's needle takes the nearest way round to the objective's bearing
-      const bearingDeg = command?.owner === 'counterweight-course'
-        ? null : objectiveBearingDeg(state, (command && command.waypoint) || wp);
-      if (bearingDeg != null && mtNeedle) {
-        let next = bearingDeg;
-        if (mtNeedleDeg != null) { while (next - mtNeedleDeg > 180) next -= 360; while (next - mtNeedleDeg < -180) next += 360; }
-        if (mtNeedleDeg == null || Math.abs(next - mtNeedleDeg) > 0.5) {
-          mtNeedleDeg = next;
-          mtNeedle.style.transform = `rotate(${next.toFixed(1)}deg)`;
-        }
-      }
-      setClass(missionTracker, 'sf-mt--nobearing', bearingDeg == null);
-      // mtTime's display is owned by paintTutorialTrackerCaption below; pre-hiding it here
-      // flipped its inline display none -> block on every tick while a caption was up.
-      if (dest.line) rememberObjective(objectiveRecall, dest.line);
-      const showObjective = objectiveVisible(objectiveRecall, dest.show);
-      // W1 Journey: the act is its own line above the objective, not a prefix buried in the
-      // action string (which prefers the beat-specific reason). The line also survives a
-      // dock-modal because the persistent `act:<n>` receipt is separate.
-      const actLine = dest.show && showObjective ? String(dest.actLine || '') : '';
-      setText(mtTitle, actLine);
-      // The 290px nowrap field shows the short act title; the full canon heading stays on the
-      // node's tooltip and accessible name so nothing is lost to the ellipsis.
-      const actFull = actLine ? journeyActTrackerFullLine(state) : '';
-      // Every other write here goes through a compared writer; these three did not, so an
-      // unchanged act line re-wrote the tooltip and the accessible name 10×/s (and cleared the
-      // label whenever the line went empty). setTitle/setAttr/clearAttr all keep their own cache.
-      setTitle(mtTitle, actFull);
-      if (actFull) setAttr(mtTitle, 'aria-label', actFull);
-      else clearAttr(mtTitle, 'aria-label');
-      setDisplay(mtTitle, !!actLine);
-      // The muted-safe tutorial caption rides the tracker's secondary line. It is additive:
-      // the objective's verb, distance and recall state above are untouched.
-      const showCaption = paintTutorialTrackerCaption(mtTime, temporaryCircuit ? null : state);
-      if (!showCaption) setClass(mtTime, 'sf-mt-urgent', dest.urgent);
-      if (!showObjective && !showCaption) {
-        if (!mtDetails.hidden) setMissionDetails(false);
-        setDisplay(missionTracker, false);
-      } else {
-        // A caption may be the only reason the tracker is up; never leave a stale objective
-        // line sitting above it.
-        const objective = showObjective ? (objectiveRecall.text || dest.line) : '';
-        setText(mtObj, objective);
-        const [action, ...readings] = objective.split('\n');
-        setText(mtAction, objective === dest.line ? dest.compactAction || action : action);
-        setText(mtReadings, readings.join('\n'));
-        setText(mtDetailsText, [objective, showCaption ? mtTime.textContent : ''].filter(Boolean).join('\n\n'));
-        setDisplay(missionTracker, true);
-      }
-    }
+    if (slow && !breadth) runMissionTrackerTick();
 
     if (objDirty) refreshObjectives();
 
@@ -6292,85 +7490,65 @@ export function createHud(ctx, alerts) {
     const targetSurrendered = isSurrenderedContact(target);
     const surrenderChanged = targetSurrendered !== lastTargetSurrendered;
     lastTargetSurrendered = targetSurrendered;
-    if (targetTick || surrenderChanged) {
-      const player = state.entities.get(state.playerId);
-      const combatRelevant = target && (target.type === 'ship' || target.type === 'drone')
-        && isHostileToPlayer(target, player ? player.team : 0, state);
-      const miningRelevant = target && target.type === 'asteroid';
-      const stationRelevant = target && target.type === 'station';
-      const objectSelected = !!(state.ui && state.ui.objectSelection
-        && state.ui.objectSelection.targetId === tgtId);
-      const routeOwnsAttention = !!(state.nav && state.nav.waypoint);
-      let weakPoint = null;
-      if (tgtId != null && revealedWeakPoints.size) {
-        const wp = revealedWeakPoints.get(tgtId);
-        if (wp && (!wp.until || (state.simTime || 0) < wp.until)) weakPoint = wp;
-        else if (wp) revealedWeakPoints.delete(tgtId);
+    if (budgeted) {
+      // A new selection or a surrender shows on the very next frame, ahead of the card's rate.
+      if (surrenderChanged || tgtId !== lastBudgetedTargetId) {
+        lastBudgetedTargetId = tgtId;
+        targetPanelSlowDue = true;
+        targetPanelTask.request();
+        radarTask.request();
       }
-      if (routeOwnsAttention && target && !combatRelevant && !miningRelevant && !stationRelevant
-        && !targetSurrendered && !objectSelected && target.data?.worldSiteTargetable !== true) {
-        setDisplay(targetPanel.el, false);
-      } else {
-        targetPanelUpdateOptions.slow = slow || surrenderChanged;
-        targetPanelUpdateOptions.weakPoint = weakPoint;
-        targetPanel.update(targetPanelUpdateOptions);
-      }
+    } else if (targetTick || surrenderChanged) {
+      paintTargetPanel(tgtId, target, targetSurrendered, slow || surrenderChanged);
     }
 
     // --- combat HUD: lock ring and target diamond ---
     updateCombatHud(p, slow, overlayTick);
 
     // --- world-space DOM overlays: batch transform/opacity writes ---
-    if (overlayTick) floatingText.update(overlayDt || frameDt);
+    if (overlayTick) floatingText.update(overlayPassDt || frameDt);
+    // Floor labels publish their painted seats in the overlay pass. The warning yields to
+    // those seats, and the floor pass never uses a warning's position in return.
+    if (swarmTells) updateDoctrineTells(frameDt, true);
 
     // --- radar: canvas redraws are explicit, not tied to every render frame ---
     if (radarTick) radar.draw();
 
     // directional damage indicators advance + reposition on the overlay cadence.
-    if (overlayTick) dmgInd.tick(overlayDt || frameDt, helpers);
+    if (overlayTick) dmgInd.tick(overlayPassDt || frameDt, helpers);
 
     // --- off-screen objective arrow ---
     if (overlayTick || slow) updateObjectiveArrow(p, slow);
     if (overlayTick || slow) updateFirstUseHint(p);
-    if (slow) {
-      // Idle HUD (no receipt, caption, alert or external caption on screen): geometry only changes
-      // through the explicit invalidations (layout/settings/resize events), so re-placing on every
-      // 10 Hz tick just re-reads rects. Keep a 2 Hz safety refresh; stay at 10 Hz while any
-      // receipt-lane content is live.
-      const laneBusy = (toastsLaneEl && toastsLaneEl.childElementCount > 0)
-        || (alertsEl && alertsEl.childElementCount > 0)
-        || externalFlightCaptions.size > 0
-        || (caption && !caption.hidden && caption.classList.contains('show'));
-      receiptIdleSlowTicks = laneBusy ? 0 : receiptIdleSlowTicks + 1;
-      if (laneBusy) {
-        // Busy lane: keep the cadence but re-place from the last measured geometry. Real content
-        // and layout owners still invalidate; this tick is a safety net, not a re-measure.
-        refreshReceiptLanePlacement();
-      } else if (receiptIdleSlowTicks >= 5) {
-        receiptIdleSlowTicks = 0;
-        invalidateReceiptLane();
-      }
-    }
-    if (slow) updateAdventureDecisionLine();
-    if (slow) refreshLeftContextClasses();
+    if (overlayTick && trackedDockCue) placeFlightReadouts(window.innerWidth, window.innerHeight, trackedDockCue);
+    if (overlayTick) flightHelm.frame(overlayPassDt || frameDt, window.innerWidth, window.innerHeight);
+    if (slow && !breadth) runContextRowTick();
 
     // --- toasts/alerts expiry sweep ---
     if (alerts && alerts.tick) alerts.tick();
     // --- HUD meta-arc (STABLE LOAD line, tag flicker, manifest ghost) ---
-    if (overlayTick && hudMeta && hudMeta.tick) hudMeta.tick(overlayDt || frameDt);
+    if (overlayTick && hudMeta && hudMeta.tick) hudMeta.tick(overlayPassDt || frameDt);
 
     // --- Target Arcs: update every frame for smooth 3D tracking ---
     updateTargetArcs();
 
     // --- Overview Strip: elapsed-time cadence stays at <=5 Hz at any render refresh rate. ---
     if (overviewTick) updateOverview();
+    if (budgeted) hudTasks.run();
     if (!deferReceiptPlacement) flushReceiptLane();
   }
 
   function tickHidden(dt) {
+    syncSwarmHudClass(false);
     const p = state.entities.get(state.playerId);
     syncSafetyAlerts(p);
+    if (wantedActive || ((state.player && state.player.heat) || 0) >= 0.15) syncWantedAlert();
     if (alerts && alerts.tick) alerts.tick();
+    // The seat is only recomputed while the flight HUD ticks. A yield left on <body> after
+    // dock, pause, a menu or Run Over kept hiding receipts and speaker cards that arrive there.
+    lastVoiceYields = '';
+    const body = typeof document !== 'undefined' ? document.body : null;
+    if (body && typeof body.removeAttribute === 'function') body.removeAttribute('data-sf-voice-yields');
   }
 
   function resolveNavStation(nw) {
@@ -6429,11 +7607,8 @@ export function createHud(ctx, alerts) {
         setClass(elNavReadout, 'sf-nav--lock', false);
         return;
       }
-      let livePos = null;
-      if (nw.stationId) {
-        const station = resolveNavStation(nw);
-        if (station) livePos = station.pos;
-      }
+      const freightBerth = nw.kind === 'mission' && nw.missionId === m?.id && m?.source === FIRST_TRADE_CONTRACT_SOURCE;
+      const livePos = nw.stationId && !freightBerth ? resolveNavStation(nw)?.pos : null;
       const pos = livePos || resolveWaypointPresentationPosition(state, nw);
       wpLabel = nw.label || nw.reason || nw.sectorName || 'Waypoint';
       navMeta = nw;
@@ -6466,6 +7641,10 @@ export function createHud(ctx, alerts) {
       lastNavLabel = '';
       lastObjectiveMarkerText = '';
       lastObjectiveSig = null;
+      return;
+    }
+    if (navMeta?.stationId && navMeta.stationId === trackedDockCue?.station?.data?.stationId) {
+      setDisplay(arrow, false);
       return;
     }
     objectiveProjectionWorld.x = wp.x;
@@ -6506,7 +7685,7 @@ export function createHud(ctx, alerts) {
       }
     }
     if (slow || !lastNavDist) {
-      const distText = Math.round(dist) + ' u';
+      const distText = Math.round(dist) + ' m';
       const etaText = isFinite(etaS) ? (etaS < 60 ? Math.round(etaS) + 's' : Math.round(etaS / 60) + 'm') : '—';
       if (distText !== lastNavDist) {
         setText(elNavDist, distText);
@@ -6612,6 +7791,25 @@ export function createHud(ctx, alerts) {
     flightTextObstaclesStale = true;
     flightTextObstacleGeomStale = true;
     alertLanePlacementStale = true;
+    if (typeof placeAlertLaneInSafeBands === 'function') {
+      placeAlertLaneInSafeBands._lastSig = '';
+      placeAlertLaneInSafeBands._lastAt = -Infinity;
+      placeAlertLaneInSafeBands._quickSig = '';
+      placeAlertLaneInSafeBands._quickAt = -Infinity;
+    }
+    if (typeof freeOverlayBands === 'function') {
+      freeOverlayBands._staticCache = null;
+      freeOverlayBands._swarmCache = null;
+      freeOverlayBands._dynCache = null;
+      freeOverlayBands._liveCache = null;
+    }
+    if (typeof refreshFlightTextObstacleSnapshot === 'function') {
+      refreshFlightTextObstacleSnapshot._rootCache = null;
+    }
+    if (typeof responsiveOverlayObstacles === 'function') {
+      responsiveOverlayObstacles._cache = null;
+    }
+    staleKeptQueries();
     invalidateAvoidRects(document);
   }
   function invalidateTransientOverlayGeometry() {
@@ -6694,19 +7892,12 @@ export function createHud(ctx, alerts) {
   let lastReceiptObstacle = null;
   let lastCaptionObstacleVisible = null;
 
-  function refreshFlightTextObstacleSnapshot() {
+  function refreshFlightTextObstacleSnapshot(receiptCards = null) {
     if (!flightTextObstaclesStale) return;
     const nowMs = (typeof performance !== 'undefined' && performance && typeof performance.now === 'function')
       ? performance.now() : Date.now();
     const sinceLast = nowMs - flightTextObstacleSnapshotAt;
     if (sinceLast < FLIGHT_TEXT_OBSTACLE_MIN_MS) return;
-    const qsa = (scope, selector) => {
-      if (!receiptGeometryRects) return scope?.querySelectorAll?.(selector) || [];
-      const queries = receiptGeometryRects.q || (receiptGeometryRects.q = new Map());
-      let hit = queries.get(selector);
-      if (!hit) queries.set(selector, hit = Array.from(scope?.querySelectorAll?.(selector) || []));
-      return hit;
-    };
     const measured = objectiveEdgeObstacles();
     // Phase 1 — membership. The same cheap filters add() applies before its expensive reads
     // decide the candidate set. If the set (identity, class, inline visibility signature)
@@ -6735,17 +7926,52 @@ export function createHud(ctx, alerts) {
       ['vitals', '.sf-vitals, .sf-status'],
       ['flight-control', '.sf-command-deck, .sf-prail, .sf-dock-prompt, .sf-tell.is-on, #sf-prompt-deck, #sf-tutorial-flight-card'],
       ['caption', '.sf-caption.show'],
-      ['receipt', '.sf-toast:not(.sf-toast--out)'],
     ];
-    for (const [owner, selector] of rootGroups) {
-      for (const el of qsa(root, selector)) consider(owner, el);
+    const canCacheSnap = receiptPlacementMode === 'shared' && typeof receiptGeometryRects === 'object' && receiptGeometryRects
+      && typeof performance !== 'undefined';
+    let cachedSnap = canCacheSnap && refreshFlightTextObstacleSnapshot._rootCache
+      && refreshFlightTextObstacleSnapshot._rootCache.root === root
+      && (nowMs - refreshFlightTextObstacleSnapshot._rootCache.at < 100)
+      ? refreshFlightTextObstacleSnapshot._rootCache : null;
+    if (!cachedSnap) {
+      const groups = rootGroups.map(([owner, selector]) => [owner, Array.from(queryReceiptGeometry(root, selector))]);
+      const stunt = Array.from(queryReceiptGeometry(document, '.sf-stuntcall:not([hidden])'));
+      cachedSnap = { root, at: nowMs, groups, stunt };
+      if (canCacheSnap) refreshFlightTextObstacleSnapshot._rootCache = cachedSnap;
+    }
+    for (const [owner, els] of cachedSnap.groups) {
+      for (const el of els) consider(owner, el);
     }
     consider('caption', caption);
-    for (const el of toastsLaneEl?.querySelectorAll?.('.sf-toast:not(.sf-toast--out)') || []) consider('receipt', el);
-    for (const el of qsa(document, '#alerts .sf-alert:not([hidden])')) consider('alert', el);
-    for (const el of qsa(document, '.sf-stuntcall:not([hidden])')) consider('stunt', el);
+    // Toasts have a single mount. The placement flush already has its current membership;
+    // a doctrine tell outside that flush still reads the mounted lane directly.
+    const cards = receiptCards ?? (frameCostFixOn('hudBreadth') ? liveToastEls()
+      : (toastsLaneEl || document.getElementById('toasts'))?.querySelectorAll?.('.sf-toast:not(.sf-toast--out)') ?? []);
+    for (const el of cards) consider('receipt', el);
+    const snapAlertsHost = (typeof alertsEl !== 'undefined' && alertsEl) || document.getElementById?.('alerts') || null;
+    if (typeof alertsEl !== 'undefined' && !alertsEl && snapAlertsHost) alertsEl = snapAlertsHost;
+    const snapHasAlerts = !snapAlertsHost || (snapAlertsHost.childElementCount ?? snapAlertsHost.children?.length ?? 1) > 0;
+    if (snapHasAlerts) {
+      const alertEls = frameCostFixOn('hudBreadth') ? liveAlertEls(snapAlertsHost)
+        : (snapAlertsHost?.querySelectorAll
+          ? queryReceiptGeometry(snapAlertsHost, '.sf-alert:not([hidden])')
+          : queryReceiptGeometry(document, '#alerts .sf-alert:not([hidden])'));
+      for (const el of alertEls) consider('alert', el);
+    }
+    for (const el of cachedSnap.stunt) consider('stunt', el);
     if (state.run?.ruleset === 'swarm') {
-      for (const el of document.querySelectorAll('.sf-crun, .sf-sj__col > :not([hidden])')) consider('swarm-callout', el);
+      // Reuse the band solver's owner query. Children can turn over or move inside the same
+      // column without replacing its element; take their current visibility and geometry.
+      const callouts = queryReceiptGeometry(document, '.sf-crun, .sf-sj__col');
+      for (const el of callouts) {
+        if (el.matches('.sf-sj__col')) {
+          for (const child of el.children) if (!child.hidden) consider('swarm-callout', child);
+        } else consider('swarm-callout', el);
+      }
+      const swhudEl = typeof document.getElementById === 'function' ? document.getElementById('sf-swhud') : null;
+      if (swhudEl && !swhudEl.hidden && Array.isArray(swhudEl._sfObstacles)) {
+        for (const el of swhudEl._sfObstacles) if (el && !el.hidden) consider('swarm-callout', el);
+      }
     }
     for (const el of externalFlightCaptions) consider('flight-caption', el);
     for (const el of responsiveOverlayObstacles()) {
@@ -6822,13 +8048,14 @@ export function createHud(ctx, alerts) {
     // The touch HUD is a body sibling, not a child of #hud. Reserve its actual rendered
     // instruments rather than the desktop vitals rectangle that mobile flight replaces.
     if (receiptGeometryRects?.resp) return receiptGeometryRects.resp;
-    const qsa = (scope, selector) => {
-      if (!receiptGeometryRects) return scope?.querySelectorAll?.(selector) || [];
-      const queries = receiptGeometryRects.q || (receiptGeometryRects.q = new Map());
-      let hit = queries.get(selector);
-      if (!hit) queries.set(selector, hit = Array.from(scope?.querySelectorAll?.(selector) || []));
-      return hit;
-    };
+    const canCacheResp = receiptPlacementMode === 'shared' && typeof receiptGeometryRects === 'object' && receiptGeometryRects
+      && typeof performance !== 'undefined';
+    const respNowMs = canCacheResp ? (typeof performance.now === 'function' ? performance.now() : Date.now()) : 0;
+    if (canCacheResp && responsiveOverlayObstacles._cache && responsiveOverlayObstacles._cache.root === root
+        && respNowMs - responsiveOverlayObstacles._cache.at < 250) {
+      receiptGeometryRects.resp = responsiveOverlayObstacles._cache.els;
+      return responsiveOverlayObstacles._cache.els;
+    }
     const touch = document.getElementById('sf-touch-overlay');
     if (touch !== touchOverlayOwner) {
       touchOverlayObserver?.disconnect();
@@ -6843,9 +8070,10 @@ export function createHud(ctx, alerts) {
       }
     }
     const elements = [
-      ...qsa(root, '#race-tape'),
-      ...qsa(root, '#race-tape[data-options-open="true"] .race-tape-actions, .sf-mt-details:not([hidden]), .sf-radar-wrap--expanded'),
-      ...touch?.querySelectorAll?.('.mf-status, .mf-pause, .mf-edge, .mf-buttons, .mf-dock, .mf-ghost:not([hidden]) svg, .mf-ghost:not([hidden]) .mf-ghost-label, .mf-stick:not([hidden]) .mf-readout, .mf-caption:not([hidden])') || [],
+      ...queryReceiptGeometry(root, '#race-tape'),
+      ...queryReceiptGeometry(root, '#race-tape[data-options-open="true"] .race-tape-actions, .sf-mt-details:not([hidden]), .sf-radar-wrap--expanded'),
+      ...(frameCostFixOn('hudBreadth') ? touchOverlayAvoidEls(touch)
+        : touch?.querySelectorAll?.('.mf-status, .mf-pause, .mf-edge, .mf-buttons, .mf-dock, .mf-ghost:not([hidden]) svg, .mf-ghost:not([hidden]) .mf-ghost-label, .mf-stick:not([hidden]) .mf-readout, .mf-caption:not([hidden])') || []),
     ];
     const elementSet = new Set(elements);
     for (const el of responsiveOverlayElements) {
@@ -6861,12 +8089,14 @@ export function createHud(ctx, alerts) {
       }
     }
     if (receiptGeometryRects) receiptGeometryRects.resp = elements;
+    if (canCacheResp) responsiveOverlayObstacles._cache = { root, at: respNowMs, els: elements };
     return elements;
   }
 
   // Both roots are static index.html markup: resolve each once, retrying only while absent.
   let toastsLaneEl = null;
   let alertsEl = null;
+  let trackedDockCue = null;
   let alertLaneObserver = null;
   function cleanupAlertLanePlacement() {
     alertLaneObserver?.disconnect();
@@ -6875,6 +8105,7 @@ export function createHud(ctx, alerts) {
   hudUnsubscribers.push(cleanupAlertLanePlacement);
   function overlaySafeSlot(layout, w, h) {
     const safe = layout && layout.centerSafe;
+    const breadth = frameCostFixOn('hudBreadth');
     const measured = objectiveEdgeObstacles();
     const rail = measured.rail;
     const dock = measured.right;
@@ -6886,13 +8117,17 @@ export function createHud(ctx, alerts) {
       // text column; a full-width band makes that key and the radar block every row.
       const mobileFlight = document.documentElement?.getAttribute?.('data-sf-mobile-flight') === '1';
       if (!mobileFlight && document.body?.classList?.contains('sf-swarm-flight')) {
-        const centre = plateBox(root.querySelector('.sf-sj__col'));
-        const moment = plateBox(document.querySelector('#sf-stage-banner .sf-discovery-plate__frame')?.parentElement);
+        const centre = plateBox(breadth ? swarmColumnElement() : root.querySelector('.sf-sj__col'));
+        const moment = plateBox((breadth
+          ? keptEl(keptEl(document, '#sf-stage-banner'), '.sf-discovery-plate__frame')
+          : document.querySelector('#sf-stage-banner .sf-discovery-plate__frame'))?.parentElement);
         const left = Math.max(w * .68, (centre?.right || 0) + 12, (moment?.right || 0) + 12);
         const right = layout.safe.right - 12;
         if (right - left >= 200) return { x: left, width: right - left, wide: false };
       }
-      const cameraKey = mobileFlight ? plateBox(root.querySelector('#race-tape .race-tape-options-trigger')) : null;
+      const cameraKey = mobileFlight ? plateBox(breadth
+        ? keptEl(keptEl(document, '#race-tape'), '.race-tape-options-trigger')
+        : root.querySelector('#race-tape .race-tape-options-trigger')) : null;
       if (cameraKey && cameraKey.top < h / 3 && dockVisible) {
         const left = Math.max(layout.safe.left + 12, cameraKey.right + 8, railVisible ? rail.right + 12 : 0);
         const right = Math.min(layout.safe.right - 12, dock.left - 8);
@@ -6913,7 +8148,7 @@ export function createHud(ctx, alerts) {
     // and the receipts. A boss line wraps inside this lane instead of running under the panel.
     if (w > 760 && h > 500 && layout?.safe && document.body?.classList?.contains('sf-run-flight')
       && document.documentElement?.getAttribute?.('data-sf-mobile-flight') !== '1') {
-      const panel = plateBox(root.querySelector('.sf-crun'));
+      const panel = plateBox(breadth ? contactCrunElement() : root.querySelector('.sf-crun'));
       const left = Math.max(layout.safe.left + 12, panel ? panel.right + 12 : 0);
       const right = Math.min(layout.safe.right - 12, dockVisible ? dock.left - 12 : Infinity);
       if (right - left >= 240) return { x: left, width: Math.min(right - left, 640), wide: false };
@@ -6936,7 +8171,9 @@ export function createHud(ctx, alerts) {
     const x = (layout?.safe?.left || 0) + 12;
     const width = Math.max(160, (layout?.safe?.width || w) - 24);
     const slot = { x, width: Math.min(width, w - x - 12), wide: false };
-    const thumb = plateBox(document.getElementById('sf-touch-overlay')?.querySelector('.mf-buttons'));
+    const thumb = plateBox(breadth
+      ? keptEl(document.getElementById('sf-touch-overlay'), '.mf-buttons')
+      : document.getElementById('sf-touch-overlay')?.querySelector('.mf-buttons'));
     if (w <= 760 && h > w && thumb) {
       // Use the lane opposite the actual thumb cluster, including left-handed layouts.
       // Full-width bands cannot fit a discovery between the portrait radar and touch keys.
@@ -6950,6 +8187,209 @@ export function createHud(ctx, alerts) {
   // overlay writes invalidate their own tree, retaining unrelated settled obstacle measurements.
   let receiptPlacementMode = 'shared';
   let receiptGeometryRects = null;
+  function queryReceiptGeometry(scope, selector) {
+    const breadth = frameCostFixOn('hudBreadth');
+    if (!receiptGeometryRects) {
+      return breadth ? keptGeometryQuery(scope, selector)
+        : (scope?.querySelectorAll?.(selector) || []);
+    }
+    const queries = receiptGeometryRects.q || (receiptGeometryRects.q = new Map());
+    let hit = queries.get(selector);
+    if (!hit) {
+      queries.set(selector, hit = breadth
+        ? Array.from(keptGeometryQuery(scope, selector))
+        : Array.from(scope?.querySelectorAll?.(selector) || []));
+    }
+    return hit;
+  }
+
+  // Pattern 2 (HUD-FRAME-BREADTH; ?rfx=-hudBreadth restores live queries): a mounted panel is
+  // found once and kept while every member stays connected — the placement flush re-measures
+  // element geometry anyway, so only identity has to stay fresh. Membership changes arrive
+  // through the same invalidations geometry already obeys (staleKeptQueries below rides them);
+  // a list that found nothing re-asks within a few hundred ms so a late mount still lands.
+  const KEPT_REFIND_MS = 400;
+  const KEPT_EMPTY = Object.freeze([]);
+  const keptQueryScopes = new Map(); // scope (document/element) -> Map<selector, {els, stale, at}>
+  function staleKeptQueries() {
+    for (const bySel of keptQueryScopes.values()) {
+      for (const entry of bySel.values()) entry.stale = true;
+    }
+  }
+  // A one-class selector rides the browser's live class list instead: no selector run at all,
+  // and an absent panel that mounts later is simply there on the next read.
+  // A comma list of bare classes ('.sf-vitals, .sf-status') is the union of those live lists.
+  const KEPT_CLASS_LIST = /^\s*\.[A-Za-z0-9_-]+(\s*,\s*\.[A-Za-z0-9_-]+)*\s*$/;
+  function keptLiveClassList(scope, bySel, selector) {
+    let entry = bySel.get(selector);
+    if (!entry || !entry.lives) {
+      const lives = selector.split(',').map((part) => scope.getElementsByClassName(part.trim().slice(1)));
+      entry = { lives, raw: [], els: KEPT_EMPTY, stale: true, at: 0 };
+      bySel.set(selector, entry);
+    }
+    const lives = entry.lives;
+    const raw = entry.raw;
+    let same = !entry.stale;
+    let n = 0;
+    for (let l = 0; same && l < lives.length; l++) {
+      const live = lives[l];
+      for (let i = 0; same && i < live.length; i++, n++) if (live[i] !== raw[n]) same = false;
+    }
+    if (same && n !== raw.length) same = false;
+    if (!same) {
+      raw.length = 0;
+      const els = [];
+      for (const live of lives) {
+        for (let i = 0; i < live.length; i++) {
+          raw.push(live[i]);
+          if (!els.includes(live[i])) els.push(live[i]);
+        }
+      }
+      entry.els = els.length ? els : KEPT_EMPTY;
+      entry.stale = false;
+    }
+    return entry.els;
+  }
+  function keptQueryList(scope, selector) {
+    if (!scope || typeof scope.querySelectorAll !== 'function') return KEPT_EMPTY;
+    let bySel = keptQueryScopes.get(scope);
+    if (!bySel) keptQueryScopes.set(scope, bySel = new Map());
+    if (typeof scope.getElementsByClassName === 'function' && KEPT_CLASS_LIST.test(selector)) {
+      return keptLiveClassList(scope, bySel, selector);
+    }
+    const entry = bySel.get(selector);
+    const nowMs = (typeof performance !== 'undefined' && typeof performance.now === 'function')
+      ? performance.now() : Date.now();
+    if (entry && !entry.stale) {
+      let refresh = entry.els.length === 0 && nowMs - entry.at > KEPT_REFIND_MS;
+      if (!refresh) {
+        for (let i = 0; i < entry.els.length; i++) {
+          if (entry.els[i].isConnected === false) { refresh = true; break; }
+        }
+      }
+      if (!refresh) return entry.els;
+    }
+    const els = Array.from(scope.querySelectorAll(selector));
+    bySel.set(selector, { els, stale: false, at: nowMs });
+    return els;
+  }
+  function keptEl(scope, selector) { return keptQueryList(scope, selector)[0] || null; }
+
+  // Lane children are walked live rather than kept: membership changes every placement pass
+  // and the walk itself is the cheap part (no selector matching).
+  // Cards shown through the Stage door sit one level down, in the slot's .sf-stage__flow column
+  // inside the lane (stage.js flowFor): #toasts > .sf-stage__flow > .sf-toast. A walk of the
+  // lane's own children alone found no receipts in the live game, so the solver never seated
+  // the lane and its default spot printed the cards over the instrument cluster.
+  function liveLaneChildren(host, cls, rejectCls, out = [], depth = 0) {
+    const kids = host && host.children;
+    if (kids) {
+      for (let i = 0; i < kids.length; i++) {
+        const el = kids[i];
+        const list = el.classList;
+        if (!list) continue;
+        if (list.contains(cls)) {
+          if (!(rejectCls && list.contains(rejectCls))) out.push(el);
+        } else if (depth === 0 && list.contains('sf-stage__flow')) {
+          liveLaneChildren(el, cls, rejectCls, out, 1);
+        }
+      }
+    }
+    return out;
+  }
+  function liveToastEls(host) {
+    host = host || toastsLaneEl || (typeof document !== 'undefined' ? document.getElementById?.('toasts') : null);
+    return liveLaneChildren(host, 'sf-toast', 'sf-toast--out');
+  }
+  function liveAlertEls(host) {
+    host = host || (typeof alertsEl !== 'undefined' && alertsEl)
+      || (typeof document !== 'undefined' ? document.getElementById?.('alerts') : null);
+    return liveLaneChildren(host, 'sf-alert').filter((el) => !el.hidden);
+  }
+  // The Swarm callout column mounts and unmounts with rounds: keep it while connected and
+  // re-ask at most every 250 ms while absent, the same contract as contactCrunElement.
+  let swarmColumnEl = null;
+  let swarmColQueriedAt = -Infinity;
+  let swarmColumnList = null;
+  function swarmColumnElement() {
+    if (typeof document === 'undefined') return null;
+    if (swarmColumnEl && swarmColumnEl.isConnected) return swarmColumnEl;
+    if (!swarmColumnList && typeof document.getElementsByClassName === 'function') {
+      swarmColumnList = document.getElementsByClassName('sf-sj__col');
+    }
+    if (swarmColumnList) return (swarmColumnEl = swarmColumnList[0] || null);
+    const now = performance.now();
+    if (now - swarmColQueriedAt < 250) return null;
+    swarmColQueriedAt = now;
+    swarmColumnEl = document.querySelector?.('.sf-sj__col') || null;
+    return swarmColumnEl;
+  }
+  // Touch-overlay instruments: the mf-* selectors are all structural, so the kept lists filter
+  // by the live hidden flag instead of re-matching :not([hidden]) every pass.
+  function touchOverlayAvoidEls(touch) {
+    if (!touch || typeof touch.querySelectorAll !== 'function') return KEPT_EMPTY;
+    const out = [];
+    for (const el of keptQueryList(touch, '.mf-status, .mf-pause, .mf-edge, .mf-buttons, .mf-dock')) out.push(el);
+    for (const el of keptQueryList(touch, '.mf-ghost')) {
+      if (el.hidden) continue;
+      if (!el._sfAvoidKids) {
+        el._sfAvoidKids = [el.querySelector('svg'), el.querySelector('.mf-ghost-label')].filter(Boolean);
+      }
+      for (const kid of el._sfAvoidKids) out.push(kid);
+    }
+    for (const el of keptQueryList(touch, '.mf-stick')) {
+      if (el.hidden) continue;
+      if (el._sfAvoidReadout === undefined) el._sfAvoidReadout = el.querySelector('.mf-readout');
+      if (el._sfAvoidReadout) out.push(el._sfAvoidReadout);
+    }
+    for (const el of keptQueryList(touch, '.mf-caption')) if (!el.hidden) out.push(el);
+    return out;
+  }
+  // Selector -> kept-list translation. State-bearing selectors (.is-on, .show, :not([hidden]))
+  // become a kept structural list filtered by the live class/attribute at use time; lane child
+  // lists are walked; the two lone panels keep their shared find-once handles.
+  function keptGeometryQuery(scope, selector) {
+    switch (selector) {
+      case '.sf-vtape--on, .sf-tell.is-on':
+        return keptQueryList(scope, '.sf-vtape, .sf-tell')
+          .filter((el) => el.classList.contains('sf-vtape--on') || el.classList.contains('is-on'));
+      case '.sf-vtape--on':
+        return keptQueryList(scope, '.sf-vtape').filter((el) => el.classList.contains('sf-vtape--on'));
+      case '.sf-stuntcall:not([hidden])':
+        return keptQueryList(scope, '.sf-stuntcall').filter((el) => !el.hidden);
+      case '.sf-caption.show':
+        return keptQueryList(scope, '.sf-caption').filter((el) => el.classList.contains('show'));
+      case '.sf-caption.show, .sf-toast:not(.sf-toast--out)':
+        return keptQueryList(scope, '.sf-caption')
+          .filter((el) => el.classList.contains('show')).concat(liveToastEls());
+      case '.sf-toast:not(.sf-toast--out)':
+        return liveToastEls(scope === document ? null : scope);
+      case '.sf-alert:not([hidden])':
+      case '#alerts .sf-alert:not([hidden])':
+        return liveAlertEls(selector.startsWith('#alerts') ? null : scope);
+      case '.sf-crun, .sf-sj__col':
+        return [contactCrunElement(), swarmColumnElement()].filter(Boolean);
+      case '.sf-mt-details:not([hidden])':
+        return keptQueryList(scope, '.sf-mt-details').filter((el) => !el.hidden);
+      case '.sf-radar-wrap--expanded':
+        return keptQueryList(scope, '.sf-radar-wrap')
+          .filter((el) => el.classList.contains('sf-radar-wrap--expanded'));
+      case '#race-tape[data-options-open="true"] .race-tape-actions, .sf-mt-details:not([hidden]), .sf-radar-wrap--expanded': {
+        const out = keptQueryList(scope, '.race-tape-actions')
+          .filter((el) => el.closest('#race-tape')?.dataset?.optionsOpen === 'true');
+        for (const el of keptQueryList(scope, '.sf-mt-details')) if (!el.hidden) out.push(el);
+        for (const el of keptQueryList(scope, '.sf-radar-wrap')) {
+          if (el.classList.contains('sf-radar-wrap--expanded')) out.push(el);
+        }
+        return out;
+      }
+      case '.sf-command-deck, .sf-prail, .sf-dock-prompt, .sf-tell.is-on, #sf-prompt-deck, #sf-tutorial-flight-card':
+        return keptQueryList(scope, '.sf-command-deck, .sf-prail, .sf-dock-prompt, #sf-prompt-deck, #sf-tutorial-flight-card')
+          .concat(keptQueryList(scope, '.sf-tell').filter((el) => el.classList.contains('is-on')));
+      default:
+        return keptQueryList(scope, selector);
+    }
+  }
   function setReceiptPlacementMode(mode) {
     if (mode !== 'shared' && mode !== 'original') throw new RangeError('Unknown receipt placement mode: ' + mode);
     receiptPlacementMode = mode;
@@ -6958,13 +8398,24 @@ export function createHud(ctx, alerts) {
     externalCaptionsStale = true;
     flightTextObstaclesStale = true;
     alertLanePlacementStale = true;
+    if (typeof setReceiptPlacementMode === 'function') {
+      freeOverlayBands._staticCache = null;
+      freeOverlayBands._swarmCache = null;
+      freeOverlayBands._dynCache = null;
+      freeOverlayBands._liveCache = null;
+      if (typeof refreshFlightTextObstacleSnapshot === 'function') refreshFlightTextObstacleSnapshot._rootCache = null;
+      if (typeof responsiveOverlayObstacles === 'function') responsiveOverlayObstacles._cache = null;
+    }
     invalidateReceiptLane();
     return mode;
   }
   function readReceiptRect(el) {
     if (!el) return null;
     if (receiptPlacementMode === 'original' || !receiptGeometryRects) return el.getBoundingClientRect?.();
-    if (!receiptGeometryRects.has(el)) receiptGeometryRects.set(el, el.getBoundingClientRect?.());
+    if (!receiptGeometryRects.has(el)) {
+      receiptGeometryRects.set(el, el.getBoundingClientRect?.());
+      receiptGeometryRects.measured = true;
+    }
     return receiptGeometryRects.get(el);
   }
   function setReceiptStyle(el, prop, value) {
@@ -6994,13 +8445,6 @@ export function createHud(ctx, alerts) {
     // measured rects. Both memos live on the flush's rect Map; any geometry-changing write drops them.
     const flushCache = receiptPlacementMode === 'shared' && !(excludedElement instanceof Set)
       ? receiptGeometryRects : null;
-    const qsa = (scope, selector) => {
-      if (!receiptGeometryRects) return scope?.querySelectorAll?.(selector) || [];
-      const queries = receiptGeometryRects.q || (receiptGeometryRects.q = new Map());
-      let hit = queries.get(selector);
-      if (!hit) queries.set(selector, hit = Array.from(scope?.querySelectorAll?.(selector) || []));
-      return hit;
-    };
     const memoKey = flushCache ? [slot.x, slot.width, h, includeLiveCaptionsAndToasts, ignoreFlightGhost,
       yieldedFlightVisuals.size, externalFlightCaptions.size] : null;
     if (flushCache && flushCache.bm) {
@@ -7015,19 +8459,84 @@ export function createHud(ctx, alerts) {
       && responsiveRects.get(el)?.width > 0 && responsiveRects.get(el)?.height > 0);
     const radarYielded = [...yieldedFlightVisuals.keys()].some(el => el.matches?.('.sf-radar-wrap'));
     const isExcluded = (el) => excludedElement instanceof Set ? excludedElement.has(el) : el === excludedElement;
-    const swarmCallouts = (document.body?.classList?.contains('sf-run-flight') || document.body?.classList?.contains('sf-swarm-flight'))
-      ? qsa(document, '.sf-crun, .sf-sj__col') : [];
+    const swarmVisible = !!(document.body?.classList?.contains('sf-run-flight') || document.body?.classList?.contains('sf-swarm-flight') || document.body?.classList?.contains('sf-swarm-hud'));
+    const canCacheBands = receiptPlacementMode === 'shared' && typeof receiptGeometryRects === 'object' && receiptGeometryRects
+      && typeof performance !== 'undefined';
+    const cacheNowMs = canCacheBands ? (typeof performance.now === 'function' ? performance.now() : Date.now()) : 0;
+    let swarmCallouts;
+    if (!swarmVisible) {
+      swarmCallouts = [];
+    } else if (canCacheBands && freeOverlayBands._swarmCache && cacheNowMs - freeOverlayBands._swarmCache.at < 100) {
+      swarmCallouts = freeOverlayBands._swarmCache.els;
+    } else {
+      swarmCallouts = queryReceiptGeometry(document, '.sf-crun, .sf-sj__col');
+      const swhudEl = typeof document.getElementById === 'function' ? document.getElementById('sf-swhud') : null;
+      if (swhudEl && !swhudEl.hidden && Array.isArray(swhudEl._sfObstacles)) {
+        swarmCallouts = [...swarmCallouts, ...swhudEl._sfObstacles.filter((el) => el && !el.hidden)];
+      }
+      if (canCacheBands) freeOverlayBands._swarmCache = { at: cacheNowMs, els: swarmCallouts };
+    }
+    const staticSelector = '.orr-hud-cluster .orr-cluster, .sf-prail, .sf-rightdock, .sf-command-deck, .sf-nav-readout, .sf-nav-label, .sf-mt-obj, .sf-commtape, .sf-dock-prompt, #sf-prompt-deck, #sf-tutorial-flight-card';
+    let staticEls;
+    let hasOrrCluster;
+    if (typeof performance !== 'undefined' && typeof receiptGeometryRects === 'object' && receiptGeometryRects) {
+      const staticNowMs = canCacheBands ? cacheNowMs : (typeof performance.now === 'function' ? performance.now() : Date.now());
+      const cachedStatic = freeOverlayBands._staticCache;
+      if (cachedStatic && cachedStatic.root === root && staticNowMs - cachedStatic.at < 1000) {
+        staticEls = cachedStatic.els;
+        hasOrrCluster = cachedStatic.hasCluster;
+      } else {
+        const breadth = frameCostFixOn('hudBreadth');
+        staticEls = breadth ? Array.from(keptQueryList(root, staticSelector))
+          : Array.from(root?.querySelectorAll?.(staticSelector) || []);
+        hasOrrCluster = !!(breadth ? keptEl(root, '.orr-hud-cluster .orr-cluster')
+          : root?.querySelector?.('.orr-hud-cluster .orr-cluster'));
+        freeOverlayBands._staticCache = { root, at: staticNowMs, els: staticEls, hasCluster: hasOrrCluster };
+      }
+    } else {
+      staticEls = queryReceiptGeometry(root, staticSelector);
+      hasOrrCluster = !!(frameCostFixOn('hudBreadth') ? keptEl(root, '.orr-hud-cluster .orr-cluster')
+        : root?.querySelector?.('.orr-hud-cluster .orr-cluster'));
+    }
+    let vtapeTellEls;
+    let stuntEls;
+    if (canCacheBands && freeOverlayBands._dynCache && freeOverlayBands._dynCache.root === root
+        && cacheNowMs - freeOverlayBands._dynCache.at < 100) {
+      vtapeTellEls = freeOverlayBands._dynCache.vt;
+      stuntEls = freeOverlayBands._dynCache.stunt;
+    } else {
+      vtapeTellEls = queryReceiptGeometry(root, '.sf-vtape--on, .sf-tell.is-on');
+      stuntEls = queryReceiptGeometry(document, '.sf-stuntcall:not([hidden])');
+      if (canCacheBands) freeOverlayBands._dynCache = { root, at: cacheNowMs, vt: vtapeTellEls, stunt: stuntEls };
+    }
+    const alertsHost = (typeof alertsEl !== 'undefined' && alertsEl) || document.getElementById?.('alerts') || null;
+    if (typeof alertsEl !== 'undefined' && !alertsEl && alertsHost) alertsEl = alertsHost;
+    const hasAlerts = !alertsHost || (alertsHost.childElementCount ?? alertsHost.children?.length ?? 1) > 0;
+    const alertEls = !hasAlerts ? [] : (frameCostFixOn('hudBreadth') ? liveAlertEls(alertsHost)
+      : (alertsHost?.querySelectorAll
+        ? queryReceiptGeometry(alertsHost, '.sf-alert:not([hidden])')
+        : queryReceiptGeometry(document, '#alerts .sf-alert:not([hidden])')));
     const candidates = [
-      ...qsa(root, '.orr-hud-cluster .orr-cluster, .sf-prail, .sf-rightdock, .sf-command-deck, .sf-nav-readout, .sf-nav-label, .sf-mt-obj, .sf-vtape--on, .sf-commtape, .sf-dock-prompt, .sf-tell.is-on, #sf-prompt-deck, #sf-tutorial-flight-card'),
-      ...qsa(document, '.sf-stuntcall:not([hidden])'),
+      ...staticEls,
+      ...vtapeTellEls,
+      ...stuntEls,
       ...swarmCallouts,
-      ...(hasTouchControls ? qsa(root, '.sf-leftcontext') : []),
-      ...qsa(document, '#alerts .sf-alert:not([hidden])'),
+      ...(hasTouchControls ? queryReceiptGeometry(root, '.sf-leftcontext') : []),
+      ...alertEls,
       ...responsive.filter(el => !ignoreFlightGhost || !el.closest?.('.mf-ghost')),
-      ...(radarYielded ? qsa(root, '.sf-rightdock > *') : []),
+      ...(radarYielded ? (frameCostFixOn('hudBreadth')
+        ? Array.from(rightDock?.children || [])
+        : queryReceiptGeometry(root, '.sf-rightdock > *')) : []),
     ];
     if (includeLiveCaptionsAndToasts) {
-      candidates.push(...qsa(root, '.sf-caption.show, .sf-toast:not(.sf-toast--out)'));
+      if (canCacheBands && freeOverlayBands._liveCache && freeOverlayBands._liveCache.root === root
+          && cacheNowMs - freeOverlayBands._liveCache.at < 100) {
+        candidates.push(...freeOverlayBands._liveCache.els);
+      } else {
+        const liveEls = queryReceiptGeometry(root, '.sf-caption.show, .sf-toast:not(.sf-toast--out)');
+        if (canCacheBands) freeOverlayBands._liveCache = { root, at: cacheNowMs, els: liveEls };
+        candidates.push(...liveEls);
+      }
     }
     const blockers = candidates.map((el) => {
       if ((radarYielded && el === measured.rightEl) || isExcluded(el) || yieldedFlightVisuals.has(el)
@@ -7076,7 +8585,7 @@ export function createHud(ctx, alerts) {
     }
     if (cursor < h - 8) bands.push({ top: cursor, bottom: h - 8 });
     // The canonical lower corner bounds remain reserved when the DOM has not mounted them yet.
-    if (!hasTouchControls && !root.querySelector?.('.orr-hud-cluster .orr-cluster')) {
+    if (!hasTouchControls && !hasOrrCluster) {
       for (const anchor of [layout.objective, layout.vitals, layout.rightDock, layout.action]) {
         if (anchor && anchor.x < slot.x + slot.width && anchor.x + anchor.width > slot.x) {
           const next = [];
@@ -7119,6 +8628,12 @@ export function createHud(ctx, alerts) {
     for (const key of ALERT_LANE_STYLE_KEYS) write(lane, key, alertLaneOriginalStyle?.[key] || '');
     alertLanePlacementActive = false;
     alertLaneOriginalStyle = null;
+    if (typeof placeAlertLaneInSafeBands === 'function') {
+      placeAlertLaneInSafeBands._lastSig = '';
+      placeAlertLaneInSafeBands._lastAt = -Infinity;
+      placeAlertLaneInSafeBands._quickSig = '';
+      placeAlertLaneInSafeBands._quickAt = -Infinity;
+    }
   }
   function placeAlertLaneInSafeBands(layout, w, h) {
     if (!alertLanePlacementStale) return;
@@ -7130,20 +8645,42 @@ export function createHud(ctx, alerts) {
     const shortSwarm = h <= 540 && document.body?.classList?.contains('sf-swarm-flight');
     const runFlight = document.body?.classList?.contains('sf-run-flight');
     if (!mobileFlight && !shortSwarm && !runFlight) { restoreAlertLanePlacement(lane); return; }
-    const alertCards = [...(lane.querySelectorAll?.('.sf-alert:not([hidden])') || [])];
+    if ((lane.childElementCount ?? lane.children?.length) === 0) {
+      restoreAlertLanePlacement(lane);
+      return;
+    }
+    const alertCards = frameCostFixOn('hudBreadth')
+      ? liveLaneChildren(lane, 'sf-alert').filter((el) => !el.hidden)
+      : [...(lane.querySelectorAll?.('.sf-alert:not([hidden])') || [])];
+    const nowMs = (typeof performance !== 'undefined' && typeof performance.now === 'function')
+      ? performance.now() : Date.now();
+    const quickSig = `${w}x${h}|${mobileFlight ? 1 : 0}|${shortSwarm ? 1 : 0}|${runFlight ? 1 : 0}|${alertCards.length}|${alertCards[0]?.getAttribute?.('class') ?? alertCards[0]?.className ?? ''}|${alertCards[0]?.hidden ? 1 : 0}`;
+    if (alertLanePlacementActive && placeAlertLaneInSafeBands._quickSig === quickSig
+      && nowMs - (placeAlertLaneInSafeBands._quickAt ?? -Infinity) < 250) {
+      return;
+    }
+    const readRect = (el) => (typeof readReceiptRect === 'function' ? readReceiptRect(el) : el?.getBoundingClientRect?.());
     const getStyle = document.defaultView?.getComputedStyle || globalThis.getComputedStyle;
     const visibleCards = alertCards.filter((el) => {
       if (!el || el.hidden || el.style?.display === 'none' || el.style?.visibility === 'hidden') return false;
+      const rect = readRect(el);
+      if (rect) return rect.width > 0 && rect.height > 0;
       if (typeof getStyle === 'function') {
         try {
           const style = getStyle.call(document.defaultView || globalThis, el);
           if (style?.display === 'none' || style?.visibility === 'hidden' || style?.visibility === 'collapse') return false;
         } catch (_) { /* partial DOM hosts use the element rectangle below */ }
       }
-      const rect = el.getBoundingClientRect?.();
-      return !rect || (rect.width > 0 && rect.height > 0);
+      return true;
     });
     if (!visibleCards.length) { restoreAlertLanePlacement(lane); return; }
+    const sig = `${w}x${h}|${mobileFlight ? 1 : 0}|${alertCards.length}|${visibleCards.length}`;
+    if (alertLanePlacementActive && placeAlertLaneInSafeBands._lastSig === sig
+      && nowMs - (placeAlertLaneInSafeBands._lastAt ?? -Infinity) < 250) {
+      placeAlertLaneInSafeBands._quickSig = quickSig;
+      placeAlertLaneInSafeBands._quickAt = nowMs;
+      return;
+    }
     if (!alertLaneOriginalStyle) {
       alertLaneOriginalStyle = Object.fromEntries(ALERT_LANE_STYLE_KEYS.map((key) => [key, lane.style?.[key] || '']));
     }
@@ -7157,7 +8694,7 @@ export function createHud(ctx, alerts) {
       write(lane, key, value);
     }
     const contentHeight = Math.max(48, lane.scrollHeight || visibleCards.reduce((sum, el) =>
-      sum + (el.getBoundingClientRect?.().height || 0), 0));
+      sum + (readRect(el)?.height || 0), 0));
     const bands = freeOverlayBands(slot, h, layout, new Set(alertCards));
     const band = bands.find((candidate) => candidate.bottom - candidate.top >= contentHeight + 8) || bands[0];
     if (!band) { restoreAlertLanePlacement(lane); return; }
@@ -7166,6 +8703,10 @@ export function createHud(ctx, alerts) {
     write(lane, 'maxHeight', `${bandHeight}px`);
     write(lane, 'overflowY', contentHeight > bandHeight ? 'auto' : 'visible');
     write(lane, 'pointerEvents', contentHeight > bandHeight ? 'auto' : 'none');
+    placeAlertLaneInSafeBands._lastSig = sig;
+    placeAlertLaneInSafeBands._lastAt = nowMs;
+    placeAlertLaneInSafeBands._quickSig = quickSig;
+    placeAlertLaneInSafeBands._quickAt = nowMs;
   }
   function placeCaptionInSafeSlot(target, layout, slot, laneRoot, band = null, measuredScrollHeight = null) {
     if (!target || target.hidden || !slot) return;
@@ -7248,10 +8789,16 @@ export function createHud(ctx, alerts) {
         // Yield only informational visuals, in priority order. Input controls remain
         // blockers, and their owners/state continue running while visually covered.
         const tiers = [
-          [...root.querySelectorAll('.sf-caption.show, .sf-toast:not(.sf-toast--out)'),
+          [...(frameCostFixOn('hudBreadth')
+            ? keptGeometryQuery(root, '.sf-caption.show, .sf-toast:not(.sf-toast--out)')
+            : root.querySelectorAll('.sf-caption.show, .sf-toast:not(.sf-toast--out)')),
             ...Array.from(externalFlightCaptions).filter(other => other !== el && other.dataset?.flightCritical !== 'true')],
-          [...root.querySelectorAll('.sf-leftcontext, .sf-mt-obj')],
-          [...root.querySelectorAll('.sf-radar-wrap')],
+          [...(frameCostFixOn('hudBreadth')
+            ? keptQueryList(root, '.sf-leftcontext, .sf-mt-obj')
+            : root.querySelectorAll('.sf-leftcontext, .sf-mt-obj'))],
+          [...(frameCostFixOn('hudBreadth')
+            ? keptQueryList(root, '.sf-radar-wrap')
+            : root.querySelectorAll('.sf-radar-wrap'))],
         ];
         for (const tier of tiers) {
           for (const visual of tier) yieldFlightVisual(visual);
@@ -7354,8 +8901,66 @@ export function createHud(ctx, alerts) {
     placeCaptionInSafeSlot(caption, layout, captionSlot, null, captionBand || captionBands[0],
       receiptPlacementMode === 'shared' ? captionScrollHeight : null);
   }
-  // The main UI frame calls this after its prompt, toast and caption ticks. Standalone HUD
-  // users flush at the end of frame() instead. No second rAF or slow-tick delay is needed.
+  // Work that reads the page's geometry (receipt and caption placement, the text-obstacle
+  // snapshot) used to run inside the frame callback, straight after the frame's HUD writes, so
+  // every read made the browser lay the whole page out on the spot: 5-118 ms a time in a round-6
+  // Swarm fight. The main UI frame now hands it to afterLayout (hudAvoidRects.js): it runs in the
+  // same frame, after the browser's own layout pass and before paint, where those reads are free
+  // and its writes only disturb the overlays it moves. ?rfx=-hudLayout keeps the old in-frame path
+  // so the two can be measured against each other. A deferred run that has not happened within
+  // POST_LAYOUT_PATIENCE_MS (hidden window, a host whose observer never fires) runs in the frame.
+  const POST_LAYOUT_PATIENCE_MS = 250;
+  const postLayoutNow = () => ((typeof performance !== 'undefined' && typeof performance.now === 'function')
+    ? performance.now() : Date.now());
+  let receiptFlushAskedAt = -Infinity;
+  let obstacleRefreshAskedAt = -Infinity;
+  const postLayoutStats = { runs: 0, totalMs: 0, maxMs: 0 };
+  function timedPostLayout(fn) {
+    const t0 = postLayoutNow();
+    try { fn(); } finally {
+      const ms = postLayoutNow() - t0;
+      postLayoutStats.runs += 1;
+      postLayoutStats.totalMs += ms;
+      if (ms > postLayoutStats.maxMs) postLayoutStats.maxMs = ms;
+    }
+  }
+  const runDeferredReceiptFlush = () => { receiptFlushAskedAt = -Infinity; timedPostLayout(flushReceiptLane); };
+  const runDeferredObstacleRefresh = () => {
+    obstacleRefreshAskedAt = -Infinity;
+    timedPostLayout(refreshFlightTextObstacleSnapshot);
+  };
+  if (typeof globalThis !== 'undefined') {
+    try { globalThis.__SF_HUD_POST_LAYOUT__ = postLayoutStats; } catch (_) { /* diagnostics only */ }
+  }
+  /** Called by the main UI frame: place receipts and captions after this frame's layout pass. */
+  function flushReceiptLaneAfterLayout() {
+    if (!receiptLanePlacementDirty) return;
+    if (typeof document !== 'undefined' && frameCostFixOn('hudLayout')) {
+      const t = postLayoutNow();
+      if (receiptFlushAskedAt !== -Infinity && t - receiptFlushAskedAt < POST_LAYOUT_PATIENCE_MS) return;
+      if (receiptFlushAskedAt === -Infinity && afterLayout(document, runDeferredReceiptFlush, { writes: true })) {
+        receiptFlushAskedAt = t;
+        return;
+      }
+      receiptFlushAskedAt = -Infinity;
+    }
+    flushReceiptLane();
+  }
+  /** True when a stale obstacle snapshot was handed to the post-layout slot (or needs nothing). */
+  function refreshObstaclesAfterLayout() {
+    if (!flightTextObstaclesStale) return true;
+    if (typeof document === 'undefined' || !frameCostFixOn('hudLayout')) return false;
+    const t = postLayoutNow();
+    if (obstacleRefreshAskedAt !== -Infinity && t - obstacleRefreshAskedAt < POST_LAYOUT_PATIENCE_MS) return true;
+    if (obstacleRefreshAskedAt === -Infinity && afterLayout(document, runDeferredObstacleRefresh)) {
+      obstacleRefreshAskedAt = t;
+      return true;
+    }
+    obstacleRefreshAskedAt = -Infinity;
+    return false;
+  }
+  // The main UI frame calls flushReceiptLaneAfterLayout after its prompt, toast and caption ticks.
+  // Standalone HUD users flush at the end of frame() instead. No second rAF or slow-tick delay.
   function flushReceiptLane() {
     if (!receiptLanePlacementDirty) return;
     receiptLanePlacementDirty = false;
@@ -7373,6 +8978,9 @@ export function createHud(ctx, alerts) {
     receiptGeometryKeep = false;
     if (!reuse) receiptGeometryRects = new Map();
     receiptGeometryRects.bm = null;
+    receiptGeometryRects.measured = false;
+    // Share Swarm membership only inside this flush. Its owners can remount between flushes.
+    receiptGeometryRects.q?.delete('.sf-crun, .sf-sj__col');
     try { placeReceiptLane(); }
     catch (error) {
       // A failed placement cannot retain a half-invalidated snapshot.
@@ -7414,14 +9022,52 @@ export function createHud(ctx, alerts) {
     });
     hudUnsubscribers.push(() => swarmColumnObserver.disconnect());
   }
+  // Contact-mark clip boxes (utility row, prompt deck): one measure per 400 ms or resize.
+  // The Swarm round panel rides the same cache: its box was read on every overlay tick it was up.
+  // A refresh of a box that is already known waits for this frame's own layout pass (afterLayout),
+  // so the read never lays the page out mid-frame; only the first read of an element is direct.
+  const markClipCache = {
+    util: { el: null, at: -Infinity, box: null, asked: false },
+    deck: { el: null, at: -Infinity, box: null, asked: false },
+    crun: { el: null, at: -Infinity, box: null, asked: false },
+    deckEl: undefined,
+  };
+  function cachedMarkClipBox(slot, el) {
+    const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    if (slot.el !== el) { slot.el = el; slot.at = now; slot.asked = false; slot.box = plateBox(el); return slot.box; }
+    if (now - slot.at > 1500) {
+      if (slot.asked && now - slot.at < 1500 + POST_LAYOUT_PATIENCE_MS) return slot.box;
+      if (!slot.asked && typeof document !== 'undefined' && frameCostFixOn('hudLayout')
+        && afterLayout(document, () => {
+          slot.asked = false;
+          if (slot.el === el) { slot.at = postLayoutNow(); slot.box = plateBox(el); }
+        })) {
+        slot.asked = true;
+        return slot.box;
+      }
+      slot.asked = false;
+      slot.at = now;
+      slot.box = plateBox(el);
+    }
+    return slot.box;
+  }
+  if (typeof window !== 'undefined') window.addEventListener('resize', () => {
+    markClipCache.util.at = -Infinity; markClipCache.deck.at = -Infinity; markClipCache.crun.at = -Infinity;
+    if (typeof updateDoctrineTells === 'function') updateDoctrineTells._geomCache?.clear?.();
+    if (caption) caption._sfLastPlaceKey = '';
+  });
+  let swarmColumnQueriedAt = -Infinity;
   function placeReceiptLane(resolvedLayout = null) {
     if (toastsLaneEl === null) toastsLaneEl = document.getElementById('toasts');
     const laneRoot = toastsLaneEl;
     const w = typeof window !== 'undefined' ? window.innerWidth : 1280;
     const h = typeof window !== 'undefined' ? window.innerHeight : 720;
     const layout = resolvedLayout || resolveObjectiveHudLayout(w, h);
-    if (swarmColumnObserver && state.run?.ruleset === 'swarm' && !observedSwarmColumn?.isConnected) {
-      observedSwarmColumn = document.querySelector('.sf-sj__col');
+    if (swarmColumnObserver && state.run?.ruleset === 'swarm' && !observedSwarmColumn?.isConnected
+      && performance.now() - swarmColumnQueriedAt >= 250) {
+      swarmColumnQueriedAt = performance.now();
+      observedSwarmColumn = frameCostFixOn('hudBreadth') ? swarmColumnElement()
+        : document.querySelector('.sf-sj__col');
       swarmColumnObserver.disconnect();
       if (observedSwarmColumn) swarmColumnObserver.observe(observedSwarmColumn);
     }
@@ -7435,7 +9081,10 @@ export function createHud(ctx, alerts) {
       return;
     }
     const lane = layout.receipt;
-    const activeReceipt = laneRoot.querySelector?.('.sf-toast:not(.sf-toast--out)');
+    const receiptCards = frameCostFixOn('hudBreadth')
+      ? liveLaneChildren(laneRoot, 'sf-toast', 'sf-toast--out')
+      : Array.from(laneRoot.querySelectorAll?.('.sf-toast:not(.sf-toast--out)') || []);
+    const activeReceipt = receiptCards[0] || null;
     const captionVisible = caption && !caption.hidden && caption.classList.contains('show');
     if (activeReceipt !== lastReceiptObstacle || captionVisible !== lastCaptionObstacleVisible) {
       externalCaptionsStale = true;
@@ -7445,7 +9094,7 @@ export function createHud(ctx, alerts) {
     }
     if (!activeReceipt && !captionVisible) {
       placeExternalFlightCaptions(layout, w, h);
-      refreshFlightTextObstacleSnapshot();
+      refreshFlightTextObstacleSnapshot(receiptCards);
       return;
     }
     const sharedGeometry = receiptPlacementMode === 'shared';
@@ -7454,7 +9103,7 @@ export function createHud(ctx, alerts) {
       // both receipt/caption slots before calling it when no receipt is present.
       placeOrdinaryCaptionInSafeBands(layout, w, h);
       placeExternalFlightCaptions(layout, w, h);
-      refreshFlightTextObstacleSnapshot();
+      refreshFlightTextObstacleSnapshot(receiptCards);
       return;
     }
     const slot = overlaySafeSlot(layout, w, h);
@@ -7472,11 +9121,10 @@ export function createHud(ctx, alerts) {
     if (!activeReceipt) {
       placeOrdinaryCaptionInSafeBands(layout, w, h);
       placeExternalFlightCaptions(layout, w, h);
-      refreshFlightTextObstacleSnapshot();
+      refreshFlightTextObstacleSnapshot(receiptCards);
       return;
     }
     if (!sharedGeometry) prepareReceiptLaneSize(laneRoot, laneWidth);
-    const receiptCards = [...(laneRoot.querySelectorAll?.('.sf-toast:not(.sf-toast--out)') || [])];
     const receiptGap = (() => {
       if (typeof getComputedStyle !== 'function') return 0;
       if (receiptGeometryRects && receiptGeometryRects.gap != null) return receiptGeometryRects.gap;
@@ -7488,7 +9136,14 @@ export function createHud(ctx, alerts) {
       receiptCards.reduce((sum, card) => sum + (readReceiptRect(card)?.height || 0), 0)
         + Math.max(0, receiptCards.length - 1) * receiptGap);
     if (captionVisible && !sharedGeometry) prepareReceiptCaptionSize(captionSlot);
-    let captionScrollHeight = captionVisible ? caption.scrollHeight : 0;
+    let captionScrollHeight = 0;
+    if (captionVisible) {
+      const sig = `${caption.textContent}|${caption.style?.width}|${caption.style?.maxWidth}|${caption.style?.left}|${caption.style?.overflowY}|${w}x${h}`;
+      const hit = sharedGeometry && receiptGeometryRects?.measured === true
+        && caption._sfScrollH && caption._sfScrollH.sig === sig;
+      captionScrollHeight = hit ? caption._sfScrollH.h : caption.scrollHeight;
+      if (sharedGeometry && !hit) caption._sfScrollH = { sig, h: captionScrollHeight };
+    }
     let captionHeight = captionVisible ? Math.max(48, captionScrollHeight || caption.getBoundingClientRect?.().height || 0) : 0;
     const gap = captionVisible ? 12 : 0;
     if (captionVisible && slot.captionSlot && !captionBands.some((band) => band.bottom - band.top >= captionHeight + 8)) {
@@ -7500,7 +9155,11 @@ export function createHud(ctx, alerts) {
       slot.captionSlot = null;
       if (sharedGeometry) prepareReceiptCaptionSize(captionSlot);
       else setReceiptStyle(caption, 'maxWidth', `${Math.round(captionSlot.width)}px`);
-      captionScrollHeight = caption.scrollHeight;
+      const sig = `${caption.textContent}|${caption.style?.width}|${caption.style?.maxWidth}|${caption.style?.left}|${caption.style?.overflowY}|${w}x${h}`;
+      const hit = sharedGeometry && receiptGeometryRects?.measured === true
+        && caption._sfScrollH && caption._sfScrollH.sig === sig;
+      captionScrollHeight = hit ? caption._sfScrollH.h : caption.scrollHeight;
+      if (sharedGeometry && !hit) caption._sfScrollH = { sig, h: captionScrollHeight };
       captionHeight = Math.max(48, captionScrollHeight || caption.getBoundingClientRect?.().height || 0);
     }
     const splitBand = captionVisible ? ((slot.captionSlot ? captionBands : bands).find((band) => band.bottom - band.top >= captionHeight + 8)
@@ -7534,7 +9193,7 @@ export function createHud(ctx, alerts) {
         sharedGeometry ? captionScrollHeight : null);
     }
     placeExternalFlightCaptions(layout, w, h);
-    refreshFlightTextObstacleSnapshot();
+    refreshFlightTextObstacleSnapshot(receiptCards);
   }
   if (typeof window !== 'undefined' && window.addEventListener) {
     const repositionHudOverlays = () => {
@@ -7557,10 +9216,22 @@ export function createHud(ctx, alerts) {
     const observeAlertLane = () => {
       const alertLane = document.getElementById('alerts');
       if (!alertLane || alertLaneObserver) return false;
+      let alertObserverLastInvAt = -Infinity;
       alertLaneObserver = new MutationObserver((records) => {
         if (records?.length && records.every((record) => alertLaneStyleMutationIsOwned(record, alertLane))) return;
+        const emptyAlerts = (alertLane.childElementCount ?? alertLane.children?.length) === 0;
+        if ((emptyAlerts || alertLanePlacementActive)
+          && records?.length && records.every((record) => record.type === 'characterData')) return;
         const layoutChange = !!records?.some((record) => record.target === document.documentElement
           && record.attributeName === 'data-sf-mobile-flight');
+        const hasChildListChange = !!records?.some((record) => record.type === 'childList');
+        if (!layoutChange && (emptyAlerts || !hasChildListChange)) {
+          const obsNowMs = (typeof performance !== 'undefined' && typeof performance.now === 'function')
+            ? performance.now() : Date.now();
+          const minCooldown = emptyAlerts ? 100 : 250;
+          if (obsNowMs - alertObserverLastInvAt < minCooldown) return;
+          alertObserverLastInvAt = obsNowMs;
+        }
         alertLanePlacementStale = true;
         flightTextObstaclesStale = true;
         invalidateReceiptLane(layoutChange);
@@ -7582,27 +9253,106 @@ export function createHud(ctx, alerts) {
     }
   }
 
-  function placeFlightBox(el, rect) {
+  function placeFlightBox(el, rect, tracked = false) {
     if (!el || !rect || !el.style) return;
-    setStyle(el, 'position', 'fixed');
-    setStyle(el, 'left', `${Math.round(rect.x)}px`);
-    setStyle(el, 'top', `${Math.round(rect.y)}px`);
-    setStyle(el, 'width', `${Math.round(rect.width)}px`);
-    setStyle(el, 'height', `${Math.round(rect.height)}px`);
-    setStyle(el, 'margin', '0');
-    setStyle(el, 'right', 'auto');
-    setStyle(el, 'bottom', 'auto');
-    setStyle(el, 'transform', 'none');
+    const write = receiptPlacementMode === 'shared' ? setReceiptStyle : setStyle;
+    write(el, 'position', 'fixed');
+    write(el, 'left', tracked ? '0' : `${Math.round(rect.x)}px`);
+    write(el, 'top', tracked ? '0' : `${Math.round(rect.y)}px`);
+    write(el, 'width', `${Math.round(rect.width)}px`);
+    write(el, 'height', `${Math.round(rect.height)}px`);
+    write(el, 'margin', '0');
+    write(el, 'right', 'auto');
+    write(el, 'bottom', 'auto');
+    write(el, 'transform', tracked ? `translate3d(${Math.round(rect.x)}px,${Math.round(rect.y)}px,0)` : 'none');
   }
 
-  // Only the dock prompt needs a computed box; the Cluster owns its instrument layout.
-  function placeFlightReadouts(w, h) {
-    const boxes = flightInstrumentRects(w, h);
+  // The dock alert element, looked up at most every 100 ms instead of two selector queries
+  // (one document-wide) on every frame; a live cached element is reused while it still is one.
+  let dockAlertCache = null;
+  let dockAlertQueriedAt = -Infinity;
+  let dockAlertList = null;
+  function findDockAlert() {
+    const cached = dockAlertCache;
+    if (cached && cached.isConnected && cached.classList?.contains('sf-alert--dock')) return cached;
     if (alertsEl === null) alertsEl = document.getElementById('alerts');
-    // The dock alert is created/removed by alerts.js — a query must run each slow tick, but
-    // scoped to the small #alerts subtree instead of a document-wide selector match.
-    const dock = alertsEl ? alertsEl.querySelector('.sf-alert--dock') : null;
-    if (dock) placeFlightBox(dock, boxes.dockPrompt);
+    if (alertsEl && (alertsEl.childElementCount ?? alertsEl.children?.length ?? 1) === 0) return null;
+    if (alertsEl && !dockAlertList && typeof alertsEl.getElementsByClassName === 'function') {
+      dockAlertList = alertsEl.getElementsByClassName('sf-alert--dock');
+    }
+    if (dockAlertList) return (dockAlertCache = dockAlertList[0] || null);
+    const now = performance.now();
+    if (now - dockAlertQueriedAt < 500) return null;
+    dockAlertQueriedAt = now;
+    dockAlertCache = alertsEl
+      ? (alertsEl.querySelector?.('.sf-alert--dock') || null)
+      : (document.querySelector?.('.sf-alert--dock') || null);
+    return dockAlertCache;
+  }
+  // Only the dock prompt needs a computed box; the Cluster owns its instrument layout.
+  function placeFlightReadouts(w, h, followed = null) {
+    if (alertsEl === null) alertsEl = document.getElementById('alerts');
+    const dock = followed?.dock || findDockAlert();
+    if (!dock?.isConnected || dock.hidden || !dock.classList?.contains('sf-alert--dock')) { trackedDockCue = null; visorDockCue.hide(); return; }
+    // Reuse the decision bounds between receipt placements so camera tracking requires no
+    // layout measurement. Losing the anchor returns the chip to the ordinary alert seat.
+    const deck = followed ? null : document.getElementById('sf-prompt-deck');
+    const decision = followed ? followed.decision : deck && !deck.hidden ? readReceiptRect(deck) : null;
+    const resolveDockStation = (id) => {
+      if (id) return resolveHudNavStation(state, id);
+      const pilotEnt = state.entities?.get?.(state.playerId);
+      let nearest = null;
+      let bestD2 = Infinity;
+      for (const ent of state.entities?.values?.() || []) {
+        if (!ent || ent.alive === false || ent.type !== 'station' || ent.data?.isGate || !ent.pos) continue;
+        const d2 = pilotEnt?.pos
+          ? (ent.pos.x - pilotEnt.pos.x) ** 2 + (ent.pos.z - pilotEnt.pos.z) ** 2
+          : 0;
+        if (d2 < bestD2) { bestD2 = d2; nearest = ent; }
+      }
+      return nearest;
+    };
+    const stationId = dock.getAttribute('data-dock-station');
+    if (w >= 840 && document.documentElement.dataset.sfMobileFlight !== '1') {
+      const station = followed?.station || resolveDockStation(stationId);
+      const pilot = state.entities?.get?.(state.playerId);
+      const at = station ? visorDockCue.project(station, pilot, helpers.worldToScreen) : null;
+      if (at && at.y >= 64 && at.y <= h * .80) {
+        const wide = w >= 1400 && h >= 680;
+        const reach = wide ? 86 : 48;
+        const width = Math.min(190, (wide ? 138 : 118) + 7 * Math.max(0, (dock.getAttribute('data-dock-key') || '').length - 1));
+        const x = at.x + reach + width <= w - 18 ? at.x + reach : at.x - reach - width;
+        const anchorBox = { x, y: Math.max(24, at.y - (wide ? 77 : 53)), width, height: wide ? 38 : 34 };
+        const obs = objectiveEdgeObstacles();
+        const blockers = [obs?.left, obs?.right, obs?.orrery, obs?.rail, decision,
+          utilityRow && utilityRow.style.display !== 'none' ? plateBox(utilityRow) : null].filter(Boolean);
+        const clear = x >= 18 && x + width <= w - 18 && blockers.every((b) => !rectsOverlap(anchorBox, b));
+        if (clear) {
+          if (!followed) trackedDockCue = { dock, station, decision };
+          setAttr(dock, 'data-visor-anchored', 'true');
+          placeFlightBox(dock, anchorBox, true);
+          visorDockCue.draw(at, anchorBox, w, h, pilot, helpers.worldToScreen);
+          return;
+        }
+      }
+    }
+    trackedDockCue = null;
+    clearAttr(dock, 'data-visor-anchored');
+    visorDockCue.hide();
+    const box = flightInstrumentRects(w, h).dockPrompt;
+    if (decision?.height > 0 && rectsOverlap(box, decision)) {
+      const gap = 12;
+      const rightEdge = Math.floor(decision.left) - gap;
+      if (rightEdge >= box.width + gap) {
+        box.x = rightEdge - box.width;
+        const objective = objectiveEdgeObstacles()?.left;
+        if (objective && rectsOverlap(box, objective)) box.y = Math.ceil(objective.bottom) + gap;
+      } else {
+        const above = Math.floor(decision.top) - box.height - gap;
+        box.y = above >= gap ? above : Math.min(h - box.height - gap, Math.ceil(decision.bottom) + gap);
+      }
+    }
+    placeFlightBox(dock, box);
   }
 
   function updateFirstUseHint(player) {
@@ -7667,6 +9417,7 @@ export function createHud(ctx, alerts) {
   }
 
   function setVisible(v) {
+    if (!v) syncSwarmHudClass(false);
     setDisplay(root, !!v, 'block');
     if (hudMeta && hudMeta.setVisible) hudMeta.setVisible(v);
   }
@@ -7677,6 +9428,14 @@ export function createHud(ctx, alerts) {
     forceHudClock(targetClock);
     forceHudClock(overlayClock);
     forceHudClock(radarClock);
+    radarTask.request();
+    targetPanelSlowDue = true;
+    targetPanelTask.request();
+    overviewTask.request();
+    // Budgeted path only: the two metronomes arm the slow/overlay families' flags on the next
+    // frame, matching the clocks the forceHudClock calls above force in the unbudgeted path.
+    slowPassTask.request();
+    overlayPassTask.request();
     lastNavDist = '';
     lastNavEta = '';
     if (radar.invalidate) radar.invalidate();
@@ -7721,9 +9480,10 @@ export function createHud(ctx, alerts) {
   refreshLeftContextClasses();
 
   return {
-    frame, flushReceiptLane, setReceiptPlacementMode, tickHidden, forceRefresh, setVisible, refreshObjectives, arrive,
+    frame, frameTasks: hudTasks, flushReceiptLane, flushReceiptLaneAfterLayout, setReceiptPlacementMode, tickHidden, forceRefresh, setVisible, refreshObjectives, arrive,
     registerExternalFlightCaption, refreshExternalFlightCaption, releaseExternalFlightCaption,
     getFlightTextObstacles,
+    getFloorPadLabelRects: floatingText.getFloorPadLabelRects,
     getGLagOffset: () => ({ x: opticalGLag.x, y: opticalGLag.y }),
     getGLocVignetteOpacity: () => Number(glocVignette ? glocVignette.style.opacity || 0 : 0),
     triggerElectronicDisruption,
@@ -7746,6 +9506,7 @@ export function createHud(ctx, alerts) {
       restoreYieldedFlightVisuals();
       externalFlightCaptions.clear();
       document.body?.classList.remove('sf-cargo-open');
+      syncSwarmHudClass(false);
       clearCargoGaugeSettle(cargoGaugeSettle.used);
       if (radar && typeof radar.destroy === 'function') radar.destroy();
       if (floatingText && typeof floatingText.destroy === 'function') floatingText.destroy();

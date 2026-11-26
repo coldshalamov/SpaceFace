@@ -107,7 +107,7 @@ test('PB-286: the receipt names the partial — "6 of the 10 confirmed" — in i
   const receipt = tradeClearedReceipt(state, completed(emitted));
 
   assert.equal(receipt.title, 'TRADE CLEARED');
-  assert.equal(receipt.line, `SOLD 6 OF THE 10 CONFIRMED`);
+  assert.equal(receipt.line, `Sold 6 of the 10 you asked for`);
   assert.ok(receipt.detail.includes(CMDTY_NAME), `the lot stays named: ${receipt.detail}`);
   assert.ok(receipt.detail.includes('+60 cr'), `settled credits stay named: ${receipt.detail}`);
   // The expectation slot is consumed once — a second read cannot resurrect the stamp.
@@ -123,8 +123,8 @@ test('PB-286: a full fill reports agreement with the stated terms', () => {
   system.execute('station_test', CMDTY, 'sell', 10);
   const receipt = tradeClearedReceipt(state, completed(emitted));
 
-  assert.equal(receipt.line, `SOLD 10u ${CMDTY_NAME}`);
-  assert.equal(receipt.detail, `+100 cr · settled as confirmed`);
+  assert.equal(receipt.line, `Sold 10 units of ${CMDTY_NAME}`);
+  assert.equal(receipt.detail, `+100 cr · as quoted`);
 });
 
 test('PB-286: no expectation, a wrong lot, or a different settlement renders legacy truth', () => {
@@ -133,7 +133,7 @@ test('PB-286: no expectation, a wrong lot, or a different settlement renders leg
   let emitted = [];
   makeEconomy(state, emitted).execute('station_test', CMDTY, 'sell', 4);
   let receipt = tradeClearedReceipt(state, completed(emitted));
-  assert.equal(receipt.line, `SOLD 4u ${CMDTY_NAME}`);
+  assert.equal(receipt.line, `Sold 4 units of ${CMDTY_NAME}`);
   assert.equal(receipt.detail, `+40 cr`);
 
   // A stamp for a different commodity cannot describe this settle — popped, not applied.
@@ -146,7 +146,7 @@ test('PB-286: no expectation, a wrong lot, or a different settlement renders leg
   };
   system.execute('station_test', CMDTY, 'sell', 4);
   receipt = tradeClearedReceipt(state, completed(emitted));
-  assert.equal(receipt.line, `SOLD 4u ${CMDTY_NAME}`);
+  assert.equal(receipt.line, `Sold 4 units of ${CMDTY_NAME}`);
   assert.equal(receipt.detail, `+40 cr`);
   assert.equal(state.ui[TRADE_EXPECTATION_KEY], null);
 
@@ -165,7 +165,7 @@ test('PB-286: no expectation, a wrong lot, or a different settlement renders leg
     stationId: 'station_test', afterSequence: 0, atSimTime: state.simTime,
   };
   receipt = tradeClearedReceipt(state, first);
-  assert.equal(receipt.line, `SOLD 6u ${CMDTY_NAME}`);
+  assert.equal(receipt.line, `Sold 6 units of ${CMDTY_NAME}`);
   assert.equal(receipt.detail, `+60 cr`, 'the stamp belongs to B, never to A');
   assert.equal(state.ui[TRADE_EXPECTATION_KEY], null);
 });
@@ -178,7 +178,7 @@ test('PB-286: a stale stamp past its window is debris, not context', () => {
   state.ui[TRADE_EXPECTATION_KEY].atSimTime = state.simTime - 3600;
   system.execute('station_test', CMDTY, 'sell', 4);
   const receipt = tradeClearedReceipt(state, completed(emitted));
-  assert.equal(receipt.line, `SOLD 4u ${CMDTY_NAME}`);
+  assert.equal(receipt.line, `Sold 4 units of ${CMDTY_NAME}`);
   assert.equal(receipt.detail, `+40 cr`);
   assert.equal(state.ui[TRADE_EXPECTATION_KEY], null);
 });
@@ -192,12 +192,12 @@ test('PB-286: a stamp from a different station or the future cannot describe thi
   stampExpectation(state, { qty: 10, side: 'sell', total: 100, stationId: 'station_elsewhere' });
   system.execute('station_test', CMDTY, 'sell', 4);
   let receipt = tradeClearedReceipt(state, { ...completed(emitted), stationId: 'station_test' });
-  assert.equal(receipt.line, `SOLD 4u ${CMDTY_NAME}`, 'foreign-station stamp falls back');
+  assert.equal(receipt.line, `Sold 4 units of ${CMDTY_NAME}`, 'foreign-station stamp falls back');
   stampExpectation(state, { qty: 10, side: 'sell', total: 100 });
   state.ui[TRADE_EXPECTATION_KEY].atSimTime = state.simTime + 3600;
   system.execute('station_test', CMDTY, 'sell', 2);
   receipt = tradeClearedReceipt(state, completed(emitted));
-  assert.equal(receipt.line, `SOLD 2u ${CMDTY_NAME}`, 'a future-dated stamp falls back');
+  assert.equal(receipt.line, `Sold 2 units of ${CMDTY_NAME}`, 'a future-dated stamp falls back');
 });
 
 test('PB-286: correlated partial receipts and refusal clearing belong to their intent', () => {
@@ -218,7 +218,7 @@ test('PB-286: correlated partial receipts and refusal clearing belong to their i
   const settled = completed(emitted);
   assert.equal(settled.intentId, partialId);
   const receipt = tradeClearedReceipt(state, settled);
-  assert.equal(receipt.line, 'SOLD 6 OF THE 10 CONFIRMED');
+  assert.equal(receipt.line, 'Sold 6 of the 10 you asked for');
   assert.ok(receipt.detail.includes('+60 cr'));
   assert.equal(state.ui[TRADE_EXPECTATION_KEY], null);
 
@@ -234,7 +234,7 @@ test('PB-286: correlated partial receipts and refusal clearing belong to their i
     intentId: olderId, stationId: 'station_test', commodityId: CMDTY,
     side: 'sell', qty: 1, total: 10,
   });
-  assert.equal(oldReceipt.line, `SOLD 1u ${CMDTY_NAME}`);
+  assert.equal(oldReceipt.line, `Sold 1 unit of ${CMDTY_NAME}`);
   assert.equal(state.ui[TRADE_EXPECTATION_KEY].intentId, newerId);
 
   // A matching terminal refusal from the real economy owner clears only its own confirmation.

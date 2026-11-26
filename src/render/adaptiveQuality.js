@@ -352,9 +352,19 @@ export function applyQualityPreset(settings, presetId) {
  * working. Manual choices still go through `applyQualityPreset`.
  */
 export function applyAutoQualityPreset(settings, presetId) {
+  const priorVideo = settings && settings.video;
+  const priorFrameCap = priorVideo && typeof priorVideo === 'object' ? priorVideo.frameCap : undefined;
   const applied = applyQualityPreset(settings, presetId);
   if (!applied) return applied;
   const video = settings && settings.video;
+  // The cadence of an Auto posture belongs to the presentation governor (30 or 60, whichever the
+  // frame holds), not to the preset's fixed cap: keep whatever cap the player had (0 = none), so
+  // the preset's 30 never becomes an 'explicit' cap that pins the game at 30 for good.
+  if (video && video.frameCap !== priorFrameCap) {
+    video.frameCap = priorFrameCap === undefined ? 0 : priorFrameCap;
+    const at = applied.changed.indexOf('frameCap');
+    if (at >= 0) applied.changed.splice(at, 1);
+  }
   if (video && video.qualityMode !== 'auto') {
     video.qualityMode = 'auto';
     if (!applied.changed.includes('qualityMode')) applied.changed.push('qualityMode');
@@ -419,9 +429,13 @@ export function shouldSuggestIntegratedPreset(gpu, video = {}) {
  * unchanged; the cap stops the loop from presenting frames it cannot finish. Manual presets and
  * explicit frame caps always win.
  */
-export function autoPresentationCapFor(gpu, video = {}) {
+export function autoPresentationCapFor(gpu, video = {}, render = null) {
   if (!gpu || gpu.tier !== 'integrated') return 0;
-  return qualityModeForVideo(video) === 'auto' ? 30 : 0;
+  if (qualityModeForVideo(video) !== 'auto') return 0;
+  // The live choice of the presentation governor (createAutoPresentationGovernor): 60 while the
+  // frame holds it, a steady 30 when it cannot. Until the governor has published, 30.
+  const live = render ? Number(render.autoPresentCap) : NaN;
+  return live === AUTO_PRESENT_HIGH_CAP ? AUTO_PRESENT_HIGH_CAP : AUTO_PRESENT_LOW_CAP;
 }
 
 // --- Software-renderer emergency profile (the one automatic visual reduction) ------------------
@@ -451,7 +465,18 @@ export const GPU_TIER_DYNRES_FLOOR = Object.freeze({
  * the hitch governor handles blocking with post-FX only. The software emergency tier is exempt:
  * a CPU rasterizer needs the depth more than the readability.
  */
-export const COMBINED_READABILITY_FLOOR = 1;
+// Coordinator decision 2026-11-20 (render lead): Auto may render the 3D scene down to 0.67 of
+// native when the measured GPU time says the GPU is the long pole (Foundry round 20: ~70 ms of
+// scene GPU at native, ~40 ms at 0.6). The frame is brought back to the display by the FidelityFX
+// CAS scaling pass already in the composite (cas.js: contrast-adaptive upsample + sharpen in one
+// full-screen pass), and the HUD, text and markers are DOM at native resolution. Manual presets
+// (dynamicResolution off) keep native: the "Sharp" posture.
+// Director ruling 2026-11-21: the GPU-budget governor (createGpuBudgetResolution) may use the
+// whole 0.5-1.0 range in Auto. 0.5 is exactly the CAS scaling pass's 4x-area limit, so the
+// contrast-adaptive upscale still reconstructs every band.
+// DEMO-FRAME-1 (2026-11-23): the 0.6 readability floor belongs to the smooth governor alone —
+// see SMOOTH_DRS_FLOOR / createSmoothDrsGovernor. This shared floor stays at the ruling's 0.5.
+export const COMBINED_READABILITY_FLOOR = 0.5;
 
 /**
  * Effective dyn-res floor once automatic raster relief is already below 1: the deeper the
@@ -459,10 +484,11 @@ export const COMBINED_READABILITY_FLOOR = 1;
  * product at COMBINED_READABILITY_FLOOR. `rasterRelief` is the product of the automatic
  * reliefs only — the player's own renderScale choice belongs to Manual and is not rescued here.
  */
-export function adaptiveFloorForCombinedScale(tierFloor, rasterRelief) {
+export function adaptiveFloorForCombinedScale(tierFloor, rasterRelief, readabilityFloor = COMBINED_READABILITY_FLOOR) {
   const relief = clamp(Number(rasterRelief) || 1, 0.2, 1);
   const base = clamp(Number(tierFloor) || 0.6, 0.2, 1);
-  return clamp(Math.max(base, COMBINED_READABILITY_FLOOR / relief), 0.2, 1);
+  const readability = clamp(Number(readabilityFloor) || COMBINED_READABILITY_FLOOR, 0.2, 1);
+  return clamp(Math.max(base, readability / relief), 0.2, 1);
 }
 
 export function dynResFloorForTier(tier) {
@@ -625,6 +651,28 @@ export function createAdaptiveResolution(opts = {}) {
   let trial = null;
   let noBenefitCooldown = 0;
   let slowFrameStreak = 0;
+  // Who is the long pole? Lowering resolution only relieves the GPU. When the main thread is busy
+  // for (nearly) the whole frame interval the frame is CPU-bound: a trial would drop the picture to
+  // a lower band for 2.5 s, measure no benefit, restore it and try again 15 s later — a visible
+  // resolution pop every ~17 s that buys nothing. With a CPU sample the controller only trials when
+  // the main thread leaves a real share of the interval idle (the wait is the GPU or compositor);
+  // with a GPU-time sample (async timer queries) it trials when the GPU is the longer pole.
+  let cpuEmaMs = null;
+  let gpuEmaMs = null;
+  let noBenefitStreak = 0;
+  let bound = 'unknown';
+  const CPU_BOUND_SHARE = clamp(Number(opts.cpuBoundShare) || 0.8, 0.5, 0.98);
+
+  function resolutionCanHelp(targetMs) {
+    if (gpuEmaMs != null) {
+      bound = gpuEmaMs >= (cpuEmaMs ?? 0) * 0.9 && gpuEmaMs > targetMs * 0.6 ? 'gpu' : 'cpu';
+    } else if (cpuEmaMs != null) {
+      bound = cpuEmaMs >= emaMs * CPU_BOUND_SHARE ? 'cpu' : 'gpu';
+    } else {
+      bound = 'unknown';
+    }
+    return bound !== 'cpu';
+  }
 
   function set(next) {
     const s = clamp(next, floor, 1);
@@ -643,6 +691,9 @@ export function createAdaptiveResolution(opts = {}) {
       trial = null;
       noBenefitCooldown = 0;
       slowFrameStreak = 0;
+      cpuEmaMs = null;
+      gpuEmaMs = null;
+      noBenefitStreak = 0;
       if (!enabled) set(1); // restore full internal resolution when disabled
     },
     syncScale(value) {
@@ -673,6 +724,14 @@ export function createAdaptiveResolution(opts = {}) {
       const boundedDt = Math.min(dt, maxAcceptedMs / 1000);
       const ms = boundedDt * 1000;
       emaMs += (ms - emaMs) * SMOOTH;
+      const cpuMs = Number(sample.cpuMs);
+      if (Number.isFinite(cpuMs) && cpuMs >= 0) {
+        cpuEmaMs = cpuEmaMs == null ? cpuMs : cpuEmaMs + (Math.min(cpuMs, maxAcceptedMs) - cpuEmaMs) * SMOOTH;
+      }
+      const gpuMs = Number(sample.gpuMs);
+      if (Number.isFinite(gpuMs) && gpuMs >= 0) {
+        gpuEmaMs = gpuEmaMs == null ? gpuMs : gpuEmaMs + (Math.min(gpuMs, maxAcceptedMs) - gpuEmaMs) * SMOOTH;
+      }
       if (lowerCooldown > 0) lowerCooldown -= boundedDt;
       if (noBenefitCooldown > 0) noBenefitCooldown -= boundedDt;
       raiseTimer += boundedDt;
@@ -684,7 +743,12 @@ export function createAdaptiveResolution(opts = {}) {
           const improved = emaMs <= trial.baselineMs * (1 - MIN_BENEFIT);
           if (!improved) {
             set(trial.previousScale);
-            noBenefitCooldown = noBenefitCooldownS;
+            // Back off: every consecutive fruitless trial doubles the wait (15 s, 30, 60, 120), so a
+            // frame that resolution cannot help stops showing the player a lower-res band at all.
+            noBenefitCooldown = noBenefitCooldownS * (2 ** Math.min(noBenefitStreak, 3));
+            noBenefitStreak++;
+          } else {
+            noBenefitStreak = 0;
           }
           trial = null;
           slowTimer = 0;
@@ -695,7 +759,8 @@ export function createAdaptiveResolution(opts = {}) {
 
       // A small sustained miss moves down one resolution band. The step is retained only when
       // the observed frame time improves; CPU/simulation bottlenecks restore the prior band.
-      if (!trial && noBenefitCooldown <= 0 && slowTimer >= slowHoldS && scale > floor && lowerCooldown <= 0) {
+      if (!trial && noBenefitCooldown <= 0 && slowTimer >= slowHoldS && scale > floor && lowerCooldown <= 0
+        && resolutionCanHelp(targetMs)) {
         const nextScale = Math.max(floor, scale - step);
         // Depth gate: the deeper the candidate band, the worse the sustained miss must be.
         // Without it a borderline load walked every band on the same mild miss and the
@@ -726,5 +791,490 @@ export function createAdaptiveResolution(opts = {}) {
       }
     },
     getScale() { return scale; },
+    isEnabled() { return enabled; },
+    /** Diagnostics: 'cpu' | 'gpu' | 'unknown' as of the last lowering decision, plus the EMAs. */
+    getBound() { return { bound, frameMs: emaMs, cpuMs: cpuEmaMs, gpuMs: gpuEmaMs }; },
+  };
+}
+
+// --- GPU frame budget (2026-11-21) ---------------------------------------------------------------
+// The scene's internal resolution is driven directly by measured GPU time (async timer queries, one
+// same-frame total of every pass), the way console engines run dynamic resolution: hold about
+// GPU_FRAME_BUDGET_MS of GPU work per frame whatever the main thread is doing. On a 15 W laptop the
+// GPU and CPU share one power budget, so GPU time over budget costs the main thread too.
+//
+//   over budget   -> jump straight to the scale the measurement predicts (pixel cost ~ scale^2),
+//                    snapped to 0.05 bands: one decision, taken within a few samples
+//   under budget  -> climb one band at a time, only after the predicted cost of the higher band
+//                    has stayed under the budget with margin for upHoldS
+//   deadband      -> between those two nothing moves, so the picture does not pump
+//   no benefit    -> if a drop bought under half of the GPU time the pixel model promised (below
+//                    that scale the frame is bound by geometry or draw submission, not pixels), the
+//                    previous scale is restored and further drops wait out a doubling hold. The
+//                    timer measures the span of the pass on the GPU, so a pass the main thread
+//                    feeds slowly reads long however few pixels it shades: this is what stops the
+//                    governor from trading sharpness for nothing in that case
+//
+// Samples rendered at the old scale are discarded by frame id after every change. No allocation per
+// update. The caller owns eligibility (live flight only) and feeds each GPU frame total once.
+export const GPU_FRAME_BUDGET_MS = 12;
+
+export function createGpuBudgetResolution(opts = {}) {
+  let floor = clamp(Number(opts.floor) || 0.5, 0.2, 1);
+  const apply = typeof opts.apply === 'function' ? opts.apply : () => {};
+  const budgetMs = clamp(Number(opts.budgetMs) || GPU_FRAME_BUDGET_MS, 2, 100);
+  const band = clamp(Number(opts.band) || 0.05, 0.01, 0.25);
+  const downRatio = clamp(Number(opts.downRatio) || 1.08, 1.01, 1.5);
+  const upRatio = clamp(Number(opts.upRatio) || 0.88, 0.5, 0.99);
+  const aimRatio = clamp(Number(opts.aimRatio) || 0.94, 0.5, 1);
+  const smoothS = clamp(Number(opts.smoothS) || 0.15, 0.02, 2);
+  const upHoldS = clamp(Number(opts.upHoldS) || 2, 0.2, 60);
+  const minSamples = Math.max(1, Math.floor(Number(opts.minSamples) || 3));
+  const judgeSamples = Math.max(minSamples, Math.floor(Number(opts.judgeSamples) || 4));
+  const confirmSamples = Math.max(judgeSamples, Math.floor(Number(opts.confirmSamples) || 12));
+  const chainSamples = Math.max(minSamples, Math.floor(Number(opts.chainSamples) || 8));
+  const quickShare = clamp(Number(opts.quickShare) || 0.2, 0.01, 0.9);
+  const overHoldS = clamp(Number(opts.overHoldS) || 0.12, 0, 5);
+  const maxDropStep = clamp(Number(opts.maxDropStep) || 0.6, 0.3, 0.95);
+  const benefitShare = clamp(Number(opts.benefitShare) || 0.5, 0.05, 0.9);
+  const noBenefitHoldS = clamp(Number(opts.noBenefitHoldS) || 15, 1, 600);
+  const maxAcceptedMs = Number(opts.maxAcceptedMs) || 250;
+
+  let enabled = true;
+  let scale = clamp(Number(opts.initialScale) || 1, floor, 1);
+  // The decision value is the median of the last five samples at the current scale: single GPU
+  // frames at one scale spread by a third either way (measured in the Foundry), and a mean follows
+  // every spike. (The name is historical: it was an exponential mean.)
+  let emaMs = null;
+  const SAMPLE_WINDOW = 5;
+  const sampleWindow = new Float64Array(SAMPLE_WINDOW);
+  const sortScratch = new Float64Array(SAMPLE_WINDOW);
+  let overS = 0;            // how long the median has been over budget
+  let sumMs = 0;            // sum of the samples at the current scale (for the confirming mean)
+  let samples = 0;          // valid samples since the last scale change
+  let sinceSampleS = 0;
+  let validFromFrameId = 0; // samples from frames before this were rendered at another scale
+  let upTimer = 0;
+  let upHold = upHoldS;     // doubles when a climb is undone straight away
+  let sinceUpS = Infinity;
+  let pending = null;       // the last drop, judged once enough samples arrive at the new scale
+  const pendingBox = { fromScale: 1, fromMs: 0 };
+  let dropHoldS = 0;
+  let noBenefitStreak = 0;
+  let fixedMs = 0;          // learned part of the GPU frame that resolution does not move
+  let lastReason = 'init';
+
+  const snapDown = (value) => Math.floor(value / band + 1e-6) * band;
+
+  function set(next, frameId, reason) {
+    const s = clamp(Math.round(next * 1000) / 1000, floor, 1);
+    if (Math.abs(s - scale) < 1e-3) return false;
+    scale = s;
+    samples = 0;
+    emaMs = null;
+    overS = 0;
+    sumMs = 0;
+    upTimer = 0;
+    validFromFrameId = Number.isFinite(frameId) ? frameId : 0;
+    lastReason = reason;
+    apply(scale);
+    return true;
+  }
+
+  function medianOfWindow() {
+    const n = Math.min(samples, SAMPLE_WINDOW);
+    for (let i = 0; i < n; i++) {
+      const v = sampleWindow[i];
+      let j = i - 1;
+      while (j >= 0 && sortScratch[j] > v) { sortScratch[j + 1] = sortScratch[j]; j--; }
+      sortScratch[j + 1] = v;
+    }
+    return n % 2 === 1 ? sortScratch[(n - 1) >> 1] : (sortScratch[n / 2 - 1] + sortScratch[n / 2]) / 2;
+  }
+
+  function predicted(atScale) {
+    // Pure pixel model: it overstates the cost of a higher scale when part of the frame is not
+    // pixel work, so a climb is only ever late, never early.
+    return emaMs * (atScale * atScale) / (scale * scale);
+  }
+
+  return {
+    setEnabled(on) {
+      enabled = !!on;
+      emaMs = null;
+      samples = 0;
+      upTimer = 0;
+      pending = null;
+      dropHoldS = 0;
+      noBenefitStreak = 0;
+      if (!enabled) set(1, 0, 'disabled');
+    },
+    isEnabled() { return enabled; },
+    getScale() { return scale; },
+    syncScale(value) {
+      const next = Number(value);
+      const s = clamp(Number.isFinite(next) ? next : 1, floor, 1);
+      if (Math.abs(s - scale) > 1e-3) { scale = s; samples = 0; sumMs = 0; overS = 0; emaMs = null; pending = null; }
+    },
+    setFloor(nextFloor) {
+      floor = clamp(Number(nextFloor) || floor, 0.2, 1);
+      if (scale < floor) set(floor, validFromFrameId, 'floor');
+    },
+    getFloor() { return floor; },
+    atFloor() { return scale <= floor + 1e-3; },
+    /**
+     * @param {number} dtS wall seconds since the last call
+     * @param {number|null} gpuMs a NEW same-frame GPU total, or null when none arrived this call
+     * @param {number} sampleFrameId the render frame that total was measured on
+     * @param {number} currentFrameId the render frame about to be drawn (a change applies from it)
+     */
+    update(dtS, gpuMs, sampleFrameId, currentFrameId) {
+      if (!enabled) return scale;
+      const dt = Number.isFinite(dtS) && dtS > 0 ? Math.min(dtS, 0.25) : 0;
+      sinceSampleS += dt;
+      sinceUpS += dt;
+      if (dropHoldS > 0) dropHoldS -= dt;
+      const ms = Number(gpuMs);
+      if (gpuMs == null || !Number.isFinite(ms) || ms <= 0) return scale;
+      if (Number.isFinite(sampleFrameId) && sampleFrameId < validFromFrameId) return scale; // old scale
+      const sampleMs = Math.min(ms, maxAcceptedMs);
+      const sampleGapS = Math.max(sinceSampleS, 0.004);
+      sampleWindow[samples % SAMPLE_WINDOW] = sampleMs;
+      sinceSampleS = 0;
+      samples++;
+      emaMs = medianOfWindow();
+      sumMs += sampleMs;
+      overS = emaMs > budgetMs * downRatio ? overS + sampleGapS : 0;
+      if (samples < minSamples) return scale;
+
+      if (pending) {
+        // A drop is judged twice against what the pixel count promised. Quickly (a median of four
+        // samples) to catch a drop that bought nothing at all; then on the mean of twelve, which
+        // sees through the frame-to-frame spread, to catch one that bought under half. Either way
+        // the previous scale comes back and further drops wait out a doubling hold: below that
+        // scale the frame is bound by something other than pixels (geometry, draw submission), so
+        // a lower scale would only cost sharpness.
+        if (samples < judgeSamples) return scale;
+        const promised = pending.fromMs * (1 - (scale * scale) / (pending.fromScale * pending.fromScale));
+        const judged = promised > pending.fromMs * 0.2; // smaller steps drown in the noise
+        const confirm = samples >= confirmSamples;
+        const got = pending.fromMs - (confirm ? sumMs / samples : emaMs);
+        if (judged && got < promised * (confirm ? benefitShare : quickShare)) {
+          const fromScale = pending.fromScale;
+          pending = null;
+          dropHoldS = noBenefitHoldS * (2 ** Math.min(noBenefitStreak, 3));
+          noBenefitStreak++;
+          set(fromScale, currentFrameId, 'no-benefit');
+          return scale;
+        }
+        if (confirm || !judged) {
+          pending = null;
+          if (judged) noBenefitStreak = 0;
+        }
+      }
+
+      // A second drop waits for a steadier reading of the scale the first one landed on.
+      const settledForDrop = lastReason !== 'over-budget' || samples >= chainSamples;
+      if (emaMs > budgetMs * downRatio && overS >= overHoldS && settledForDrop
+          && scale > floor + 1e-3 && dropHoldS <= 0) {
+        // Pure pixel model (cost ~ scale^2), at most a 0.6x step per decision: each step is then
+        // large enough to be judged, and the descent stops at the scale where pixels stop being
+        // the cost instead of running to the floor for nothing.
+        const wanted = Math.max(scale * Math.sqrt((budgetMs * aimRatio) / emaMs), scale * maxDropStep);
+        const next = clamp(Math.min(snapDown(wanted), scale - band), floor, 1);
+        const fromScale = scale;
+        const fromMs = samples >= chainSamples ? sumMs / samples : emaMs;
+        if (sinceUpS < 3) upHold = Math.min(upHold * 2, 30); // the climb was premature
+        if (set(next, currentFrameId, 'over-budget')) {
+          pendingBox.fromScale = fromScale;
+          pendingBox.fromMs = fromMs;
+          pending = pendingBox;
+        }
+        return scale;
+      }
+
+      if (scale < 1 - 1e-3) {
+        const nextUp = Math.min(1, scale + band);
+        if (predicted(nextUp) < budgetMs * upRatio) {
+          upTimer += Math.max(dt, 0.001);
+          if (upTimer >= upHold) {
+            if (sinceUpS > 30) upHold = upHoldS;
+            sinceUpS = 0;
+            set(nextUp, currentFrameId, 'headroom');
+          }
+        } else {
+          upTimer = 0;
+        }
+      }
+      return scale;
+    },
+    /** Diagnostics for probes and the perf overlay. */
+    getState() {
+      return { scale, floor, gpuMs: emaMs, fixedMs, budgetMs, samples, upHold, dropHoldS, reason: lastReason };
+    },
+  };
+}
+
+// --- Auto presentation cadence (2026-11-22) ------------------------------------------------------
+// An integrated GPU on the Auto policy used to present at a fixed 30 Hz. The cap now follows what
+// the frame can hold: 60 while nearly every presented frame fits about 15 ms of main-thread work
+// (and the GPU fits it too once resolution is already at its floor: resolution gives way first, the
+// cadence last), a steady 30 when it cannot, because a locked 30 reads better than a 40-55 that
+// judders. Hysteresis is in seconds: several clean seconds to go up, a sustained miss to come down,
+// and a hold after every fall that doubles when the climb did not last. An explicit frame cap in
+// Settings never reaches this code.
+export const AUTO_PRESENT_LOW_CAP = 30;
+export const AUTO_PRESENT_HIGH_CAP = 60;
+
+export function createAutoPresentationGovernor(opts = {}) {
+  const budgetMs = clamp(Number(opts.budgetMs) || 15, 4, 33);
+  const windowS = clamp(Number(opts.windowS) || 3, 0.5, 30);
+  const riseHoldS = clamp(Number(opts.riseHoldS) || 5, 1, 120);
+  const fallHoldS = clamp(Number(opts.fallHoldS) || 10, 1, 600);
+  const riseFraction = clamp(Number(opts.riseFraction) || 0.05, 0.005, 0.5);
+  const fallFraction = clamp(Number(opts.fallFraction) || 0.15, 0.02, 0.9);
+  let cap = AUTO_PRESENT_LOW_CAP;
+  let overFraction = 1; // share of recent presented frames over budget; starts unproven
+  let cleanS = 0;
+  let inStateS = 0;
+  let holdS = 0;
+  let fallStreak = 0;
+  return {
+    getCap() { return cap; },
+    /**
+     * Once per presented live-flight frame.
+     * @param {number} dtS wall seconds since the previous presented frame
+     * @param {number} workMs main-thread time of the last presented frame callback
+     * @param {number|null} gpuMs GPU time of the newest measured frame (null: unknown)
+     * @param {boolean} resolutionAtFloor true when dynamic resolution has nothing left to give
+     */
+    update(dtS, workMs, gpuMs, resolutionAtFloor) {
+      const dt = Number.isFinite(dtS) && dtS > 0 ? Math.min(dtS, 0.25) : 0;
+      if (dt <= 0 || !Number.isFinite(workMs)) return cap;
+      const gpuKnown = gpuMs != null && Number.isFinite(gpuMs);
+      const gpuOver = gpuKnown && gpuMs > budgetMs;
+      // At 60 a present that arrived late is a miss whoever caused it, unless resolution is still
+      // on its way down to fix a GPU overrun (resolution gives way first).
+      const lateAtHigh = cap === AUTO_PRESENT_HIGH_CAP && dt * 1000 > 25
+        && (resolutionAtFloor === true || !gpuOver);
+      const over = workMs > budgetMs || (resolutionAtFloor === true && gpuOver) || lateAtHigh;
+      overFraction += ((over ? 1 : 0) - overFraction) * (1 - Math.exp(-dt / windowS));
+      inStateS += dt;
+      if (holdS > 0) holdS -= dt;
+      if (cap === AUTO_PRESENT_LOW_CAP) {
+        cleanS = overFraction < riseFraction ? cleanS + dt : 0;
+        if (cleanS >= riseHoldS && holdS <= 0) {
+          cap = AUTO_PRESENT_HIGH_CAP;
+          inStateS = 0;
+          cleanS = 0;
+        }
+      } else if ((overFraction > fallFraction && inStateS >= 2) || (overFraction > 0.4 && inStateS >= 0.7)) {
+        // A climb that lasted under 20 s was a mistake: wait twice as long before the next one.
+        fallStreak = inStateS < 20 ? Math.min(fallStreak + 1, 4) : 0;
+        holdS = fallHoldS * (2 ** fallStreak);
+        cap = AUTO_PRESENT_LOW_CAP;
+        inStateS = 0;
+        cleanS = 0;
+      }
+      return cap;
+    },
+    getState() { return { cap, overFraction, cleanS, holdS, inStateS, budgetMs }; },
+  };
+}
+
+// --- Smooth dynamic resolution governor (DEMO-FRAME-1, 2026-11-23) -------------------------------
+// Lowers internal 3D resolution when frames miss budget (by GPU pass time OR presented frame time)
+// and raises it cleanly once headroom returns, while keeping DOM UI at native resolution.
+// Designed for shared-TDP integrated GPUs:
+//   - never drops below floor (default 0.60, keeping silhouettes sharp while cutting up to 64% pixels)
+//   - smooth 0.05 bands with bounded step size (<=0.15 per decision) so scaling never pops
+//   - deadband [upRatio, downRatio] + sustained hold timers + doubling climb-backoff prevent pumping
+//   - does NOT bounce back to 1.0 when CPU is also busy: on a 15 W SoC, GPU pixel load shares the
+//     same power/thermal envelope as the CPU, so holding scaled resolution relieves both.
+//   - ignores isolated single-frame hitches (>outlierMs) unless sustained.
+export const SMOOTH_DRS_FLOOR = 0.6;
+
+export function createSmoothDrsGovernor(opts = {}) {
+  let floor = clamp(Number(opts.floor) || SMOOTH_DRS_FLOOR, 0.2, 1);
+  const apply = typeof opts.apply === 'function' ? opts.apply : () => {};
+  const band = clamp(Number(opts.band) || 0.05, 0.01, 0.25);
+  const maxStepDown = clamp(Number(opts.maxStepDown) || 0.15, band, 0.4);
+  const downRatio = clamp(Number(opts.downRatio) || 1.08, 1.02, 1.5);
+  const upRatio = clamp(Number(opts.upRatio) || 0.82, 0.4, 0.98);
+  const downHoldS = clamp(Number(opts.downHoldS) || 0.22, 0.05, 5);
+  const downCooldownS = clamp(Number(opts.downCooldownS) || 0.30, 0.05, 5);
+  const upHoldS = clamp(Number(opts.upHoldS) || 2.0, 0.2, 60);
+  const gpuBudgetCeilingMs = clamp(Number(opts.gpuBudgetMs) || 13, 4, 50);
+  const outlierMs = Number(opts.outlierMs) || 120;
+  const maxAcceptedMs = Number(opts.maxAcceptedMs) || 250;
+  const FRAME_EMA_ALPHA = 0.22;
+
+  let enabled = true;
+  let scale = clamp(Number(opts.initialScale) || 1, floor, 1);
+  let frameEmaMs = null;
+  const GPU_WIN = 5;
+  const gpuWindow = new Float64Array(GPU_WIN);
+  const gpuScratch = new Float64Array(GPU_WIN);
+  let gpuSamples = 0;
+  let gpuMedianMs = null;
+  let validFromFrameId = 0;
+  let slowStreak = 0;
+  let overS = 0;
+  let underS = 0;
+  let downCooldown = 0;
+  let upHold = upHoldS;
+  let sinceUpS = Infinity;
+  let lastReason = 'init';
+
+  const snapBand = (value) => Math.round(value / band) * band;
+
+  function medianGpu() {
+    const n = Math.min(gpuSamples, GPU_WIN);
+    if (n <= 0) return null;
+    for (let i = 0; i < n; i++) {
+      const v = gpuWindow[i];
+      let j = i - 1;
+      while (j >= 0 && gpuScratch[j] > v) { gpuScratch[j + 1] = gpuScratch[j]; j--; }
+      gpuScratch[j + 1] = v;
+    }
+    return n % 2 === 1 ? gpuScratch[(n - 1) >> 1] : (gpuScratch[n / 2 - 1] + gpuScratch[n / 2]) * 0.5;
+  }
+
+  function set(next, frameId, reason) {
+    const s = clamp(Math.round(snapBand(next) * 1000) / 1000, floor, 1);
+    if (Math.abs(s - scale) < 1e-3) return false;
+    scale = s;
+    gpuSamples = 0;
+    gpuMedianMs = null;
+    overS = 0;
+    underS = 0;
+    validFromFrameId = Number.isFinite(frameId) ? frameId : 0;
+    lastReason = reason;
+    apply(scale);
+    return true;
+  }
+
+  return {
+    setEnabled(on) {
+      enabled = !!on;
+      frameEmaMs = null;
+      gpuSamples = 0;
+      gpuMedianMs = null;
+      slowStreak = 0;
+      overS = 0;
+      underS = 0;
+      downCooldown = 0;
+      upHold = upHoldS;
+      sinceUpS = Infinity;
+      if (!enabled) set(1, 0, 'disabled');
+    },
+    isEnabled() { return enabled; },
+    getScale() { return scale; },
+    getFloor() { return floor; },
+    atFloor() { return scale <= floor + 1e-3; },
+    syncScale(value) {
+      const next = Number(value);
+      const s = clamp(Number.isFinite(next) ? next : 1, floor, 1);
+      if (Math.abs(s - scale) > 1e-3) {
+        scale = s;
+        gpuSamples = 0;
+        gpuMedianMs = null;
+        overS = 0;
+        underS = 0;
+      }
+    },
+    setFloor(nextFloor) {
+      floor = clamp(Number(nextFloor) || floor, 0.2, 1);
+      if (scale < floor) set(floor, validFromFrameId, 'floor');
+    },
+    /**
+     * @param {number} dtS wall seconds since previous presented frame
+     * @param {{ eligible?: boolean, targetMs?: number, gpuMs?: number|null,
+     *           sampleFrameId?: number, currentFrameId?: number }} sample
+     */
+    update(dtS, sample = {}) {
+      if (!enabled) return scale;
+      const dt = Number(dtS);
+      if (sample.eligible === false || !Number.isFinite(dt) || dt <= 0) {
+        overS = 0;
+        underS = 0;
+        slowStreak = 0;
+        return scale;
+      }
+      const rawMs = dt * 1000;
+      if (rawMs > outlierMs) {
+        slowStreak++;
+        if (slowStreak < 2) return scale;
+      } else {
+        slowStreak = 0;
+      }
+      const boundedDt = Math.min(dt, maxAcceptedMs / 1000);
+      const ms = boundedDt * 1000;
+      frameEmaMs = frameEmaMs == null ? ms : frameEmaMs + (ms - frameEmaMs) * FRAME_EMA_ALPHA;
+      if (downCooldown > 0) downCooldown = Math.max(0, downCooldown - boundedDt);
+      sinceUpS += boundedDt;
+
+      const targetMs = clamp(Number(sample.targetMs) || 1000 / 60, 1000 / 360, 1000 / 20);
+      const gpuBudgetMs = Math.min(gpuBudgetCeilingMs, targetMs * 0.78);
+      const gpuMs = sample.gpuMs;
+      const sampleFrameId = sample.sampleFrameId;
+      if (gpuMs != null && Number.isFinite(gpuMs) && gpuMs > 0
+          && (!Number.isFinite(sampleFrameId) || sampleFrameId >= validFromFrameId)) {
+        gpuWindow[gpuSamples % GPU_WIN] = Math.min(gpuMs, maxAcceptedMs);
+        gpuSamples++;
+        gpuMedianMs = medianGpu();
+      }
+
+      const frameRatio = frameEmaMs / targetMs;
+      const gpuValid = gpuMedianMs != null && gpuSamples >= 2;
+      const gpuRatio = gpuValid ? gpuMedianMs / gpuBudgetMs : 0;
+      const pressure = gpuValid ? Math.max(gpuRatio, frameRatio * 0.92) : frameRatio;
+      const currentFrameId = sample.currentFrameId;
+
+      if (pressure > downRatio) {
+        overS += boundedDt;
+        underS = 0;
+        if (overS >= downHoldS && downCooldown <= 0 && scale > floor + 1e-3) {
+          // Step smoothly proportional to excess pressure, capped to maxStepDown per move.
+          const ideal = scale / Math.sqrt(Math.max(1.05, pressure));
+          const stepDown = clamp(Math.ceil((scale - ideal) / band) * band, band, maxStepDown);
+          const next = Math.max(floor, scale - stepDown);
+          if (sinceUpS < 4) upHold = Math.min(upHold * 2, 16);
+          if (set(next, currentFrameId, gpuValid && gpuRatio >= frameRatio * 0.92 ? 'gpu-over' : 'frame-over')) {
+            downCooldown = downCooldownS;
+          }
+        }
+        return scale;
+      }
+
+      overS = 0;
+      // On a vsynced display, a healthy frame still reports dt == targetMs (frameRatio ~= 1.0).
+      // So upward recovery checks GPU headroom when timer queries are live (plus frame not missing),
+      // and periodic probe-up while meeting the frame budget when timer queries are absent.
+      const frameMeetingBudget = frameRatio <= 1.06;
+      const hasHeadroom = gpuValid ? (gpuRatio < upRatio && frameMeetingBudget) : frameMeetingBudget;
+      if (scale < 1 - 1e-3 && hasHeadroom) {
+        const nextUp = Math.min(1, scale + band);
+        const predictedGpuOk = !gpuValid
+          || (gpuMedianMs * (nextUp * nextUp) / (scale * scale)) < gpuBudgetMs * 0.92;
+        if (predictedGpuOk) {
+          underS += boundedDt;
+          const requiredHold = gpuValid ? upHold : Math.max(upHold, 8);
+          if (underS >= requiredHold && downCooldown <= 0) {
+            if (sinceUpS > 24) upHold = upHoldS;
+            sinceUpS = 0;
+            set(nextUp, currentFrameId, 'headroom');
+          }
+        } else {
+          underS = 0;
+        }
+      } else {
+        underS = 0;
+      }
+      return scale;
+    },
+    getState() {
+      return { scale, floor, frameEmaMs, gpuMedianMs, overS, underS, upHold, reason: lastReason };
+    },
   };
 }

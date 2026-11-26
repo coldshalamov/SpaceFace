@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { createVfxEventGeometry } from '../vfx/runtime/eventGeometry.js';
 import { createTransientDensityTexture, createTransientVfxMaterial } from './transientVfxMaterials.js';
 import { createFlipbookGeometry, createFlipbookMaterial, flipbooksAvailable, getFlipbookTexture } from './flipbookSprites.js';
+import { VFX_BUDGET } from '../vfx/vfxBudget.js';
 import {
   assertDynamicBufferOwnerWritable,
   commitDynamicBufferOwner,
@@ -53,6 +54,9 @@ export function createInstancedSpriteBuckets(
   buckets.lodCam = { x: 0, y: 0, z: 0, k: 0 };
   buckets.lodOff = urlFlagOff('vfxLod');
   buckets.lodStats = { lo: 0, hi: 0, loTriangles: 0, hiTriangles: 0 };
+  buckets.budgetActive = false;
+  buckets.overdrawArea = 0;
+  buckets.budgetDropped = 0;
   // Authored flipbooks (LOOK-05C): present only where a DOM can load the sheets. Each family
   // replaces the matching volume write; the volume buckets stay as the headless/fallback path.
   if (flipbooksAvailable() && !flipbooksDisabled()) {
@@ -90,6 +94,8 @@ export function resetInstancedSpriteBuckets(buckets) {
   buckets.ring.writeCount = 0;
   buckets.smoke.writeCount = 0;
   buckets.combustion.writeCount = 0;
+  buckets.overdrawArea = 0;
+  buckets.budgetDropped = 0;
   for (const b of flipBucketList(buckets)) { assertDynamicBufferOwnerWritable(b.dynamicBufferOwner); b.writeCount = 0; }
   if (buckets.lo) {
     for (const b of [buckets.lo.glow, buckets.lo.ring]) { assertDynamicBufferOwnerWritable(b.dynamicBufferOwner); b.writeCount = 0; }
@@ -166,15 +172,44 @@ export function writeInstancedSpriteFields(
   }
   const index = bucket.writeCount;
   if (index >= bucket.capacity) return false;
+  let effScale = Math.max(0.01, Number.isFinite(scaleValue) ? scaleValue : 0.01);
+  let effScaleX = Math.max(0.01, Number.isFinite(scaleX) ? scaleX : effScale);
+  let effScaleY = Math.max(0.01, Number.isFinite(scaleY) ? scaleY : effScale);
+  if (buckets.budgetActive === true) {
+    const cap = VFX_BUDGET.spriteBucketCaps[bucket.id];
+    if (cap != null && index >= cap) {
+      buckets.budgetDropped++;
+      return false;
+    }
+    if (bucket.id === 'flipSmoke' || bucket.id === 'smoke') {
+      const maxS = VFX_BUDGET.spriteMaxSmokeScale;
+      if (effScale > maxS) effScale = maxS;
+      if (effScaleX > maxS) effScaleX = maxS;
+      if (effScaleY > maxS) effScaleY = maxS;
+    }
+    if (bucket.id !== 'flipWisp') {
+      const cam = buckets.lodCam;
+      let area = 0.025;
+      if (cam && cam.k > 0) {
+        const dx = (Number.isFinite(x) ? x : 0) - cam.x;
+        const dy = (Number.isFinite(y) ? y : 0) - cam.y;
+        const dz = (Number.isFinite(z) ? z : 0) - cam.z;
+        const dist = Math.sqrt(dx * dx + dy * dy + dz * dz) + 1e-3;
+        const extent = Math.max(effScale, effScaleX, effScaleY);
+        const frac = Math.min(1.5, (extent * cam.k) / dist);
+        area = frac * frac;
+      }
+      if (index >= 4 && buckets.overdrawArea + area > VFX_BUDGET.spriteMaxOverdrawArea) {
+        buckets.budgetDropped++;
+        return false;
+      }
+      buckets.overdrawArea += area;
+    }
+  }
   assertDynamicBufferOwnerWritable(bucket.dynamicBufferOwner);
   bucket.writeCount = index + 1;
   bucket.position.setXYZ(index, Number.isFinite(x) ? x : 0, Number.isFinite(y) ? y : 0, Number.isFinite(z) ? z : 0);
-  const scale = Math.max(0.01, Number.isFinite(scaleValue) ? scaleValue : 0.01);
-  bucket.scale.setXY(
-    index,
-    Math.max(0.01, Number.isFinite(scaleX) ? scaleX : scale),
-    Math.max(0.01, Number.isFinite(scaleY) ? scaleY : scale),
-  );
+  bucket.scale.setXY(index, effScaleX, effScaleY);
   bucket.roll.setX(index, Number.isFinite(roll) ? roll : 0);
   bucket.color.setXYZ(index, Number.isFinite(r) ? r : 0, Number.isFinite(g) ? g : 0, Number.isFinite(b) ? b : 0);
   bucket.opacity.setX(index, Math.max(0, Number.isFinite(opacity) ? opacity : 0));
@@ -193,12 +228,14 @@ export function writeInstancedSpriteFields(
 
 export function commitInstancedSpriteBuckets(buckets) {
   if (!buckets) return;
-  commitBucket(buckets.glow);
-  commitBucket(buckets.ring);
+  const glowVis = buckets.glow.writeCount > 0 || (buckets.lo?.glow?.writeCount || 0) > 0;
+  const ringVis = buckets.ring.writeCount > 0 || (buckets.lo?.ring?.writeCount || 0) > 0;
+  commitBucket(buckets.glow, glowVis);
+  commitBucket(buckets.ring, ringVis);
   commitBucket(buckets.smoke);
   commitBucket(buckets.combustion);
   for (const b of flipBucketList(buckets)) commitBucket(b);
-  if (buckets.lo) { commitBucket(buckets.lo.glow); commitBucket(buckets.lo.ring); }
+  if (buckets.lo) { commitBucket(buckets.lo.glow, glowVis); commitBucket(buckets.lo.ring, ringVis); }
 }
 
 function createBucket(scene, id, capacity, texture, blending, radiance = 1.0, flipFamily = null, geoOpts = null, sharedMaterial = null) {
@@ -277,14 +314,15 @@ function dynamicAttribute(length, itemSize) {
   return attribute;
 }
 
-function commitBucket(bucket) {
+function commitBucket(bucket, materialVisible = null) {
+  const visible = materialVisible !== null ? materialVisible : bucket.writeCount > 0;
   if (bucket.dynamicBufferOwner) {
     commitDynamicBufferOwner(bucket.dynamicBufferOwner, bucket.writeCount);
-    bucket.mesh.material.visible = bucket.writeCount > 0;
+    bucket.mesh.material.visible = visible;
     return;
   }
   bucket.mesh.count = bucket.writeCount;
-  bucket.mesh.material.visible = bucket.writeCount > 0;
+  bucket.mesh.material.visible = visible;
   bucket.position.needsUpdate = true;
   bucket.scale.needsUpdate = true;
   bucket.roll.needsUpdate = true;

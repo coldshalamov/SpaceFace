@@ -90,6 +90,65 @@ test('RC-17: yune.trust counts only clean tallied Helios freight and survives a 
   stationContacts.destroy();
 });
 
+test('yune.trust also counts the player\'s own clean freight landing at Yune\'s desk (Nyx March)', () => {
+  const { bus, state } = world();
+  // The mission owner files the receipt (missionReceiptFor shape) before `mission:completed`
+  // runs; the handler reads that receipt as the evidence, so give it exactly what lands there.
+  const receipts = state.missions || (state.missions = {});
+  receipts.receipts = [];
+  const filed = (missionId, outcome, type, destStationId) => receipts.receipts.unshift({
+    id: `${missionId}:${outcome}`,
+    missionId,
+    title: 'Run the Seizure Ledger',
+    type,
+    outcome,
+    reason: null,
+    at_s: 10,
+    factionId: 'faction_quiet',
+    stationId: 'station_drift',
+    destStationId,
+    destSectorId: 'sector_nyx_march',
+    rewardCr: 1320,
+    collateralRefundCr: 320,
+    collateralLostCr: 0,
+    repDelta: 3,
+    researchPoints: 0,
+    contractCargoRemoved: 3,
+    storyOutcome: null,
+    source: 'careerContract',
+  });
+  // The real completedPayload fields the missions settlement emits.
+  const completed = missionId => ({
+    missionId, type: 'smuggling_run', factionId: 'faction_quiet', repMult: 0.2,
+    source: 'careerContract', rewardCr: 1320,
+  });
+
+  // A scanned-out smuggling run settles 'failed' — not clean, no trust.
+  filed('m_ledger_burned', 'failed', 'smuggling_run', 'station_nyx_march');
+  bus.emit('mission:completed', completed('m_ledger_burned'));
+  assert.equal(stationContactCounterValue(state, 'yune.trust'), 0);
+
+  // Clean freight that lands anywhere but her fence is not hers to weigh.
+  filed('m_chips_customs', 'completed', 'cargo_delivery', 'station_customs');
+  bus.emit('mission:completed', completed('m_chips_customs'));
+  assert.equal(stationContactCounterValue(state, 'yune.trust'), 0);
+
+  // A completed contract that never carried freight (escort) stays off a freight broker's books.
+  filed('m_convoy', 'completed', 'escort', 'station_nyx_march');
+  bus.emit('mission:completed', completed('m_convoy'));
+  assert.equal(stationContactCounterValue(state, 'yune.trust'), 0);
+
+  // Sealed freight delivered clean to the Nyx Fence: hers, once.
+  filed('m_ledger_clean', 'completed', 'smuggling_run', 'station_nyx_march');
+  bus.emit('mission:completed', completed('m_ledger_clean'));
+  assert.equal(stationContactCounterValue(state, 'yune.trust'), 1);
+  // A replayed completion of the same mission cannot count twice.
+  bus.emit('mission:completed', completed('m_ledger_clean'));
+  assert.equal(stationContactCounterValue(state, 'yune.trust'), 1);
+
+  stationContacts.destroy();
+});
+
 test('RC-18: mara.debt gains +1 per pod signed into a medical berth and never subtracts', () => {
   const { bus, state } = world();
   // A pod on the rescue board is only inbound — not yet a delivered pod.

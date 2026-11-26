@@ -21,6 +21,12 @@ export const DOCTRINE_IDS = Object.freeze([
 
 export const DAMAGE_LAYERS = Object.freeze(['shield', 'armor', 'hull']);
 
+// CW-TELLS: every attack telegraph lasts at least 0.6 s (design/overhaul/03_COMBAT.md §9, doc
+// 19). The doctrine clock keeps the same floor (DOCTRINE_TELEGRAPH_TICKS = 36 in
+// src/ai/combatDoctrine.js); this module stays import-free by design, so the floor is declared
+// here once and both owners are pinned to it by their own tests.
+export const COMBAT_TELEGRAPH_FLOOR_TICKS = 36;
+
 const DOCTRINE_GRAMMARS = Object.freeze({
   interceptor_flyby: grammar('interceptor_flyby', 'wedge', '#ffb35c', 'engine_flare', 'strike', 'extend'),
   // Heavy commit: distinct ring silhouette + orange pressure color (not flyby wedge).
@@ -87,7 +93,9 @@ export function validateCombatChoreography() {
     const item = grammarForDoctrine(doctrineId);
     if (!item || item.doctrineId !== doctrineId) issues.push(`${doctrineId}: missing grammar`);
     if (!item || item.phases.join('|') !== COMBAT_CHOREOGRAPHY_PHASES.join('|')) issues.push(`${doctrineId}: invalid phase order`);
-    if (!item || item.telegraphTicks < 30) issues.push(`${doctrineId}: telegraph must last at least 30 ticks`);
+    // CW-TELLS: the telegraph stage holds the design's 0.6 s floor (03_COMBAT §9), the same
+    // beat the doctrine clock now keeps (DOCTRINE_TELEGRAPH_TICKS).
+    if (!item || item.telegraphTicks < COMBAT_TELEGRAPH_FLOOR_TICKS) issues.push(`${doctrineId}: telegraph must last at least 36 ticks (0.6 s)`);
   }
   return { ok: issues.length === 0, issues };
 }
@@ -98,7 +106,7 @@ function grammar(doctrineId, shape, color, telegraphKind, actionKind, aftermathK
     phases: COMBAT_CHOREOGRAPHY_PHASES,
     shape,
     color,
-    telegraphTicks: 30,
+    telegraphTicks: COMBAT_TELEGRAPH_FLOOR_TICKS,
     telegraphKind,
     actionKind,
     aftermathKind,

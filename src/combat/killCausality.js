@@ -194,7 +194,12 @@ export function bindChainWreck(state, markerId, wreck) {
   if (!state || !markerId || !wreck || wreck.type !== 'wreck' || wreck.alive === false
     || !Number.isSafeInteger(wreck.occupantGeneration)) return null;
   const store = witnessStore(state), death = store.pending.get(markerId);
-  if (!death || !Number.isFinite(state.simTime) || state.simTime !== death.deathTime) return null;
+  // The kill-wreck mint may drain on the deferred spawn lane a step (or a burst queue) after the
+  // kill emit, so the bind accepts any death still inside the witness window rather than demanding
+  // the same simTime the synchronous mint used to see. A future or expired death still refuses.
+  if (!death || !Number.isFinite(state.simTime)) return null;
+  const age = state.simTime - death.deathTime;
+  if (age < 0 || age > CHAIN_WITNESS_WINDOW_S) return null;
   const witness = Object.freeze({ ...death, wreckId: wreck.id, wreckGeneration: wreck.occupantGeneration });
   for (const [body, old] of store.bodies) {
     if (body.alive === false || state.entities?.get?.(body.id) !== body

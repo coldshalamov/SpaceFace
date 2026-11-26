@@ -10,13 +10,13 @@
 // Event surface (all swarm-only, all gated on a live swarm-ruleset run):
 //   swarm:killPopup    { pos, word, cause, friendlyFire, score, credits, wave } — one per paid
 //                      kill; `word` is the live arena's vocabulary (row 481)
-//   swarm:announce     { kind, text, count } — DOUBLE/TRIPLE/QUAD/SWARM WIPE, PILE-UP ×N,
+//   swarm:announce     { kind, text, count } — DOUBLE/TRIPLE/QUAD/SWARM WIPE, Pile-up N,
 //                      COLLATERAL, REVENGE, CLOSE CALL, LAST ONE
 //   swarm:roundSlam    { wave, boss, newcomer } — "ROUND N" with the boss card + debut card
 //   swarm:roundClear   { wave, tally } — the count-up rows (FLAWLESS / SPEED / KILLS / CHAIN)
 //   swarm:bossIntro    { name, line, wave } — the versus card
 //   swarm:bossHp       { frac, alive, total, name } — the boss bar
-//   swarm:bossDown     { name, wave } — slow-mo + payout beat
+//   swarm:bossDown     { name, wave } — champion defeat confirmation
 //   swarm:chainTier    { name, at, chain } — IGNITION/FLARE/NOVA/SUPERNOVA/SINGULARITY
 //   swarm:chainShatter { chain, best } — a broken chain is loud, never silent
 //   swarm:announce     { kind: 'overdrive', text, count } — the chain's score cap opens its one
@@ -27,16 +27,13 @@
 // (boss round heavier), one tick per tally row on the HUD's stagger then a resolve chord, the
 // chain tier chime climbing per mark, and the chain shatter.
 //
-// It also owns the physical punch: hit-stop through the sanctioned time-effects channel
-// (the same mechanism bulletTime uses, never a state.timeScale write) scaled by chain
-// tier, and extra camera:shake on the big beats. All of it obeys the Arcade effects
-// setting via arcadeEffectsLevel — reduced keeps the words, drops the vestibular punch.
+// The camera and HUD own the physical punch. Automatic reward feedback never leases sim time.
 //
 // Single-writer law: it never writes state.run. It reads kills, it emits presentation.
 // Payment stays with runSession/survivalRewards exactly as before.
 
 import { createRewardDeathLedger, runOwnsReward } from '../combat/rewardEligibility.js';
-import { validateRunState } from '../core/runState.js';
+import { validateRunStateForTick } from '../core/runState.js';
 import { styleCauseFromKill } from './survivalStyle.js';
 import { isSwarmRuleset } from './survivalSwarm.js';
 import { WAVE_CLEARED_SEAM } from './survivalRun.js';
@@ -48,8 +45,6 @@ import {
   SWARM_CHAIN_TIERS,
   SWARM_CLOSE_CALL_HULL,
   SWARM_CRYO_CUES,
-  SWARM_HITSTOP_SCALE,
-  SWARM_HITSTOP_SOURCE,
   SWARM_LAST_ONE_WINDOW_S,
   SWARM_MULTI_WINDOW_S,
   SWARM_NEWCOMER_COUNTERS,
@@ -57,9 +52,7 @@ import {
   SWARM_RECOVERY_WORDS,
   SWARM_REVENGE_WINDOW_S,
   SWARM_SCRAPE_WORDS,
-  arcadeEffectsLevel,
   swarmChainTierCrossed,
-  swarmHitStopSeconds,
   swarmKillCauseWord,
   swarmMultiKillWord,
   swarmPileUp,
@@ -73,7 +66,7 @@ function liveSwarmRun(state) {
   if (run.kind !== 'survival') return null;
   if (run.phase === 'inactive' || run.phase === 'ended') return null;
   if (!isSwarmRuleset(run.ruleset)) return null;
-  if (!validateRunState(run).ok) return null;
+  if (!validateRunStateForTick(run, state.tick).ok) return null;
   return run;
 }
 
@@ -84,15 +77,6 @@ function simTimeOf(state) {
 
 /** A single brood receipt joins at most this many bodies into the multi-kill window. */
 const SWARM_BROOD_WINDOW_CAP = 64;
-/**
- * Sim seconds of released floor after a hit-stop beat before the next storm receipt may arm
- * one. A multi-kill window is a beat — one dip, then quiet. Without the gap a kill storm
- * re-arms the request on nearly every receipt (each fresh window beats the drained remainder),
- * so 'swarm:juice-hitstop' pins ~0.35 for as long as killing continues: a held time floor, not
- * hit-stop — and the sim-clock timer that releases it drains slower the deeper the dip holds.
- */
-const SWARM_HITSTOP_REARM_GAP_S = 1;
-
 // --- the sound of the big moments -----------------------------------------------------------
 // Every moment below used to play in silence, and the chain tier borrowed the plain alert beep
 // the last-second warning also uses. Each beat now has its own cue id (resolved to a recipe by
@@ -137,14 +121,6 @@ function hullFracOf(entity) {
   return Math.max(0, Math.min(1, (Number(entity.hull) || 0) / max));
 }
 
-/** The mass row 487 scales hit-stop by — physicsBody spec first, then the live field. */
-function victimMassOf(entity) {
-  if (!entity || typeof entity !== 'object') return 0;
-  const spec = entity.physicsBody;
-  const m = spec && Number.isFinite(spec.mass) ? spec.mass : Number(entity.mass);
-  return Number.isFinite(m) ? m : 0;
-}
-
 /** The boss card for a capital score id — matched back to the authored rotation row. */
 function capitalBossCard(scoreId) {
   const row = SWARM_BOSS_ROTATION.find((b) => b && b.scoreId === scoreId);
@@ -160,7 +136,6 @@ export const swarmJuice = {
     this.state = ctx.state;
     this.bus = ctx.bus || null;
     this.helpers = ctx.helpers || null;
-    this.timeEffects = ctx.timeEffects || null;
     this._unsubs = [];
     this._reset();
     if (!this.bus || typeof this.bus.on !== 'function') return;
@@ -196,7 +171,6 @@ export const swarmJuice = {
   },
 
   destroy() {
-    this._releaseHitStop();
     for (const off of this._unsubs || []) if (typeof off === 'function') off();
     this._unsubs = [];
   },
@@ -205,14 +179,8 @@ export const swarmJuice = {
     this._reset();
   },
 
-  update(dt, state) {
+  update(_dt, state) {
     const st = state || this.state;
-    // Hit-stop drains in sim seconds — the dip IS the message, and it releases on the same
-    // clock every other slow-time lease uses.
-    if (this._hitStopLeft > 0) {
-      this._hitStopLeft -= Math.max(0, Number(dt) || 0);
-      if (this._hitStopLeft <= 0) this._releaseHitStop();
-    }
     const run = liveSwarmRun(st);
     if (!run) {
       if (this._cueQueue) this._cueQueue.length = 0; // a tally tick never outlives its run
@@ -233,8 +201,6 @@ export const swarmJuice = {
   // --- receipts -----------------------------------------------------------------
 
   _reset() {
-    this._releaseHitStop();
-    this._hitStopNextAt = 0;
     if (!this._deathLedger) this._deathLedger = createRewardDeathLedger();
     else this._deathLedger.clear();
     this._recent = [];              // { t, cause } player-kill window for multi/pile-up
@@ -245,7 +211,7 @@ export const swarmJuice = {
     this._hullLost = false;         // FLAWLESS latch
     this._waveStartAt = 0;
     this._bestChain = 0;            // the run's chain high-water, for the tally
-    this._lastChain = 0;            // the live chain — hit-stop scales on its tier
+    this._lastChain = 0;            // the live chain, used by the overdrive caption
     this._maxTierAt = 0;            // last announced tier mark — menus never re-announce
     this._chainStarZones = new Set(); // inf-chain-star: ladder zones whose chain star was called
     this._overdriveLive = false;    // an opened overdrive window this juice layer has named
@@ -305,14 +271,14 @@ export const swarmJuice = {
         credits: Math.max(0, Math.round(threat && threat.credits || 0)),
         wave: run.wave,
       });
-      this._onPlayerKill(victim, payload, cause, now, run);
+      this._onPlayerKill(victim, payload, cause, now);
     } else if (friendlyFire) {
       // The room did our work — worth a word, never the chain.
       this._emit('swarm:killPopup', {
         pos: payload.pos || victim.pos || null, word, cause, friendlyFire: true, score: 0,
         credits: 0, wave: run.wave,
       });
-      this._emit('swarm:announce', { kind: 'collateral', text: 'COLLATERAL', count: 1 });
+      this._emit('swarm:announce', { kind: 'collateral', text: 'FRIENDLY FIRE', count: 1 });
     }
 
     // A champion may die before any 15-tick sweep collected it — and a LIVE straggler may
@@ -326,16 +292,16 @@ export const swarmJuice = {
     if (this._boss.has(victim)) this._markBossDead(st, run.wave);
   },
 
-  _onPlayerKill(victim, payload, cause, now, run) {
+  _onPlayerKill(victim, payload, cause, now) {
     // The multi-kill window: prune then count. 2 DOUBLE · 3 TRIPLE · 4 QUAD · 5+ SWARM WIPE;
-    // a window of nothing but physics kills is a PILE-UP ×N instead.
+    // a window of nothing but physics kills is a Pile-up N instead.
     this._recent.push({ t: now, cause });
     while (this._recent.length && now - this._recent[0].t > SWARM_MULTI_WINDOW_S) this._recent.shift();
     const count = this._recent.length;
     if (count >= 2) {
       const causes = this._recent.map((k) => k.cause);
       if (swarmPileUp(causes)) {
-        this._emit('swarm:announce', { kind: 'pileup', text: `PILE-UP ×${count}`, count });
+        this._emit('swarm:announce', { kind: 'pileup', text: `Pile-up ${count}`, count });
       } else {
         const word = swarmMultiKillWord(count);
         if (word) this._emit('swarm:announce', { kind: 'multikill', text: word, count });
@@ -354,12 +320,11 @@ export const swarmJuice = {
     if (player && hullFracOf(player) < SWARM_CLOSE_CALL_HULL) {
       this._emit('swarm:announce', { kind: 'closecall', text: 'CLOSE CALL', count: 1 });
     }
-    // Physical punch: the multi-kill is the beat worth the dip; the tier carries its size
-    // and row 487 scales the dip by the victim's mass — heavy bodies hit-stop harder.
     if (count >= 3) {
-      this._requestHitStop(run, undefined, victimMassOf(victim));
       this._emit('camera:shake', {
         amount: Math.min(1, 0.25 + 0.08 * count),
+        cause: count >= 5 ? 'ploughKill' : 'multiKill',
+        audience: 'hero',
         position: payload.pos || (victim && victim.pos) || null,
       });
     }
@@ -378,7 +343,7 @@ export const swarmJuice = {
    * SWARM-07 B1 — a batched brood-kill receipt: one receipt per cause per tick from the Brood
    * engine. One popup per receipt (the presenter's pool is sized for 30+ bodies a minute, not
    * one per mite), the batch counted into the same multi-kill window as ship kills, so a
-   * 40-body wipe reads SWARM WIPE / PILE-UP ×N exactly as the room-kill grammar promises.
+   * 40-body wipe reads SWARM WIPE / Pile-up N exactly as the room-kill grammar promises.
    */
   _onBroodKills(payload) {
     const st = this.state;
@@ -411,17 +376,17 @@ export const swarmJuice = {
     if (windowCount >= 2) {
       const causes = this._recent.map((k) => k.cause);
       if (swarmPileUp(causes)) {
-        this._emit('swarm:announce', { kind: 'pileup', text: `PILE-UP ×${windowCount}`, count: windowCount });
+        this._emit('swarm:announce', { kind: 'pileup', text: `Pile-up ${windowCount}`, count: windowCount });
       } else {
         const word2 = swarmMultiKillWord(windowCount);
         if (word2) this._emit('swarm:announce', { kind: 'multikill', text: word2, count: windowCount });
       }
     }
-    // Physical punch: the wipe is the beat worth the dip.
     if (windowCount >= 3) {
-      this._requestHitStop(run);
       this._emit('camera:shake', {
         amount: Math.min(1, 0.25 + 0.02 * windowCount),
+        cause: windowCount >= 5 ? 'ploughKill' : 'multiKill',
+        audience: 'hero',
         position: payload.pos || null,
       });
     }
@@ -491,10 +456,9 @@ export const swarmJuice = {
     if (!run) return;
     const now = simTimeOf(this.state);
     const wave = Number.isInteger(payload && payload.wave) ? payload.wave : run.wave;
-    // LAST ONE — the round's final kill lands in slow-mo, not as one more tick of a bar.
+    // LAST ONE gives the round's final kill its own call.
     if (now - this._lastKillAt <= SWARM_LAST_ONE_WINDOW_S && this._waveKills > 0) {
       this._emit('swarm:announce', { kind: 'lastone', text: 'LAST ONE', count: 1 });
-      this._requestHitStop(run);
     }
     const tally = swarmRoundTally({
       flawless: !this._hullLost,
@@ -617,7 +581,6 @@ export const swarmJuice = {
     const crossed = swarmChainTierCrossed(chain, this._maxTierAt);
     if (crossed) {
       this._maxTierAt = crossed.at;
-      const run = liveSwarmRun(this.state);
       this._emit('swarm:chainTier', { name: crossed.name, at: crossed.at, chain });
       // The cue climbs with the mark: the tier index sets both the pitch step and the weight.
       const tierIndex = Math.max(0, SWARM_CHAIN_TIERS.findIndex((t) => t.at === crossed.at));
@@ -626,7 +589,6 @@ export const swarmJuice = {
         gain: Math.min(0.9, 0.5 + 0.08 * tierIndex),
         rate: swarmClimbRate(tierIndex),
       });
-      if (run) this._requestHitStop(run);
     }
     this._callChainStar(chain);
   },
@@ -637,7 +599,7 @@ export const swarmJuice = {
    * pays the zone's chain star when the zone's chain peak reached swarmZoneChainTarget — but the
    * instant the live chain crossed that line, nothing on the glass said so: the star you were
    * told to chase was only revealed on the results plate. Now the announcer calls it once per
-   * zone per run ("CHAIN STAR · ×12"), on a ladder run only (a Daily, a typed Custom seed, a
+   * zone per run ("Chain 12 — star"), on a ladder run only (a Daily, a typed Custom seed, a
    * mutator run or practice pays no stars, so it never claims one). The settle stays the only
    * writer of stars; this reads the same law at the moment it is met.
    */
@@ -651,7 +613,7 @@ export const swarmJuice = {
     const target = swarmZoneChainTarget(zone);
     if (!(chain >= target)) return;
     this._chainStarZones.add(zone);
-    this._emit('swarm:announce', { kind: 'chainstar', text: `CHAIN STAR · ×${target}`, count: chain });
+    this._emit('swarm:announce', { kind: 'chainstar', text: `Chain ${target} — star`, count: chain });
     this._emit('audio:cue', {
       id: SWARM_MOMENT_CUES.chainTier,
       gain: 0.85,
@@ -699,7 +661,6 @@ export const swarmJuice = {
         gain: 0.9,
         rate: swarmClimbRate(SWARM_CLIMB_RATES.length - 1),
       });
-      this._requestHitStop(run);
       return;
     }
     if (payload.active !== false || !this._overdriveLive) return;
@@ -828,39 +789,9 @@ export const swarmJuice = {
       const name = this._bossName || 'CHAMPION';
       this._emit('swarm:bossDown', { name, wave });
       this._emit('swarm:announce', { kind: 'bossdown', text: 'BOSS DOWN', count: 1 });
-      this._requestHitStop(null, 1);
-      this._emit('camera:shake', { amount: 1 });
+      this._emit('camera:shake', { amount: 1, cause: 'bossBreak' });
       this._emit('audio:cue', { id: 'moment.stinger', gain: 0.9, duck: true });
     }
-  },
-
-  // --- the physical punch ---------------------------------------------------------
-
-  /**
-   * Hit-stop through the same time-effects channel bulletTime uses — a bound request,
-   * never a timeScale write, so pause/min-wins composition stays automatic. Reduced
-   * effects keep every word and drop this dip; the accessibility flags already read
-   * as reduced inside arcadeEffectsLevel.
-   */
-  _requestHitStop(run, forceSeconds, victimMass) {
-    void run;
-    if (arcadeEffectsLevel(this.state && this.state.settings) !== 'full') return;
-    const seconds = Number.isFinite(forceSeconds) ? forceSeconds
-      : Math.max(0.06, swarmHitStopSeconds(this._lastChain || 0, victimMass));
-    if (!this.timeEffects) return;
-    // Storm retriggers wait for the live dip plus one beat of silence (SWARM_HITSTOP_REARM_GAP_S)
-    // so the floor releases between beats; forced dips (boss down) always land.
-    if (!Number.isFinite(forceSeconds) && simTimeOf(this.state) < this._hitStopNextAt) return;
-    if (seconds > this._hitStopLeft) {
-      this._hitStopLeft = seconds;
-      this._hitStopNextAt = simTimeOf(this.state) + seconds + SWARM_HITSTOP_REARM_GAP_S;
-      this.timeEffects.set(SWARM_HITSTOP_SOURCE, { scale: SWARM_HITSTOP_SCALE });
-    }
-  },
-
-  _releaseHitStop() {
-    if (this._hitStopLeft !== 0) this._hitStopLeft = 0;
-    if (this.timeEffects) this.timeEffects.clear(SWARM_HITSTOP_SOURCE);
   },
 
   _emit(event, payload) {

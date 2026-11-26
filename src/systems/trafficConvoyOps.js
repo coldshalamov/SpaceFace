@@ -84,6 +84,7 @@ export const trafficConvoyOps = {
           },
           ai: { archetype: TRAFFIC_ROLES.hauler.archetype, passive: true, spawnContext: 'convoy_civilian' },
         });
+        this._resolveSpawnClearance(shipSpec);
         entity = this.helpers.spawnEntity && this.helpers.spawnEntity(shipSpec);
         if (!entity) {
           if (budget && typeof budget.release === 'function') budget.release(requester);
@@ -346,6 +347,7 @@ export const trafficConvoyOps = {
           pos: { x: station.pos.x + dx / length * berth, z: station.pos.z + dz / length * berth },
           ai: { archetype: TRAFFIC_ROLES.hauler.archetype, passive: true, spawnContext: 'convoy_civilian' },
         });
+        this._resolveSpawnClearance(spec);
         entity = this.helpers.spawnEntity(spec);
         if (!entity) continue;
         entity.data.worldRecordId = worldRecordId;

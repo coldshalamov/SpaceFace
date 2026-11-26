@@ -57,7 +57,7 @@ test('a fresh lethal whip names Massline whip on the real run award line', () =>
     assert.equal(kills.length, 1);
     assert.equal(awards.length, 1, 'one death earns one award');
     assert.equal(awards[0].score, 100);
-    assert.equal(awards[0].xp, 3);
+    assert.equal(awards[0].xp, 8, 'a whip kill is a room kill: 2.5x experience (3 -> 8; 04_SWARM.md §5)');
     const line = earnLine(awards[0]);
     assert.match(line, /Massline whip/, 'lethal whip must name its cause on the earn line');
     assert.doesNotMatch(line, /massline_whip|A weapon|undefined/);

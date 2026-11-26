@@ -736,7 +736,7 @@ export const factionMeridian = {
         });
         this.bus && this.bus.emit('comms:log', {
           from: 'MTS SPINE',
-          text: `Coupler ${breakAt} gone — ${counted(tail.length, 'container', 'containers')} loose.`,
+          text: `A coupler has gone — ${counted(tail.length, 'container', 'containers')} loose.`,
           kind: 'encounter',
         });
       }

@@ -91,6 +91,27 @@ test.beforeEach(() => {
   useCrucibleMetaClock(() => '2026-09-14T12:00:00.000Z');
 });
 
+test('a live Swarm round records lifetime deeds but never speaks them over the fight', () => {
+  // Swarm stranger pass, owner demo 2026-11-23: 'Achievement: Six Figures.' fired at Scrap 0 on
+  // the first arena frame. Career/adventure deeds count the whole save; they unlock and save,
+  // but their notice waits off the fight glass.
+  const state = {
+    playerId: PLAYER, simTime: 100, mode: 'flight', onboarding: { active: false, finished: true },
+    run: { kind: 'survival', ruleset: 'swarm', phase: 'active' },
+  };
+  const h = harness({ state });
+  h.bus.emit('tether:latched', { targetId: 9, type: 'massline', context: 'selected', previewMatched: true });
+  h.bus.emit('credits:changed', { delta: 100000, reason: 'bounty', total: 100000 });
+  const byId = new Map(h.unlocks.map((u) => [u.id, u]));
+  assert.equal(byId.get('made_contact')?.announce, true, 'a deed this round can earn still speaks');
+  assert.equal(byId.get('six_figures')?.announce, false, 'a lifetime deed stays quiet mid-fight');
+  assert.ok(h.said.some((line) => /Made Contact/.test(line.text)));
+  assert.ok(!h.said.some((line) => /Six Figures/.test(line.text)));
+  // ...and the held deed is named when the run's record lands (Run Over), not lost.
+  h.bus.emit('run:resultsReady', { outcome: 'defeat', ruleset: 'swarm', seed: 4242, wave: 1 });
+  assert.ok(h.said.some((line) => /Six Figures/.test(line.text)), 'the lifetime deed speaks on the results plate');
+});
+
 test('a recorded event stream unlocks each achievement exactly once, and a replay unlocks nothing', () => {
   const h = harness();
   for (const [event, payload] of STREAM) h.bus.emit(event, payload);
@@ -222,17 +243,17 @@ test('the notice speaks through one voice, holds during the tutorial and carries
     { channel: h.said[0].channel, kind: h.said[0].kind, id: h.said[0].id, ttl: h.said[0].ttl },
     { channel: 'news', kind: 'achievement', id: 'achievement:notice', ttl: 5 },
   );
-  assert.equal(h.said[0].text, '2 achievements unlocked · Rock Has a Price · Berth Assigned', 'newest first');
+  assert.equal(h.said[0].text, '2 on your record · Rock Has a Price · Berth Assigned', 'Adventure words demo pass');
 
   state.simTime = 12;
   h.bus.emit('economy:tradeCompleted', { side: 'buy', qty: 1, commodityId: 'cmdty_water', total: 10 });
-  assert.equal(h.said[1].text, '3 achievements unlocked · Paper Trail · Rock Has a Price · Berth Assigned', 'a line still on screen keeps its earlier names');
+  assert.equal(h.said[1].text, '3 on your record · Paper Trail · Rock Has a Price · Berth Assigned', 'Adventure words demo pass');
   state.simTime = 13;
   h.bus.emit('jump:arrive', { sectorId: 'sector_ceres' });
-  assert.equal(h.said[2].text, '4 achievements unlocked · Out of the Pocket · Paper Trail · Rock Has a Price · …', 'the newest never hides behind the ellipsis');
+  assert.equal(h.said[2].text, '4 on your record · Out of the Pocket · Paper Trail · Rock Has a Price · …', 'Adventure words demo pass');
   state.simTime = 40;
   h.bus.emit('mission:completed', { missionId: 'm2', type: 'bulk_trade' });
-  assert.equal(h.said[3].text, 'Achievement unlocked · Signed and Delivered');
+  assert.equal(h.said[3].text, 'On your record · Signed and Delivered', 'Adventure words demo pass');
   console.log(`PQ-033.03 notice: "${h.said[0].text}"`);
 });
 

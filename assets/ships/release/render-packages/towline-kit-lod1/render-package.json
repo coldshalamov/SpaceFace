@@ -202,7 +202,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "3c61cb5d4f76d723b46a9f4bac5fe90161f74b70eae012136c7889e54fdd8d6d",
+  "contentHash": "3899801ed052f85ad144f03e72dc501ce9819bed4b62e22c886d2a0507a323fb",
   "dynamicGroups": [
     {
       "id": "sf.render.towline-kit-lod1.node.lod1-motion-towline-acknowledge-armor.dynamic",
@@ -1496,8 +1496,8 @@
       "uri": "towline_kit_lod1.glb"
     },
     "sourceManifest": {
-      "bytes": 344570,
-      "sha256": "37b151412e9ba78aeb28fad88aaf050f831b23946c16532fb3a321b92619cb6e",
+      "bytes": 352460,
+      "sha256": "7b29a65ee148539881ae9782eccdf6b975daa858f6ccb23db9554e3ec5c293f7",
       "uri": "pilots.json"
     }
   },
@@ -2269,7 +2269,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/towline_kit_lod1.glb"
   },
-  "runtimeHash": "88b7669a2a0f0e5ef0954afb5fe5e95cee0bf03e2102a38aebb20c516d88e5e2",
+  "runtimeHash": "df2296d2221dfe02875bad417cfbd1ed1fd74c7d0d7e12f8e5b57b2a16fdaab8",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

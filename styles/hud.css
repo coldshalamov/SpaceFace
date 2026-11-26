@@ -4,10 +4,7 @@
    multi-stage missile lock convergence, and G-LOC tunnel vision.
    ========================================================================== */
 
-/* --- Hardware Acceleration & Compositor Layers ---
-   #hud only transforms during the 180ms .sf-hud--glitch jitter, so the fullscreen layer carries
-   will-change only while that class is on; the small combat marks keep it permanently. */
-#hud.sf-hud--glitch,
+/* --- Hardware Acceleration & Compositor Layers --- */
 #aim-reticle,
 .sf-lockdiamond,
 .sf-target-arcs,
@@ -27,29 +24,32 @@
   transform-origin: center center;
 }
 
-/* --- Electronic Disruption (EMP Strike & Shield Collapse) --- */
-@keyframes sf-hud-jitter {
-  0%   { transform: translate3d(0, 0, 0); filter: none; }
-  15%  { transform: translate3d(-3px, 1px, 0); filter: drop-shadow(-2px 0 0 #ff0040) drop-shadow(2px 0 0 #00ffff); }
-  35%  { transform: translate3d(4px, -1px, 0); filter: drop-shadow(2px 0 0 #ff0040) drop-shadow(-2px 0 0 #00ffff); }
-  55%  { transform: translate3d(-2px, 2px, 0); filter: drop-shadow(-3px 0 0 #ff0040) drop-shadow(1px 0 0 #00ffff); }
-  75%  { transform: translate3d(3px, -1px, 0); filter: drop-shadow(1px 0 0 #ff0040) drop-shadow(-1px 0 0 #00ffff); }
-  90%  { transform: translate3d(-1px, 0, 0); filter: drop-shadow(-1px 0 0 #ff0040) drop-shadow(1px 0 0 #00ffff); }
-  100% { transform: translate3d(0, 0, 0); filter: none; }
+/* --- Electronic Disruption (EMP Strike & Shield Collapse) ---
+   Confined strictly to the shield meter and a thin screen-edge flash — zero full-screen
+   scanlines, zero tint over the 3D scene, and zero whole-HUD shake. */
+@keyframes sf-shield-meter-kick {
+  0%   { transform: translate3d(0, 0, 0); opacity: 1; }
+  25%  { transform: translate3d(-2px, 0, 0); opacity: 0.55; }
+  55%  { transform: translate3d(2px, 0, 0); opacity: 0.95; }
+  80%  { transform: translate3d(-1px, 0, 0); opacity: 0.7; }
+  100% { transform: translate3d(0, 0, 0); opacity: 1; }
 }
 
 #hud.sf-hud--glitch {
-  animation: sf-hud-jitter 180ms steps(6, end) 1;
+  animation: none;
 }
 
-#hud.sf-hud--glitch .sf-caption,
-#hud.sf-hud--glitch .sf-nav-label,
-#hud.sf-hud--glitch .sf-lockring__label,
-#hud.sf-hud--glitch .sf-mt-obj {
-  text-shadow: -2px 0 0 #ff0040, 2px 0 0 #00ffff !important;
+#hud.sf-hud--glitch .orr-visor__reading[data-meter="shield"] {
+  animation: sf-shield-meter-kick 220ms steps(4, end) 1;
+  --visor-fill: var(--dp-danger, #ff644c);
 }
 
-/* Raster Scanline Static Overlay */
+#hud.sf-hud--glitch .orr-visor__reading[data-meter="shield"] .orr-label,
+#hud.sf-hud--glitch .orr-visor__reading[data-meter="shield"] b {
+  color: var(--dp-danger-hot, #ff8a70);
+}
+
+/* Thin edge-only frame flash on shield collapse / EMP (never tints the 3D viewport) */
 .sf-hud-glitch-overlay {
   display: none;
   position: absolute;
@@ -57,27 +57,20 @@
   pointer-events: none;
   z-index: 25;
   opacity: 0;
-  background: repeating-linear-gradient(
-    to bottom,
-    transparent 0px,
-    transparent 2px,
-    rgba(0, 255, 255, 0.12) 3px,
-    rgba(255, 0, 64, 0.12) 4px
-  );
-  mix-blend-mode: screen;
+  background: none;
+  mix-blend-mode: normal;
+  box-shadow: inset 0 0 0 2px rgb(255 106 84 / 0.62), inset 0 0 26px rgb(255 96 76 / 0.24);
 }
 
 .sf-hud-glitch-overlay.active {
   display: block;
-  opacity: 0.85;
-  animation: sf-scanline-flicker 180ms ease-out 1;
+  opacity: 1;
+  animation: sf-shield-edge-flash 220ms ease-out 1 forwards;
 }
 
-@keyframes sf-scanline-flicker {
-  0%   { opacity: 0.9; transform: translateY(0); }
-  30%  { opacity: 0.6; transform: translateY(3px); }
-  60%  { opacity: 0.85; transform: translateY(-2px); }
-  100% { opacity: 0; transform: translateY(0); }
+@keyframes sf-shield-edge-flash {
+  0%   { opacity: 0.92; }
+  100% { opacity: 0; }
 }
 
 /* --- G-LOC Tunnel Vision Vignette --- */
@@ -161,10 +154,9 @@
   border-width: 0 0 2px 2px;
 }
 
-/* Stage 1: Acquiring (slow search pulse, the lamp at idle heat) */
+/* Stage 1: Acquiring (slow search pulse, the lamp at idle heat; no spinning circle) */
 .sf-lockring[data-stage="acquiring"] .sf-lockring__track {
-  stroke-dasharray: 6 6;
-  animation: sf-lockring-spin 3s linear infinite;
+  stroke-dasharray: 4 4;
 }
 
 .sf-lockring[data-stage="acquiring"] .sf-lockring__bracket {
@@ -328,4 +320,76 @@ html.sf-reduce-flash .sf-gloc-vignette {
   background-color: transparent;
   background-image: none;
   padding: 4px 2px;
+}
+
+/* ── One voice per moment (design/overhaul/08 §4; hudAttention.resolveVoiceSeat). The HUD's slow
+   pass names the surfaces that must step aside on <body data-sf-voice-yields>; each yields here
+   with a short fade, keeps its place, and returns when the seated voice clears. Matching by
+   selector means a card arriving between passes never flashes over the seated voice.
+   A standing lamp (sf-alert--lamp, ttl Infinity) is always visible: a yield never hides it,
+   and a lamp never takes a seat that would hide anything else. ── */
+body[data-sf-voice-yields~="tell"] .sf-tells,
+body[data-sf-voice-yields~="danger"] #alerts .sf-alert--danger:not(.sf-alert--lamp),
+body[data-sf-voice-yields~="floor"] #alerts .sf-alert--floor:not(.sf-alert--danger):not(.sf-alert--lamp),
+body[data-sf-voice-yields~="floor"] #alerts .sf-stage__item,
+body[data-sf-voice-yields~="pill"] #alerts .sf-alert:not(.sf-alert--floor):not(.sf-alert--dock):not(.sf-alert--danger):not(.sf-alert--lamp),
+body[data-sf-voice-yields~="dock"] #alerts .sf-alert--dock:not(.sf-alert--lamp),
+body[data-sf-voice-yields~="dock"] .sf-visor-dock-guide,
+body[data-sf-voice-yields~="deck"] #sf-prompt-deck,
+body[data-sf-voice-yields~="speaker"] #sf-stage-speaker,
+body[data-sf-voice-yields~="feed"] #toasts .sf-toast {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  transition: opacity 140ms ease-out, visibility 0s linear 140ms !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  body[data-sf-voice-yields] :is(.sf-tells, #alerts .sf-alert, #alerts .sf-stage__item,
+    .sf-visor-dock-guide, #sf-prompt-deck, #sf-stage-speaker, #toasts .sf-toast) { transition: none !important; }
+}
+html.sf-reduce-motion body[data-sf-voice-yields] :is(.sf-tells, #alerts .sf-alert, #alerts .sf-stage__item,
+  .sf-visor-dock-guide, #sf-prompt-deck, #sf-stage-speaker, #toasts .sf-toast) { transition: none !important; }
+
+/* ── Swarm HUD gating (DEMO-SWARM-HUD-2 Item 7): scoped strictly to body.sf-swarm-hud so
+   Adventure is untouched and clearing the class on run end / quit / Run Over restores everything.
+   Hides Adventure-only controls (M·Chart / Survey, Overhead / COMMS / Radio / Hail / Field Build,
+   objective tracker, old top-left run card) and seats Swarm alerts/toasts clear of top-right Scrap. ── */
+body.sf-swarm-hud #hud .sf-visor-utility-row,
+body.sf-swarm-hud #hud .sf-commtape,
+body.sf-swarm-hud #sf-comm-backlog-btn,
+body.sf-swarm-hud #sf-band-hud,
+body.sf-swarm-hud #race-tape,
+body.sf-swarm-hud #sf-contact-hail,
+body.sf-swarm-hud .fb-pill-btn,
+body.sf-swarm-hud .sf-flight-chart__footer,
+body.sf-swarm-hud .sf-mission-tracker,
+body.sf-swarm-hud .sf-nav-readout,
+body.sf-swarm-hud .sf-nav-label,
+body.sf-swarm-hud .sf-overview,
+body.sf-swarm-hud #hud > .sf-leftcontext > .sf-crun {
+  display: none !important;
+}
+@media (min-width: 1100px) and (min-height: 580px) {
+  html:not([data-sf-mobile-flight="1"]) body.sf-swarm-hud #alerts {
+    position: fixed !important;
+    left: auto !important;
+    right: 18px !important;
+    top: 102px !important;
+    bottom: auto !important;
+    width: 300px !important;
+    transform: none !important;
+    align-items: flex-end;
+  }
+  /* Receipts seat below a full stack of standing lamps (#alerts grows down from 102 px in 40 px
+     steps): late rounds light HULL CRITICAL and SHIELDS LOW together, and since lamps no longer
+     hide receipts the old 164 px seat drew the receipt over the second lamp. */
+  html:not([data-sf-mobile-flight="1"]) body.sf-swarm-hud #toasts {
+    position: fixed !important;
+    left: auto !important;
+    right: 18px !important;
+    top: 228px !important;
+    bottom: auto !important;
+    width: 300px !important;
+    transform: none !important;
+  }
 }

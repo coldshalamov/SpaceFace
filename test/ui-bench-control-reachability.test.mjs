@@ -212,11 +212,50 @@ test('an action the product removed on purpose (hidden row) is not a fault, but 
   const row = { nodeType: 1, hidden: true };
   const inRow = fixture();
   const cont = inRow.add('.orr-title [data-action], .orr-title--phone [data-action]', 'Continue');
-  cont.parentElement = row;
+  cont.parentNode = row;
   assert.deepEqual(measureControlReachability(inRow.doc, 'mainMenu'), [], 'a hidden containing row is the same intent');
   const css = fixture();
   css.add('.orr-title [data-action], .orr-title--phone [data-action]', 'New Game').style.display = 'none';
   assert.match(measureControlReachability(css.doc, 'mainMenu')[0], /Title menu New Game.*style prevents reachability/);
+});
+
+test('title keys behind Continue\'s open load veil are deferred', () => {
+  const { doc, add } = fixture();
+  add('.orr-title [data-action], .orr-title--phone [data-action]', 'Swarm — start round 1');
+  const fade = doc.createElement('div');
+  fade.className = 'sf-continue-fade open';
+  fade.style.opacity = '1';
+  fade.getBoundingClientRect = () => ({ left: 0, top: 0, right: 700, bottom: 460, width: 700, height: 460 });
+  const originalQuery = doc.querySelectorAll;
+  doc.querySelector = selector => selector === '.sf-continue-fade' ? fade : null;
+  doc.querySelectorAll = selector => selector === '.sf-continue-fade' ? [fade] : originalQuery(selector);
+  doc.elementFromPoint = () => fade;
+  assert.deepEqual(measureControlReachability(doc, 'mainMenu'), [],
+    'Continue covers the title on purpose while the veil is the picture');
+});
+
+test('a lifted Continue veil does not silence title keys; a lingering hit target is a finding', () => {
+  const { doc, add } = fixture();
+  add('.orr-title [data-action], .orr-title--phone [data-action]', 'Swarm — start round 1');
+  const fade = doc.createElement('div');
+  fade.className = 'sf-continue-fade';
+  fade.style.opacity = '0';
+  fade.getBoundingClientRect = () => ({ left: 0, top: 0, right: 700, bottom: 460, width: 700, height: 460 });
+  const originalQuery = doc.querySelectorAll;
+  doc.querySelector = selector => selector === '.sf-continue-fade' ? fade : null;
+  doc.querySelectorAll = selector => selector === '.sf-continue-fade' ? [fade] : originalQuery(selector);
+  doc.elementFromPoint = () => fade;
+  assert.match(measureControlReachability(doc, 'mainMenu').join('\n'), /Title menu.*centre hit reaches/,
+    'an invisible lingering veil that still eats hits is a walk defect, not a cover');
+});
+
+test('pause keys under photo/replay/clips are deferred while body.k-photo owns the picture', () => {
+  const { doc, add } = fixture();
+  add('.orr-pause [data-action], .orr-pause--phone [data-action]', 'Resume');
+  doc.body = { classList: { contains: name => name === 'k-photo' } };
+  doc.elementFromPoint = () => null;
+  assert.deepEqual(measureControlReachability(doc, 'pause'), [],
+    'photo mode hides the pause sheet; remaining keys are not a walk defect');
 });
 
 test('phone title and pause menus are measured: an off-frame phone Resume is a finding', () => {

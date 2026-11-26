@@ -131,6 +131,10 @@ for (const type of ['wreck', 'drone', 'asteroid_large', 'station_debris']) {
 assert.deepEqual(snapshot(restoreSys), afterRestore,
   'save_restore must remain a no-op for all explode-eligible types');
 
+restoreSys._onDestroyed({ ...asteroidPayload, id: 2001, type: 'payload', reason: 'counterweight_retire' });
+advanceExplosion(restoreSys);
+assert.equal(destructionCensus(restoreSys), 0, 'the intact training load and receiver retire silently');
+
 // Production propulsion pools are transient world-space presentation too. They must not survive
 // a save restore or sector boundary at their old coordinates.
 const energySys = makeVfxSystem();
@@ -242,6 +246,7 @@ const combatSys2 = makeVfxSystem();
 combatSys2._onDestroyed({
   ...asteroidPayload,
   id: 99,
+  type: 'payload',
   reason: 'combat',
 });
 advanceExplosion(combatSys2);

@@ -1,6 +1,7 @@
 import { publishedWardTarget, refreshWardScreenPublication } from '../ai/specialistCounterplay.js';
 import { nameThreatFromVisibleRead, specialistPlanByDoctrine, specialistPlanById } from '../ai/specialistPlans.js';
 import { contactThreatTier, isHostileToPlayer, SCANNER_CONTACT_RANGE } from '../systems/scannerReadModel.js';
+import { contactCensus } from './contactCensus.js';
 import { countermeasureReadiness } from '../systems/countermeasures.js';
 import { countArmedOwnerMines } from '../systems/mines.js';
 import { resolveWaypointPresentationPosition } from './navigationWaypoint.js';
@@ -14,6 +15,8 @@ import {
   getForcePaletteHex,
 } from '../data/palettes.js';
 import { pluralWord } from './numberFormat.js';
+import { formatDistance } from './units.js';
+import { ENEMY_TYPES, enemyKindWord } from '../data/enemies.js';
 
 
 export {
@@ -85,9 +88,15 @@ export const LEFTOVER_TELEGRAPH_KINDS = Object.freeze([
   'mothlight_iris',
 ]);
 
-export const TELEGRAPH_CUE_TICKS = 30;
+// CW-TELLS: the halo's cue clock reads the same 0.6 s tell floor as the doctrine beat
+// (DOCTRINE_TELEGRAPH_TICKS in src/ai/combatDoctrine.js — pq-161-01 pins the two equal, so
+// the painted ring never expires before the telegraph it answers).
+export const TELEGRAPH_CUE_TICKS = 36;
+// CW-TELLS: the pairing window's MAX tracks the tell floor (a volley now lands up to the
+// 0.6 s cue + its fire window after the announcement); the MIN stays the anti-coincidence
+// floor — a death mid-cue (a mine that arms in 0.5 s) is still genuinely preceded.
 export const TELEGRAPH_PAIR_MIN_TICKS = 30;
-export const TELEGRAPH_PAIR_MAX_TICKS = 60;
+export const TELEGRAPH_PAIR_MAX_TICKS = 66;
 
 // Continuous hazards (mines, snares, a lit fuse) stay lit from announcement to resolution
 // instead of pulsing once. Their event rows may declare durationTicks so death correlation
@@ -110,6 +119,27 @@ const tetherPlan = specialistPlanById('tether_cutter');
 const TETHER_CUT_WINDOW_TICKS = tetherPlan && Number.isFinite(tetherPlan.commitTicks)
   ? tetherPlan.commitTicks
   : 45;
+
+// 08 §4 — an off-screen marker is an edge arrow with the kind and the distance: "Wasp · 420 m".
+// The kind is the enemy's authored short word (enemies.enemyKindWord), else the last word of a
+// role, never the article "The". The distance steps in 10 m (0.1 km past a kilometre) so a
+// closing hull rewrites the tag a few times a second, not every frame.
+const HALO_ENEMY_KIND = new Map(ENEMY_TYPES.map((row) => [row.id, enemyKindWord(row)]));
+export function haloKindWord(entity, role = '') {
+  const data = (entity && entity.data) || {};
+  const kind = HALO_ENEMY_KIND.get(data.enemyTypeId) || HALO_ENEMY_KIND.get(data.lootTableId);
+  if (kind) return kind;
+  const raw = String(role || '').trim().toLowerCase().replace(/[_-]+/g, ' ');
+  const words = raw.split(/\s+/).filter((word) => word && !/^(?:the|a|an|unknown)$/.test(word));
+  const last = words.length ? words[words.length - 1] : '';
+  if (!last) return 'Hostile';
+  return last.charAt(0).toUpperCase() + last.slice(1);
+}
+export function haloDistanceText(distance) {
+  const d = Number(distance);
+  if (!Number.isFinite(d) || d < 0) return '';
+  return formatDistance(d >= 1000 ? Math.round(d / 100) * 100 : Math.round(d / 10) * 10);
+}
 
 export function hostileLabelFor(role, bucket, telegraphed, armedMines = 0) {
   const raw = String(role || 'unknown').trim() || 'unknown';
@@ -294,8 +324,8 @@ const EDGE_BAND_PX = 24;
 const EDGE_CENTER_PX = EDGE_BAND_PX * 0.5 + 6;   // inset: the indicator never touches the screen edge
 const EDGE_GAP_PX = 4;
 
-const ARC_SPAN_PX = 54;
-const ARC_DEPTH_PX = 18;
+const ARC_SPAN_PX = 26;
+const ARC_DEPTH_PX = 26;
 const MISSILE_SIZE_PX = 22;
 
 // The countermeasure read (INF: the defense answer to the inbound-missile telegraph must be
@@ -438,6 +468,16 @@ function buildMissileGlyph() {
     + '</svg>';
 }
 
+function buildAttackerChevronGlyph() {
+  // Crisp red edge chevron pointing outward toward an off-screen attacker (0deg = UP for top edge;
+  // rotated along bearing angle via --sf-threat-angle). No ruler boxes, no live filters.
+  return '<svg class="sf-threat-halo__attacker-chev" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">'
+    + '<path class="sf-threat-halo__chev-plate" d="M12 3 L21 15 L17 15 L12 8.5 L7 15 L3 15 Z"/>'
+    + '<path class="sf-threat-halo__chev-stroke" d="M4 14.5 L12 4.5 L20 14.5"/>'
+    + '<path class="sf-threat-halo__chev-inner" d="M7.5 18.2 L12 12.6 L16.5 18.2"/>'
+    + '</svg>';
+}
+
 // The CM ring rides the chevron: a faint full circle is the socket ("the answer exists"), the
 // stroke refills from empty as the recharge runs (dashoffset driven per tick by the slot state).
 // Same stroke/token language as the chevron itself — currentColor on the --k-signal amber.
@@ -570,14 +610,17 @@ export function createThreatHalo(root, busOrOpts) {
   root.appendChild(layer);
 
   const missileGlyph = buildMissileGlyph();
+  const attackerChevronGlyph = buildAttackerChevronGlyph();
 
   const hostileSlots = new Array(HOSTILE_LIMIT);
   for (let i = 0; i < HOSTILE_LIMIT; i++) {
-    const slot = createSlot('sf-threat-halo__slot sf-threat-halo__slot--arc', missileGlyph);
+    const slot = createSlot('sf-threat-halo__slot sf-threat-halo__slot--arc', '');
     const arc = document.createElement('div');
     arc.className = 'sf-threat-halo__arc';
+    arc.innerHTML = attackerChevronGlyph;
     slot.appendChild(arc);
     slot._sfArc = arc;
+    slot._sfAttackerChev = arc.firstChild || null;
     const mineCount = document.createElement('span');
     mineCount.className = 'orr-value sf-threat-halo__minecount';
     mineCount.setAttribute('aria-hidden', 'true');
@@ -588,6 +631,21 @@ export function createThreatHalo(root, busOrOpts) {
     });
     slot.appendChild(mineCount);
     slot._sfMineCount = mineCount;
+    // The kind and distance ride beside the arrow, on the screen side of the edge.
+    const tag = document.createElement('span');
+    tag.className = 'sf-threat-halo__tag';
+    tag.setAttribute('aria-hidden', 'true');
+    const tagKind = document.createElement('b');
+    tagKind.className = 'sf-threat-halo__tag-kind';
+    const tagDist = document.createElement('span');
+    tagDist.className = 'sf-threat-halo__tag-dist';
+    tag.appendChild(tagKind);
+    tag.appendChild(tagDist);
+    if (tag.style) tag.style.display = 'none';
+    slot.appendChild(tag);
+    slot._sfTag = tag;
+    slot._sfTagKind = tagKind;
+    slot._sfTagDist = tagDist;
     layer.appendChild(slot);
     hostileSlots[i] = slot;
   }
@@ -631,6 +689,104 @@ export function createThreatHalo(root, busOrOpts) {
   let haloTick = 0;
   let haloSim = 0;
   let haloPublication = 0;
+  // The pass's player and state, read by the edge tags (kind + distance) in applySlots.
+  let haloPlayer = null;
+  let haloState = null;
+  // Edge tags already seated this pass: a lower-ranked arrow whose tag would cover one keeps
+  // its arrow and drops its words. Along-edge spans: a top/bottom tag is a line of text wide.
+  const tagEdge = new Array(HOSTILE_LIMIT);
+  const tagAlong = new Float64Array(HOSTILE_LIMIT);
+  // A pack arriving from one side is one tag that counts it ('Wasp ×3  340 m', the lead arrow's
+  // distance) instead of three stacked lines of text down the screen edge; the arrows stay.
+  const tagSlot = new Array(HOSTILE_LIMIT);
+  const tagKindWord = new Array(HOSTILE_LIMIT);
+  const tagDistText = new Array(HOSTILE_LIMIT);
+  const tagCount = new Int32Array(HOSTILE_LIMIT);
+  // Another tag on the same edge this close is folded away (same kind: counted into one pack
+  // tag). The horizontal clear must cover the widest tag the type can produce — 'Wasp ×2 310 m'
+  // is ~180 px — or two counted labels seat side by side and read as one run-on line
+  // (DEMO-SWARM-UX-2, 'Wasp ×2 310 mWasp 320 m').
+  const TAG_CLEAR_ALONG_H = 200;
+  const TAG_CLEAR_ALONG_V = 64;
+  function applyEdgeTag(slot, i, labelled) {
+    const tag = slot._sfTag;
+    if (!tag) return labelled;
+    const e = haloState && haloState.entities && typeof haloState.entities.get === 'function'
+      ? haloState.entities.get(hostileId[i]) : null;
+    const p = haloPlayer;
+    let show = !!(e && e.pos && p && p.pos);
+    const edge = placement.edge;
+    const along = edge === EDGE_TOP || edge === EDGE_BOTTOM ? placement.x : placement.y;
+    if (show) {
+      const clear = edge === EDGE_TOP || edge === EDGE_BOTTOM ? TAG_CLEAR_ALONG_H : TAG_CLEAR_ALONG_V;
+      for (let k = 0; k < labelled; k++) {
+        if (tagEdge[k] === edge && Math.abs(tagAlong[k] - along) < clear) {
+          show = false;
+          const word = haloKindWord(e, hostileRole[i]);
+          if (tagSlot[k] && tagKindWord[k] === word) tagCount[k] += 1;
+          break;
+        }
+      }
+    }
+    const kind = show ? haloKindWord(e, hostileRole[i]) : '';
+    const dist = show ? haloDistanceText(Math.hypot(e.pos.x - p.pos.x, e.pos.z - p.pos.z)) : '';
+    // The tag never lands on the HUD: try the screen side of the arrow, then beside it along the
+    // edge; a tag that fits nowhere drops its words (the arrow stays). Width is estimated from the
+    // text so seating costs no layout read.
+    // Three spare characters: a pack's count (' ×3') is written onto this tag after it is seated.
+    const side = show ? edgeTagSide(edge, placement.x, placement.y, kind.length + dist.length + 4) : '';
+    show = show && side !== '';
+    setDisplay(tag, show, 'inline-flex');
+    if (!show) return labelled;
+    setAttr(slot, 'data-tag-side', side);
+    // Seat and count only. The pack's final word is written once, after every merge.
+    tagEdge[labelled] = edge;
+    tagAlong[labelled] = along;
+    tagSlot[labelled] = slot;
+    tagKindWord[labelled] = kind;
+    tagDistText[labelled] = dist;
+    tagCount[labelled] = 1;
+    return labelled + 1;
+  }
+  function writeSeatedEdgeTags(n) {
+    for (let k = 0; k < n; k++) {
+      const slot = tagSlot[k];
+      if (!slot || !slot._sfTagKind) continue;
+      const word = tagKindWord[k] || '';
+      const text = tagCount[k] > 1 ? `${word} ×${tagCount[k]}` : word;
+      const dist = tagDistText[k] || '';
+      if (slot._sfTagKindText !== text) {
+        slot._sfTagKindText = text;
+        slot._sfTagKind.textContent = text;
+      }
+      if (slot._sfTagDistText !== dist) {
+        slot._sfTagDistText = dist;
+        slot._sfTagDist.textContent = dist;
+      }
+    }
+  }
+  const TAG_ARROW_HALF_PX = 13;
+  const TAG_HEIGHT_PX = 20;
+  function edgeTagSide(edge, cx, cy, chars) {
+    const w = Math.round(chars * 7 + 20);
+    const h = TAG_HEIGHT_PX;
+    const fits = (x, y) => x >= 4 && y >= 4 && x + w <= viewportW - 4 && y + h <= viewportH - 4
+      && !overlapsReservedOrClear(x, y, w, h);
+    const beside = cy - h / 2;
+    if (edge === EDGE_TOP || edge === EDGE_BOTTOM) {
+      const y = edge === EDGE_TOP ? cy + TAG_ARROW_HALF_PX + 2 : cy - TAG_ARROW_HALF_PX - 2 - h;
+      if (fits(cx - w / 2, y)) return 'in';
+      // Inward but hung off one side: clears a HUD corner the centred tag would sit on, and never
+      // lands on the pack's other arrows along the edge the way a beside tag does.
+      if (fits(cx - TAG_ARROW_HALF_PX, y)) return 'in-after';
+      if (fits(cx + TAG_ARROW_HALF_PX - w, y)) return 'in-before';
+      if (fits(cx + TAG_ARROW_HALF_PX + 4, beside)) return 'after';
+      if (fits(cx - TAG_ARROW_HALF_PX - 4 - w, beside)) return 'before';
+      return '';
+    }
+    const x = edge === EDGE_LEFT ? cx + TAG_ARROW_HALF_PX + 4 : cx - TAG_ARROW_HALF_PX - 4 - w;
+    return fits(x, beside) ? 'in' : '';
+  }
   let lastHarvestIndexVersion = null;
   let lastHarvestAtS = -Infinity;
 
@@ -946,26 +1102,28 @@ export function createThreatHalo(root, busOrOpts) {
       : (width <= 1279 || height <= 719) ? 0.85 : 1;                    // --sf-hud-edge-fit
     const safeInsetX = Math.max(0, (width - height * 16 / 9) / 2);      // ultrawide safe frame
 
-    // [0] The ORRERY Cluster — the live power rail: hull rings, the Speed Dial and the ordnance
-    // crescent all live in its 760x540 canvas, anchored left:18 (8 under 1400px), bottom:24 and
-    // scaled canvas*host from the bottom-left corner. Reserved whole, bottom edge to the frame.
-    const clusterScale = (width > 1700 ? 0.85 : (width > 1300 ? 0.7 : 0.6)) * edgeFit;
-    const clusterLeft = width <= 1400 ? 8 : 18;
+    // [0] The bottom-left visor power bar & vitals cluster: keep off-screen attacker chevrons
+    // cleanly clear of both the six-tile + Q·More bar width and its full height above bottom edge.
+    const safeFrameW = Math.max(320, width - 2 * safeInsetX);
+    const visorWidth = width <= 760
+      ? Math.max(280, width - 36)
+      : (width <= 1200 ? Math.min(width * 0.54, safeFrameW * 0.56) : Math.min(width * 0.49, safeFrameW * 0.54, 792));
+    const visorLeft = clamp(width * 0.01435, 12, 24) + safeInsetX;
+    const visorBottom = clamp(height * 0.0436, 24, 43);
+    const visorHeight = width <= 1200 ? 182 : 244;
     const cluster = reservedRects[0];
     cluster.x = 0;
-    cluster.width = clusterLeft + CLUSTER_CANVAS_W * clusterScale + CLUSTER_PAD_PX;
-    cluster.y = Math.max(0, height - CLUSTER_BOTTOM_PX - CLUSTER_CANVAS_H * clusterScale - CLUSTER_PAD_PX);
+    cluster.width = visorLeft + visorWidth + CLUSTER_PAD_PX;
+    cluster.y = Math.max(0, height - visorBottom - visorHeight - CLUSTER_PAD_PX);
     cluster.height = height - cluster.y;
 
-    // [1] .sf-rightdock — sector law, target, overview and the radar dial, right/bottom at the
-    // HUD edge on the --sf-dock-w column. The reservation covers the radar bezel (the dial —
-    // the box that must never carry a marker) and a card margin above it, capped so the right
-    // edge still holds the hostile cap; text cards higher in the column are transient reads a
-    // passing mark may cross, the same trade the pre-ORRERY layout made.
-    const dockW = (width <= 760 || height <= 620) ? 204 : ((width <= 900 || height <= 650) ? 220 : 256);
+    // [1] .sf-rightdock — bottom-right visor radar chart & footer. Keep chevrons clear of it.
+    const chartW = Math.min(clamp(width * 0.2763, 216, 462), safeFrameW * 0.30);
+    const chartH = clamp(width * 0.1238, 112, 207) + 64;
+    const dockW = Math.max(chartW, (width <= 760 || height <= 620) ? 204 : ((width <= 900 || height <= 650) ? 220 : 256));
     const right = reservedRects[1];
-    right.width = edge + dockW * edgeFit + DOCK_PAD_PX;
-    right.height = Math.min((dockW + DOCK_PAD_TOP_PX) * edgeFit + edge, height * 0.5);
+    right.width = Math.max(edge + dockW * edgeFit, clamp(width * 0.012, 12, 20) + chartW) + DOCK_PAD_PX;
+    right.height = Math.min(Math.max((dockW + DOCK_PAD_TOP_PX) * edgeFit + edge, chartH + clamp(height * 0.0362, 16, 34) + 16), height * 0.5);
     right.x = width - safeInsetX - right.width;
     right.y = height - right.height;
 
@@ -1362,24 +1520,34 @@ export function createThreatHalo(root, busOrOpts) {
   function collectHostiles(player, state, worldToScreen) {
     hostileCount = 0;
     tetherPass += 1;
-    const index = state.entityIndex;
-    const indexedShips = index && index.__spacefaceEntityIndexV1 && Array.isArray(index.ships);
-    const ships = indexedShips
-      ? index.ships
-      : (state.entityList || []);
-    const playerTeam = player.team;
+    // Ship-like contacts + hostility come from the shared per-tick census
+    // (src/ui/contactCensus.js) instead of a private bucket walk: the combat HUD's contact
+    // marks and the roster scan the same set this frame. Rows are treated as id hints exactly
+    // like the old index.ships bucket — resolved to the live map entity before use.
+    const census = contactCensus(state, player);
+    // The derived index is still the fail-closed publication gate the player-truth reader binds:
+    // a bucket row whose live occupant has no transported generation must not appear at all,
+    // even when the census walked the entity list instead of the stale bucket.
+    const indexedShips = !!(state.entityIndex && state.entityIndex.__spacefaceEntityIndexV1
+      && Array.isArray(state.entityIndex.ships));
     const playerVelX = player.vel && Number.isFinite(player.vel.x) ? player.vel.x : 0;
     const playerVelZ = player.vel && Number.isFinite(player.vel.z) ? player.vel.z : 0;
 
-    for (let i = 0; i < ships.length; i++) {
-      let entity = ships[i];
-      if (indexedShips && entity !== player) entity = resolveIndexedHostileEntity(state, entity);
+    for (let i = 0; i < census.rows.length; i++) {
+      const row = census.rows[i];
+      let entity = row.e;
+      if ((census.indexed || indexedShips) && entity !== player) {
+        entity = resolveIndexedHostileEntity(state, entity);
+      }
       if (!entity || entity === player || entity.alive === false || entity.type !== 'ship' || !entity.pos) continue;
       const dx = entity.pos.x - player.pos.x;
       const dz = entity.pos.z - player.pos.z;
-      const distSq = dx * dx + dz * dz;
+      const distSq = entity === row.e ? row.distSq : dx * dx + dz * dz;
       if (distSq > HALO_RANGE_SQ) continue;
-      const hostile = isHostileToPlayer(entity, playerTeam, state);
+      // row.hostile was computed on the bucket entry; when the index hint resolved to a
+      // replacement object the live entity's hostility is the one that counts (the old code
+      // checked the resolved entity too).
+      const hostile = entity === row.e ? row.hostile : isHostileToPlayer(entity, player.team, state);
       if (!hostile) continue;
 
       // The submitted root is frame-local and may trail the simulation by one fixed tick.
@@ -1539,6 +1707,7 @@ export function createThreatHalo(root, busOrOpts) {
 
   function applySlots(cmState) {
     let shown = 0;
+    let labelled = 0;
     const publicationAt = performance.now();
     haloPublication += 1;
     setAttr(layer, 'data-placement-frame', haloPublication);
@@ -1564,6 +1733,15 @@ export function createThreatHalo(root, busOrOpts) {
       setDisplay(slot, true, 'block');
       setEdge(slot, placement.edge);
       setHudTransform(slot, placement.x, placement.y);
+      if (slot._sfAttackerChev && slot._sfAttackerChev.style) {
+        const dx = hostileX[i] - viewportW * 0.5;
+        const dy = hostileY[i] - viewportH * 0.5;
+        const deg = Math.round(Math.atan2(dy, dx) * 180 / Math.PI + 90);
+        if (slot._sfThreatDeg !== deg) {
+          slot._sfThreatDeg = deg;
+          slot._sfAttackerChev.style.setProperty('--sf-threat-angle', `${deg}deg`);
+        }
+      }
       setAttr(slot, 'data-role', hostileRole[i] || 'unknown');
       setAttr(slot, 'data-silhouette-token', hostileToken[i] || 'token_silhouette_standard');
       setAttr(slot, 'data-entity-id', hostileId[i] != null ? hostileId[i] : null);
@@ -1613,8 +1791,10 @@ export function createThreatHalo(root, busOrOpts) {
       setAttr(slot, 'aria-hidden', mines > 0 ? 'false' : 'true');
       setAttr(slot, 'role', mines > 0 ? 'img' : null);
       setAttr(slot, 'data-armed-mines', mines > 0 ? mines : null);
+      labelled = applyEdgeTag(slot, i, labelled);
       shown++;
     }
+    writeSeatedEdgeTags(labelled);
 
     for (let i = 0; i < MISSILE_LIMIT; i++) {
       const slot = missileSlots[i];
@@ -1666,6 +1846,8 @@ export function createThreatHalo(root, busOrOpts) {
         lastHarvestAtS = simT;
       }
       expireTelegraphCues(tick);
+      haloPlayer = player;
+      haloState = state;
       const width = (typeof window !== 'undefined' && Number.isFinite(window.innerWidth))
         ? window.innerWidth
         : 1280;

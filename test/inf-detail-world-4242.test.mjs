@@ -236,11 +236,13 @@ test('seed 4242 the speed dial Ref is the governed cruise, the wanted banner nam
   }, { ordnance: {} });
   assert.equal(bare.speedRef, 150);
 
-  assert.match(wantedAlertText(0.16, '', true), /fine\/scan/);
-  assert.match(wantedAlertText(0.5, '', true), /nets\/wedges/);
-  assert.match(wantedAlertText(0.9, '', true), /impound\/heist/);
+  // R18 (08 §5): the flight banner is a voice of eight words at most. It says hunters are coming
+  // and how long the heat lasts; the law's tier ladder lives on the screens with room for it.
   for (const heat of [0.16, 0.5, 0.9]) {
-    assert.doesNotMatch(wantedAlertText(heat, '', true), /LOW|MODERATE|HIGH/);
+    const line = wantedAlertText(heat, '', true);
+    assert.match(line, /HUNTERS INBOUND/);
+    assert.doesNotMatch(line, /LOW|MODERATE|HIGH|\//);
+    assert.ok(line.split(/\s+/).filter((w) => w !== '·').length <= 8, line);
   }
 
   const noise = miningNoiseDangerCue({ level: 0.8, threshold: 0.5 });

@@ -13,6 +13,7 @@ import { SECTORS } from '../src/data/sectors.js';
 import { ECONOMY_BALANCE as BALANCE } from '../src/data/economyDerived.js';
 import { economy } from '../src/systems/economy.js';
 import { predictPriceCurve } from '../src/systems/economyCycles.js';
+import { marketHistoryFor } from '../src/economy/marketModel.js';
 import { marketQuoteHtml, rememberedSurveyFreshness } from '../src/ui/views/marketPresentation.js';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
@@ -76,6 +77,9 @@ function containArrival(seed, horizonS, useDefaultCurve) {
     advance(state, econ, arrival);
     let contained = 0;
     for (const row of rows) {
+      // The closed form stamps quotes lazily; the arrival read is the live quote,
+      // the same stamp the market screen refreshes when the player opens it.
+      econ.quote(row.sid, row.cid, 'buy', 1);
       const got = state.economy.markets[row.sid][row.cid].lastMid;
       if (got >= row.lo && got <= row.hi) contained += 1;
     }
@@ -136,19 +140,25 @@ test('a modelled past and an observed sample are different marks', () => {
   const { sim, econ, state } = boot(HELD_OUT[0]);
   try {
     const entry = state.economy.markets.station_ceres[IRON];
-    assert.ok(entry.history.length > 2);
-    assert.ok(entry.history.every((point) => point.origin === 'modelled'), 'a fresh listing backfills a modelled past');
+    let history = marketHistoryFor(state, 'station_ceres', IRON);
+    assert.ok(history.length > 2);
+    assert.ok(history.every((point) => point.origin === 'modelled'),
+      'with no recorded sighting the whole backfill honestly reads as modelled');
     const before = state.simTime;
+    // A recorded observation — the dock intel snapshot every market visit takes —
+    // is the only thing that earns the observed mark under the closed form.
+    econ.snapshotIntel('station_ceres');
     advance(state, econ, 20);
     assert.ok(state.simTime > before);
-    const observed = entry.history.filter((point) => point.origin === 'observed');
-    const modelled = entry.history.filter((point) => point.origin === 'modelled');
-    assert.ok(observed.length >= 1, 'a later tick is observed');
+    history = marketHistoryFor(state, 'station_ceres', IRON);
+    const observed = history.filter((point) => point.origin === 'observed');
+    const modelled = history.filter((point) => point.origin === 'modelled');
+    assert.ok(observed.length >= 1, 'a recorded sighting marks the sample it covers');
     assert.ok(modelled.length >= 1, 'the backfill remains modelled');
     const forecast = predictPriceCurve(state, 'station_ceres', IRON);
     const html = marketQuoteHtml({
       id: IRON, name: 'Iron Ore', buy: entry.lastBuy, sell: entry.lastSell, avg: 14,
-      hist: entry.history, forecast, now: state.simTime,
+      hist: history, forecast, now: state.simTime,
       quoteAge: 'fresh', quoteSource: 'live',
     });
     assert.match(html, /data-modelled[^>]*>Estimated</);

@@ -32,6 +32,7 @@ import {
   collectStartupTextures,
   collectStartupTexturesSteps,
 } from './startupGpuResidency.js';
+import { beginBootWork } from '../core/bootWork.js';
 import { dedupWarn } from '../core/warnDedup.js';
 import {
   captureOpeningResourceIdentitySets,
@@ -601,14 +602,46 @@ function* describeObservedOpeningAdmissionDeltaSteps(before, observation, plan, 
   };
 }
 
-export function materialHasCompiledProgram(material, getProperties) {
+export function materialHasCompiledProgram(material, getProperties, object = null, target = null) {
   if (!material || typeof getProperties !== 'function') return false;
   try {
     const rec = getProperties(material);
-    return !!(rec && rec.currentProgram);
+    if (!rec || !rec.currentProgram) return false;
+    if (typeof rec.instancing === 'boolean') {
+      if (rec.__version !== undefined && rec.__version !== material.version) return false;
+      if (object) {
+        const wantInst = object.isInstancedMesh === true;
+        const wantColor = wantInst && object.instanceColor !== null;
+        const wantMorph = wantInst && object.morphTexture !== null;
+        if (rec.instancing !== wantInst
+            || rec.instancingColor !== wantColor
+            || rec.instancingMorph !== wantMorph) {
+          return false;
+        }
+      }
+      if (target && target.linearTarget === true) {
+        if (typeof rec.outputColorSpace === 'string' && rec.outputColorSpace !== 'srgb-linear') return false;
+        if (Number.isFinite(Number(rec.toneMapping)) && Number(rec.toneMapping) !== 0) return false;
+      }
+    }
+    return true;
   } catch {
     return false;
   }
+}
+
+const seenMaterialVariantsBySet = new WeakMap();
+
+function admissionDrawVariantBit(object) {
+  if (!object || typeof object !== 'object') return 1;
+  if (object.isInstancedMesh === true) {
+    const ic = object.instanceColor != null ? 1 : 0;
+    const im = object.morphTexture != null ? 2 : 0;
+    return 1 << (1 + ic + im);
+  }
+  if (object.isSkinnedMesh === true) return 1 << 5;
+  if (object.isBatchedMesh === true) return object._colorsTexture != null ? (1 << 7) : (1 << 6);
+  return 1;
 }
 
 export function uniqueAdmissionUnits(subjects, options = {}) {
@@ -618,6 +651,11 @@ export function uniqueAdmissionUnits(subjects, options = {}) {
   // the sets carry the cross-chunk seen state, so chunked accumulation produces
   // the same dedupe as one monolithic call.
   const seenMaterials = options.seenMaterials instanceof Set ? options.seenMaterials : new Set();
+  let seenVariants = seenMaterialVariantsBySet.get(seenMaterials);
+  if (!seenVariants) {
+    seenVariants = new Map();
+    seenMaterialVariantsBySet.set(seenMaterials, seenVariants);
+  }
   const seenGeometries = options.seenGeometries instanceof Set ? options.seenGeometries : new Set();
   const skipReady = typeof options.skipReadyMaterial === 'function'
     ? options.skipReadyMaterial
@@ -630,14 +668,16 @@ export function uniqueAdmissionUnits(subjects, options = {}) {
   for (let listIndex = listStart; listIndex < listEnd; listIndex++) {
     const object = list[listIndex];
     if (!object) continue;
+    const variantBit = admissionDrawVariantBit(object);
     let addedProgram = false;
     for (const material of materialList(object)) {
-      // Dedupe before the readiness probe: a material shared across subjects
-      // would pay the properties.get + currentProgram walk once per owner, and
-      // the probe is a pure read so a shared ready material can join the set too.
-      if (seenMaterials.has(material)) continue;
+      // Dedupe per (material, draw-variant) so Mesh + InstancedMesh + colored-InstancedMesh
+      // sharing one Material each retain a compile subject while duplicates still collapse.
+      const prevMask = seenVariants.get(material) || 0;
+      if ((prevMask & variantBit) !== 0) continue;
+      seenVariants.set(material, prevMask | variantBit);
       seenMaterials.add(material);
-      if (skipReady && skipReady(material)) continue;
+      if (skipReady && skipReady(material, object)) continue;
       if (!addedProgram) {
         programSubjects.push(object);
         addedProgram = true;
@@ -866,7 +906,11 @@ export function touchSubjectOnExactTarget(renderer, renderTarget, subject, camer
         // Seat the children where the node itself sat so sibling order is
         // otherwise preserved; the keep pass decides their visibility by node.
         const at = host === node.parent ? host.children.indexOf(node) : -1;
-        for (const child of children) child.parent = host;
+        for (const child of children) {
+          node._noteLightingOrLodChild?.(child, -1);
+          child.parent = host;
+          host._noteLightingOrLodChild?.(child, 1);
+        }
         node.children.length = 0;
         if (at >= 0) host.children.splice(at, 0, ...children);
         else host.children.push(...children);
@@ -968,7 +1012,10 @@ export function touchSubjectOnExactTarget(renderer, renderTarget, subject, camer
         };
         try {
           if (nativeDrawableFilter) {
-            renderer.renderExactTargetDrawables(lightingScene, camera, keepForExactTargetSubjects(drawableSubjects));
+            // The keep set has every selected drawable's ancestors. An unrelated branch
+            // only needs to be visited when it can supply a light or an LOD update.
+            renderer.renderExactTargetDrawables(lightingScene, camera,
+              keepForExactTargetSubjects(drawableSubjects), true);
           } else {
             renderer.render(lightingScene, camera);
           }
@@ -1029,11 +1076,17 @@ export function touchSubjectOnExactTarget(renderer, renderTarget, subject, camer
       for (const child of children) {
         if (child.parent !== host) continue;
         const at = host.children.indexOf(child);
-        if (at >= 0) host.children.splice(at, 1);
+        if (at >= 0) {
+          host.children.splice(at, 1);
+          host._noteLightingOrLodChild?.(child, -1);
+        }
         child.parent = node;
       }
       for (const child of children) {
-        if (child.parent === node && !node.children.includes(child)) node.children.push(child);
+        if (child.parent === node && !node.children.includes(child)) {
+          node.children.push(child);
+          node._noteLightingOrLodChild?.(child, 1);
+        }
       }
     }
     for (const [node, wasVisible] of hiddenForTouch) {
@@ -1125,6 +1178,26 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
       results: [],
     };
   }
+  // Counted sub-work for the loading shell: each unit's compile resolution and each first-draw
+  // touch is one counted item, so the bar and its detail line keep moving through the issue,
+  // link-drain and touch legs instead of parking at a stage ceiling for the whole admission.
+  // Presentation-only — failures and truncation simply leave the counter short.
+  const workOwner = options.renderer || null;
+  const programWork = workOwner ? beginBootWork(workOwner, 'programs', ordered.length) : null;
+  const firstDrawWork = workOwner ? beginBootWork(workOwner, 'first-draws', ordered.length) : null;
+  let programsDone = 0;
+  let firstDrawsDone = 0;
+  const countCompiled = (promise) => (programWork
+    ? Promise.resolve(promise).then((value) => {
+      programsDone += 1;
+      programWork.update(programsDone);
+      return value;
+    })
+    : promise);
+  const countTouched = (count) => {
+    firstDrawsDone = Math.max(firstDrawsDone, count);
+    firstDrawWork?.update(firstDrawsDone);
+  };
   // Without a readiness batch this stays exactly as it was: compile a unit, touch it, yield, next.
   // With one, the shape changes to issue-all / drain-once / touch-all. That matters because
   // `renderer.compile()` under KHR_parallel_shader_compile costs microseconds and only STARTS the
@@ -1141,7 +1214,7 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
     const results = await compileSubjectsAcrossPresents(
       ordered,
       async (subject) => {
-        const compiled = compileOne ? await compileOne(subject) : null;
+        const compiled = await countCompiled(compileOne ? compileOne(subject) : null);
         if (compiled?.contextLost || compiled?.readinessTimedOut || compiled?.incomplete) {
           if (strict) {
             const error = new Error('opening GPU admission incomplete: readiness did not settle');
@@ -1159,6 +1232,7 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
           if (touched.readinessTimedOut && !touched.contextLost && !touched.cancelled) error.code = 'SF_PIPELINE_READINESS_TIMEOUT';
           throw error;
         }
+        if (touchOne) countTouched(firstDrawsDone + 1);
         return { compiled, touched };
       },
       yieldToMain,
@@ -1246,14 +1320,14 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
       if (issueKey && seenIssueKeys.has(issueKey)) {
         // Keep `issued` index-aligned with `ordered` so the touch gate still counts this
         // subject as issued — its program is covered by the sibling's in-flight compile.
-        issued.push(Promise.resolve({ skipped: true, reason: 'program-signature-covered' }));
+        issued.push(countCompiled(Promise.resolve({ skipped: true, reason: 'program-signature-covered' })));
         issueDedupeSkips += 1;
         continue;
       }
       if (issueKey) seenIssueKeys.add(issueKey);
       const unitStarted = now();
       const submit = () => (compileOne ? compileOne(subject, compileOptions) : null);
-      issued.push(submitSerial ? submitSerial(submit, submitAdmission) : submit());
+      issued.push(countCompiled(submitSerial ? submitSerial(submit, submitAdmission) : submit()));
       paceDebtMs += now() - unitStarted;
       paceDebtUnits += 1;
       // Pace before the scheduled yield: the pacer drains everything queued so far behind a
@@ -1321,12 +1395,13 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
       skipped: false, subjects: ordered.length, issued: issued.length, issueDedupeSkips,
       touched: 0, materials: Number(units.materialCount) || (units.programSubjects || []).length,
       geometries: Number(units.geometryCount) || (units.geometrySubjects || []).length,
-      timing: { issueMs: Math.round(issueMs), drainMs: Math.round(drainMs), touchMs: 0 },
+      timing: { issueMs: Math.round(issueMs), drainMs: Math.round(drainMs), reattachMs: 0, touchMs: 0 },
       results: [],
     };
   }
   // Touches run next: restore any cpu-detached payloads a forced upload would read empty before
   // the first draw binds them. Issue order above stays exactly as it was.
+  const reattachStarted = now();
   await reattachDetachedAdmissionTextures(ordered, options.renderer, yieldToMain);
   await reattachDetachedAdmissionGeometries(ordered, options.renderer, yieldToMain);
   const results = [];
@@ -1379,6 +1454,7 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
       for (let offset = 0; offset < group.length; offset++) {
         results.push({ compiled: compiled[index + offset] ?? null, touched, touchError });
       }
+      countTouched(results.length);
       if (!submitSerial && paceQueue) await paceQueue();
       if (!touchAlreadyPaced && yieldToMain && index + touchBatchSize < ordered.length) await yieldToMain();
     }
@@ -1405,6 +1481,7 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
         touched,
         touchError,
       });
+      countTouched(results.length);
       paceDebtMs += now() - touchUnitStarted;
       paceDebtUnits += 1;
       // Same bounded-backlog pacing as the issue loop (see PACE_BUDGET_MS).
@@ -1436,6 +1513,7 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
     timing: {
       issueMs: Math.round(issueMs),
       drainMs: Math.round(drainMs),
+      reattachMs: Math.round(touchStarted - reattachStarted),
       touchMs: Math.round(touchMs),
     },
     results,

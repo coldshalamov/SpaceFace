@@ -11,12 +11,13 @@ import { onboarding } from '../src/systems/onboarding.js';
 import { world } from '../src/systems/world.js';
 import { jumpAbortText } from '../src/ui/jumpNotice.js';
 import { SECTORS } from '../src/data/sectors.js';
+import { FIRST_TRADE_CONTRACT, buildFirstTradeOffer } from '../src/data/economyContractTemplates.js';
 
 const SEED = 4242;
+const DEST_SECTOR = FIRST_TRADE_CONTRACT.destSectorId;
 const RUN = {
-  id: 'first_trade_1_0', source: 'firstTradeContract',
-  destSectorId: 'sector_ceres_belt', stationId: 'station_helios',
-  reward_cr: 760, status: 'active', // live shape: accepted missions carry reward_cr, not terms
+  ...buildFirstTradeOffer(SEED),
+  status: 'active',
 };
 
 function rig(withRun = true) {
@@ -38,19 +39,19 @@ function rig(withRun = true) {
 
 test('X-04 run + matching gate quotes the round-trip tolls against the pay, once', () => {
   const h = rig();
-  h.bus.emit('gate:range', { gateTo: 'sector_ceres_belt', inRange: true });
+  h.bus.emit('gate:range', { gateTo: DEST_SECTOR, inRange: true });
   const line = h.hints('firstGateToll');
   assert.equal(line.length, 1);
-  assert.equal(line[0].payload.text, 'Toll 194 out, 246 home. The run pays 760. Jump.');
+  assert.equal(line[0].payload.text, 'Toll 180 out, 246 home. The run pays 760. Jump.');
   assert.equal(h.state.player.hints.firstGate, true, 'generic firstGate is stamped spent');
-  h.bus.emit('gate:range', { gateTo: 'sector_ceres_belt', inRange: true });
+  h.bus.emit('gate:range', { gateTo: DEST_SECTOR, inRange: true });
   assert.equal(h.hints('firstGateToll').length, 1, 'second approach stays silent');
   assert.equal(h.hints('firstGate').length, 0, '"Plot a jump." never follows it');
 });
 
 test('X-04 no run, or a gate to another sector, gives the generic line', () => {
   const none = rig(false);
-  none.bus.emit('gate:range', { gateTo: 'sector_ceres_belt', inRange: true });
+  none.bus.emit('gate:range', { gateTo: DEST_SECTOR, inRange: true });
   assert.equal(none.hints('firstGateToll').length, 0);
   assert.equal(none.hints('firstGate').length, 1);
   assert.equal(none.hints('firstGate')[0].payload.text, 'Plot a jump.');
@@ -63,34 +64,34 @@ test('X-04 no run, or a gate to another sector, gives the generic line', () => {
 
 test('X-04 the line follows gateTollFor — no literals', () => {
   const h = rig();
-  const ceres = SECTORS.find((s) => s.id === 'sector_ceres_belt');
+  const destination = SECTORS.find((s) => s.id === DEST_SECTOR);
   const helios = SECTORS.find((s) => s.id === 'sector_helios_prime');
-  const keepCeres = ceres.security, keepHelios = helios.security;
+  const keepDestination = destination.security, keepHelios = helios.security;
   try {
-    ceres.security = 0.99; helios.security = 0.99;
-    h.bus.emit('gate:range', { gateTo: 'sector_ceres_belt', inRange: true });
+    destination.security = 0.99; helios.security = 0.99;
+    h.bus.emit('gate:range', { gateTo: DEST_SECTOR, inRange: true });
     assert.equal(h.hints('firstGateToll')[0].payload.text,
       'Toll 248 out, 248 home. The run pays 760. Jump.');
   } finally {
-    ceres.security = keepCeres; helios.security = keepHelios;
+    destination.security = keepDestination; helios.security = keepHelios;
   }
 });
 
-test('X-04 arrival names the worklight lead-in once; no run means silence', () => {
+test('X-04 arrival names the first-trade delivery berth once', () => {
   const h = rig();
-  const fromHelios = { sectorId: 'sector_ceres_belt', fromSectorId: 'sector_helios_prime' };
+  const fromHelios = { sectorId: DEST_SECTOR, fromSectorId: 'sector_helios_prime' };
   h.bus.emit('jump:arrive', fromHelios);
   const line = h.hints('firstGateArrive');
   assert.equal(line.length, 1);
-  assert.equal(line[0].payload.text, 'Ceres. Follow the Flare Rack to the refinery.');
+  assert.equal(line[0].payload.text, 'Dock at Tethys Trade Hub to deliver the sealed cargo.');
   h.bus.emit('jump:arrive', fromHelios);
   assert.equal(h.hints('firstGateArrive').length, 1);
   const none = rig(false);
   none.bus.emit('jump:arrive', fromHelios);
   assert.equal(none.hints('firstGateArrive').length, 0);
   const wrongLeg = rig();
-  wrongLeg.bus.emit('jump:arrive', { sectorId: 'sector_ceres_belt', fromSectorId: 'sector_io_reach' });
-  assert.equal(wrongLeg.hints('firstGateArrive').length, 0, 'only the Helios leg names the Flare Rack');
+  wrongLeg.bus.emit('jump:arrive', { sectorId: DEST_SECTOR, fromSectorId: 'sector_io_reach' });
+  assert.equal(wrongLeg.hints('firstGateArrive').length, 0, 'only the outbound Helios leg gives the instruction');
 });
 
 test('X-04 the live jump:arrive payload carries the departure sector the arrival gate reads', () => {
@@ -98,7 +99,7 @@ test('X-04 the live jump:arrive payload carries the departure sector the arrival
   // world writer must stamp it or the line can never speak in play.
   const state = createGameState(SEED);
   state.world.currentSectorId = 'sector_helios_prime';
-  state.jump = { state: 'JUMPING', _jumpT: 99, targetSectorId: 'sector_ceres_belt', via: 'gate' };
+  state.jump = { state: 'JUMPING', _jumpT: 99, targetSectorId: DEST_SECTOR, via: 'gate' };
   const seen = [];
   const host = Object.create(world);
   host.state = state;
@@ -107,18 +108,18 @@ test('X-04 the live jump:arrive payload carries the departure sector the arrival
   host._activeDrive = () => null;
   host._tickJumping(1 / 60, state);
   assert.equal(seen.length, 1);
-  assert.equal(seen[0].sectorId, 'sector_ceres_belt');
+  assert.equal(seen[0].sectorId, DEST_SECTOR);
   assert.equal(seen[0].fromSectorId, 'sector_helios_prime');
 });
 
 test('X-04 completion names the pay and the kept home toll, once', () => {
   const h = rig(false); // live order: missions.js removes the run from active before emitting
-  h.state.world.currentSectorId = 'sector_ceres_belt';
-  h.bus.emit('mission:completed', { source: 'firstTradeContract', missionId: 'first_trade_1_0', rewardCr: 760 });
+  h.state.world.currentSectorId = DEST_SECTOR;
+  h.bus.emit('mission:completed', { source: RUN.source, missionId: RUN.id, rewardCr: RUN.reward_cr });
   const line = h.hints('firstTradePaid');
   assert.equal(line.length, 1);
   assert.equal(line[0].payload.text, 'Paid 760. Keep 246 for the gate home.');
-  h.bus.emit('mission:completed', { source: 'firstTradeContract', missionId: 'first_trade_1_0', rewardCr: 760 });
+  h.bus.emit('mission:completed', { source: RUN.source, missionId: RUN.id, rewardCr: RUN.reward_cr });
   assert.equal(h.hints('firstTradePaid').length, 1);
 });
 

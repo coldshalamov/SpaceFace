@@ -387,11 +387,11 @@ test('SWARM-05: the celebration band reads the settled run, stars and all', () =
     const lines = textLines(band).join(' | ');
     assert.match(lines, /NEW BEST/);
     assert.match(lines, /★★☆ · 2 new/);
-    assert.match(lines, /140 cr banked/);
+    assert.match(lines, /Hangar \+140 cr/);
     assert.match(lines, /515 cr/);
     assert.match(lines, /Ricochet Runner/, 'the unlock id resolves to its label');
     assert.match(lines, /Round 10/);
-    assert.match(lines, /Lagrange Crucible opens at 2 stars/, 'the next arena\'s gate is named');
+    assert.match(lines, /Lagrange Arena opens at 2 stars/, 'the next arena\'s gate is named (no player sees "Crucible", R18)');
     assert.doesNotMatch(lines, /lagrange_crucible/, 'the player reads the arena name, never its id');
   } finally {
     globalThis.document = previousDocument;

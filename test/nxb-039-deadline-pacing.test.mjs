@@ -53,11 +53,14 @@ test('a local in-sector job with a real ship is not marked uncertain', () => {
   assert.equal(pacing.warning, null);
 });
 
-test('no ship on record falls back to the reference hull and says so', () => {
+test('no ship on record falls back to the reference hull and marks the timer an estimate', () => {
+  // Rule (2026-11-23): an unknown ship speed on a roomy timer is disclosed on the chip ("est"),
+  // not as a warning sentence in the dossier (that read as developer bookkeeping to a new pilot).
   const offer = { type: 'cargo_delivery', time_limit_s: 7200, distance: 5000, params: { taskTime: 20 } };
   const pacing = missionTimePacing(offer, stateWith({}));
   assert.equal(pacing.basis.shipSpeed, null);
-  assert.ok(pacing.warning.includes('estimate'), 'unknown ship speed is disclosed');
+  assert.ok(pacing.chip.text.includes('est'), 'unknown ship speed is disclosed on the chip');
+  assert.equal(pacing.warning, null, 'a roomy timer carries no warning sentence');
 });
 
 test('an expired deadline never displays a negative window (NXI-153)', () => {

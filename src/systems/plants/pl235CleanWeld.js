@@ -50,6 +50,7 @@ export function hullMooring(stationPos, sectorId = CLEAN_WELD_TUNING.sectorId) {
 }
 
 export const pl235CleanWeld = {
+  modes: ['flight'],
   name: 'plantsPl235',
 
   init(ctx) {

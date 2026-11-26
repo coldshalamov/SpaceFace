@@ -35,38 +35,42 @@ const ARENA = 'helios_core';
 const SEED = 4242;
 const LINE_EVENTS = new Set(['voice:say', 'alert']);
 
-/** The design's authored table — the source every row must match. */
+/** The authored table — the source every row must match (Swarm words demo pass:
+ *  each brief is one line of eight words or fewer that tells the pilot the trick,
+ *  in Madame Kiln's voice; round 14 renamed Hands Off -> Pinned Down so the name
+ *  matches what the round does to your throws). */
 const AUTHORED = [
-  [1, 'Doors Open', 'ten Wasps, one gate. Kiln explains nothing'],
-  [2, 'Second Helpings', 'Wasps from two gates. The first wall gun is lit'],
-  [3, 'Hot Potato', 'Detonator Darts. The round teaches throwing things back'],
-  [4, 'Mind the Gap', 'the lane runs for the first time, with Wasps on both sides of it'],
-  [5, 'Iron Maw', 'Boss. A mouth that eats what you throw — until you throw a Detonator'],
-  [6, 'The Charge', 'Bruisers. Every wall has a scorch mark by the end'],
-  [7, 'Long Shots', 'Lancers at the edges, Wasps in the middle. Rocks appear for cover'],
-  [8, 'Breadcrumbs', 'Jackals. The floor fills with mines that are also yours to use'],
-  [9, 'Tug of War', 'Tether Raiders. Half the round you are attached to something'],
-  [10, 'Corsair Wing', 'Boss: five ships that fly as one. The room changes — the crusher wakes. Bench'],
-  [11, 'The Umbrella', 'a Warden shielding gunners. Take the handle away'],
-  [12, 'Delivery', 'enemies arrive on the freight. Cut the container loose before it stops'],
-  [13, 'Lights Out', 'the arena dims. Ghosts. Your own lamps and the lane lights are all you have'],
-  [14, 'Hands Off', 'Anchor Controllers pin whatever you pick up. Nothing stays thrown'],
-  [15, 'Mirrorjaw Foreman', 'Boss. Copies the last gun that hit it. Hit it with a rock'],
-  [16, 'Rush Hour', 'both lanes, double the traffic, a full pack. The room is the weapon'],
-  [17, 'No Small Change', 'Point-Defense Screens shoot down anything small. Find something big'],
-  [18, 'Highway Robbery', 'Reavers steal your Scrap and run for the gates. Chase or lose it'],
-  [19, 'The Law', 'Lawmen and Cutters box you in — and stop for the lane lights'],
-  [20, 'The Yardmaster', 'Boss. It controls the freight. The lanes change direction mid-fight. The room changes again. Bench'],
-  [21, 'The Wall', 'heavies, shoulder to shoulder. Guns do nothing. Use the room'],
-  [22, 'Chain Gang', 'every enemy is tethered to another. Swing one, swing them all'],
-  [23, 'The Choir', 'Zealots in rings. Find the singer'],
-  [24, 'Everything Must Go', 'prices halved, enemies doubled, ninety seconds'],
-  [25, 'The Anvil', 'Boss. Too heavy to move. So move everything else into it'],
-  [26, 'The Umbrella, Again', 'two Wardens covering each other'],
-  [27, 'Tailgate', 'a heavy rides the freight round and round. It can only be hit from the lane'],
-  [28, 'Black Friday', 'every drop type falls at once, and so does every enemy type'],
-  [29, 'Quiet', 'forty seconds of nothing. Then the gates all open together'],
-  [30, 'The Forge Regent', 'Final boss. It runs the furnace. Three stages: it feeds the room to the furnace, then feeds the furnace to the room, then comes out itself. Win, and the lights come up'],
+  [1, 'Doors Open', 'Ten Wasps, one gate. Throw a rock.'],
+  [2, 'Second Helpings', 'Two gates. Let the wall gun work.'],
+  [3, 'Hot Potato', 'Catch the dart. Throw it home.'],
+  [4, 'Mind the Gap', 'The lane kills for you. Stand clear.'],
+  [5, 'Iron Maw', 'Throw right after its broadside.'],
+  [6, 'The Charge', 'They charge straight. Be somewhere else.'],
+  [7, 'Long Shots', 'Hide behind rocks. Pick off the edges.'],
+  [8, 'Breadcrumbs', 'Their mines are yours. Throw them back.'],
+  [9, 'Tug of War', 'They hook you. Pull harder. Throw them.'],
+  [10, 'Corsair Wing', 'Break the wing. Then mind the crusher.'],
+  [11, 'The Umbrella', 'Kill the Warden. The rest go bare.'],
+  [12, 'Delivery', 'Cut the container loose before it stops.'],
+  [13, 'Lights Out', 'Follow the lane lights. Fear the dark.'],
+  [14, 'Pinned Down', "They pin your toys. Don't stop throwing."],
+  [15, 'Mirrorjaw Foreman', 'Hit it with a rock, never guns.'],
+  [16, 'Rush Hour', 'Both lanes run. Let traffic do it.'],
+  [17, 'No Small Change', 'Small things die. Throw something big.'],
+  [18, 'Highway Robbery', 'They steal Scrap. Chase them down.'],
+  [19, 'The Law', 'They stop for lane lights. Bait them.'],
+  [20, 'The Yardmaster', "Watch the lanes. They'll turn mid-fight."],
+  [21, 'The Wall', "Guns won't help. Let the room kill."],
+  [22, 'Chain Gang', "Swing one. You'll swing them all."],
+  [23, 'The Choir', 'Find the singer. Break the song.'],
+  [24, 'Everything Must Go', 'Half price. Double trouble. Ninety seconds.'],
+  // Plain words, design/overhaul/08_INTERFACE.md §5: the rope never refuses — "too heavy" is banned.
+  [25, 'The Anvil', "It won't move. Feed it everything else."],
+  [26, 'The Umbrella, Again', 'Two Wardens. Split them. Strip them.'],
+  [27, 'Tailgate', 'It rides the freight. Hit it from the lane.'],
+  [28, 'Black Friday', 'Everything falls at once. Grab and throw.'],
+  [29, 'Quiet', 'Forty quiet seconds. Then every gate opens.'],
+  [30, 'The Forge Regent', 'Feed furnace. Dodge furnace. Kill Regent.'],
 ];
 
 function boot() {
@@ -279,7 +283,11 @@ test('the Iron Maw keeps its hull name — the round name is not the ship', () =
   assert.ok(texts[0].startsWith('ROUND 5 — Iron Maw.'));
   assert.ok(texts[0].includes("Dreadnought 'Iron Maw'."),
     'the dreadnought still names itself on arrival');
+  // The data's own committed wording is the truth: "Cross its bow before it fires."
+  // (a stale pin on "before the guns fire" went red when the data line was reworded).
+  assert.match(texts[0], /Cross its bow before it fires\./);
   assert.equal(texts[1], swarmCourseFor(5).twist);
+  assert.ok(texts.includes('Patience, darling. Let it shout first.'));
   survivalAnnounce.destroy();
 });
 
@@ -304,10 +312,10 @@ test('the round preview exposes the authored name and twist', () => {
   const long = swarmRoundPreview({ arenaId: ARENA, wave: 7, seed: SEED });
   assert.deepEqual(long.course, {
     round: 7, name: 'Long Shots',
-    twist: 'Lancers at the edges, Wasps in the middle. Rocks appear for cover',
-    twistId: 'plate_drift', question: 'Lancers at the edges. Use the rocks.',
+    twist: 'Hide behind rocks. Pick off the edges.',
+    twistId: 'plate_drift', question: 'Rocks are cover. Use every one.',
   });
-  assert.equal(long.event.name, 'Plate drift', 'the preview names the card the twist deals');
+  assert.equal(long.event.name, 'Plate Drift', 'the preview names the card the twist deals'); // Swarm words demo pass
   const quiet = swarmRoundPreview({ arenaId: ARENA, wave: 29, seed: SEED });
   assert.equal(quiet.course.name, 'Quiet');
   assert.equal(quiet.course.twistId, 'quiet', 'the hold is a room mechanic, not a dealt card');

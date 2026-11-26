@@ -73,8 +73,12 @@ test('public draft preparation places its complete optic lattice clear of prior-
     assert.ok(offsets[0].x !== 0 || offsets[0].z !== 0 || latticeScale !== 1,
       'the occupied authored pose cannot stand');
     for (let i = 0; i < wrecks.length; i++) assert.deepEqual({ ...wrecks[i].pos }, poses[i], 'placement preserves earned debris positions');
+    const openingIds = cells.map(entity => entity.id);
     for (let step = 0; step < 4; step++) {
       await send(1);
+      assert.deepEqual(arena._opticIds, openingIds, 'the prepared lattice keeps the same cells in flight');
+      assert.ok(cells.every(entity => entity.alive && state.entities.get(entity.id) === entity),
+        'the exact initial cells stay live');
       for (const entity of wrecks) {
         const velocity = native.records.get(entity.id).body.linvel();
         assert.ok(Math.hypot(velocity.x, velocity.z) < 1e-4, `native opening step ${step + 1} has no overlap launch`);

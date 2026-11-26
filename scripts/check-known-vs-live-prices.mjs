@@ -60,16 +60,20 @@ function testVisitedStationsOnly() {
   installWorld(state);
 
   const helios = econ.ensureMarket('station_helios');
-  setQuote(helios, COMMODITY_ID, 171, 180);
   state.simTime = 30;
   sim.bus.emit('dock:docked', { stationId: 'station_helios' });
+  // Docking stamps the closed-form quote, then memory records the visible quote
+  // (station conditions included — the number the berth actually showed).
+  const heliosSeenSell = state.player.marketMemory.station_helios[COMMODITY_ID].sell;
+  const heliosSeenBuy = state.player.marketMemory.station_helios[COMMODITY_ID].buy;
+  assert.ok(heliosSeenSell > 0 && heliosSeenBuy > heliosSeenSell, 'dock produces a live quote');
 
   const ceres = econ.ensureMarket('station_ceres');
   setQuote(ceres, COMMODITY_ID, 190, 212);
   const forge = econ.ensureMarket('station_forge');
   setQuote(forge, COMMODITY_ID, 300, 999);
 
-  assert.equal(state.player.marketMemory.station_helios[COMMODITY_ID].sell, 180,
+  assert.equal(state.player.marketMemory.station_helios[COMMODITY_ID].sell, heliosSeenSell,
     'docking at Helios should record the visible sell quote');
   assert.equal(state.player.marketMemory.station_ceres, undefined,
     'warming an undocked station market must not create player price memory');
@@ -79,8 +83,8 @@ function testVisitedStationsOnly() {
   const overlays = marketMemoryStationOverlays(state, COMMODITY_ID);
   assert.deepEqual(overlays.map((entry) => entry.stationId), ['station_helios'],
     'starmap price-memory overlay should include only visited stations');
-  assert.equal(overlays[0].sell, 180, 'overlay sell price comes from player memory');
-  assert.equal(overlays[0].buy, 171, 'overlay buy price comes from player memory');
+  assert.equal(overlays[0].sell, heliosSeenSell, 'overlay sell price comes from player memory');
+  assert.equal(overlays[0].buy, heliosSeenBuy, 'overlay buy price comes from player memory');
   assert.equal(overlays[0].ageLabel, 'fresh', 'newly recorded memory is labeled fresh');
   ok('visited station quotes record once and warmed live markets stay out of map memory');
 }
@@ -92,14 +96,13 @@ function testSaveReloadAndAgeLabels() {
   installWorld(state);
 
   const helios = econ.ensureMarket('station_helios');
-  setQuote(helios, COMMODITY_ID, 171, 180);
   state.simTime = 0;
   sim.bus.emit('dock:docked', { stationId: 'station_helios' });
 
   const ceres = econ.ensureMarket('station_ceres');
-  setQuote(ceres, COMMODITY_ID, 190, 212);
   state.simTime = 0;
   sim.bus.emit('dock:docked', { stationId: 'station_ceres' });
+  const ceresSeenSell = state.player.marketMemory.station_ceres[COMMODITY_ID].sell;
 
   const savedPlayer = JSON.parse(JSON.stringify(state.player));
   const loaded = createSimulation({ seed: 5105, systems: [economy] });
@@ -113,7 +116,7 @@ function testSaveReloadAndAgeLabels() {
     'visited station memories survive a save/reload-style JSON round trip');
 
   const ceresOverlay = overlays.find((entry) => entry.stationId === 'station_ceres');
-  assert.equal(ceresOverlay.sell, 212, 'Ceres overlay uses the saved sell quote, not a live recompute');
+  assert.equal(ceresOverlay.sell, ceresSeenSell, 'Ceres overlay uses the saved sell quote, not a live recompute');
   assert.equal(ceresOverlay.ageLabel, '65 min', 'starmap overlay marks old visited quotes as stale memory');
   assert.equal(ceresOverlay.tint, 'old', '65-minute-old memory uses the old/stale tint bucket');
   assert.equal(ceresOverlay.commodityId, COMMODITY_ID, 'overlay remains scoped to the selected commodity');

@@ -12,6 +12,7 @@ import { presentSurfaceDecisions, chooseAdventureDecision, acceptMissionOnLane }
 import { marketQuoteHtml } from '../src/ui/views/marketPresentation.js';
 import { createBus } from '../src/core/eventBus.js';
 import { installSimCommandSink, uninstallSimCommandSink } from '../src/core/simLaneCommands.js';
+import { addCargo, removeCargo } from '../src/systems/cargo.js';
 const HERE = 'station_helios', THERE = 'station_coalition', IRON = 'cmdty_ore_iron';
 
 function boot(seed = 4242) {
@@ -228,7 +229,9 @@ test('reviewed loads reject moved berths, partial holds, and malformed price ter
     assert.equal(owner.execute(THERE, IRON, 'buy', 3, terms).reason, 'station_changed');
     assert.equal(owner.execute(HERE, IRON, 'buy', 3, {...terms, expectedTotal: NaN}).reason, 'bad_terms');
     assert.equal(JSON.stringify([state.player.credits, state.player.cargo, owner.getMarket(HERE), owner.getMarket(THERE)]), before);
-    state.player.cargo.capVolume = 1;
+    // Slot law (CARGO-BUILD-1): a shrunken capVolume cannot refuse — the bag bottoms at 8
+    // slots. A hold whose slots are already full is what cannot take the reviewed load.
+    addCargo(state, 'cmdty_food', 240);
     const held = JSON.stringify([state.player.credits, state.player.cargo, owner.getMarket(HERE)]);
     const partial = owner.handleTrade(IRON, 'buy', 3, terms);
     assert.equal(partial.ok, false); assert.equal(partial.reason, 'load_changed');
@@ -325,10 +328,11 @@ test('production worker registered trade port enforces berth, whole-load, price,
     const before = state.player.credits;
     assert.equal(trade({...args, sourceStationId: THERE}).result.reason, 'station_changed');
     assert.equal(trade({...args, expectedTotal: 0}).result.reason, 'price_changed');
-    state.player.cargo.capVolume = 1;
+    // Same slot-law fixture as the main-thread test: a full bag, not a shrunken volume cap.
+    addCargo(state, 'cmdty_food', 240);
     assert.equal(trade(args).result.reason, 'load_changed');
     assert.equal(state.player.credits, before); assert.equal(state.player.cargo.items[IRON] || 0, 0);
-    state.player.cargo.capVolume = 250;
+    removeCargo(state, 'cmdty_food', 240);
     const paid = trade(args).result;
     assert.equal(paid.ok, true); assert.equal(paid.qty, 3); assert.equal(paid.total, total);
     const after = state.player.credits;

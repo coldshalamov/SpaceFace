@@ -32,7 +32,7 @@ import {
   rigWords, shoveWords, travelWords, wu,
 } from './arsenalWords.js';
 import {
-  bombUsesCharge, playerImpulseCharges, resolveRigTarget, swarmBombSelection, powersFireOnPress,
+  bombUsesCharge, playerImpulseCharges, resolveRigTarget, swarmBombSelection, powersFireOnPress, powerUsesReleasePreview,
 } from '../systems/powerVerbs.js';
 import { cloakTimeS, fittedCloakModule } from '../systems/cloak.js';
 import { resolveActionCodes, formatBindingCode } from '../systems/input.js';
@@ -120,21 +120,16 @@ export function armedOrdnanceCounts(state, nowS = simNow(state)) {
 // ── the effective BOMB action ───────────────────────────────────────────────────────────────────
 
 /**
- * What the Bomb key does on the NEXT press — the same precedence input.js uses: the sticky charge
- * while one is aboard (unless a bay bomb was explicitly chosen), then a stocked swarm call-in,
- * then the chosen drift bomb. `action` is 'throw' | 'callin' | 'drop' | 'empty'.
+ * What the Bomb key throws on its NEXT throwing press — the same precedence input.js uses: the
+ * sticky charge while one is aboard (unless a bay bomb was explicitly chosen), then the chosen
+ * drift bomb. `action` is 'throw' | 'drop' | 'empty'. While your own ordnance is armed out there
+ * the press detonates it instead (armedOrdnanceCounts; R17). Swarm call-ins are not on this key.
  */
 export function resolveBombAction(state) {
   const charges = playerImpulseCharges(state);
   if (bombUsesCharge(state)) {
     return { action: 'throw', kind: 'charge', id: 'power_charge', name: 'Impulse charge', short: 'Charge', stock: charges,
       capacity: resolveImpulseChargeCapacity(state), owner: 'cargo.items.cmdty_impulse_charge' };
-  }
-  const callin = swarmBombSelection(state);
-  if (callin) {
-    const row = swarmCallinById(callin);
-    return { action: 'callin', kind: callin, id: `callin_${callin}`, name: row ? row.name : callin, short: row ? row.name : callin,
-      stock: swarmCallinCount(state && state.run, callin), capacity: null, owner: 'run.modifiers swarm_callin' };
   }
   const bays = state && state.bombs ? state.bombs : {};
   const cells = bays.rack && Array.isArray(bays.rack.cells) ? bays.rack.cells : null;
@@ -268,15 +263,16 @@ export function resolveFittedWeapons(state, bindings = readArsenalBindings(state
 export function combinationExample(entries) {
   const pull = entries.pull;
   const gyre = entries.gyre;
-  const key = (e) => (e && e.binding && e.binding.bound ? e.binding.label : 'unbound');
+  // An unbound verb shows no key hint at all — never the word "unbound", never an empty parenthetical.
+  const key = (e) => (e && e.binding && e.binding.bound ? ` (${e.binding.label})` : '');
   const steps = [
-    { id: 'pull', key: key(pull), text: `Pull (${key(pull)}) drops a well on a pile of loose rocks and they gather.` },
-    { id: 'gyre', key: key(gyre), text: `Hold Gyre (${key(gyre)}) over the pile: it scoops the rocks into one growing ball.` },
-    { id: 'throw', key: key(gyre), text: `Release Gyre to throw the ball through the pack. The collision does the damage.` },
+    { id: 'pull', key: key(pull).trim(), text: `Pull${key(pull)} drops a well on a pile of loose rocks and they gather.` },
+    { id: 'gyre', key: key(gyre).trim(), text: `Hold Gather${key(gyre)} over the pile: it scoops the rocks into one growing ball.` },
+    { id: 'throw', key: key(gyre).trim(), text: `Release Gather to throw the ball through the pack. The collision does the damage.` },
   ];
   return {
     id: 'pull-gyre-throw',
-    title: 'Pull, Gyre, throw',
+    title: 'Pull, Gather, throw',
     order: ['pull', 'gyre', 'throw'],
     steps,
     text: steps.map((s) => s.text).join(' '),
@@ -390,6 +386,15 @@ export function createArsenalPresentation() {
       e.ready = readyOf(state, id, ctx);
       entries[id] = e;
     }
+    // Gesture copy follows the same policy as input, including the player's current binding.
+    for (const id of ['pull', 'shove', 'pin', 'bomb']) {
+      const entry = entries[id];
+      entry.hints = [...(entry.hints || []), entry.binding.bound
+        ? (powerUsesReleasePreview(state, id)
+          ? `Hold ${entry.binding.label} to preview, then release to use. A quick tap also works.`
+          : `Tap ${entry.binding.label} to use immediately.`)
+        : `Bind ${entry.name} in Settings → Controls to use it.`];
+    }
     // — Shove: how many armed explosives the press will set off.
     const counts = armedOrdnanceCounts(state, nowS);
     const shove = entries.shove;
@@ -407,19 +412,20 @@ export function createArsenalPresentation() {
     b.next = bomb.action === 'throw' ? 'throw' : bomb.action === 'callin' ? 'call in' : bomb.action === 'drop' ? 'drop' : '';
     b.label = bomb.action === 'empty' ? (bomb.kind === 'dry' ? `Bomb · ${bomb.short} empty` : 'Bomb · none left')
       : `Bomb · ${b.next} ${bomb.short}${stockText}`;
-    if (bomb.action !== 'empty') b.sentence = `Next press: ${b.next} ${bomb.name}${stockText}. ${b.sentence}`;
+    if (bomb.action !== 'empty') b.sentence = `Next use: ${b.next} ${bomb.name}${stockText}. ${b.sentence}`;
     // — Rig: the CURRENT function before use.
     const rig = entries.rig;
     rig.on = rigOn;
-    rig.label = `Rig · ${rigTarget === 'skim'
-      ? (rigOn ? 'Harvesting ore' : 'Harvest ore')
-      : (rigOn ? 'Clearing a path' : 'Clear a path')}`;
-    // — Gyre: gather / release.
+    rig.label = `Plow · ${rigTarget === 'skim' ? 'Scoop' : 'Wedge'} ${rigOn ? 'ON' : 'OFF'}`;
+    rig.hints = [...(rig.hints || []), rig.binding.bound
+      ? `Tap ${rig.binding.label} to turn it ${rigOn ? 'off' : 'on'}.`
+      : 'Bind Plow in Settings → Controls to turn it on or off.'];
+    // — Gather: gather / release.
     const g = gyreRead(state);
     const gyre = entries.gyre;
     gyre.phase = g.phase;
     gyre.verb = g.holding ? 'Release' : g.gathering ? 'Gathering' : g.launching || g.ballAway ? 'Thrown' : 'Gathers rocks';
-    gyre.label = `Gyre · ${g.holding ? 'Release' : g.gathering ? 'Gathering' : g.launching || g.ballAway ? 'Thrown' : 'Gathers rocks'}`;
+    gyre.label = `Gather · ${g.holding ? 'Release' : g.gathering ? 'Gathering' : g.launching || g.ballAway ? 'Thrown' : 'Gathers rocks'}`;
     if (g.holding) gyre.sentence = 'Holding a ball. Release to throw it ahead along the nose; a hard hit or a heavy ball does the damage.';
     else if (g.gathering) gyre.sentence = `Gathering: loose rocks and wrecks in the basin are being pulled in. Keep holding to build the ball; release to stop.${g.tooHeavy ? ` ${g.tooHeavy} too big to take whole.` : ''}`;
     // The owner's own latest refusal words (matter:refused), when the caller carries one — never composed here.

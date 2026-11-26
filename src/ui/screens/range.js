@@ -133,7 +133,7 @@ export function gateStrokeRole(state) {
 // and the column itself. `background: transparent` on the canvas only undoes styles/ui.css's legacy
 // `.sf-range__canvas { background: var(--bg) }` until Task D deletes it; the sky is the ground.
 const CSS = `
-html:has(> body[data-k-screen="range"]) {
+html:not(body)[data-k-screen="range"] {
   --sf-you: rgb(236 230 216); --sf-foe: rgb(255 80 56); --sf-goal: rgb(242 185 80); --sf-calm: rgba(236,230,216,.4);
   --sf-paper: rgb(236 230 216); --sf-surface: transparent; --sf-edge: #1d3350;
 }
@@ -591,7 +591,7 @@ export {
 
 // PQ-030.02 — blind-reviewer path. Tokens only (silhouette / telegraph / verb / sweep). No plan id.
 export const TETHER_CUTTER_THREAT_FROM_VISIBLE_READ =
-  'Cuts your taut Massline with a corsair-blade sweep.';
+  'Cuts your taut line with a corsair-blade sweep.';
 
 function telegraphToken(tokens) {
   const raw = tokens && (tokens.telegraphKind ?? tokens.telegraph);
@@ -675,7 +675,7 @@ export function masslineCutterBestiaryFacts() {
   if (!visible || !threat) return [];
   return [
     ['Silhouette', 'Corsair blade'],
-    ['Telegraph', 'Massline spool'],
+    ['Telegraph', 'Line spool'],
     ['Threat', threat],
   ];
 }
@@ -3662,7 +3662,7 @@ export const rangeScreen = {
           exitSpeed: 0,
         },
         exitGate: { z: exitGateZ, centerX: 0, half: Math.max(60, lineLength * 0.26), crossed: false },
-        because: 'You entered at 0 u/s and left at 0 u/s. The rock gave you the corner.',
+        because: 'You entered at 0 m/s and left at 0 m/s. The rock gave you the corner.',
       };
     }
 

@@ -16,6 +16,7 @@ import { world as worldSystem } from '../src/systems/world.js';
 import { insertAsteroidFieldRock } from '../src/world/asteroidField.js';
 import { captureResourceBodyRecord, applyResourceBodyToEntity, normalizeResourceBodyRecord } from '../src/world/resourceBodyRecords.js';
 import { mulberry32 } from '../src/core/rng.js';
+import { makeRescueCastSpecs } from '../src/onboarding/rescueOpening.js';
 
 function boot(seed = 42) {
   const state = createGameState(seed); state.mode = 'flight';
@@ -49,7 +50,8 @@ test('material queues retire missing recipients and remap saved live identities'
 
 test('a hard common-rock slam crumbles into moving mass without breaking anchored landmarks', () => {
   const h = boot();
-  const rock = body(h, 'rock', 0, 30);
+  const velocity = { x: 52, z: -12 };
+  const rock = body(h, 'rock', 0, 30, { vel: velocity });
   const initialMass = resolvePhysicsBodySpec(rock).mass;
   const landmark = body(h, 'crystal', 500, 80, { data: { material: 'crystal', isLandmark: true } });
   assert.equal(queueEnvironmentImpact(h.state, rock, 109), false);
@@ -61,9 +63,38 @@ test('a hard common-rock slam crumbles into moving mass without breaking anchore
   assert.equal(fragments.length, 4);
   assert.equal(rock.alive, false);
   assert.equal(landmark.alive, true);
-  assert.ok(fragments.every(e => e.data.material === 'rock' && Math.hypot(e.vel.x, e.vel.z) > 40));
+  assert.ok(fragments.every(e => e.data.material === 'rock'
+    && Math.hypot(e.vel.x - velocity.x, e.vel.z - velocity.z) < 1e-6));
   assert.ok(Math.abs(fragments.reduce((sum, e) => sum + resolvePhysicsBodySpec(e).mass, 0) - initialMass) < 1e-6);
-  assert.ok(Math.abs(fragments.reduce((sum, e) => sum + e.mass * e.vel.x, 0)) < 1e-6);
+  for (const axis of ['x', 'z']) {
+    const momentum = fragments.reduce((sum, e) => sum + e.mass * e.vel[axis], 0);
+    assert.ok(Math.abs(momentum - initialMass * velocity[axis]) < 1e-6);
+  }
+  h.owner.destroy();
+});
+
+test('the first lesson rock survives impact until the player completes a throw', () => {
+  const h = boot();
+  const player = h.helpers.spawnEntity({ type: 'ship', pos: { x: 0, z: 0 }, radius: 8 });
+  h.state.playerId = player.id;
+  const learner = h.helpers.spawnEntity(makeRescueCastSpecs(player.pos, mulberry32(47)).rock);
+  h.state.onboarding = { active: true, firstThrowSeen: false };
+  h.state.player.tether = { active: true, targetId: learner.id };
+  const contact = { aId: player.id, bId: learner.id, preSolveClosingSpeed: 123 };
+  const fractures = [];
+  h.bus.on('environment:fractured', ({ id }) => fractures.push(id));
+
+  h.bus.emit('physics:impact', contact);
+  h.owner.update(1 / 60, h.state);
+  assert.equal(learner.alive, true, 'contact cannot retire the taught target before the first throw');
+  assert.deepEqual(fractures, []);
+
+  h.state.onboarding.firstThrowSeen = true;
+  h.state.player.tether.active = false;
+  h.bus.emit('physics:impact', contact);
+  h.owner.update(1 / 60, h.state);
+  assert.equal(learner.alive, false, 'ordinary impact fracture resumes after the first throw');
+  assert.deepEqual(fractures, [learner.id]);
   h.owner.destroy();
 });
 
@@ -116,7 +147,10 @@ test('every ordinary Crucible arena gets all five material opportunities on its 
 });
 
 test('heated production crystal makes four physical moving shards and preserves remaining ore', async () => {
-  const h = boot(); const crystal = body(h, 'crystal', 0, 30); crystal.data.pctEjected = 0.25;
+  const h = boot();
+  const velocity = { x: 34, z: 9 };
+  const crystal = body(h, 'crystal', 0, 30, { vel: velocity });
+  crystal.data.pctEjected = 0.25;
   addEnvironmentHeat(h.state, crystal, 48); h.owner.update(1 / 60);
   assert.equal(crystal.alive, false);
   const shards = h.state.entityList.filter(e => e.alive && e.data?.materialFragment);
@@ -126,7 +160,8 @@ test('heated production crystal makes four physical moving shards and preserves 
   native.syncFromEntities(shards); native.step(1 / 60);
   for (const shard of shards) {
     assert.ok(native.records.get(shard.id)?.body, 'the shard is a native collider');
-    assert.ok(Math.hypot(shard.vel.x, shard.vel.z) > 30, 'the physical fragment keeps destructive momentum');
+    assert.ok(Math.hypot(shard.vel.x - velocity.x, shard.vel.z - velocity.z) < 1e-5,
+      'the physical fragment carries the parent velocity');
     assert.equal(shard.flags.persistent, true, 'flying fragments survive Continue');
   }
   native.dispose?.();

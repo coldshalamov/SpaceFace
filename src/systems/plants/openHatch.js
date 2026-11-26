@@ -69,6 +69,7 @@ export function isFlareWeather(state, pos) {
 }
 
 export const openHatchPlant = {
+  modes: ['flight'],
   name: 'plants297',
 
   init(ctx) {

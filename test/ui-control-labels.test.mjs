@@ -37,10 +37,6 @@ test('every taught PILOT action labels a bound key, and that key produces the ac
       assert.equal(label, 'LMB', 'empty fire binding is the left mouse button');
       continue;
     }
-    if (action === 'tether') {
-      assert.equal(label, 'RMB', 'empty tether binding is the right mouse button (G18-02 Line)');
-      continue;
-    }
     if (!codes.length) {
       // G18-02: a wheel slice — no key seat by default, but still taught (the wheel row)
       // and rebindable. A blank code list is the contract, not a missing key.
@@ -52,8 +48,8 @@ test('every taught PILOT action labels a bound key, and that key produces the ac
     host._keys[codes[0]] = true;
     assert.equal(host._held(state, action), true, `${label} must produce ${action}`);
   }
-  // The taught table itself: WASD, Space boost, the held wheel key, the five powers.
-  for (const action of ['forward', 'reverse', 'yawLeft', 'yawRight', 'boost', 'contextWheel',
+  // The taught table itself: WASD, Shift boost, F tether, the held wheel key, the five powers.
+  for (const action of ['forward', 'reverse', 'yawLeft', 'yawRight', 'boost', 'tether', 'contextWheel',
     'pull', 'shove', 'pin', 'bomb', 'rig']) {
     assert.ok(resolveActionCodes(state, action).length > 0, `${action} keeps a real key seat`);
   }
@@ -118,9 +114,9 @@ test('active ORRERY line controls name only the actual bound keys and omit unbou
     yawLeft: ['KeyJ'], yawRight: [], boost: [] });
   state.player = { cargo: { items: {} }, tether: { active: true } };
   state.entities = new Map();
-  // The Line sits after the five powers (2026-10-22): its socket is POWER_SLOT.line, never a digit seat.
+  // R17: The Line is on right mouse and its keyboard seat — one button with one grammar.
   const line = readOrdnanceModel(state, null)[String(POWER_SLOT.line)];
-  assert.equal(line.key, 'P');
+  assert.equal(line.key, 'RMB / P');
   assert.match(line.tip, /Hold P.*I REEL.*J ORBIT/);
   assert.doesNotMatch(line.tip, /PAY OUT|PUMP|Space|SHIFT|KeyI/);
   const host = Object.create(input);

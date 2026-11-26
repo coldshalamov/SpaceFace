@@ -10,8 +10,11 @@ import test from 'node:test';
 
 import {
   APRON_FLOOD_FLOOR,
+  APRON_FLOOD_INDICES_PER_QUAD,
+  APRON_FLOOD_POOL_HEX,
   APRON_FLOOD_QUADS_PER_STATION,
   APRON_FLOOD_RIG_HEX,
+  APRON_FLOOD_VERTICES_PER_QUAD,
   buildApronFloodLayout,
   createApronFloodGeometry,
   resolveApronFloodPlan,
@@ -100,11 +103,12 @@ test('one station writes rig cards, two pools and the pad into the shared pool, 
   const layout = buildApronFloodLayout(row());
   const plan = resolveApronFloodPlan(row(), null, 100, false, {});
   writeApronFloodGeometry(out, layout, plan, { gain: 1, base: 0 });
-  assert.equal(out.indexCount, APRON_FLOOD_QUADS_PER_STATION * 6, 'rig x2 + pools x2 + pad x1');
+  assert.equal(out.indexCount, APRON_FLOOD_QUADS_PER_STATION * APRON_FLOOD_INDICES_PER_QUAD, 'rig x2 + pools x2 + pad x1');
   // A second station appends; the pool total grows.
   writeApronFloodGeometry(out, buildApronFloodLayout(row({ stationId: 'st_b', berth: { x: -900, z: -200 } })),
-    resolveApronFloodPlan(row({ stationId: 'st_b' }), null, 100, false, {}), { gain: 1, base: out.indexCount / 6 });
-  assert.equal(out.indexCount, APRON_FLOOD_QUADS_PER_STATION * 2 * 6);
+    resolveApronFloodPlan(row({ stationId: 'st_b' }), null, 100, false, {}),
+    { gain: 1, base: out.indexCount / APRON_FLOOD_INDICES_PER_QUAD });
+  assert.equal(out.indexCount, APRON_FLOOD_QUADS_PER_STATION * 2 * APRON_FLOOD_INDICES_PER_QUAD);
   // Rig cards are vertical: two corners at y 0, two at rigY.
   const ys = [out.positions[1], out.positions[4], out.positions[7], out.positions[10]];
   assert.deepEqual(ys, [0, 0, layout.rigY, layout.rigY]);
@@ -117,7 +121,7 @@ test('capacity holds: extra stations stop emitting instead of overrunning the po
     const r = row({ stationId: `st_${i}` });
     writeApronFloodGeometry(out, buildApronFloodLayout(r), resolveApronFloodPlan(r, null, 100, false, {}),
       { gain: 1, base });
-    base = out.indexCount / 6;
+    base = out.indexCount / APRON_FLOOD_INDICES_PER_QUAD;
   }
   assert.ok(base <= out.quadCapacity);
 });
@@ -135,4 +139,23 @@ test('the rig tint is warm sodium — a different language from the holo-green l
   assert.ok(Math.abs(r - cr * bright) < 1e-6);
   assert.ok(Math.abs(g - cg * bright) < 1e-6);
   assert.ok(r > g && g > b);
+});
+
+test('warm taxi and pad pools fade to clear edges at their original brightness and positions', () => {
+  const out = createApronFloodGeometry();
+  const layout = buildApronFloodLayout(row());
+  const plan = resolveApronFloodPlan(row(), null, 100, false, {});
+  const gain = 0.6;
+  writeApronFloodGeometry(out, layout, plan, { gain });
+  const rgb = (hex, bright) => Float32Array.from([16, 8, 0], shift => ((hex >> shift) & 255) / 255 * bright);
+  const stride = APRON_FLOOD_VERTICES_PER_QUAD * 3;
+  assert.deepEqual(out.colors.slice(12, 15), out.colors.slice(0, 3), 'rig stays uniformly visible');
+  for (const [quad, x, z, boost] of [[2, layout.poolAX, layout.poolAZ, 1],
+    [3, layout.poolBX, layout.poolBZ, 1], [4, layout.padX, layout.padZ, 1.15]]) {
+    const start = quad * stride;
+    assert.deepEqual(out.colors.slice(start, start + 12), new Float32Array(12));
+    assert.deepEqual(out.colors.slice(start + 12, start + 15), rgb(APRON_FLOOD_POOL_HEX, plan.poolGlow01 * gain * boost));
+    assert.ok(Math.abs(out.positions[start + 12] - x) < 0.0001);
+    assert.ok(Math.abs(out.positions[start + 14] - z) < 0.0001);
+  }
 });

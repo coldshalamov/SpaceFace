@@ -176,7 +176,10 @@ export const dockingCorridor = {
     // SF-130: the assist targets the deck berth. A hull too deep for the pocket moors at the
     // corridor-axis standoff instead; pulling it toward a berth its envelope cannot clear
     // would grind it against the station's own proxy, so the tug is withheld entirely.
-    if (best && dt > 0 && berthFitsHull(best.manifest, best.station, player)) {
+    // HARMONY-FIX 6 (R23): one assist at the berth. While the nav autopilot is flying the approach
+    // the corridor's capture tug defers - two hands on the same hull in one tick is the clash.
+    const autopilotFlying = !!(state.nav && state.nav.autopilot && state.nav.autopilot.active === true);
+    if (best && dt > 0 && !autopilotFlying && berthFitsHull(best.manifest, best.station, player)) {
       const assist = computeCaptureAssist(best.manifest, best.station, player.pos, player.vel, inputMag);
       if (assist && (assist.x !== 0 || assist.z !== 0)) {
         const mass = positive(player.physicsBody && player.physicsBody.mass, positive(player.mass, 1));

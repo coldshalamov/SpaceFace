@@ -1,0 +1,308 @@
+{
+  "schema": "spaceface.referenceIndex.v1",
+  "id": "47a-v3-native-contact",
+  "envelope": "test/47a.telemetry.v3.native-contact.save-v27.expected.json",
+  "createdAt": "2026-11-18T09:08:28.899Z",
+  "updatedAt": "2026-11-18T09:08:38.984Z",
+  "versions": [
+    {
+      "version": 1,
+      "file": "v1.expected.json",
+      "snapshotFile": "v1.snapshot.json.gz",
+      "hash": "674162910fa953e3dc4739dde62a9ee3c7c03bf641f595aa3ae5b6a96b3cc8d8",
+      "at": "2026-11-18T09:08:28.899Z",
+      "reason": "Preserve v26 using the old boost cap and pre-tender reputation table.",
+      "ticket": "47A-V3-V26",
+      "cleanRuns": 5,
+      "ticks": 720,
+      "reloadAt": 600,
+      "seed": 47,
+      "inputTape": "test/47a.inputs.json",
+      "scenarioContract": "src/data/scenarios/47a.scenario.json",
+      "gitHead": "301d3fb0749fe9e83e15b4991b28636ef275dc3e",
+      "dirty": true,
+      "delta": {
+        "baseline": true,
+        "hashChanged": false,
+        "previousHash": null,
+        "newHash": "674162910fa953e3dc4739dde62a9ee3c7c03bf641f595aa3ae5b6a96b3cc8d8",
+        "changed": 0,
+        "added": 0,
+        "removed": 0,
+        "totalDiffs": 0,
+        "fieldClasses": {},
+        "motionCount": 0,
+        "motionDiffs": [],
+        "sample": [],
+        "traceChanged": {}
+      }
+    },
+    {
+      "version": 2,
+      "file": "v2.expected.json",
+      "snapshotFile": "v2.snapshot.json.gz",
+      "hash": "ba47441e5beaf7593363c3b3ac90bfa53993308e383f46a85172dec374ccf125",
+      "at": "2026-11-18T09:08:38.984Z",
+      "reason": "Record accepted double-cruise boost and tender haul reputation.",
+      "ticket": "QUAL-03-G18-03-PARK-01",
+      "cleanRuns": 5,
+      "ticks": 720,
+      "reloadAt": 600,
+      "seed": 47,
+      "inputTape": "test/47a.inputs.json",
+      "scenarioContract": "src/data/scenarios/47a.scenario.json",
+      "gitHead": "301d3fb0749fe9e83e15b4991b28636ef275dc3e",
+      "dirty": true,
+      "delta": {
+        "hashChanged": true,
+        "previousHash": "674162910fa953e3dc4739dde62a9ee3c7c03bf641f595aa3ae5b6a96b3cc8d8",
+        "newHash": "ba47441e5beaf7593363c3b3ac90bfa53993308e383f46a85172dec374ccf125",
+        "hashEqual": false,
+        "changed": 29,
+        "added": 1,
+        "removed": 0,
+        "totalDiffs": 30,
+        "fieldClasses": {
+          "entities": 11,
+          "motion": 8,
+          "input": 2,
+          "physics": 8,
+          "missions": 1
+        },
+        "motionCount": 8,
+        "motionDiffs": [
+          {
+            "path": "$.entities[0].pos.x",
+            "before": 889.799377,
+            "after": 999.744324,
+            "class": "motion"
+          },
+          {
+            "path": "$.entities[0].pos.z",
+            "before": 119.098602,
+            "after": 111.322243,
+            "class": "motion"
+          },
+          {
+            "path": "$.entities[0].vel.x",
+            "before": 50.141056,
+            "after": 58.052528,
+            "class": "motion"
+          },
+          {
+            "path": "$.entities[0].vel.z",
+            "before": -0.151287,
+            "after": -0.174662,
+            "class": "motion"
+          },
+          {
+            "path": "$.entities[3].pos.x",
+            "before": 352.457367,
+            "after": 355.381683,
+            "class": "motion"
+          },
+          {
+            "path": "$.entities[3].pos.z",
+            "before": 231.341553,
+            "after": 234.235962,
+            "class": "motion"
+          },
+          {
+            "path": "$.entities[3].vel.x",
+            "before": 1.350464,
+            "after": 1.651746,
+            "class": "motion"
+          },
+          {
+            "path": "$.entities[3].vel.z",
+            "before": 1.233813,
+            "after": 1.535291,
+            "class": "motion"
+          }
+        ],
+        "sample": [
+          {
+            "path": "$.entities[0].data.derived.propulsion.boostSpeedMult",
+            "before": 1.55,
+            "after": 2,
+            "class": "entities"
+          },
+          {
+            "path": "$.entities[0].data.propulsionResources.energySpent",
+            "before": 5.75266,
+            "after": 6.866824,
+            "class": "entities"
+          },
+          {
+            "path": "$.entities[0].data.propulsionResources.heat",
+            "before": 9.12534,
+            "after": 11.769756,
+            "class": "entities"
+          },
+          {
+            "path": "$.entities[0].data.propulsionRuntime.energySpent",
+            "before": 5.75266,
+            "after": 6.866824,
+            "class": "entities"
+          },
+          {
+            "path": "$.entities[0].pos.x",
+            "before": 889.799377,
+            "after": 999.744324,
+            "class": "motion"
+          },
+          {
+            "path": "$.entities[0].pos.z",
+            "before": 119.098602,
+            "after": 111.322243,
+            "class": "motion"
+          },
+          {
+            "path": "$.entities[0].rot",
+            "before": -0.003017,
+            "after": -0.003009,
+            "class": "entities"
+          },
+          {
+            "path": "$.entities[0].vel.x",
+            "before": 50.141056,
+            "after": 58.052528,
+            "class": "motion"
+          },
+          {
+            "path": "$.entities[0].vel.z",
+            "before": -0.151287,
+            "after": -0.174662,
+            "class": "motion"
+          },
+          {
+            "path": "$.entities[2].data.derived.propulsion.boostSpeedMult",
+            "before": 1.6,
+            "after": 2,
+            "class": "entities"
+          },
+          {
+            "path": "$.entities[2].shield",
+            "before": 29.503833,
+            "after": 30.337167,
+            "class": "entities"
+          },
+          {
+            "path": "$.entities[3].pos.x",
+            "before": 352.457367,
+            "after": 355.381683,
+            "class": "motion"
+          },
+          {
+            "path": "$.entities[3].pos.z",
+            "before": 231.341553,
+            "after": 234.235962,
+            "class": "motion"
+          },
+          {
+            "path": "$.entities[3].vel.x",
+            "before": 1.350464,
+            "after": 1.651746,
+            "class": "motion"
+          },
+          {
+            "path": "$.entities[3].vel.z",
+            "before": 1.233813,
+            "after": 1.535291,
+            "class": "motion"
+          },
+          {
+            "path": "$.entities[4].data.derived.propulsion.boostSpeedMult",
+            "before": 1.6,
+            "after": 2,
+            "class": "entities"
+          },
+          {
+            "path": "$.entities[5].data.derived.propulsion.boostSpeedMult",
+            "before": 1.6,
+            "after": 2,
+            "class": "entities"
+          },
+          {
+            "path": "$.entities[6].data.derived.propulsion.boostSpeedMult",
+            "before": 1.45,
+            "after": 2,
+            "class": "entities"
+          },
+          {
+            "path": "$.entities[7].data.derived.propulsion.boostSpeedMult",
+            "before": 1.45,
+            "after": 2,
+            "class": "entities"
+          },
+          {
+            "path": "$.input.aimWorld.x",
+            "before": 1888.963135,
+            "after": 1998.776184,
+            "class": "input"
+          },
+          {
+            "path": "$.input.aimWorld.z",
+            "before": 119.10112,
+            "after": 111.325172,
+            "class": "input"
+          },
+          {
+            "path": "$.physics.bodies[0].vx",
+            "before": 50.1411,
+            "after": 58.0525,
+            "class": "physics"
+          },
+          {
+            "path": "$.physics.bodies[0].vz",
+            "before": -0.1513,
+            "after": -0.1747,
+            "class": "physics"
+          },
+          {
+            "path": "$.physics.bodies[0].x",
+            "before": 889.7994,
+            "after": 999.7443,
+            "class": "physics"
+          },
+          {
+            "path": "$.physics.bodies[0].z",
+            "before": 119.0986,
+            "after": 111.3222,
+            "class": "physics"
+          },
+          {
+            "path": "$.physics.bodies[3].vx",
+            "before": 1.3505,
+            "after": 1.6517,
+            "class": "physics"
+          },
+          {
+            "path": "$.physics.bodies[3].vz",
+            "before": 1.2338,
+            "after": 1.5353,
+            "class": "physics"
+          },
+          {
+            "path": "$.physics.bodies[3].x",
+            "before": 352.4574,
+            "after": 355.3817,
+            "class": "physics"
+          },
+          {
+            "path": "$.physics.bodies[3].z",
+            "before": 231.3416,
+            "after": 234.236,
+            "class": "physics"
+          },
+          {
+            "path": "$.missions.config.BASE_REP.tender_haul",
+            "change": "added"
+          }
+        ],
+        "traceChanged": {}
+      }
+    }
+  ],
+  "latest": 2
+}

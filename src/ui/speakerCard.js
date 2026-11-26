@@ -106,6 +106,17 @@ export function createSpeakerCard(ctx = {}, { holdMs = SPEAKER_HOLD_MS, fadeMs =
     if (!src || !stage) return false;
     const id = `sf-speaker-${++seq}`;
     const card = build(payload, src);
+    // The lane sits below the tracker column, which grew when the COMMS/HAIL chips joined it
+    // (bench flight-speaker 2026-11-14): measure the column at show time instead of trusting a
+    // fixed stylesheet offset, so the card never lands on the radio lines it sits beside.
+    try {
+      const host = doc.getElementById('sf-stage-speaker');
+      const column = doc.querySelector('.sf-leftcontext');
+      if (host) {
+        const columnBottom = column ? column.getBoundingClientRect().bottom : 0;
+        host.style.setProperty('--sf-speaker-top', `${Math.max(218, Math.round(columnBottom + 12))}px`);
+      }
+    } catch (_) { /* a host without layout keeps the stylesheet default */ }
     const leave = () => {
       card.classList.add('sf-speaker--out');
       later(() => { stage.clear(SPEAKER_SLOT, id); }, fadeMs);

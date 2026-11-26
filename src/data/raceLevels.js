@@ -1,6 +1,6 @@
 // RACE-01 — three circuits on terrain the game already has, and the five contracts that
 // require the stern camera. These are authored closed polylines in sector-local space.
-// They are not raceCourseForSector() chords: a 3900 WU lane at the 120 WU/s board record
+// They are not raceCourseForSector() chords: a 3900 u lane at the 120 u/s board record
 // is a straight the ships outrun, and the Helios rocks are not on that axis.
 //
 //   Helios  — through the starter belt and the outer metallic field
@@ -12,7 +12,7 @@
 
 import { sectorLocalToGlobalForSector } from './sectorCoordinates.js';
 
-/** Reference pace for an authored circuit. Ships cruise ~440–1100 WU/s; the board's 120
+/** Reference pace for an authored circuit. Ships cruise ~440–1100 u/s; the board's 120
  *  WU/s figure is for the long lane chords and would make every lap a razor. */
 const AUTHORED_RECORD_WU_S = 520;
 const RAZOR_CAP_MULT = 1.15;
@@ -49,7 +49,7 @@ function freezeCourse(spec) {
   const gates = route.map(Object.freeze);
   const lengthWU = courseLengthWU(gates);
   // Sector circuits run hazard work, not flat pace: their board record uses the slower
-  // reference while the three originals keep the authored 520 WU/s standard untouched.
+  // reference while the three originals keep the authored 520 u/s standard untouched.
   const pace = Number.isFinite(spec.recordPaceWU) && spec.recordPaceWU > 0 ? spec.recordPaceWU : AUTHORED_RECORD_WU_S;
   const recordS = Math.max(12, Math.round(lengthWU / pace));
   return Object.freeze({
@@ -145,13 +145,13 @@ const VEIL_COURSE = freezeCourse({
 // Every way of life is a course: each of these laps is drawn so the sector's own
 // physics — its machinery cycle, its timed weather, its standing rocks — is the
 // racing problem. They are temporary time trials only (raceModes ['time-trial'],
-// temporaryOnly), revision 1, gate radius 90, and a 120 WU/s board record: the
+// temporaryOnly), revision 1, gate radius 90, and a 120 u/s board record: the
 // pilot pays in hazard work, not flat pace.
 const SECTOR_RECORD_WU_S = 120;
 
 // Pallas Drift, sector-local. The reef cone (-320,-620 r420) sits on gates 3-5: the
 // five-mine string rides the current along rot 0.38. f_pallas_2 (980,420) is the
-// eastern ice bank; f_pallas_3 (-840,1180) closes the return.
+// western ice bank; f_pallas_3 (-840,1180) closes the return.
 const PALLAS_COURSE = freezeCourse({
   courseId: 'circuit_pallas_reef',
   courseName: 'Pallas Reef',
@@ -177,9 +177,9 @@ const PALLAS_COURSE = freezeCourse({
 
 // Vesta Forge, sector-local. The radiation belt (-540,-480 r260) is gate 6's
 // approach; the storm lane (680,320, a 460x78 sheet on rot -0.55) crosses the leg
-// into gate 8. Gate 6 is nudged south-west and gate 8 south-east of the authored
-// marks so the course physically rides both foundry windows instead of passing
-// beside them.
+// into gate 8. Gate 6 is nudged onto the radiation belt's approach and gate 8 onto
+// the storm lane's crossing so the course physically rides both foundry windows
+// instead of passing beside them.
 const VESTA_COURSE = freezeCourse({
   courseId: 'circuit_vesta_furnace',
   courseName: 'Vesta Furnace',
@@ -231,7 +231,7 @@ const CERES_COURSE = freezeCourse({
 // Haumea Rift, sector-local. The dense_asteroid disc (-540,380 r780) covers gates
 // 2-5; the fissure cracker (180,380) stands off gate 5's shoulder as native
 // machinery scenery. f_haumea_1 ice banks the north loop, f_haumea_2 crystals the
-// east drop.
+// west drop.
 const HAUMEA_COURSE = freezeCourse({
   courseId: 'circuit_haumea_fissure',
   courseName: 'Haumea Fissure',
@@ -254,7 +254,7 @@ const HAUMEA_COURSE = freezeCourse({
   ],
 });
 
-// Kepler Scar, sector-local. The radiation scar (200,-300 r900) covers the east
+// Kepler Scar, sector-local. The radiation scar (200,-300 r900) covers the west
 // descent through gates 6-8; the debris field (-700,500 r700) takes the north
 // arc through gates 2-3. f_kepler_1 rare-exotic banks the south drop, f_kepler_2
 // metallic the north.
@@ -280,8 +280,8 @@ const KEPLER_COURSE = freezeCourse({
 });
 
 // Sker Haven, sector-local. Both dense-asteroid approach banks are on the lap:
-// the east disc (500,300 r800) covers gates 4-6 between the Throne pass and the
-// Bazaar cut; the west disc (-500,-400 r700) takes gates 2-3 and the long return.
+// the west disc (500,300 r800) covers gates 4-6 between the Throne pass and the
+// Bazaar cut; the east disc (-500,-400 r700) takes gates 2-3 and the long return.
 // f_sker_1 rare-exotic sits off the south sweep.
 const SKER_COURSE = freezeCourse({
   courseId: 'circuit_sker_wreckrun',
@@ -415,7 +415,7 @@ export const SECTOR_RACE_LEVELS = Object.freeze([
     stationId: 'station_kepler_scar',
     courseRevision: 1,
     terrain: 'Kepler radiation scar and the debris field under the capsized hull',
-    blurb: 'The glow eats the east descent. The debris field takes the north arc. Neither one moves for you.',
+    blurb: 'The glow eats the west descent. The debris field takes the north arc. Neither one moves for you.',
     course: KEPLER_COURSE,
     sectorHazards: Object.freeze([
       Object.freeze({ id: 'kepler_debris', kind: 'staticZone', zoneIndex: 1,
@@ -436,12 +436,12 @@ export const SECTOR_RACE_LEVELS = Object.freeze([
     blurb: 'Gate-camp rock on both approaches. The banks are the checkpoints and the hazard at once.',
     course: SKER_COURSE,
     sectorHazards: Object.freeze([
-      Object.freeze({ id: 'sker_west_bank', kind: 'staticZone', zoneIndex: 1,
-        name: 'West approach bank', gateIndex: 3, label: 'DENSE BANK', waitBackWU: 200,
-        hint: 'The west disc is crowded with scrap rock. Hold the cleared lane.' }),
-      Object.freeze({ id: 'sker_east_bank', kind: 'staticZone', zoneIndex: 0,
-        name: 'East approach bank', gateIndex: 5, label: 'DENSE BANK', waitBackWU: 220,
-        hint: 'The east disc takes the Throne pass. Do not improvise inside it.' }),
+      Object.freeze({ id: 'sker_west_bank', kind: 'staticZone', zoneIndex: 0,
+        name: 'West approach bank', gateIndex: 5, label: 'DENSE BANK', waitBackWU: 220,
+        hint: 'The west disc takes the Throne pass. Do not improvise inside it.' }),
+      Object.freeze({ id: 'sker_east_bank', kind: 'staticZone', zoneIndex: 1,
+        name: 'East approach bank', gateIndex: 3, label: 'DENSE BANK', waitBackWU: 200,
+        hint: 'The east disc is crowded with scrap rock. Hold the cleared lane.' }),
     ]),
   }),
 ]);
@@ -541,7 +541,7 @@ const CONTRACTS = Object.freeze([
     duration_s: 900,
     title: 'Textile qualifying',
     brief: 'Helios dispatch grades one lap of the belt from a stern camera. Overhead optics are not the instrument they pay for.',
-    summary: 'One lap through both Helios fields. The stern camera is required.',
+    summary: 'One lap through both Helios fields.',
     gridLine: 'Hold the grid. The belt does not start until the lights drop.',
   }),
   Object.freeze({
@@ -557,9 +557,9 @@ const CONTRACTS = Object.freeze([
     reward_cr: 1100,
     duration_s: 900,
     title: 'Burned canopy',
-    brief: 'Customs cooked the overhead picture on the tally. Approach within 70 WU of the line at 8 WU/s or less, align with the first leg and release any tether; fly the course, then dock at the destination station to file.',
-    summary: 'Stop and align at the start line (within 70 WU, at 8 WU/s or less, no tether), run the tally, then dock at the destination station. Chase view during countdown and course.',
-    gridLine: 'Approach within 70 WU, slow to 8 WU/s or less, align with the first leg and release any tether. Dock at the destination after the finish.',
+    brief: 'Customs cooked the overhead picture on the tally. Approach within 70 m of the line at 8 m/s or less, align with the first leg and release any tether; fly the course, then dock at the destination station to file.',
+    summary: 'Stop and align at the start line (within 70 m, at 8 m/s or less, no tether), run the tally, then dock at the destination station.',
+    gridLine: 'Approach within 70 m, slow to 8 m/s or less, align with the first leg and release any tether. Dock at the destination after the finish.',
   }),
   Object.freeze({
     id: 'contract_veil_laps',
@@ -573,7 +573,7 @@ const CONTRACTS = Object.freeze([
     duration_s: 1400,
     title: 'Veil ribbon',
     brief: 'Three laps of the wash. The gas eats a top-down frame. The radiation pocket is a burn ring. Leave the ribbon and the leash drags you back.',
-    summary: 'Three laps on the Veil wash. Stern camera required. Burn ring in the radiation pocket.',
+    summary: 'Three laps on the Veil wash. Burn ring in the radiation pocket.',
     gridLine: 'Hold. Three laps. The burn is inside the wash.',
   }),
   Object.freeze({
@@ -588,7 +588,7 @@ const CONTRACTS = Object.freeze([
     tighten: true,
     title: 'Vesper’s mark',
     brief: 'The belt mark is already posted. Beat the tightened clock. The rocks do not rearrange themselves.',
-    summary: 'Same Helios terrain as qualifying. Stern camera. Tighter time bands.',
+    summary: 'Same Helios terrain as qualifying. Tighter time bands.',
     gridLine: 'Hold. The mark is tighter than the qualifying lap.',
   }),
   Object.freeze({
@@ -607,7 +607,7 @@ const CONTRACTS = Object.freeze([
     duration_s: 900,
     title: 'Pace light',
     brief: 'A pace light traces the tally ahead of you. Read its line through the turns; real rivals provide the draft in pack races. The stern camera stays on — that is how dispatch watches the run.',
-    summary: 'The tally circuit again. Follow the pace light through the turns. Stern camera required.',
+    summary: 'The tally circuit again. Follow the pace light through the turns.',
     gridLine: 'Hold. The pace light leaves with you. Read the line ahead.',
   }),
   Object.freeze({
@@ -621,7 +621,7 @@ const CONTRACTS = Object.freeze([
     duration_s: 1200,
     title: 'The tallyman’s rematch',
     brief: 'The dispatch clerk who graded Vesper’s mark disputes the lap. Two circuits of the belt, posted purse, stern camera — he is watching the same rocks you are.',
-    summary: 'Two laps of the Helios belt. Stern camera required. The clerk is grading this one personally.',
+    summary: 'Two laps of the Helios belt. The clerk is grading this one personally.',
     gridLine: 'Hold. Two laps. The tallyman already wrote your time down once.',
   }),
 ]);
@@ -642,7 +642,7 @@ const SECTOR_CONTRACTS = Object.freeze([
     duration_s: 900,
     title: 'Reef window',
     brief: 'One lap of the Pallas reef. The current shoves on surge and goes quiet on calm — the pilot who reads the window keeps the line.',
-    summary: 'One lap of the Pallas reef. Stern camera required. The surge is the course.',
+    summary: 'One lap of the Pallas reef. The surge is the course.',
     gridLine: 'Hold. The reef keeps its own clock.',
   }),
   Object.freeze({
@@ -657,7 +657,7 @@ const SECTOR_CONTRACTS = Object.freeze([
     duration_s: 900,
     title: 'Foundry windows',
     brief: 'One lap of the Vesta furnace circuit. The belt gathers and the storm sheet carries, both on the same shift clock.',
-    summary: 'One lap of the Vesta furnace. Stern camera required. Two hazard windows.',
+    summary: 'One lap of the Vesta furnace. Two hazard windows.',
     gridLine: 'Hold. The foundry does not wait for your read.',
   }),
   Object.freeze({
@@ -672,7 +672,7 @@ const SECTOR_CONTRACTS = Object.freeze([
     duration_s: 900,
     title: 'Wreckrun',
     brief: 'One lap of the Sker approaches. Both banks are the checkpoints and the hazard; the posted purse says the Reach approves.',
-    summary: 'One lap of the Sker wreckrun. Stern camera required. Dense rock on both approaches.',
+    summary: 'One lap of the Sker wreckrun. Dense rock on both approaches.',
     gridLine: 'Hold. The bank does not move for a poster time.',
   }),
 ]);
@@ -691,7 +691,7 @@ const PRACTICE = RACING_CIRCUITS.map((level) => Object.freeze({
   duration_s: level.id === 'level_veil_ribbon' ? 1400 : 900,
   title: `Practice — ${level.name}`,
   brief: level.blurb,
-  summary: 'Practice. The stern camera follows your steering-view setting; it is not locked.',
+  summary: 'Practice. Fly it in whichever camera view you have set.',
   gridLine: 'Hold the grid. Practice does not lock the camera.',
 }));
 

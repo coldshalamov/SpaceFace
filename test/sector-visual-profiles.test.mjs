@@ -131,6 +131,10 @@ test('way-of-life sectors resolve their own authored rig and key tint', () => {
     ['sector_sker_haven', 'sker_haven', 0xffb45e, 0xc98d5c],
     ['sector_ceres_belt', 'ceres_belt', 0xf0e2c8, 0xb8a48f],
     ['sector_dione_lane', 'dione_lane', 0xdfe9ff, 0xc9a06e],
+    // PLACES-1 (INV-25 item 1): the three story sectors that previously shared a family look.
+    ['sector_io_reach', 'io_reach', 0xffd98f, 0xc08a62],
+    ['sector_charon_expanse', 'charon_expanse', 0xdfe9f2, 0x8fa0b4],
+    ['sector_ashfall_reach', 'ashfall_reach', 0xff9d62, 0x6f5148],
   ];
   for (const [sectorId, profileId, keyColor, fillColor] of cases) {
     const profile = resolveSectorVisualProfile({ id: sectorId });
@@ -143,7 +147,12 @@ test('way-of-life sectors resolve their own authored rig and key tint', () => {
   }
   // Tethys keeps its junction profile; family fallbacks still serve unmapped sectors.
   assert.equal(resolveSectorVisualProfile({ id: 'sector_tethys_junction' }).id, 'tethys');
-  assert.equal(resolveSectorVisualProfile({ id: 'sector_io_reach' }).id, 'fringe');
+  // PLACES-1: the Reach now wears its own rig — an unmapped fringe-class sector (frontier rows
+  // resolve by palette tint) still falls back to the family profile.
+  assert.equal(resolveSectorVisualProfile({ id: 'sector_io_reach' }).id, 'io_reach');
+  assert.equal(resolveSectorVisualProfile({
+    id: 'sector_kepler_scar', palette: SECTOR_PALETTE_CLASSES.fringe,
+  }).id, 'fringe');
 });
 
 test('every authored profile key points at a real authored sector', () => {
@@ -248,6 +257,13 @@ test('live bloom defaults resolve through renderer and render-graph behavior for
     // dione_lane derives from core and inherits its post block unchanged.
     dione_lane: { bloomStrength: 0.40, bloomThreshold: 1.00, exposure: 0.99 },
     viscera: { bloomStrength: 0.40, bloomThreshold: 1.00, exposure: 0.94 },
+    // PLACES-1 (INV-25 items 1+2): the new rigs inherit their palette family's post block —
+    // io_reach from fringe, charon_expanse from belt, ashfall_reach from anomaly — and the
+    // pale-ice family authors its own (identity shapes light, not extra bloom).
+    io_reach: { bloomStrength: 0.40, bloomThreshold: 1.00, exposure: 0.96 },
+    charon_expanse: { bloomStrength: 0.40, bloomThreshold: 1.00, exposure: 0.97 },
+    ashfall_reach: { bloomStrength: 0.40, bloomThreshold: 1.00, exposure: 0.97 },
+    pale_ice: { bloomStrength: 0.40, bloomThreshold: 1.00, exposure: 0.96 },
   };
 
   assert.equal(DEFAULT_BLOOM_STRENGTH, 0.40);

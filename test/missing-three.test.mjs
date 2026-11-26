@@ -168,7 +168,8 @@ function rescueActor(h, slot) {
 // leads the story beats, and the firing drills sit behind the first dock (OPENING-1 — the
 // driver walks the same order the player now meets). `choice` stays out: the rescue and
 // missing-three verbs gate it, and this harness owns no offers.
-const DRILL_KEYS = ['tether', 'raid', 'claimed', 'seam', 'dock', 'thrust', 'brake', 'marker', 'focus', 'burst', 'disengage'];
+// FIRST HOUR (2026-11-21): the rail opens on the berth — the game's first objective is the dock.
+const DRILL_KEYS = ['berth', 'tether', 'raid', 'claimed', 'seam', 'dock', 'thrust', 'brake', 'marker', 'focus', 'burst', 'disengage'];
 function driveDrillTo(h, beatKey) {
   const st = h.state;
   const player = st.entities.get(st.playerId);
@@ -212,11 +213,13 @@ function driveDrillTo(h, beatKey) {
         pos: { x: rock.pos.x, z: rock.pos.z },
       });
       tick(h);
-    } else if (key === 'dock') {
+    } else if (key === 'dock' || key === 'berth') {
+      if (key === 'berth') { advanceTime(h); tick(h); } // the opening beat enters after the silence gate
       h.bus.emit('dock:docked', { stationId: 'station_helios' });
       tick(h);
+      if (key === 'berth') h.bus.emit('dock:undocked', { stationId: 'station_helios' });
     } else if (key === 'tether') {
-      tick(h); // the tether beat entered on the previous tick: its derelict is staged
+      advanceTime(h); tick(h); // after the berth, the tether beat enters behind its silence gate; its derelict is staged
       const derelict = derelictOf();
       assert.ok(derelict, 'tether lesson must stage its derelict');
       st.player.targetId = derelict.id;
@@ -409,7 +412,9 @@ test('drill library and rescue stay authored: B0 is thrust, swing opens after th
   assert.equal(h.state.onboarding.currentBeat, 0, 'B0 still opens the rail');
   driveDrillTo(h, 'tether');
   assert.equal(h.state.onboarding.rescue.current, 'swing');
-  assert.equal(tutorialLines(h).at(-1), rescueBeatLine('swing'));
+  // The berth now opens the rail. The swing is current; its tracker line asks for the rock on the
+  // line first (the lesson's release let it go) or names the swing itself once it is held.
+  assert.match(h.state.onboarding.beatAction, /loose rock|Swing the rock/);
 });
 
 test('harness boots never stage the missing-three rail (golden-safe)', () => {

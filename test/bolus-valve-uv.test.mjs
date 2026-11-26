@@ -6,16 +6,17 @@ import { buildFaunaMesh } from '../src/render/faunaVisuals.js';
 import { preloadCreatureSkinLibrary } from '../src/render/creatureSkinLibrary.js';
 import { disposeObjectNode } from '../src/render/renderer.js';
 
-test('valve tissue UVs cover both triangles without a seam', () => {
+test('valve tissue UVs cover every triangle cleanly without collapsed or out-of-range coordinates', () => {
   const [lip] = bolusSilhouette('bolus_valve').parts;
-  assert.equal(lip.positions.length, 18);
-  assert.equal(lip.uvs.length, 12);
+  assert.ok(lip.positions.length > 18);
+  assert.equal(lip.uvs.length, (lip.positions.length / 3) * 2);
+  assert.ok(Array.isArray(lip.indices) && lip.indices.length > 6);
   const uv = i => lip.uvs.slice(i * 2, i * 2 + 2);
-  assert.deepEqual(uv(0), uv(3), 'the duplicated first corner uses the same coordinates');
-  assert.deepEqual(uv(2), uv(4), 'the duplicated diagonal corner uses the same coordinates');
-  const area = (a, b, c) => (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]);
-  const first = area(uv(0), uv(1), uv(2)), second = area(uv(3), uv(4), uv(5));
-  assert.ok(first > 0 && second > 0, 'both UV triangles are nondegenerate and consistently wound');
+  const area = (a, b, c) => Math.abs((b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]));
+  for (let i = 0; i < lip.indices.length; i += 3) {
+    const [ia, ib, ic] = lip.indices.slice(i, i + 3);
+    assert.ok(area(uv(ia), uv(ib), uv(ic)) > 1e-8, `valve UV triangle ${i / 3} is nondegenerate`);
+  }
   assert.ok(lip.uvs.every(value => Number.isFinite(value) && value >= 0 && value <= 1));
 });
 

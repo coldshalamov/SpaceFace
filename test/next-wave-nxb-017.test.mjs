@@ -28,6 +28,7 @@ import {
   swarmActFor,
   swarmActIssues,
   swarmArenaPhase,
+  swarmCourseQuota,
   swarmOpeningCount,
 } from '../src/data/swarmMode.js';
 
@@ -49,11 +50,14 @@ test('the course cast owns waves 26-28 — the mooring_line act fields nowhere',
     // The act's authored rooms ('loose_plate', and the offset furnace/shutter deals) no
     // longer ride either — the ordinary phase cycle deals these waves' rooms.
     assert.equal(plan.arenaPhase, swarmArenaPhase(wave), `wave ${wave} wears the dealt token`);
-    // The wave's own contracts are untouched: finite cohort, authored quota, draft stop.
+    // The wave's own contracts are untouched: finite cohort, authored quota, no shop stop.
     assert.equal(plan.completionRules.kind, 'cohort');
-    assert.equal(plan.swarm.killTarget, 48);
+    assert.equal(plan.swarm.killTarget, swarmCourseQuota(wave),
+      `wave ${wave} owes its own approved budget (26 -> 38, 27 -> 39, 28 -> 40)`
+        + ' — approved round budgets in swarmCourseCast.js (director 2026-11-20)');
     assert.equal(plan.swarm.concurrent, 30);
-    assert.equal(plan.draftExpectation.kind, 'draft');
+    assert.equal(plan.draftExpectation.kind, 'none', `wave ${wave} flows straight on: a Swarm run `
+      + 'stops only at the Bench every tenth round (d4db73990f, 04_SWARM §2)');
     assert.ok(swarmOpeningCount(plan.packages) <= SPAWN_BUDGET_DEFAULT_MAX,
       `wave ${wave} burst inside the shared spawn budget`);
   }

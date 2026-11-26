@@ -328,7 +328,9 @@ export function createRouteOrrery(host, { maxRings = 3, caption: captionMode = '
     const nodeHalo = (id) => (id === dest ? 20 : id === data.origin ? 14 : 9);
     const nodeBoxes = [...place].map(([id, p]) => { const k = nodeHalo(id); return { l: p.x - k, r: p.x + k, t: p.y - k, b: p.y + k, id, r0: nodeR(id) }; });
     let destBox = null;
-    const labelSize = (text, small) => ({ w: text.length * (small ? 7.4 : 8.6), h: small ? 11 : 12 });
+    // Every name is 12px Archivo caps tracked .1em (the sheet above): ~9.6px a glyph, 13px a line.
+    // The old 7.4/8.6 guesses under-measured, so two names placed "clear" of each other overlapped.
+    const labelSize = (text) => ({ w: text.length * 9.6, h: 13 });
     const ringCrosses = (box) => {
       const corners = [[box.l, box.t], [box.r, box.t], [box.l, box.b], [box.r, box.b]];
       const ds = corners.map(([x, y]) => Math.hypot(x - cx, y - cy));
@@ -372,6 +374,7 @@ export function createRouteOrrery(host, { maxRings = 3, caption: captionMode = '
         const ux = Math.cos(rad); const uy = Math.sin(rad);
         // out along the radial in 6px steps until neither a ring nor a node lies inside the box
         let dist = R + 20; let ox = 0; let oy = 0; let anchor = 'middle'; let ax = 0; let box = null;
+        let clear = false;
         for (let k = 0; k < 12; k += 1) {
           ox = cx + ux * dist; oy = cy + uy * dist;
           anchor = Math.abs(ux) < 0.3 ? 'middle' : (ux > 0 ? 'start' : 'end');
@@ -385,9 +388,12 @@ export function createRouteOrrery(host, { maxRings = 3, caption: captionMode = '
           const clearNames = !nameBoxes.some((nb) => boxesTouch(nb, box, 4)) && (isDest || !destBox || !boxesTouch(destBox, box, 12));
           const lx = Math.max(box.l - 3, Math.min(p.x, box.r + 3)); const ly = Math.max(box.t - 3, Math.min(p.y, box.b + 3));
           const clearLeader = !nameBoxes.some((nb) => segmentTouches(p.x, p.y, lx, ly, nb, 4));
-          if (clearRings && clearNodes && clearNames && clearLeader) break;
+          if (clearRings && clearNodes && clearNames && clearLeader) { clear = true; break; }
           dist += 6;
         }
+        // No clear air for a passing name: it is not drawn (and neither is its node) rather than
+        // printed over another name. The destination is always drawn.
+        if (!clear && !isDest) return null;
         const axc = anchor === 'middle' ? box.l + w / 2 : anchor === 'start' ? box.l : box.r;
         if (reserve) { nameBoxes.push(box); if (isDest) destBox = box; }
         // the leader lands on the word: at the point of the label's box (3px out) nearest its node

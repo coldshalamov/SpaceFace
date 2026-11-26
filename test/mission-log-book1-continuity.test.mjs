@@ -29,10 +29,10 @@ test('Book 1 Journal follows the ordered offer, scale work and handoff without t
   assert.equal(buildMissionBoardContract(1, { state }), null, 'world work precedes the next board offer');
   const scale = recommendedActions(state, [], null)[0];
   assert.match(`${scale.title} ${scale.body}`, /Tethys Junction/);
-  assert.match(scale.body, /manifest.*re-coded/i);
-  assert.match(scale.body, /Scale 4.*fresh jettisoned unreserved cargo pod/i);
-  assert.match(scale.body, /8 WU\/s or less/i);
-  assert.match(scale.body, /buy or mine.*delivered alloys are gone/i);
+  // The recorded handoff leaves the real crate on the plate; the journal points at the ring.
+  assert.match(scale.title, /Check the manifest/i);
+  assert.match(scale.body, /Scale 4 ring/i);
+  assert.match(scale.body, /delivered alloy crate.*weighed/i);
   assert.equal(state.nav.waypoint, course);
 
   const tracked = { id: 'other', status: 'active', title: 'Other job', type: 'cargo_delivery', params: { qty: 1 } };

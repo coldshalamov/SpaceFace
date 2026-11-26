@@ -44,7 +44,7 @@ test('Adventure callouts are plain words: the baseline jargon cannot draw', () =
     'CLEAN SNAG 93',
     'LINE RELEASED 16T — MESSY',
     'MASS 20 · EVEN PULL',
-    'GYRE — STRAIN ×4 · 38t',
+    'GATHER — STRAIN ×4 · 38t',
   ]) {
     assert.equal(plainCallout(jargon), null, jargon);
   }

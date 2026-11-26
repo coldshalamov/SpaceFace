@@ -19,15 +19,21 @@ import {
 } from '../src/data/collisionProxyManifests.js';
 import { ensurePhysicsBodySpec, isDynamicPhysicsBodyEntity } from '../src/core/physicsAuthority.js';
 
-// partsLibrary.js has a broad visual-module graph. Run the exact PR-head selector
-// declarations from the saved exact-base source with inert unrelated identity
-// predicates, while using the existing generated render-package manifest for the
-// one packaged-file gate this actor reaches. This keeps the renderer proof tied to
-// the shipping selector text without materializing its unrelated visual graph.
+// partsLibrary.js has a broad visual-module graph, and its ordinary-path selector
+// constants now live in src/data/wholeShipVisualIdentity.js (the sim-side identity
+// home). Run the exact shipping selector declarations from both files with inert
+// unrelated identity predicates, while using the existing generated render-package
+// manifest for the one packaged-file gate this actor reaches. This keeps the
+// renderer proof tied to the shipping selector text without materializing its
+// unrelated visual graph.
 const partsUrl = new URL('../src/render/partsLibrary.js', import.meta.url);
 const partsSource = typeof globalThis.__spacefaceReadTestSource === 'function'
   ? globalThis.__spacefaceReadTestSource('src/render/partsLibrary.js')
   : readFileSync(partsUrl, 'utf8');
+const identityUrl = new URL('../src/data/wholeShipVisualIdentity.js', import.meta.url);
+const identitySource = typeof globalThis.__spacefaceReadTestSource === 'function'
+  ? globalThis.__spacefaceReadTestSource('src/data/wholeShipVisualIdentity.js')
+  : readFileSync(identityUrl, 'utf8');
 const { RENDER_PACKAGE_PILOTS } = await import('../src/render/renderPackageManifest.js');
 
 function declaration(source, marker) {
@@ -60,13 +66,13 @@ function declaration(source, marker) {
 
 function objectConstant(name) {
   const marker = `const ${name} = Object.freeze({`;
-  const start = partsSource.indexOf(marker);
-  assert.notEqual(start, -1, `exact shipping source contains ${name}`);
-  const open = partsSource.indexOf('{', start + marker.length - 1);
+  const start = identitySource.indexOf(marker);
+  assert.notEqual(start, -1, `exact shipping identity source contains ${name}`);
+  const open = identitySource.indexOf('{', start + marker.length - 1);
   let depth = 0;
   let quote = null;
-  for (let i = open; i < partsSource.length; i++) {
-    const c = partsSource[i];
+  for (let i = open; i < identitySource.length; i++) {
+    const c = identitySource[i];
     if (quote) {
       if (c === '\\') { i++; continue; }
       if (c === quote) quote = null;
@@ -75,7 +81,7 @@ function objectConstant(name) {
     if (c === "'" || c === '"') { quote = c; continue; }
     if (c === '{') depth++;
     if (c === '}' && --depth === 0) {
-      const body = partsSource.slice(open, i + 1);
+      const body = identitySource.slice(open, i + 1);
       const entries = [...body.matchAll(/'([^']+)'\s*:\s*'([^']+)'/g)];
       return Object.fromEntries(entries.map((match) => [match[1], match[2]]));
     }
@@ -105,32 +111,26 @@ const isRequired = new Function('__d', `const { ${[...identityFunctions,
   REQUIRED_WHOLE_SHIP_ASSET_REFS: new Set(),
 });
 const isPackaged = new Function('PACKAGED_LIVE_WHOLE_SHIP_FILES',
-  `${declaration(partsSource, 'export function isPackagedLiveWholeShipFile(file)')}; return isPackagedLiveWholeShipFile;`)(packagedFiles);
+  `${declaration(identitySource, 'export function isPackagedLiveWholeShipFile(file)')}; return isPackagedLiveWholeShipFile;`)(packagedFiles);
 const isPackagedForSelection = new Function('PACKAGED_LIVE_WHOLE_SHIP_FILES',
-  `${declaration(partsSource, 'function packagedLiveWholeShipFile(file)')}; return packagedLiveWholeShipFile;`)(packagedFiles);
+  `${declaration(identitySource, 'function packagedLiveWholeShipFile(file)')}; return packagedLiveWholeShipFile;`)(packagedFiles);
 const makeSelection = new Function('packagedLiveWholeShipFile', 'wholeShipSelection', 'WHOLE_SHIP_LOD_FAMILY_BY_FILE',
-  `${declaration(partsSource, 'function liveWholeShipSelection(file, assetId, roleId, lodFamily = null)')}; return liveWholeShipSelection;`)(
+  `${declaration(identitySource, 'function liveWholeShipSelection(file, assetId, roleId, lodFamily = null)')}; return liveWholeShipSelection;`)(
   isPackagedForSelection, (file, assetId, roleId, lodFamily) => ({ file, assetId, roleId, lodFamily }), {});
-const selectorDependencies = [
-  'salvageTenderWholeShipVisual', 'isLastArgument', 'LAST_ARGUMENT_SPEC',
-  'isPalletJackEntity', 'isMothlightTender', 'isKilnbackEntity', 'isScissorwakeEntity',
-  'isTowlineCrewEntity', 'isIlexArkEntity', 'isRedKiteEntity', 'isSableVennEntity',
-  'ceresWorkfleetRole', 'CERES_BREAKER_FILE', 'CERES_BREAKER_ASSET',
+// The ordinary-path def-id resolution (this actor's tug) moved with the identity
+// maps into wholeShipVisualIdentity.js: run that shipping declaration too, with the
+// same inert-unrelated-identity stubs the partsLibrary selector gets.
+const ordinaryDependencies = [
   'WHOLE_SHIP_FILE_BY_HOSTILE_ID', 'WHOLE_SHIP_ASSET_ID_BY_HOSTILE_ID',
   'WHOLE_SHIP_FILE_BY_SILHOUETTE', 'WHOLE_SHIP_ASSET_ID_BY_SILHOUETTE',
   'WHOLE_SHIP_FILE_BY_ASSET_REF', 'WHOLE_SHIP_ASSET_ID_BY_ASSET_REF',
   'WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE', 'WHOLE_SHIP_ASSET_ID_BY_TRAFFIC_ROLE',
   'WHOLE_SHIP_FILE_BY_DEF_ID', 'WHOLE_SHIP_ASSET_ID_BY_DEF_ID',
-  'WHOLE_SHIP_LOD_FAMILY_BY_DEF_ID', 'applyFactionWholeShipKit',
-  'liveWholeShipSelection', 'requiresProductionWholeShipForEntity',
+  'WHOLE_SHIP_LOD_FAMILY_BY_DEF_ID', 'applyFactionWholeShipKit', 'liveWholeShipSelection',
 ];
-const selectorContext = Object.fromEntries(selectorDependencies.map((name) => [name, () => false]));
-Object.assign(selectorContext, {
-  salvageTenderWholeShipVisual: () => null,
-  LAST_ARGUMENT_SPEC: {},
-  ceresWorkfleetRole: () => null,
-  CERES_BREAKER_FILE: '',
-  CERES_BREAKER_ASSET: '',
+const makeOrdinary = new Function('__d', `const { ${ordinaryDependencies.join(', ')} } = __d;\n`
+  + `${declaration(identitySource, 'export function ordinaryWholeShipVisualForEntity(entity, options = {})')}; return ordinaryWholeShipVisualForEntity;`)({
+  ...Object.fromEntries(ordinaryDependencies.map((name) => [name, () => false])),
   WHOLE_SHIP_FILE_BY_HOSTILE_ID: {},
   WHOLE_SHIP_ASSET_ID_BY_HOSTILE_ID: {},
   WHOLE_SHIP_FILE_BY_SILHOUETTE: {},
@@ -143,6 +143,24 @@ Object.assign(selectorContext, {
   WHOLE_SHIP_ASSET_ID_BY_DEF_ID: objectConstant('WHOLE_SHIP_ASSET_ID_BY_DEF_ID'),
   WHOLE_SHIP_LOD_FAMILY_BY_DEF_ID: {},
   applyFactionWholeShipKit: (entity, selection) => selection,
+  liveWholeShipSelection: makeSelection,
+});
+const selectorDependencies = [
+  'salvageTenderWholeShipVisual', 'isLastArgument', 'LAST_ARGUMENT_SPEC',
+  'isPalletJackEntity', 'isMothlightTender', 'isKilnbackEntity', 'isScissorwakeEntity',
+  'isTowlineCrewEntity', 'isIlexArkEntity', 'isRedKiteEntity', 'isSableVennEntity',
+  'ceresWorkfleetRole', 'CERES_BREAKER_FILE', 'CERES_BREAKER_ASSET',
+  'ordinaryWholeShipVisualForEntity',
+  'liveWholeShipSelection', 'requiresProductionWholeShipForEntity',
+];
+const selectorContext = Object.fromEntries(selectorDependencies.map((name) => [name, () => false]));
+Object.assign(selectorContext, {
+  salvageTenderWholeShipVisual: () => null,
+  LAST_ARGUMENT_SPEC: {},
+  ceresWorkfleetRole: () => null,
+  CERES_BREAKER_FILE: '',
+  CERES_BREAKER_ASSET: '',
+  ordinaryWholeShipVisualForEntity: makeOrdinary,
   liveWholeShipSelection: makeSelection,
   requiresProductionWholeShipForEntity: isRequired,
 });

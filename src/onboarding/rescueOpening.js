@@ -93,22 +93,37 @@ function drawRng(rng) {
 // Slots: rock (the swung mass), derelict (the scrap target), scout (the shove target),
 // asteroid (the wall), pod (the grab target), beacon (the run destination). Positions are
 // relative to the player's opening position on one seeded bearing so the whole tableau is
-// deterministic per seed and visible without a chase. Nothing here is persistent (save
-// systems only keep flagged entities) and nothing collides with ships except the scout,
-// which keeps the default contact identity so gunfire can move it and the asteroid can
-// stop it.
-export function makeRescueCastSpecs(playerPos, rng) {
+// deterministic per seed and visible without a chase. The rescue cast is rebuilt from
+// the lesson state on Continue. The scout keeps its standard contacts so gunfire can
+// move it and the asteroid can stop it.
+// `opts.beside` (a heading in radians) seats the tableau beside the pilot's nose instead of on a
+// free bearing: the rock lands abeam on a seeded side, a touch ahead, so it is on screen at rest
+// zoom level with the ship (clear of the bottom instruments, and its hover card clear of the
+// objective tracker above it), and the tableau never runs into what the pilot faces (the opening
+// seat faces Helios Station's berth). The draw count is unchanged.
+export function makeRescueCastSpecs(playerPos, rng, opts = {}) {
   const px = finite(playerPos && playerPos.x);
   const pz = finite(playerPos && playerPos.z);
-  const theta = drawRng(rng) * Math.PI * 2;
+  const draw = drawRng(rng);
+  const beside = opts && Number.isFinite(opts.beside) ? opts.beside : null;
+  const theta = beside == null ? draw * Math.PI * 2
+    : beside + (draw < 0.5 ? 1 : -1) * (Math.PI / 2 - 0.15 + ((draw * 2) % 1 - 0.5) * 0.2);
   const dir = { x: Math.cos(theta), z: Math.sin(theta) };
   const at = (range, bearing) => ({
     x: px + Math.cos(theta + bearing) * range,
     z: pz + Math.sin(theta + bearing) * range,
   });
-  const rockPos = at(90, 0);
-  const alongX = rockPos.x + dir.x * 140;
-  const alongZ = rockPos.z + dir.z * 140;
+  // Beside the nose the pair is drawn in so the wreck is on screen when the line says "Aim at the
+  // wreck". The flight camera holds a fixed height of world (about ±64 m at rest), so a 16:9 window
+  // shows about ±114 m across (measured on the 1280x720 route): rock 75 and wreck ~110 off the hull
+  // put the wreck at the frame's edge at rest and fully in view once the latch draws the ship toward
+  // the rock (at 160 it sat past the edge and the first throw aimed at nothing). A narrower window
+  // or a portrait phone still needs the camera to frame the pair; this spacing cannot do that alone.
+  const rockRange = beside == null ? 90 : 75;
+  const wreckGap = beside == null ? 140 : 35;
+  const rockPos = at(rockRange, 0);
+  const alongX = rockPos.x + dir.x * wreckGap;
+  const alongZ = rockPos.z + dir.z * wreckGap;
   const asteroidPos = at(420, 0.6);
   const drift = drawRng(rng) * Math.PI * 2;
 
@@ -137,6 +152,9 @@ export function makeRescueCastSpecs(playerPos, rng) {
       hullMax: 1,
       flags: { invuln: true },
       _invulnUntil: Infinity,
+      // Keep the swing target in the opening pocket when traffic hits it. Its solid
+      // collider still receives the learner rock.
+      physicsBody: { dynamic: false },
       data: {
         parentType: 'ship', loot: [], salvagePool: {}, salvageTimeLeft: 0,
         onboarding: true, rescue: true, rescueRole: 'derelict', kind: 'derelict',

@@ -72,6 +72,7 @@ export function stallPosition(stationPos, sectorId = STALL_TUNING.sectorId) {
 }
 
 export const pl215SomebodysStall = {
+  modes: ['flight'],
   name: 'plantsPl215',
 
   init(ctx) {

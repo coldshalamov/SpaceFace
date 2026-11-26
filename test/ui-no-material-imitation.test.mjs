@@ -57,9 +57,15 @@ const FORBIDDEN = [
   // tapes, windows and texture tiles. A backdrop photograph of the world (plates/plate.backdrop.*)
   // is a picture, not a control, and stays allowed; so do the vector icons, marks and SVG shells.
   // (a .json or .svg inside those folders is vector data -- the radar's glyph paths -- and is drawn, not photographed)
-  [/assets\/(?:ui\/kit\/)?assets\/(?:keys|controls|lights|gauges|sockets|tapes|strips|wear|windows|badges|radar|tiles)\/(?![^'"`\s)]*\.(?:json|svg))/,
+  // Tests follow 0f0dd79113 and e88b11618f: the loading slate and the title doors show a produced
+  // picture of the place (tile.arena.* / tile.mode.*). Those scene renders are not photographed controls.
+  [/assets\/(?:ui\/kit\/)?assets\/(?:keys|controls|lights|gauges|sockets|tapes|strips|wear|windows|badges|radar)\/(?![^'"`\s)]*\.(?:json|svg))/,
     'a photographed control standing in for a drawn one'],
-  [/\.\.\/assets\/(?:keys|controls|lights|gauges|sockets|tapes|strips|wear|windows|badges|radar|tiles)\/(?![^'"`\s)]*\.(?:json|svg))/,
+  [/assets\/(?:ui\/kit\/)?assets\/tiles\/(?!tile\.(?:arena|mode)\.)(?![^'"`\s)]*\.(?:json|svg))/,
+    'a photographed control standing in for a drawn one'],
+  [/\.\.\/assets\/(?:keys|controls|lights|gauges|sockets|tapes|strips|wear|windows|badges|radar)\/(?![^'"`\s)]*\.(?:json|svg))/,
+    'a photographed control standing in for a drawn one'],
+  [/\.\.\/assets\/tiles\/(?!tile\.(?:arena|mode)\.)(?![^'"`\s)]*\.(?:json|svg))/,
     'a photographed control standing in for a drawn one'],
 ];
 

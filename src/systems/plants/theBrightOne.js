@@ -54,6 +54,7 @@ export function isBrightRun(shotTimes, now, windowS = BRIGHT_ONE_TUNING.shotWind
 }
 
 export const theBrightOnePlant = {
+  modes: ['flight'],
   name: 'plants166',
 
   init(ctx) {

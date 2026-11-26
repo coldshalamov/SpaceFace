@@ -48,6 +48,7 @@ export function lampCountTonight(completedSittings, base = SENNA_TUNING.lampBase
 }
 
 export const sennaReadsPlant = {
+  modes: ['flight'],
   name: 'plants120',
 
   init(ctx) {

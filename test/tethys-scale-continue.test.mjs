@@ -19,18 +19,18 @@ import { normalizeField, sampleFieldAcceleration } from '../src/core/fields/fiel
 // The deck drag is a library driven by the field/impulse owner.
 FIELD_FLAGS.enabled = true;
 const DT = 1 / 60;
+const ANVIL_FIELD = normalizeField({ id: 'anvil', kind: 'well', center: { x: 14288, z: 5992 }, radius: 2600,
+  strength: 240, innerRadius: 900, innerSoft: 250, falloff: 1.4, durationS: Infinity });
 
 test('powered deck dissipates real cargo motion, bounded under fast steps and actual Anvil acceleration', () => {
   const center = kesslerPadPosition(), state = { entities: new Map(), combat: { entities: {} } };
-  const planet = normalizeField({ id: 'anvil', kind: 'well', center: { x: 14288, z: 5992 }, radius: 2600,
-    strength: 240, innerRadius: 900, innerSoft: 250, falloff: 1.4, durationS: Infinity });
   for (const mass of [20, 60, 200]) for (const offset of [-70, 0, 70]) {
     const pod = { id: 1, alive: true, type: 'payload', mass, radius: 3, pos: { x: center.x + offset, z: center.z }, vel: { x: -2, z: 0 },
       physicsBody: { mass }, data: { jettisonedCargo: true } }; state.entities.set(1, pod);
     const before = { ...pod.pos };
     for (let i = 0; i < 120; i++) {
       const impulse = kesslerDeckDampingImpulse(state, pod, DT);
-      const gravity = sampleFieldAcceleration(pod.pos, null, [planet], 10, fieldBodyProfile(pod, state));
+      const gravity = sampleFieldAcceleration(pod.pos, null, [ANVIL_FIELD], 10, fieldBodyProfile(pod, state));
       assert.ok(impulse.x * pod.vel.x + impulse.z * pod.vel.z <= 0);
       pod.vel.x += impulse.x / mass + gravity.ax / 60; pod.vel.z += impulse.z / mass + gravity.az / 60;
       pod.pos.x += pod.vel.x / 60; pod.pos.z += pod.vel.z / 60;
@@ -158,8 +158,44 @@ test('an old save past the handoff but before the packet restores the delivered 
     f.scale._sync(); f.scale._sync();
     assert.equal(f.crates().length, 1, 're-entry does not duplicate the crate');
     f.scale.update(0, f.s);
+    assert.notEqual(crate.data.kesslerRead, true, 'resuming far away leaves the crate unread');
+    f.p.pos = { ...pad };
+    f.scale.update(0, f.s);
     assert.equal(crate.data.kesslerRead, true); assert.ok(crate.data.kesslerReceipt);
     assert.ok(f.scale._deckPods.has(crate.id), 'the scale recorded it on the deck');
+  } finally { f.close(); }
+});
+
+test('a delayed pilot finds the same unread desk crate on the plate and witnesses one measurement', () => {
+  const f = deliveredFixture();
+  try {
+    f.scale._sync();
+    const crate = f.crates()[0];
+    const pad = kesslerPadPosition();
+    const hold = structuredClone(f.s.player.cargo.items);
+    const mass = crate.physicsBody.mass;
+    let furthest = 0;
+    for (let step = 0; step < 60 * 60; step++) {
+      const impulse = kesslerDeckDampingImpulse(f.s, crate, DT);
+      const gravity = sampleFieldAcceleration(crate.pos, null, [ANVIL_FIELD], 10, fieldBodyProfile(crate, f.s));
+      crate.vel.x += (impulse?.x || 0) / mass + gravity.ax * DT;
+      crate.vel.z += (impulse?.z || 0) / mass + gravity.az * DT;
+      crate.pos.x += crate.vel.x * DT;
+      crate.pos.z += crate.vel.z * DT;
+      furthest = Math.max(furthest, Math.hypot(crate.pos.x - pad.x, crate.pos.z - pad.z));
+    }
+    assert.ok(furthest < 90, `the unread crate must stay inside the ring: ${furthest} u`);
+    f.scale.update(0, f.s);
+    assert.notEqual(crate.data.kesslerRead, true);
+    assert.equal(f.s.story.flags.kessler_reads_counted || 0, 0);
+
+    f.p.pos = { ...pad };
+    f.scale.update(0, f.s);
+    f.scale.update(0, f.s);
+    assert.equal(f.crates()[0], crate);
+    assert.deepEqual(crate.data.kesslerReceipt, { plateRead: 18.8, trueRead: 20 });
+    assert.equal(f.s.story.flags.kessler_reads_counted, 1);
+    assert.deepEqual(f.s.player.cargo.items, hold);
   } finally { f.close(); }
 });
 

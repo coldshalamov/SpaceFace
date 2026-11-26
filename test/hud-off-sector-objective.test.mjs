@@ -24,7 +24,7 @@ test('a tracked objective in another sector names the route instead of a false l
   const destination = flightDestinationSurface(state, resolveFlightObjectiveCommand(state));
   assert.match(destination.line, /Target the marked derelict/);
   assert.match(destination.line, /Plot route to Helios Prime/);
-  assert.match(destination.line, /Star Map/);
+  assert.match(destination.line, /M · Chart/);
   assert.match(destination.line, /5m 00s/, 'the active mission timer remains visible');
   assert.doesNotMatch(destination.line, /11\.4|→|ETA/);
   assert.equal(objectiveTravelReadout(state, waypoint).distanceWu, null);
@@ -43,7 +43,9 @@ test('a tracked objective in another sector names the route instead of a false l
 
   state.world.currentSectorId = HELIOS;
   const local = flightDestinationSurface(state, resolveFlightObjectiveCommand(state));
-  assert.match(local.line, /11\.4k u/);
+  // Tests follow df01ea648d: plain units everywhere — a distance reads "km", never the internal
+  // world-unit shorthand "11.4k u".
+  assert.match(local.line, /11\.4 km/);
   assert.doesNotMatch(local.line, /Plot route|Next jump/);
   assert.deepEqual(resolveRadarObjective(state).waypointPos, waypoint.pos);
 });
@@ -55,11 +57,27 @@ test('an explicitly selected local course owns the display without changing trac
   assert.equal(command.owner, 'navigation');
   const destination = flightDestinationSurface(state, command);
   assert.match(destination.line, /Ceres worksite/);
-  assert.match(destination.line, /100 u/);
+  // Tests follow df01ea648d: a hundred world units prints as plain metres.
+  assert.match(destination.line, /100 m/);
   assert.doesNotMatch(destination.line, /Helios Prime|47a/);
   assert.equal(state.ui.trackedMissionId, '47a');
   assert.equal(state.nav.waypoint, waypoint);
   assert.deepEqual(resolveRadarObjective(state).waypointPos, waypoint.pos);
+});
+
+test('a resolved story waypoint names the local place and an unresolved bearing keeps its sector', () => {
+  const waypoint = { kind: 'story', sectorId: 'sector_tethys_junction', sectorName: 'Tethys Junction',
+    label: 'Scale 4 · weigh the delivered crate', pos: { x: 13008, z: 7212 } };
+  const state = stateFor(waypoint);
+
+  state.world.currentSectorId = waypoint.sectorId;
+
+  const resolved = resolveRadarObjective(state);
+  assert.match(resolved.label, /^SCALE 4\b/);
+  assert.deepEqual(resolved.waypointPos, waypoint.pos);
+
+  state.nav.waypoint = { ...waypoint, pos: null };
+  assert.equal(resolveRadarObjective(state).label, 'TETHYS JUNCTION');
 });
 
 // SWARM-LEAK-01 — the Adventure goal line ("GOAL · HELIOS STATION · 3.6k u · ETA —") painted

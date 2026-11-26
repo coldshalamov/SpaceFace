@@ -6,6 +6,7 @@ import { createSimLaneRuntime } from '../src/core/simLaneMain.js';
 import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
 import { laneDomEvent } from '../src/core/simLaneCommands.js';
+import { createPoseTableWriter } from '../src/core/simPoseTable.js';
 
 // Execute the production browser adapter and main transport with a deterministic scheduler.
 // Only the authoritative host is replaced: these checks isolate transport pressure from physics
@@ -66,7 +67,7 @@ async function fixture(t, { bodies = 142, eventsPerTick = 1, payload,
   bus.on('fixture:one-shot', event => seenEvents.push(event.id));
   bus.on('physics:impact', event => seenImpacts.push(event.id));
   const context = vm.createContext({
-    performance: { now: () => now },
+    performance: { now: () => now, timeOrigin: 0 },
     setTimeout(fn, delay) {
       const key = ++nextTimer;
       timers.set(key, { fn, at: now + delay });
@@ -78,6 +79,9 @@ async function fixture(t, { bodies = 142, eventsPerTick = 1, payload,
     self: { postMessage(reply) { posts.push(structuredClone(reply)); receive?.(structuredClone(reply)); } },
     nowNs: () => BigInt(Math.floor(now * 1e6)),
     bindSabJournalArena: () => null,
+    // The eval'd adapter strips its imports; worker-local clock now builds a real pose-table
+    // writer (private buffer, transfer mode) — inject the same binding the import provides.
+    createPoseTableWriter,
     loadModelTruthCensus: async () => {},
     createSimHost: () => ({
       init: async () => ({}), finalize: async () => ({}), shutdown() {},
@@ -127,6 +131,12 @@ async function fixture(t, { bodies = 142, eventsPerTick = 1, payload,
   };
   const lane = createSimLaneRuntime({ state, registry: {}, bus,
     flags: { lane: 'worker', warnings: [], sab: false }, clockMode: 'worker-local',
+    // Both clock origins are controlled here: the worker adapter runs on the vm
+    // performance clock (timeOrigin 0, now driven by this harness) and the main
+    // lane stamps heartbeats from the same fake timebase through this injection.
+    // The emitted stamp therefore rides the queue intact — a bad main timestamp
+    // cannot be laundered into a passing one by delivery.
+    pumpScheduler: { nowMs: () => now, timeOriginMs: 0 },
     channelFactory: () => ({
       post(message) {
         if (message.kind === 'clockAck') {
@@ -145,6 +155,9 @@ async function fixture(t, { bodies = 142, eventsPerTick = 1, payload,
   t.after(async () => { lane.close(); await settle(); });
   return {
     state, lane, posts, seenEvents, seenImpacts, batches, appliedCommands, timerDelays, clock: context.fixture.clock,
+    send,
+    now: () => now,
+    skip(ms) { now += Math.max(0, ms); },
     maxPendingTimers: () => maxPendingTimers,
     generatedEvents: () => eventId, deliveredAcks: () => deliveredAcks,
     async until(elapsedMs) {
@@ -160,6 +173,20 @@ async function fixture(t, { bodies = 142, eventsPerTick = 1, payload,
         await settle();
       }
       now = Math.max(now, target);
+    },
+    // Fire exactly one pending timer turn, whatever is due next. Ordering probes use this
+    // to run a worker timer BEFORE a queued heartbeat batch drains (timer-first delivery).
+    async stepTimer() {
+      const next = [...timers].sort((a, b) => a[1].at - b[1].at)[0];
+      if (!next) return false;
+      if (next[1].wakeAt == null) next[1].wakeAt = next[1].at + (wakeDelays[wakes++] || 0);
+      timers.delete(next[0]);
+      now = Math.max(now, next[1].wakeAt);
+      next[1].fn();
+      await settle();
+      await onWake?.({ clock: context.fixture.clock, lane, state, now, setOwnerScale, settle });
+      await settle();
+      return true;
     },
     async releaseAcks() {
       holdAcks = false;
@@ -204,6 +231,40 @@ test('delayed consumer keeps cheap worker ticking with one latest scalar row per
   assert.equal(f.lane.getDiagnostics().error, null);
 });
 
+test('continuous production heartbeats keep worker congestion as honest catch-up debt', async t => {
+  const f = await fixture(t, { bodies: 4 });
+  await f.releaseAcks();
+  f.lane.runner.heartbeat();
+  await f.until(100);
+  assert.ok(f.clock.stepCount >= 5);
+
+  // Block the worker event loop for 1.4 s of fake time while the main thread keeps
+  // producing frames. In the real browser those beats queue behind the blocked worker;
+  // deliver that queued batch afterwards with their original production stamps.
+  const stepsBefore = f.clock.stepCount;
+  const shedBefore = f.clock.shedStepCount;
+  f.skip(1400);
+  const endAt = f.now();
+  let lastSent = f.clock.lastHeartbeatSentAtMs;
+  assert.ok(lastSent > 0);
+  for (let sentAt = lastSent + 1000 / 60; sentAt <= endAt; sentAt += 1000 / 60) {
+    f.send({ kind: 'laneHeartbeat', sentAtMs: sentAt, clockKind: 'performance' });
+    lastSent = sentAt;
+  }
+  await f.releaseAcks();
+
+  assert.equal(f.clock.heartbeatSilences, 0,
+    'continuously produced beats describe worker congestion, not presentation silence');
+  assert.ok(f.clock.lastHeartbeatProductionGapMs <= 20,
+    `the queued production stream stayed at frame cadence (gap ${f.clock.lastHeartbeatProductionGapMs})`);
+
+  await f.until(f.now() - 1000 + 50);
+  assert.ok(f.clock.stepCount > stepsBefore, 'the worker resumes stepping after its event loop unblocks');
+  assert.ok(f.clock.shedStepCount > shedBefore,
+    'the 1.4 s congestion interval remains bounded catch-up debt instead of being silently deleted');
+  assert.equal(f.lane.getDiagnostics().error, null);
+});
+
 test('true one-shot backlog remains bounded and its pressure is reported before ACK recovery', async t => {
   const f = await fixture(t, {
     eventsPerTick: 300,
@@ -214,14 +275,17 @@ test('true one-shot backlog remains bounded and its pressure is reported before 
       spawnInfos: Array.from({ length: 200 }, (_, i) => info(9000 + tick * 200 + i)),
     }),
   });
+  f.lane.runner.heartbeat();
   await f.until(1000);
-  assert.equal(f.clock.backpressured, true, 'actual durable events still stop an unconsumed producer');
-  assert.ok(f.clock.durableCount >= 4096 && f.clock.durableCount < 4096 + 442);
+  assert.equal(f.clock.backpressured, true, 'durable pressure is still reported while rows retain');
+  assert.ok(f.clock.durableCount >= 4096,
+    `the durable queue must reach the pressure flag: ${f.clock.durableCount}`);
   assert.equal(f.clock.latestReply.clockDiagnostics.backpressured, true, 'diagnostics reflect pressure after merging');
   assert.equal(f.clock.backpressureEpisodes, 1);
-  const stopped = f.clock.stepCount;
-  await f.until(2000);
-  assert.equal(f.clock.stepCount, stopped, 'a stopped consumer cannot grow the durable queue indefinitely');
+  const stepsDuringPressure = f.clock.stepCount;
+  await f.until(1600);
+  assert.ok(f.clock.stepCount > stepsDuringPressure,
+    'a stopped consumer cannot stop authoritative flight while durable rows retain');
   await f.pause();
   await f.releaseAcks();
   assert.deepEqual(f.seenEvents, Array.from({ length: f.generatedEvents() / 300 }, (_, i) => i * 300 + 1),
@@ -241,15 +305,16 @@ test('a heartbeat recovers a lost reply credit without waiting for a journal reb
   await f.until(500);
   const applied = f.posts.filter(message => message.kind === 'clockTick').at(-1);
   assert.ok(applied);
-  assert.equal(f.clock.unackedSequences.length, 4);
+  // 173afdeea4: the reply window is 2 in flight (was 4) — replies stop flooding a busy main.
+  assert.equal(f.clock.unackedSequences.length, 2);
   assert.equal(f.deliveredAcks(), 0);
   assert.equal(f.state.tick, applied.stateTick);
   assert.ok(f.clock.stepCount > f.state.tick, 'authoritative motion outlasted the reply window');
 
   await f.sampleHeartbeat(applied.clockSequence, applied.journalEnd, 1);
-  assert.equal(f.clock.unackedSequences.length, 4, 'a stale lifecycle cannot release current credits');
+  assert.equal(f.clock.unackedSequences.length, 2, 'a stale lifecycle cannot release current credits');
   await f.sampleHeartbeat(applied.clockSequence + 1, applied.journalEnd, 0);
-  assert.equal(f.clock.unackedSequences.length, 4, 'a future watermark cannot release current credits');
+  assert.equal(f.clock.unackedSequences.length, 2, 'a future watermark cannot release current credits');
   await f.sampleHeartbeat(applied.clockSequence, applied.journalEnd, 0);
   await f.until(600);
   assert.ok(f.state.tick > applied.stateTick, 'the next pose arrives without the watchdog');
@@ -325,8 +390,11 @@ test('recoverable late worker wakes retain debt and catch up through bounded yie
     },
   });
   await f.until(1000);
-  assert.ok(f.clock.stepCount >= 59, 'recoverable scheduling delays do not permanently ratchet simulation below wall time');
-  assert.equal(f.clock.shedStepCount, 0, 'debt within 250 ms is carried instead of discarded after each batch');
+  // ENGINE slice 5: a late wake dips the world clock (dilation) instead of dropping steps; it
+  // recovers toward real time as soon as the debt clears.
+  assert.ok(f.clock.stepCount >= 50, 'recoverable scheduling delays dip the clock, not ratchet it down');
+  assert.equal(f.clock.shedStepCount, 0, 'debt within the hard cap is carried, never discarded');
+  assert.ok(f.clock.dilation > 0.8, 'the world clock recovers toward real time once debt clears');
   assert.ok(f.batches.every(batch => batch.steps <= 4), 'catch-up never turns into a fifteen-step uninterruptible batch');
   assert.ok(f.timerDelays.some(delay => delay === 0), 'remaining whole-step debt gets a prompt yielded task');
   // Two bounded timers: the fixed-step clock and the stale-ACK watchdog. The
@@ -345,8 +413,11 @@ test('intrinsically overloaded worker carries bounded debt without growing a tim
   await f.until(1000);
   await f.until(2000);
   assert.ok(f.clock.stepCount < 70, '39 ms authoritative steps cannot become 60 Hz through scheduler accounting');
-  assert.ok(f.clock.shedStepCount > 0, 'only actual debt beyond the bound is shed under sustained overload');
-  assert.ok(f.clock.accumulator >= 0 && f.clock.accumulator <= 0.25 + 1e-12);
+  // ENGINE slice 5: sustained overload slows the whole world smoothly (dilation) rather than
+  // shedding steps; only debt beyond the 1 s hard cap would ever be dropped.
+  assert.equal(f.clock.shedStepCount, 0, 'sustained overload dilates the world instead of shedding steps');
+  assert.ok(f.clock.dilation < 1, 'the world clock is dilated under overload');
+  assert.ok(f.clock.accumulator >= 0 && f.clock.accumulator <= 1.0 + 1e-12);
   assert.ok(f.batches.every(batch => batch.steps <= 4));
   assert.ok(f.maxPendingTimers() <= 2, 'clock timer plus stale-ACK watchdog, no queue growth');
   assert.equal(f.clock.backpressured, false, 'this fixture isolates clock overload from consumer pressure');
@@ -379,55 +450,113 @@ test('pause discards whole old debt and resume does not charge the hidden wall i
   assert.ok(f.maxPendingTimers() <= 2, 'clock timer plus stale-ACK watchdog, no queue growth');
 });
 
-test('stopped presentation heartbeats hold the world until foreground beats resume', async t => {
+test('an overdue timer steps before delayed presentation heartbeats arrive', async t => {
   const f = await fixture(t, { bodies: 4 });
   await f.releaseAcks();
   f.lane.runner.heartbeat();
   await f.until(100);
   assert.ok(f.clock.stepCount >= 5);
-  assert.equal(f.clock.heartbeatHeld, false);
 
-  await f.until(400);
-  assert.equal(f.clock.heartbeatHeld, true, 'the real worker clock enters its heartbeat hold');
-  const heldTick = f.clock.stepCount;
-  await f.until(900);
-  assert.equal(f.clock.stepCount, heldTick, 'ticks stay parked during the hold');
+  // The worker event loop blocks for 1.2 s while the main thread keeps producing frames.
+  f.skip(1200);
+  const congestedUntil = f.now();
+  const beats = [];
+  for (let sentAt = 1000 + 1000 / 60; sentAt <= congestedUntil; sentAt += 1000 / 60) beats.push(sentAt);
+  const stale = beats.filter(sentAt => congestedUntil - sentAt > 1000);
+  const fresh = beats.filter(sentAt => congestedUntil - sentAt <= 1000);
+  assert.ok(stale.length > 10 && fresh.length > 10, 'the batch has both stale and current production');
 
-  for (let elapsed = 920; elapsed <= 1100; elapsed += 20) {
-    f.lane.runner.heartbeat();
-    await f.until(elapsed);
+  // Timer-first: one overdue fixed-step timer fires before any queued beat is consumed.
+  assert.equal(await f.stepTimer(), true, 'an overdue clock timer is pending');
+  assert.ok(f.clock.shedStepCount > 0, 'the worker accounts for debt beyond its cap');
+  const timerSteps = f.clock.stepCount;
+  const timerAnchor = f.clock.anchorMs;
+  assert.ok(timerSteps > 6, 'the timer runs without a fresh producer stamp');
+
+  for (const sentAt of [...stale, ...fresh]) {
+    f.send({ kind: 'laneHeartbeat', sentAtMs: sentAt, clockKind: 'performance' });
   }
-  assert.equal(f.clock.heartbeatHeld, false);
-  assert.ok(f.clock.stepCount - heldTick >= 11 && f.clock.stepCount - heldTick <= 12,
-    'recurring foreground beats resume the fixed-step cadence without charging the held interval');
-  assert.equal(f.lane.getDiagnostics().workerClockLastDiagnostics.heartbeatHolds, 1);
-  assert.equal(f.clock.shedStepCount, 0);
+  assert.equal(f.clock.anchorMs, timerAnchor, 'queued beats cannot move the simulation anchor');
+  assert.equal(f.clock.heartbeatSilences, 0, 'frame-cadence gaps confirm no silence');
+  await f.until(f.now() - 1000 + 40);
+  assert.ok(f.clock.stepCount > timerSteps, 'the worker continues draining bounded debt');
   assert.equal(f.lane.getDiagnostics().error, null);
 });
 
-for (const boundary of ['scale', 'lifecycle']) {
-  test(`${boundary} boundary starts a new wall interval instead of replaying whole old debt`, async t => {
-    let reset = false;
-    const f = await fixture(t, { bodies: 4, stepCostMs: 3, wakeDelays: [130],
-      onWake: async ({ clock, lane, setOwnerScale, settle }) => {
-        if (!reset && clock.accumulator >= 1 / 60) {
-          reset = true;
-          if (boundary === 'scale') setOwnerScale(0.25);
-          else {
-            lane.runner.setLifecycleGeneration(1);
-            lane.runner.setClockActive(true);
-          }
-          await settle();
-          assert.ok(clock.accumulator < 1 / 60, 'old whole-step debt is discarded at the explicit boundary');
-        }
-      },
-    });
-    await f.until(1000);
-    assert.equal(reset, true);
-    assert.equal(f.clock.scale, boundary === 'scale' ? 0.25 : 1);
-    assert.equal(f.clock.shedStepCount, 0);
-    assert.ok(f.batches.every(batch => batch.steps <= 4));
-    assert.ok(f.maxPendingTimers() <= 2, 'clock timer plus stale-ACK watchdog, no queue growth');
-    assert.equal(f.lane.getDiagnostics().error, null);
-  });
-}
+test('a late presentation gap is observable without discarding owed simulation time', async t => {
+  const f = await fixture(t, { bodies: 4 });
+  await f.releaseAcks();
+  f.lane.runner.heartbeat();
+  await f.until(100);
+  f.send({ kind: 'laneHeartbeat', sentAtMs: 1100, clockKind: 'performance' });
+
+  f.skip(1900);
+  assert.equal(await f.stepTimer(), true);
+  const anchorBefore = f.clock.anchorMs;
+  const owedBefore = f.clock.owedTicks;
+  const shedBefore = f.clock.shedStepCount;
+  assert.ok(shedBefore > 0, 'the ordinary debt cap handled the late worker turn');
+
+  f.send({ kind: 'laneHeartbeat', sentAtMs: 2200, clockKind: 'performance' });
+  assert.equal(f.clock.heartbeatSilences, 1);
+  assert.equal(f.clock.heartbeatSilenceMs, 100);
+  assert.equal(f.clock.anchorMs, anchorBefore, 'observation cannot reset simulation time');
+  assert.equal(f.clock.owedTicks, owedBefore);
+  assert.equal(f.clock.shedStepCount, shedBefore);
+  await f.until(f.now() - 1000 + 100);
+  assert.ok(f.lane.getDiagnostics().workerClockLastDiagnostics.heartbeatSilences >= 1);
+  assert.equal(f.lane.getDiagnostics().error, null);
+});
+
+test('an explicit pause discards hidden wall time before the clock reactivates', async t => {
+  const f = await fixture(t, { bodies: 4 });
+  await f.releaseAcks();
+  f.lane.runner.heartbeat();
+  await f.until(100);
+  assert.ok(f.clock.stepCount >= 5);
+
+  await f.pause();
+  f.skip(3000); // hidden for three seconds: no frames, no beats, by design
+  await f.resume();
+
+  const stepsAtResume = f.clock.stepCount;
+  const shedAtResume = f.clock.shedStepCount;
+  await f.until(f.now() - 1000 + 100);
+  assert.ok(f.clock.stepCount - stepsAtResume >= 5 && f.clock.stepCount - stepsAtResume <= 6,
+    'explicit reactivation resumes at live cadence without accumulating paused time');
+  assert.equal(f.clock.shedStepCount, shedAtResume);
+  f.lane.runner.heartbeat();
+  assert.equal(f.clock.heartbeatSilences, 0);
+  assert.equal(f.lane.getDiagnostics().error, null);
+});
+
+test('a receipt-only heartbeat clears the incompatible diagnostic timestamp', async t => {
+  const f = await fixture(t, { bodies: 4 });
+  await f.releaseAcks();
+  f.lane.runner.heartbeat();
+  await f.until(100);
+  f.send({ kind: 'laneHeartbeat', sentAtMs: 1100, clockKind: 'performance' });
+  assert.ok(f.clock.lastHeartbeatSentAtMs > 0, 'a stamped baseline is established');
+
+  // The stream switches to unstamped legacy beats at a slow but live cadence.
+  for (let elapsed = 200; elapsed <= 1400; elapsed += 200) {
+    f.send({ kind: 'laneHeartbeat' });
+    await f.until(elapsed);
+  }
+  assert.equal(f.clock.lastHeartbeatSentAtMs, 0, 'the incompatible format clears the stamp baseline');
+  assert.ok(f.clock.stepCount > 70, 'the clock stays autonomous across diagnostic formats');
+  assert.equal(f.lane.getDiagnostics().error, null);
+});
+
+test('missing presentation heartbeats leave active fixed-step flight running', async t => {
+  const f = await fixture(t, { bodies: 4 });
+  await f.releaseAcks();
+  f.lane.runner.heartbeat();
+  await f.until(100);
+  const stepsBefore = f.clock.stepCount;
+  await f.until(1800);
+  assert.ok(f.clock.stepCount - stepsBefore >= 100,
+    'the active worker continues fixed-step flight throughout presentation silence');
+  assert.equal(f.clock.shedStepCount, 0);
+  assert.equal(f.lane.getDiagnostics().error, null);
+});

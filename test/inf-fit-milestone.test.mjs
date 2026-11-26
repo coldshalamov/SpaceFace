@@ -85,5 +85,8 @@ test('both ends of the wire: Shipworks stamps before the fit, the receipt names 
   const app = readFileSync(new URL('../src/ui/station/stationApp.js', import.meta.url), 'utf8');
   assert.match(app, /subscribe\('module:equipped', \(p = \{\}\) => \{\s*const gained = consumeFitCapabilityMilestone\(state\(\), p\);/,
     'the receipt consumes the stamp on the authoritative equip event');
-  assert.match(app, /'LOADOUT RECALCULATED'/, 'a fit that teaches nothing keeps the old line');
+  // Plain words (R18): the receipt says "Part fitted"; a fit that teaches nothing adds no second
+  // line (the old mechanical "LOADOUT RECALCULATED" is gone).
+  assert.match(app, /'Part fitted'/, 'the fit receipt reads in plain words');
+  assert.doesNotMatch(app, /LOADOUT RECALCULATED/, 'no mechanical loadout line on the receipt');
 });

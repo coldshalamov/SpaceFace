@@ -3,6 +3,89 @@ import assert from 'node:assert/strict';
 
 import { ManeuverKind, ObjectiveKind } from '../src/ai/contracts.js';
 import { ManeuverPlanner } from '../src/ai/maneuver.js';
+import { physics } from '../src/core/physics.js';
+import { createSimulation } from '../src/core/sim.js';
+import { aiPorts } from '../src/systems/aiPorts.js';
+import { makeEnemySpawnSpec } from '../src/systems/enemySpawnSpec.js';
+
+test('tracking pilots avoid hard contact on opposing approach legs', async () => {
+  const sim = createSimulation({ seed: 7, systems: [aiPorts, physics] });
+  const state = sim.state;
+  state.mode = 'flight';
+  state.settings.gameplay.physicsBackend = 'rapier-dynamic';
+  try {
+    const spawn = (x, velocity, heading) => {
+      const spec = makeEnemySpawnSpec('wasp_swarmer', 1, { x, z: 0 });
+      spec.vel = { x: velocity, z: 0 };
+      spec.rot = heading;
+      return sim.spawn(spec);
+    };
+    const eastbound = spawn(0, 95, 0);
+    const westbound = spawn(65, -95, Math.PI);
+    const rock = sim.spawn({ type: 'asteroid', radius: 8, mass: 120, collides: true,
+      pos: { x: 26, z: 30 }, vel: { x: 0, z: 0 } });
+    const physicsSystem = sim.registry.get('physics');
+    assert.equal(await physicsSystem.prepareBackend(state), true);
+    const native = physicsSystem._sg02;
+    assert.ok(native.records.has(rock.id), 'the near shoulder has a real native rock');
+    const hullParts = native.records.get(eastbound.id).colliders;
+    const otherParts = new Set(native.records.get(westbound.id).colliders.map(part => part.handle));
+    const helpers = sim.registry.ctx.helpers;
+    const planner = new ManeuverPlanner({ seed: 7 });
+    let collisionTicks = 0;
+    for (let i = 0; i < 100; i++) {
+      for (const [craft, x] of [[eastbound, 600], [westbound, -535]]) {
+        const slot = { x, z: 0 };
+        const maneuver = { kind: ManeuverKind.INTERCEPT, flightPoint: slot,
+          formationSlot: slot, formationBound: 170, breakFormation: true };
+        const directive = { squadId: String(craft.id), formation: { slot, bound: 170, breakFormation: true } };
+        const perception = helpers.aiSensors.frameFor(craft.id, state.tick);
+        assert.equal(helpers.aiManeuver.request(planner.plan({
+          entityId: craft.id, tick: state.tick, perception, behavior: { maneuver }, directive,
+        })), true, 'native helm accepts the stock planner request');
+      }
+      sim.step(1 / 60);
+      let struck = false;
+      for (const part of hullParts) {
+        native.world.contactPairsWith(part, other => {
+          if (!otherParts.has(other.handle)) return;
+          native.world.contactPair(part, other, manifold => {
+            for (let j = 0; j < manifold.numContacts(); j++) {
+              if (manifold.contactImpulse(j) > 0) struck = true;
+            }
+          });
+        });
+      }
+      if (struck) collisionTicks++;
+    }
+    assert.equal(collisionTicks, 0, 'no contact should resolve through a native collision impulse');
+    assert.ok(eastbound.pos.x > westbound.pos.x, 'both pilots pass and resume their opposing legs');
+    assert.ok(eastbound.vel.x > 20 && westbound.vel.x < -20, 'the pass must not strand either pilot');
+    assert.deepEqual([rock.pos.x, rock.pos.z, rock.vel.x, rock.vel.z], [26, 30, 0, 0],
+      'yielding leaves the adjacent field rock undisturbed');
+  } finally {
+    sim.dispose();
+  }
+});
+
+test('separating tracked ships need no emergency brake or thrust offset', () => {
+  const self = { id: 2, team: 1, radius: 12, pos: { x: 0, z: 0 }, vel: { x: 60, z: 0 },
+    rot: 0, energyFraction: 1, heatFraction: 0 };
+  const separating = { id: 7, kind: 'ship', team: 2, alive: true, radius: 12,
+    pos: { x: 85, z: 0 }, vel: { x: 80, z: 0 }, tags: [], confidence: 1 };
+  const slot = { x: 600, z: 0 };
+  const maneuver = { kind: ManeuverKind.INTERCEPT, flightPoint: slot, formationSlot: slot,
+    formationBound: 170, breakFormation: true };
+  const directive = { squadId: 'transit', formation: { slot, bound: 170, breakFormation: true } };
+  const plan = (contacts) => new ManeuverPlanner({ seed: 7 }).plan({
+    entityId: self.id, tick: 1, perception: { tick: 1, self, contacts },
+    behavior: { maneuver }, directive,
+  });
+  const clear = plan([]);
+  const passing = plan([separating]);
+  assert.deepEqual(passing.forceLocal, clear.forceLocal);
+  assert.equal(passing.brake, false);
+});
 
 test('a tracked attack actually steers and brakes around the collider between it and its flight point', () => {
   const planner = new ManeuverPlanner({ seed: 7, config: { inputSlewPerTick: 1,

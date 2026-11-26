@@ -333,7 +333,7 @@ test('motion-reduce keeps the readable reaction state and drops the vestibular p
 test('player-caused heavy weapon hits get a bounded directional kick and the shared bounded hold', () => {
   const ctx = { mode: 'flight', playerId: 1 };
   const heavy = [
-    ['wpn_railgun_m', 60],
+    ['wpn_railgun_m', 140], // Needle retune 2026-11-20: one shot kills a Wasp
     ['wpn_torpedo_l', 320],
     ['wpn_siege_lance_l', 420],
     ['wpn_concussion_cannon_m', 12],

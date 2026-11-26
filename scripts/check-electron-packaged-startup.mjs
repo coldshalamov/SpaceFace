@@ -37,13 +37,14 @@ const { parseLaunchReceipts } = launchProtocol;
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const OPTIONS = parsePackagedStartupArgs(process.argv.slice(2));
 if (OPTIONS.help) {
-  console.log('Usage: node scripts/check-electron-packaged-startup.mjs [--public-recovery]');
-  console.log('  --public-recovery  add public F5/F9, forced WebGL restore, and a 120-second flight tail');
+  console.log('Usage: node scripts/check-electron-packaged-startup.mjs [--route=adventure|swarm] [--public-recovery]');
+  console.log('  --public-recovery  add Adventure F5/F9, forced WebGL restore, and a 120-second flight tail');
   process.exit(0);
 }
 const REPORT_PATH = resolvePackagedStartupReportPath({
   root: ROOT,
-  requested: process.env.SF_PACKAGED_STARTUP_REPORT_PATH || null,
+  requested: process.env.SF_PACKAGED_STARTUP_REPORT_PATH
+    || (OPTIONS.route === 'swarm' ? '.devshots/electron-packaged-startup/swarm.json' : null),
 });
 const REPORT_DIR = path.dirname(REPORT_PATH);
 const STARTUP_TIMEOUT_MS = Number(process.env.SF_PACKAGED_STARTUP_TIMEOUT_MS) || 90_000;
@@ -142,11 +143,15 @@ try {
   const menuVisibleMs = Date.parse(timing.menuVisibleAt);
   const menuTitle = await page.title();
   const newGameVisibleBeforeLaunch = await newGame.isVisible();
-  await newGame.click({ timeout: 30_000 });
-  const launch = page.getByRole('button', { name: 'Launch', exact: true });
-  await launch.waitFor({ state: 'visible', timeout: 30_000 });
-  await launch.click({ timeout: 30_000 });
-  await page.waitForFunction(() => {
+  if (OPTIONS.route === 'swarm') {
+    await launchPackagedSwarm(page);
+  } else {
+    await newGame.click({ timeout: 30_000 });
+    const launch = page.getByRole('button', { name: 'Launch', exact: true });
+    await launch.waitFor({ state: 'visible', timeout: 30_000 });
+    await launch.click({ timeout: 30_000 });
+  }
+  await page.waitForFunction((route) => {
     const hud = document.getElementById('hud');
     const screens = document.getElementById('screens');
     const canvas = document.getElementById('gl-canvas');
@@ -166,9 +171,11 @@ try {
       && getComputedStyle(canvas).visibility !== 'hidden';
     const loadingHidden = !loading || loading.classList.contains('hidden')
       || getComputedStyle(loading).display === 'none';
+    const correctMode = route === 'swarm' ? document.body.classList.contains('sf-swarm-flight')
+      : !document.body.classList.contains('sf-run-flight');
     return hudReady && screensClosed && canvasReady && loadingHidden && !visibleTransition
-      && !document.body.classList.contains('ui-modal-open');
-  }, null, { timeout: STARTUP_TIMEOUT_MS });
+      && correctMode && !document.body.classList.contains('ui-modal-open');
+  }, OPTIONS.route, { timeout: STARTUP_TIMEOUT_MS });
 
   mainIdentity = await app.evaluate(({ app: electronApp }) => ({
     packaged: electronApp.isPackaged === true,
@@ -216,6 +223,7 @@ try {
       rootUrl: location.href,
       newGameVisibleBeforeLaunch: newGameWasVisible,
       defaultRouteReady: hudReady && screensClosed && canvasReady && !document.body.classList.contains('ui-modal-open'),
+      swarmHud: document.body.classList.contains('sf-swarm-flight'),
       assetFailureVisible: /Game assets failed to load/i.test(visibleText),
       storageRoundTrip,
       crossOriginIsolated: globalThis.crossOriginIsolated === true,
@@ -389,6 +397,7 @@ try {
 
 const report = {
   schema: 'spaceface.electronPackagedStartup.v1',
+  route: OPTIONS.route,
   generatedAt: new Date().toISOString(),
   pass: !primaryError && assessment?.pass === true && cleanup?.pass === true,
   layout,
@@ -436,16 +445,37 @@ function isExpectedCspBlock(issue) {
 }
 
 export function parsePackagedStartupArgs(argv = []) {
+  let route = null;
   let publicRecovery = false;
   let help = false;
   for (const argument of argv) {
     if (argument === '--public-recovery') {
       if (publicRecovery) throw new Error('duplicate argument: --public-recovery');
       publicRecovery = true;
+    } else if (argument.startsWith('--route=')) {
+      if (route !== null) throw new Error('duplicate argument: --route');
+      route = argument.slice('--route='.length);
+      if (route !== 'adventure' && route !== 'swarm') throw new Error(`unknown packaged route: ${route}`);
     } else if (argument === '--help' || argument === '-h') help = true;
     else throw new Error(`unknown argument: ${argument}`);
   }
-  return { publicRecovery, help };
+  if (route === 'swarm' && publicRecovery) throw new Error('--public-recovery requires the Adventure route');
+  return { route: route || 'adventure', publicRecovery, help };
+}
+
+async function launchPackagedSwarm(page) {
+  const title = page.locator('[data-screen="mainMenu"]');
+  const swarm = title.locator('[data-action="swarm"]').first();
+  if (!(await swarm.isVisible())) {
+    const more = title.locator('[data-title-more]').first();
+    if (await more.isVisible()) await more.click({ timeout: 30_000 });
+  }
+  await swarm.click({ timeout: 30_000 });
+  await page.locator('#screens .sf-crd-mode[data-ruleset="swarm"]').click({ timeout: 30_000 });
+  await page.getByRole('button', { name: /^Choose ship\b/ }).click({ timeout: 30_000 });
+  await page.getByRole('button', { name: /^Review equipment\b/ }).click({ timeout: 30_000 });
+  await page.getByRole('button', { name: /^(Launch round 1\b|Keep current loadout\b)/ }).first()
+    .click({ timeout: 150_000 });
 }
 
 export function assessPackagedPublicRecovery(recovery) {

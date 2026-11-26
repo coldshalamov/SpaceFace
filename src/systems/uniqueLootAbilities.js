@@ -8,6 +8,7 @@
 // capability stats are resolved by ships into data.derived.
 
 import { scalarHitToDamagePacket } from '../combat/damage.js';
+import { reserveProjectileCapacity } from '../combat/projectileFlight.js';
 import { fittedModuleDefs, hasFittedModule } from '../core/fittedModules.js';
 import { finiteWholePickupAmount } from '../core/pickupAcceptance.js';
 import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
@@ -311,6 +312,9 @@ export const uniqueLootAbilities = {
       x: center.x + perpendicularX * NESTBREAKER_SEPARATION * 0.5,
       z: center.z + perpendicularZ * NESTBREAKER_SEPARATION * 0.5,
     };
+    // The weapon has reserved the original round. The spawn listener owns
+    // only the extra body and must reserve its slot before publishing it.
+    reserveProjectileCapacity(this.state);
     this.helpers.spawnEntity({
       type: 'projectile',
       pos: childPos,

@@ -98,7 +98,6 @@ try {
   canonicalUrlTracker = createCanonicalUrlTracker(page, rootUrl);
 
   const nav = await page.goto(rootUrl, { waitUntil: 'domcontentloaded', timeout: 60_000 });
-  await page.bringToFront();
   assert(nav, 'navigation must return a response');
   assert.deepEqual(
     inspectCanonicalRootUrl(page.url(), rootUrl).failures,

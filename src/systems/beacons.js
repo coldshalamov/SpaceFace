@@ -50,8 +50,10 @@ export const beacons = {
     // listener (double deploy, double charge) on the same bus.
     this._unsubs = [
       this.bus.on('beacon:deploy', () => this.deploy()),
-      // Beacons are transient; a loaded save starts with none.
+      // Beacons are transient; a loaded save starts with none, and a restore that fails
+      // mid-flight must not leave records steering hostiles to wiped buoy coordinates.
       this.bus.on('save:loaded', () => { this.state.beacons = []; }),
+      this.bus.on('save:restoring', () => { this.state.beacons = []; }),
     ].filter((off) => typeof off === 'function');
   },
 

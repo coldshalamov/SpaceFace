@@ -104,7 +104,7 @@ function registerBolt(harness, spec, runtime, extras = {}) {
   };
   harness.state.entities.set(projectile.id, projectile);
   harness.state.entityList.push(projectile);
-  harness.system._attackLive.set(projectile.id, { spec, runtime });
+  harness.system._attackLive.set(projectile.id, { projectile, projectileGeneration: null, spec, runtime });
   return projectile;
 }
 
@@ -128,8 +128,9 @@ test('defect 1: pierce re-hit protection stops a second paid hit on the same tar
   const runtime = createLineage({ spec, createdTick: 10, sourceEntityId: 'player' });
   const harness = makeHarness();
   const target = putShip(harness, { id: 'raider-a', pos: { x: 4, z: 0 } });
-  registerBolt(harness, spec, runtime, { pos: { x: 4, z: 0 } });
+  const projectile = registerBolt(harness, spec, runtime, { pos: { x: 4, z: 0 } });
   const hit = {
+    projectileId: projectile.id,
     targetId: target.id,
     ownerId: 'player',
     damage: 8,
@@ -147,8 +148,9 @@ test('defect 2: Forked Core split has a production caller that spawns two weaker
   const runtime = createLineage({ spec, createdTick: 10, sourceEntityId: 'player' });
   const harness = makeHarness();
   const target = putShip(harness, { id: 'raider-a', pos: { x: 2, z: 0 } });
-  registerBolt(harness, spec, runtime, { vel: { x: 12, z: 0 }, pos: { x: 2, z: 0 } });
+  const projectile = registerBolt(harness, spec, runtime, { vel: { x: 12, z: 0 }, pos: { x: 2, z: 0 } });
   harness.bus.emit('projectile:hit', {
+    projectileId: projectile.id,
     targetId: target.id,
     ownerId: 'player',
     damage: 8,
@@ -196,6 +198,7 @@ test('defect 3: Smart Bank steering receives live hostiles from the weapons hit 
     surfaceId: plate.id,
   });
   harness.bus.emit('projectile:hit', {
+    projectileId: projectile.id,
     targetId: plate.id,
     ownerId: 'player',
     damage: 8,
@@ -223,6 +226,7 @@ test('defect 4: Tether Capacitor scale is applied to the event payload and hop p
   harness.state.player.tether.targetId = anchor.id;
   const projectile = registerBolt(harness, spec, runtime, { pos: { x: 0, z: 0 } });
   const event = {
+    projectileId: projectile.id,
     targetId: first.id,
     ownerId: 'player',
     damage: 8,
@@ -242,8 +246,9 @@ test('defect 4: Tether Capacitor scale is applied to the event payload and hop p
   const direct = makeHarness();
   const tethered = putShip(direct, { id: 'anchor-ship', pos: { x: 3, z: 0 }, team: 1 });
   direct.state.player.tether.targetId = tethered.id;
-  registerBolt(direct, spec, directRuntime, { pos: { x: 3, z: 0 } });
+  const directProjectile = registerBolt(direct, spec, directRuntime, { pos: { x: 3, z: 0 } });
   const directEvent = {
+    projectileId: directProjectile.id,
     targetId: tethered.id,
     ownerId: 'player',
     damage: 8,

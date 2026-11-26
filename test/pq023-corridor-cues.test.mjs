@@ -578,8 +578,10 @@ test('(b) small destruction opens with a compact readable breakup, not an ordina
 
   assert.equal(small.sprites.some((args) => args[0] === SPR_RING), false,
     'small destruction must not borrow the ordinary expanding-ring grammar');
-  assert.equal(ordinary.sprites.some((args) => args[0] === SPR_RING), true,
-    'ordinary destruction retains its accepted hot ring');
+  assert.equal(ordinary.sprites.some((args) => args[0] === SPR_RING), false,
+    'ordinary destruction draws no expanding ring either (no rings around things, owner 2026-11-23)');
+  assert.ok(ordinary.sprites.some((args) => args[0] === SPR_FLASH && args[9] === '#fff0c0' && args[12] >= 2),
+    'ordinary destruction keeps its hot release as a heat shear stretched along the blast axis');
   const hotCore = small.sprites.find((args) => args[0] === SPR_FLASH);
   assert.ok(hotCore, 'small destruction needs a compact hot core');
   assert.ok(hotCore[6] >= 6 * 0.25,

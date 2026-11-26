@@ -12,7 +12,7 @@ import { ownsFiniteCharonSupplyManifest } from '../world/charonSalvageSupply.js'
 import { hash32 } from '../core/rng.js';
 import { syncEntitySectorMembership } from '../core/coreSystem.js';
 import { deferSectorEnterMaterialization, deferredEnterNow } from '../core/sectorEnterDefer.js';
-import { validateRunState } from '../core/runState.js';
+import { validateRunStateForTick } from '../core/runState.js';
 import { salvagePoolFromManifest, spawnJettisonedCargoPod } from './lootShards.js';
 import { peekPendingSlam, IMPACT_TEAROFF_LAW, spawnCollisionTearOff } from './hullFracture.js';
 import { combatFlag } from '../data/featureFlags.js';
@@ -25,7 +25,7 @@ import { wreckClassById, WRECK_COLLIDER_PROPORTIONS } from '../data/wreckClasses
 import { SECTORS } from '../data/sectors.js';
 import { UNDERSTORY_GARDENS } from '../data/factions/understory.js';
 import { gardenGrowthRadius } from '../data/understoryReceiver.js';
-import { cinderRetentionIds, cinderVictimMission } from '../missions/cinderRoute.js';
+import { CINDER_TAG, CINDER_WASPS, cinderRetentionIds, cinderVictimMission } from '../missions/cinderRoute.js';
 import { capturePatrolPaperwork, normalizePatrolPaperwork, normalizePatrolObservations, patrolPaperworkText, patrolPaperworkComparison } from '../missions/patrolPaperwork.js';
 import {
   causalAftermath,
@@ -445,7 +445,7 @@ function liveSurvivalRunFor(state) {
   const run = state && state.run;
   if (!run || typeof run !== 'object' || Array.isArray(run)) return null;
   if (run.kind !== 'survival' || run.phase === 'inactive') return null;
-  if (!validateRunState(run).ok) return null;
+  if (!validateRunStateForTick(run, state.tick).ok) return null;
   return run;
 }
 
@@ -659,7 +659,7 @@ function newsLine(marker) {
   }
   const victim = marker.victimLabel || marker.victimClass || 'ship';
   const where = marker.zoneId ? `drifting on the lane` : `drifting in the open`;
-  return `Aftermath reported in ${zone}: ${victim} wreckage now ${where}.`;
+  return `Wreckage in ${zone}: ${victim} now ${where}.`;
 }
 
 function normalizeStructurePatch(input) {
@@ -1173,11 +1173,18 @@ export const aftermathWrecks = {
     // only handle, and retiring a marker retires its shard with it (cap, eviction, completion).
     this._shards = new Map();
     this._ecologySpawned = new Map();
+    // Bound occupant refs keyed by ecology slot key: entity ids recycle, so a queued
+    // destroyed receipt for a dead occupant must not unbind the slot's live inhabitant.
+    this._ecologySpawnedEntity = new Map();
     // liveId -> slotKey inversion of _ecologySpawned, kept at every bind/unbind site so
     // the inhabitant-gone join is O(1) instead of an O(map) walk per corpse. Only
     // singly-bound ids carry a reverse edge — a duplicated liveId falls back to the walk.
     this._ecologyLiveToKey = new Map();
     this._pendingOffers = new Map();
+    // markerIds whose kill-wreck body is queued on the deferred spawn lane: mining asks
+    // immediateWreckPlan inside the same entity:killed emit and must stand down (deferred),
+    // exactly as it does for a cinder capacity refusal.
+    this._pendingKillWrecks = new Set();
     this._saveRestoring = false;
     ensureAftermathState(this.state);
 
@@ -1188,12 +1195,22 @@ export const aftermathWrecks = {
     this._clearPatrolPulse = () => { this._patrolScanWitnesses.clear(); };
     this._resetPatrolPulse = () => { this._clearPatrolPulse(); this._patrolPulse = null; };
     this._onKilled = (payload) => {
-      this._noteInhabitantGone(payload && payload.id);
+      this._noteInhabitantGone(payload);
       if (this._retireKilledWreck(payload)) return;
       this._recordKill(payload || {});
     };
     this._onPlayerDeath = (payload) => this._recordPlayerDeath(payload || {});
-    this._onDestroyed = (payload) => this._noteInhabitantGone(payload && payload.id);
+    // Subscribed to the coalesced batch receipt (one dispatch per flush for the whole corpse
+    // set) — ecology bookkeeping needs the ids, not one call per corpse. A bare single
+    // payload still dispatches for hosts that emit entity:destroyed directly in tests.
+    this._onDestroyed = (batch) => {
+      const receipts = batch && batch.receipts;
+      if (Array.isArray(receipts)) {
+        for (const p of receipts) this._noteInhabitantGone(p);
+      } else {
+        this._noteInhabitantGone(batch);
+      }
+    };
     this._onFieldSource = (payload) => this.registerWreckFieldSource(payload || {});
     this._onSectorEnter = (payload) => {
       // Sync lane (emit listener, tests, save:loaded): drain the chunked steps inline.
@@ -1246,6 +1263,7 @@ export const aftermathWrecks = {
     };
     this._onSaveError = () => { this._saveRestoring = false; };
     this._onLooseImpact = (payload) => this._shedImpactChips(payload || {});
+    this._onRuptureFired = (payload) => this._setRuptureClipFired(payload || {});
 
     if (this.bus && typeof this.bus.on === 'function') {
       this.bus.on('scan:pulse', this._onPatrolPulse);
@@ -1253,9 +1271,11 @@ export const aftermathWrecks = {
       this.bus.on('scan:completed', this._clearPatrolPulse);
       this.bus.on('entity:killed', this._onKilled);
       this.bus.on('player:death', this._onPlayerDeath);
-      this.bus.on('entity:destroyed', this._onDestroyed);
+      this.bus.on('entity:destroyedBatch', this._onDestroyed);
       this.bus.on('wreckField:source', this._onFieldSource);
       this.bus.on('physics:impact', this._onLooseImpact);
+      // Render-side rupture-clip reports: sim owns the durable fractureRuptureFired latch.
+      this.bus.on('wreck:ruptureFired', this._onRuptureFired);
       // Live GPU + flight + hard enter: defer into the cook's FIFO — the census
       // drains the same _onSectorEnter under its slice clock in listener order.
       this._onSectorEnterWrapped = (p) => {
@@ -1310,8 +1330,10 @@ export const aftermathWrecks = {
     if (this._spawned) this._spawned.clear();
     if (this._shards) this._shards.clear();
     if (this._ecologySpawned) this._ecologySpawned.clear();
+    if (this._ecologySpawnedEntity) this._ecologySpawnedEntity.clear();
     if (this._ecologyLiveToKey) this._ecologyLiveToKey.clear();
     if (this._pendingOffers) this._pendingOffers.clear();
+    if (this._pendingKillWrecks) this._pendingKillWrecks.clear();
   },
 
   update(_dt, state) {
@@ -1349,7 +1371,7 @@ export const aftermathWrecks = {
     if (!wreck || wreck.alive === false || !wreck.data) return;
     if (!isDynamicPhysicsBodyEntity(wreck)) return;
     const data = wreck.data;
-    const count = Number(data.impactChipCount) || 0;
+    const count = (Number(data.impactChipCount) || 0) + (Number(data.impactChipPending) || 0);
     if (count >= IMPACT_TEAROFF_LAW.maxPerVictim) return;
     const mass = Math.max(0.1, Number(wreck.physicsBody && wreck.physicsBody.mass) || Number(wreck.mass) || 1);
     if (mass < IMPACT_TEAROFF_LAW.minVictimMass) return;
@@ -1363,7 +1385,7 @@ export const aftermathWrecks = {
     // of that line the chips leave on anyway; the note's normal only orients the line).
     const nx = Number(payload.normal && payload.normal.x) || 0;
     const nz = Number(payload.normal && payload.normal.z) || 0;
-    const spawned = spawnCollisionTearOff({ state, helpers: this.helpers, bus: this.bus }, {
+    const note = {
       victimId: wreck.id,
       pos: { x: wreck.pos.x, z: wreck.pos.z },
       vel: { x: wreck.vel ? wreck.vel.x : 0, z: wreck.vel ? wreck.vel.z : 0 },
@@ -1375,10 +1397,27 @@ export const aftermathWrecks = {
       radius: Math.max(1, Number(wreck.radius) || 7),
       momentum: dp,
       sectorId: (state.world && state.world.currentSectorId) || null,
-    });
-    if (!spawned) return;
-    data.impactChipCount = count + spawned.length;
+    };
+    const ctx = { state, helpers: this.helpers, bus: this.bus };
+    // Chip admission stays synchronous AND reserves its tally at admit time: a second impact
+    // on this wreck inside the same step must read the committed count/cooldown, not wait on
+    // the drain — the deferred mint would otherwise let same-step contacts over-spray past
+    // maxPerVictim and the cooldown that used to reject them instantly. The reservation rides
+    // its own field: breakupConsumed reads impactChipCount as a spent stamp, so stamping it
+    // before the mint would refuse this very spray.
+    data.impactChipPending = (Number(data.impactChipPending) || 0) + note.count;
     data.lastImpactChipAt = now;
+    const finish = (spawned) => {
+      const got = spawned && spawned.length ? spawned.length : 0;
+      data.impactChipPending = Math.max(0, (Number(data.impactChipPending) || 0) - note.count);
+      // Reconcile the tally to the bodies actually minted; a no-mint also refunds the
+      // cooldown stamp so the wreck is not denied a spray it never received.
+      data.impactChipCount = (Number(data.impactChipCount) || 0) + got;
+      if (got === 0) data.lastImpactChipAt = lastAt;
+    };
+    const deferJob = this.helpers && this.helpers.deferEntitySpawnJob;
+    if (typeof deferJob === 'function') deferJob(() => finish(spawnCollisionTearOff(ctx, note)));
+    else finish(spawnCollisionTearOff(ctx, note));
   },
 
   // Per-tick scavenger behavior. Bounded: one slot per field, fields are few, and slots that are
@@ -1724,9 +1763,22 @@ export const aftermathWrecks = {
         } else {
           const playerKill = payload && payload.killerId != null
             && payload.killerId === this.state.playerId;
-          if (playerKill) this._spawnArenaKillWreck(remembered, payload);
-          else this._spawnForSector(remembered.sectorId);
-          this._syncEcologyForSector(remembered.sectorId);
+          if (playerKill) {
+            this._spawnArenaKillWreck(remembered, payload);
+            this._syncEcologyForSector(remembered.sectorId);
+          } else {
+            // Non-player adventure kills materialize the field's top-off (up to six bodies)
+            // — the burst shape the deferred lane exists for. The fresh marker's own body is
+            // mining's synchronous mint either way (unflagged: its plan stays live).
+            const sectorId = remembered.sectorId;
+            const materialize = () => {
+              this._spawnForSector(sectorId);
+              this._syncEcologyForSector(sectorId);
+            };
+            const deferJob = this.helpers && this.helpers.deferEntitySpawnJob;
+            if (typeof deferJob === 'function') deferJob(materialize);
+            else materialize();
+          }
         }
       }
     }
@@ -1773,8 +1825,14 @@ export const aftermathWrecks = {
           // does not see player:death, so no slam can be pending for this path.
           this._spawnArenaKillWreck(remembered, payload, { skipIfFracture: false });
         } else {
-          this._spawnForSector(remembered.sectorId);
-          this._syncEcologyForSector(remembered.sectorId);
+          const sectorId = remembered.sectorId;
+          const materialize = () => {
+            this._spawnForSector(sectorId);
+            this._syncEcologyForSector(sectorId);
+          };
+          const deferJob = this.helpers && this.helpers.deferEntitySpawnJob;
+          if (typeof deferJob === 'function') deferJob(materialize);
+          else materialize();
         }
       }
     }
@@ -1835,6 +1893,13 @@ export const aftermathWrecks = {
   // body is hullFracture's two seam pieces — mining spawns them from the same entity:killed event
   // and binds the remainder to this marker, so a whole wreck here would draw two bodies for one
   // death; skipIfFracture suppresses the shard too.
+  //
+  // The mint itself is deferred onto helpers.deferEntitySpawnJob when the host provides one
+  // (production core does): the dedupe/capacity/slam decisions stay synchronous inside the
+  // kill emit — they are the contract mining reads through immediateWreckPlan — while the
+  // construction drains inside lifetimeSweep's bounded lane. A slam-pending kill is NOT
+  // deferred: mining must still see its fresh note inside this same emit and mint the seam
+  // pieces synchronously, exactly as it always has.
   _spawnArenaKillWreck(marker, payload, { skipIfFracture = true } = {}) {
     if (!marker || !this.helpers || typeof this.helpers.spawnEntity !== 'function') return null;
     // A duplicate kill receipt must not mint a second body on the same marker.
@@ -1844,20 +1909,43 @@ export const aftermathWrecks = {
     // Fresh-window peek: a slam note whose kill never landed in-window must not suppress this
     // wreck or its companion shard (D168 — the tickless peek used to read stale notes as live).
     if (skipIfFracture && peekPendingSlam(marker.victimId, this.state && this.state.tick)) return null;
+    // Snapshot the cohort at kill: the run can close between the emit and the drain, and the
+    // wreck must read as a body of the run that killed it, not the next one.
+    const run = liveSurvivalRunFor(this.state);
+    const runWave = run && Number.isInteger(run.wave) ? run.wave : null;
+    const deferJob = this.helpers && this.helpers.deferEntitySpawnJob;
+    if (typeof deferJob === 'function') {
+      if (!this._pendingKillWrecks) this._pendingKillWrecks = new Set();
+      this._pendingKillWrecks.add(marker.markerId);
+      deferJob(() => {
+        if (this._pendingKillWrecks) this._pendingKillWrecks.delete(marker.markerId);
+        this._materializeArenaKillWreck(marker, run, runWave);
+      });
+      return null;
+    }
+    return this._materializeArenaKillWreck(marker, run, runWave);
+  },
+
+  // The body mint, whether called inside the kill emit (no defer lane on the host) or from
+  // the deferred queue at sweep time. run/runWave are the enqueue-time cohort snapshot.
+  _materializeArenaKillWreck(marker, run, runWave) {
+    if (!marker || !this.helpers || typeof this.helpers.spawnEntity !== 'function') return null;
+    const bound = this._resolveBoundWreck(marker.markerId);
+    if (bound && bound.alive !== false) return bound;
+    if (this._cinderBodyDeferred(marker)) return null;
     const entity = this.helpers.spawnEntity(this._specForMarker(marker, { atKill: true }));
     if (!entity) return null;
-    const run = liveSurvivalRunFor(this.state);
     if (run && entity.data) {
       // The same cohort tag the wave's own hulls carry: the wreck reads as a body of this run
       // (Massline eligibility, arena census) rather than adventure scenery that wandered in.
       entity.data.runCohort = SURVIVAL_COHORT_TAG;
-      if (Number.isInteger(run.wave)) entity.data.runWave = run.wave;
+      if (runWave != null) entity.data.runWave = runWave;
     }
     if (!this._bindLiveMarker(marker, entity)) return null;
     bindChainWreck(this.state, marker.markerId, entity);
-    // Same kill tick, companion body. skipIfFracture already returned above, so a slam's seam
-    // pieces stay the whole story; the player's own memorial hull is exempt in the shard call.
-    this._spawnArenaKillShard(marker);
+    // Same kill tick, companion body. A slam's seam pieces stay the whole story (the kill
+    // never reaches this path); the player's own memorial hull is exempt in the shard call.
+    this._spawnArenaKillShard(marker, run, runWave);
     return entity;
   },
 
@@ -1867,7 +1955,7 @@ export const aftermathWrecks = {
   // It keeps the victim's momentum plus a push that never opposes it, and its own small salvage
   // pool so the beam path finds it like any wreck. Pure hash-derived placement and spin: never
   // state.rng (FEEL_CONTRACT §D.11). The marker owns its lifetime (_retireMarkerShard).
-  _spawnArenaKillShard(marker) {
+  _spawnArenaKillShard(marker, run, runWave) {
     if (!marker || !marker.markerId) return null;
     if (isPlayerWreckMarker(marker)) return null;
     if (!this._shards || !this.helpers || typeof this.helpers.spawnEntity !== 'function') return null;
@@ -1875,10 +1963,13 @@ export const aftermathWrecks = {
     if (existing) return existing;
     const entity = this.helpers.spawnEntity(this._shardSpecForMarker(marker));
     if (!entity) return null;
-    const run = liveSurvivalRunFor(this.state);
-    if (run && entity.data) {
+    // run === undefined means a direct (non-deferred) call: read the cohort live as before.
+    const liveRun = run === undefined ? liveSurvivalRunFor(this.state) : run;
+    const liveWave = runWave !== undefined ? runWave
+      : (liveRun && Number.isInteger(liveRun.wave) ? liveRun.wave : null);
+    if (liveRun && entity.data) {
       entity.data.runCohort = SURVIVAL_COHORT_TAG;
-      if (Number.isInteger(run.wave)) entity.data.runWave = run.wave;
+      if (liveWave != null) entity.data.runWave = liveWave;
     }
     this._shards.set(marker.markerId, entity.id);
     return entity;
@@ -2171,6 +2262,11 @@ export const aftermathWrecks = {
     // Mining must respect the durable owner's capacity refusal rather than create an
     // anonymous fallback body beside a real deferred marker.
     if (!existing && this._cinderBodyDeferred(marker)) {
+      return { markerId: marker.markerId, entityId: null, spec: null, deferred: true };
+    }
+    // The kill's body is already owed by the deferred spawn lane (the same emit enqueued
+    // it): mining stands down rather than mint a second wreck beside the queued one.
+    if (!existing && this._pendingKillWrecks && this._pendingKillWrecks.has(marker.markerId)) {
       return { markerId: marker.markerId, entityId: null, spec: null, deferred: true };
     }
     return {
@@ -2705,6 +2801,10 @@ export const aftermathWrecks = {
     const pitch = boundedPoseAngle(marker.victimPitch);
     const bank = boundedPoseAngle(marker.victimBank);
     const integrity = wreckIntegrity(marker);
+    const cinderVictim = marker.victimMission;
+    const cinderCallsign = cinderVictim?.storyTag === CINDER_TAG && this.state
+      && cinderRetentionIds(this.state, marker).has(marker.markerId)
+      ? `${CINDER_WASPS[cinderVictim.slot]} · marked hull` : null;
     const siteCollision = isSiteWreckMarker(marker) ? warmFreighterCollisionModel() : null;
     const wreckRadius = boundedVictimRadius(marker.victimRadius) || WRECK_RADIUS;
     const wreckMass = mass != null ? mass : 1e6;
@@ -2751,6 +2851,9 @@ export const aftermathWrecks = {
         loot: [],
         salvagePool: poolForMarker(marker),
         salvageTimeLeft: WRECK_SALVAGE_TIME,
+        // The active Cinder contract already identifies its marked hulls. Publish the callsign
+        // before scan resolution without revealing the manifest or changing unmarked wrecks.
+        ...(cinderCallsign ? { callsign: cinderCallsign } : {}),
         // A freight-laced hulk names itself: the scanner is where the player decides whether the
         // beam is worth the stop, so the residue is a visible fact, not a hidden yield delta.
         scanLabel: isPlayerWreckMarker(marker)
@@ -2843,6 +2946,7 @@ export const aftermathWrecks = {
       }
       if (this._shards) this._shards.clear();
       if (this._ecologySpawned) this._ecologySpawned.clear();
+    if (this._ecologySpawnedEntity) this._ecologySpawnedEntity.clear();
       if (this._ecologyLiveToKey) this._ecologyLiveToKey.clear();
       return;
     }
@@ -2901,6 +3005,22 @@ export const aftermathWrecks = {
     // fragment doesn't replay the kick long after the kill.
     if (entity.data && entity.data.fractureRuptureFired === true) marker.fractureRuptureFired = true;
     return true;
+  },
+
+  // Render reports the rupture clip actually played ('wreck:ruptureFired'); sim owns the
+  // durable latch on entity.data so the write-back above persists it into the marker and
+  // a rematerialized fragment does not replay the kick. `fired:false` is the orphaned-commit
+  // reversal — a disposed admission restores the latch for the next admission's re-fire.
+  _setRuptureClipFired(payload) {
+    const id = payload && (payload.entityId ?? payload.id);
+    const entities = this.state && this.state.entities;
+    const entity = id != null && entities && typeof entities.get === 'function' ? entities.get(id) : null;
+    const data = entity && entity.data;
+    if (!entity || !data || !data.fracturePiece) return;
+    const generation = payload.occupantGeneration;
+    if (generation != null && entity.occupantGeneration != null
+        && entity.occupantGeneration !== generation) return; // recycled id — the report is not this occupant's
+    data.fractureRuptureFired = payload.fired !== false;
   },
 
   _writeBackAllBound() {
@@ -3070,6 +3190,7 @@ export const aftermathWrecks = {
     this._siteWreckLife = null;
     if (this._shards) this._shards.clear();
     if (this._ecologySpawned) this._ecologySpawned.clear();
+    if (this._ecologySpawnedEntity) this._ecologySpawnedEntity.clear();
     if (this._ecologyLiveToKey) this._ecologyLiveToKey.clear();
     if (this._pendingOffers) this._pendingOffers.clear();
   },
@@ -3435,6 +3556,7 @@ export const aftermathWrecks = {
     if (!this._ecologySpawned) return;
     const liveId = this._ecologySpawned.get(key);
     this._ecologySpawned.delete(key);
+    if (this._ecologySpawnedEntity) this._ecologySpawnedEntity.delete(key);
     if (liveId != null && this._ecologyLiveToKey && this._ecologyLiveToKey.get(liveId) === key) {
       this._ecologyLiveToKey.delete(liveId);
     }
@@ -3449,6 +3571,7 @@ export const aftermathWrecks = {
     const priorKey = this._ecologyLiveToKey ? this._ecologyLiveToKey.get(entity.id) : null;
     if (priorKey != null && priorKey !== key) this._ecologyLiveToKey.delete(entity.id);
     this._ecologySpawned.set(key, entity.id);
+    if (this._ecologySpawnedEntity) this._ecologySpawnedEntity.set(key, entity);
     if (this._ecologyLiveToKey && priorKey == null) this._ecologyLiveToKey.set(entity.id, key);
     if (this.bus && typeof this.bus.emit === 'function') {
       this.bus.emit('wreckEcology:spawned', {
@@ -3480,7 +3603,8 @@ export const aftermathWrecks = {
     return null;
   },
 
-  _noteInhabitantGone(entityId) {
+  _noteInhabitantGone(payload) {
+    const entityId = payload && payload.id;
     if (entityId == null || !this._ecologySpawned) return false;
     const own = ensureAftermathState(this.state);
     // O(1) via the reverse map; a miss or a verify failure (the unsplittable
@@ -3493,6 +3617,10 @@ export const aftermathWrecks = {
       }
       if (key == null) return false;
     }
+    // A recycled id re-binds the slot under the same liveId value: only the bound
+    // occupant's own receipt may unbind it. Fails open when either ref is absent.
+    const bound = this._ecologySpawnedEntity && this._ecologySpawnedEntity.get(key);
+    if (bound && payload.entity && bound !== payload.entity) return false;
     this._unbindEcologyKey(key);
     const sep = key.indexOf('::');
     const fieldId = key.slice(0, sep);
@@ -3562,7 +3690,7 @@ export const aftermathWrecks = {
     if (this.bus && typeof this.bus.off === 'function') {
       if (this._onKilled) this.bus.off('entity:killed', this._onKilled);
       if (this._onPlayerDeath) this.bus.off('player:death', this._onPlayerDeath);
-      if (this._onDestroyed) this.bus.off('entity:destroyed', this._onDestroyed);
+      if (this._onDestroyed) this.bus.off('entity:destroyedBatch', this._onDestroyed);
       if (this._onFieldSource) this.bus.off('wreckField:source', this._onFieldSource);
       if (this._onLooseImpact) this.bus.off('physics:impact', this._onLooseImpact);
       if (this._onSectorEnterWrapped) this.bus.off('sector:enter', this._onSectorEnterWrapped);
@@ -3603,8 +3731,10 @@ export const aftermathWrecks = {
     if (this._spawned) this._spawned.clear();
     if (this._shards) this._shards.clear();
     if (this._ecologySpawned) this._ecologySpawned.clear();
+    if (this._ecologySpawnedEntity) this._ecologySpawnedEntity.clear();
     if (this._ecologyLiveToKey) this._ecologyLiveToKey.clear();
     if (this._pendingOffers) this._pendingOffers.clear();
+    if (this._pendingKillWrecks) this._pendingKillWrecks.clear();
   },
 };
 

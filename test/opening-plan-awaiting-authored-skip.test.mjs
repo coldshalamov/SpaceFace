@@ -10,6 +10,7 @@ import {
   stampOpeningSubmissionPackage,
 } from '../src/render/openingSubmissionPlan.js';
 import { collectOpeningEntityRootCandidates, collectOpeningShadowCasterRootCandidates } from '../src/render/runtime/openingAdmissionPlanning.js';
+import { buildAuthoredPlaceProp } from '../src/render/partsLibrary.js';
 
 function stampedMesh(name) {
   const material = new THREE.MeshStandardMaterial({ name: `${name}-mat` });
@@ -86,6 +87,47 @@ test('awaiting-authored entity roots do not enter the opening entity census', ()
     alreadyIncluded: candidates.map((c) => c.root),
   });
   assert.equal(shadow.length, 0, 'awaiting authored markers must not enter shadow census');
+});
+
+test('a collidable geology fallback enters the opening census while its authored replacement waits', () => {
+  const scene = new THREE.Group();
+  const rock = {
+    id: 'cover', type: 'asteroid', radius: 25, collides: true, alive: true,
+    data: {
+      typeId: 'ast_common_rock', authoredGeologySkin: true,
+      placeId: 'place_rock_silicate_monolith', placeTargetRadius: 25,
+    },
+  };
+  const fallback = new THREE.Group();
+  const body = stampedMesh('geology-body');
+  body.castShadow = true;
+  fallback.add(body);
+  const boundary = buildAuthoredPlaceProp(rock, { releaseMode: true, fallbackRoot: fallback });
+  scene.add(boundary);
+  const meshes = new Map([[rock.id, boundary]]);
+  const entities = new Map([[rock.id, rock]]);
+  const camera = { frustum: { intersectsObject() { return true; } } };
+  const options = { scene, camera };
+
+  assert.equal(boundary.userData.authoredAssetState, 'awaiting-authored-admission');
+  assert.deepEqual(collectOpeningSubmissionLeaves(boundary, { camera }), [body]);
+  assert.deepEqual(collectOpeningEntityRootCandidates(meshes, entities, options)
+    .map((candidate) => candidate.root.uuid), [boundary.uuid]);
+  assert.deepEqual(collectOpeningShadowCasterRootCandidates(meshes, entities, options)
+    .map((candidate) => candidate.root.uuid), [boundary.uuid]);
+
+  // The worker's presentation mirror omits the simulation-only collision boolean.
+  delete rock.collides;
+  assert.deepEqual(collectOpeningEntityRootCandidates(meshes, entities, options)
+    .map((candidate) => candidate.root.uuid), [boundary.uuid]);
+
+  rock.collides = false;
+  assert.deepEqual(collectOpeningEntityRootCandidates(meshes, entities, options), []);
+
+  delete rock.collides;
+  fallback.visible = false;
+  assert.deepEqual(collectOpeningEntityRootCandidates(meshes, entities, options), []);
+  assert.deepEqual(collectOpeningShadowCasterRootCandidates(meshes, entities, options), []);
 });
 
 test('opening plan completes when only stamped production roots remain after skipping awaiting authored', () => {

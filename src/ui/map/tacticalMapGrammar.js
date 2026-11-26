@@ -1,4 +1,564 @@
 import { canvasFont } from '../canvasFonts.js';
+import { ENEMY_TYPES } from '../../data/enemies.js';
+import { enemyJobFor } from '../../data/enemyJobs.js';
+import { PACK_ARCHETYPES } from '../../data/packArchetypes.js';
+import { SHIPS } from '../../data/ships.js';
+
+const ENEMY_DEF_BY_ID = new Map(ENEMY_TYPES.map((row) => [row.id, row]));
+const SHIP_ROLE_BY_ID = new Map(SHIPS.map((row) => [row.id, String(row.role || '').toLowerCase()]));
+
+/**
+ * Contact glyphs. A fighting contact is drawn by its JOB (design/overhaul/03_COMBAT.md §9A, ruling
+ * R19: Rush, Burst, Reach, Wall, Skirmish, Deny, Seize, plus Source), so a cast reads at a glance.
+ * Every job has its own silhouette AND its own hue; stance is the fill (hostile = solid, neutral =
+ * hollow, friendly = hollow with a pip), so a colourblind pilot still reads job and side. A boss is a
+ * Wall or Source drawn larger with command brackets (`isBossContact`), not a ninth kind.
+ * `word` is the plain role word a label falls back to when a name does not fit.
+ */
+export const CONTACT_ROLE_GLYPHS = Object.freeze({
+  rush: Object.freeze({ id: 'rush', label: 'Rush', word: 'Rusher', directional: true, size: 0.86, cost: 1 }),
+  burst: Object.freeze({ id: 'burst', label: 'Burst', word: 'Dart', directional: true, size: 1.0, cost: 2 }),
+  reach: Object.freeze({ id: 'reach', label: 'Reach', word: 'Sniper', directional: true, size: 1.04, cost: 4 }),
+  wall: Object.freeze({ id: 'wall', label: 'Wall', word: 'Heavy', directional: true, size: 1.12, cost: 5 }),
+  skirmish: Object.freeze({ id: 'skirmish', label: 'Skirmish', word: 'Raider', directional: true, size: 1.0, cost: 3 }),
+  deny: Object.freeze({ id: 'deny', label: 'Deny', word: 'Minelayer', directional: true, size: 1.0, cost: 4 }),
+  seize: Object.freeze({ id: 'seize', label: 'Seize', word: 'Grappler', directional: true, size: 1.0, cost: 4 }),
+  source: Object.freeze({ id: 'source', label: 'Source', word: 'Carrier', directional: false, size: 1.18, cost: 12 }),
+  civilian: Object.freeze({ id: 'civilian', label: 'Traffic', word: 'Traffic', directional: true, size: 1.0, cost: 0 }),
+  station: Object.freeze({ id: 'station', label: 'Station', word: 'Station', directional: false, size: 1.0, cost: 0 }),
+  gate: Object.freeze({ id: 'gate', label: 'Gate', word: 'Gate', directional: false, size: 1.0, cost: 0 }),
+  loot: Object.freeze({ id: 'loot', label: 'Salvage', word: 'Salvage', directional: false, size: 0.95, cost: 0 }),
+  wreck: Object.freeze({ id: 'wreck', label: 'Wreck', word: 'Wreck', directional: false, size: 1.0, cost: 0 }),
+});
+
+/** The eight fighting jobs in the order a legend lists them. */
+export const CONTACT_JOB_ORDER = Object.freeze(['rush', 'burst', 'reach', 'wall', 'skirmish', 'deny', 'seize', 'source']);
+
+/**
+ * One hue per job, kept off the reserved channels (amber objective, cyan station, violet gate,
+ * green friendly, rust wreck). Close-in threats run red→orange, ranged and control threats run
+ * magenta→violet, the slow heavy is a pale coral so its bulk reads as terrain, and the grappler
+ * is lemon so the one thing that takes your controls away is unmistakable.
+ */
+export const CONTACT_JOB_PALETTE = Object.freeze({
+  rush: '#ff4d3d',
+  burst: '#ff9a2e',
+  reach: '#e26bff',
+  wall: '#ffb4a2',
+  skirmish: '#ff6fae',
+  deny: '#8f86ff',
+  seize: '#ffe24f',
+  source: '#ff2f6a',
+});
+
+// Legacy signals (doctrine, archetype, authored role words) mapped onto jobs for kinds the job
+// table does not list yet, so a new enemy gets the right glyph from its data, never an id switch.
+const LEGACY_SIGNAL_JOB = Object.freeze({
+  rammer: 'burst', kamikaze: 'burst', detonator: 'burst', detonator_run: 'burst',
+  sniper: 'reach', reach: 'reach', ranged: 'reach', stalker: 'reach', ranged_disengager: 'reach', ranged_stalker: 'reach',
+  minelayer: 'deny', mine_layer: 'deny', disruptor: 'deny', mine_layer_wake: 'deny', deny: 'deny',
+  support: 'deny', anchor: 'deny', control: 'deny', guardian: 'deny', shield: 'deny', shield_carrier: 'deny',
+  escort_screen: 'deny', field_anchor_controller: 'deny',
+  tether_control_raider: 'seize', seize: 'seize', grappler: 'seize',
+  heavy: 'wall', brawler: 'wall', gunship: 'wall', corvette: 'wall', brawler_commit: 'wall', wall: 'wall',
+  shield_breaker: 'wall',
+  carrier: 'source', source: 'source', nest: 'source',
+  swarmer: 'rush', rush: 'rush', pack_pursuit: 'rush',
+  skirmish: 'skirmish', raider: 'skirmish', strafer: 'skirmish',
+});
+
+/** True for a phased boss: drawn as its job (a Wall or Source) but larger, with command brackets. */
+export function isBossContact(entity) {
+  const data = entity && entity.data;
+  if (!data) return false;
+  if (data.isBoss === true || data.encounterBoss != null || data.missionBoss != null) return true;
+  const enemyId = data.enemyTypeId || data.lootTableId || data.archetypeId || null;
+  const enemyDef = enemyId ? ENEMY_DEF_BY_ID.get(enemyId) : null;
+  const job = enemyId ? enemyJobFor(enemyId) : null;
+  if (job && job.brain === 'tactical' && job.cost >= 16) return true;
+  const aiArch = String(data.ai?.archetype || data.aiArchetype || enemyDef?.aiArchetype || '').toLowerCase();
+  const shipClass = String(data.shipClass || enemyDef?.shipClass || '').toLowerCase();
+  return BOSS_ROLES.has(aiArch) || BOSS_ROLES.has(shipClass);
+}
+
+/** Budget cost of a contact's job — the minimap keeps the costliest contact when two overlap. */
+export function contactJobCost(entity, role = classifyContactRole(entity)) {
+  const enemyId = entity && entity.data && (entity.data.enemyTypeId || entity.data.lootTableId || entity.data.archetypeId);
+  const row = enemyId ? enemyJobFor(enemyId) : null;
+  if (row && Number.isFinite(row.cost)) return row.cost;
+  return CONTACT_ROLE_GLYPHS[role]?.cost || 1;
+}
+
+/** The plain role word for a contact ("Sniper", "Station", "Traffic") — what a label shortens to. */
+export function contactRoleWord(role) {
+  return CONTACT_ROLE_GLYPHS[role]?.word || 'Contact';
+}
+
+const CIVILIAN_ROLES = new Set([
+  'hauler', 'freighter', 'heavy_hauler', 'ore_carrier', 'miner', 'mining', 'mining_barge',
+  'tug', 'tender', 'trader', 'civilian', 'courier', 'rescue', 'surveyor', 'patrol', 'escort', 'explorer',
+]);
+const BOSS_ROLES = new Set(['boss', 'flagship', 'battlecruiser', 'dreadnought', 'capital', 'miniboss_capital']);
+
+/**
+ * Resolve a contact's glyph role: a fighting ship resolves to its job from the authored job table
+ * (src/data/enemyJobs.js); kinds the table does not list resolve from their doctrine, archetype or
+ * authored role words; traffic, stations, gates, salvage and wrecks resolve by type.
+ */
+export function classifyContactRole(entity) {
+  if (!entity || typeof entity !== 'object') return 'civilian';
+  const type = entity.type;
+  const data = entity.data || {};
+  if (type === 'station') return data.isGate ? 'gate' : 'station';
+  if (type === 'wreck') return 'wreck';
+  if (type === 'pickup' || type === 'beacon' || type === 'payload' || type === 'cargo_pod') return 'loot';
+  if (type !== 'ship' && type !== 'drone') return 'civilian';
+
+  const enemyId = data.enemyTypeId || data.lootTableId || data.archetypeId || null;
+  if (typeof data.combatJob === 'string' && CONTACT_JOB_PALETTE[data.combatJob]) return data.combatJob;
+  const jobRow = enemyId ? enemyJobFor(enemyId) : null;
+  if (jobRow) return jobRow.job || 'civilian';
+  return legacyContactJob(entity, enemyId);
+}
+
+function legacyContactJob(entity, enemyId) {
+  const data = entity.data || {};
+  const enemyDef = enemyId ? ENEMY_DEF_BY_ID.get(enemyId) : null;
+  const packDef = enemyId ? PACK_ARCHETYPES[enemyId] || null : null;
+  const doctrine = String(
+    data.combatDoctrineId
+    || data.ai?.combatDoctrineId
+    || packDef?.doctrineId
+    || enemyDef?.combatDoctrineId
+    || '',
+  ).toLowerCase();
+  const aiArch = String(
+    data.ai?.archetype
+    || data.aiArchetype
+    || enemyDef?.aiArchetype
+    || '',
+  ).toLowerCase();
+  const explicitRole = String(
+    data.role
+    || data.trafficRole
+    || data.presentationRole
+    || data.ai?.encounterRole
+    || '',
+  ).toLowerCase();
+  const shipRole = SHIP_ROLE_BY_ID.get(data.defId || enemyDef?.shipId) || '';
+  const shipClass = String(data.shipClass || enemyDef?.shipClass || '').toLowerCase();
+  const mass = Number(entity.mass ?? data.mass ?? enemyDef?.mass) || 0;
+
+  if (
+    doctrine === 'capital_broadside'
+    || BOSS_ROLES.has(aiArch)
+    || BOSS_ROLES.has(shipClass)
+    || BOSS_ROLES.has(explicitRole)
+    || BOSS_ROLES.has(shipRole)
+    || ((enemyDef?.weakPoint || enemyDef?.prowSurface) && mass >= 280)
+  ) return 'wall';
+  if (data.detonator || enemyDef?.detonator || packDef?.attack === 'ram_fuse') return 'burst';
+  if (data.fieldAnchor || enemyDef?.fieldAnchor || packDef?.attack === 'gun_hold') return 'deny';
+  for (const signal of [doctrine, aiArch, explicitRole]) {
+    if (signal && LEGACY_SIGNAL_JOB[signal]) return LEGACY_SIGNAL_JOB[signal];
+  }
+  if (
+    aiArch === 'fleeing_trader'
+    || aiArch === 'miner'
+    || aiArch === 'trader'
+    || CIVILIAN_ROLES.has(explicitRole)
+    || (!enemyDef && CIVILIAN_ROLES.has(shipRole))
+  ) return 'civilian';
+  if ((shipClass === 'gunship' && mass >= 55) || (!enemyDef && LEGACY_SIGNAL_JOB[shipRole] === 'wall')) return 'wall';
+  // An unlisted enemy kind, or a ship hunting the player, strafes and breaks off: the generic pirate
+  // is a skirmisher. Anything else with no combat signal is traffic. (A hostile contact the data
+  // calls traffic is still drawn as a skirmisher by the minimap's hostile pass.)
+  if (enemyId || data.ai?.huntPlayer || data.ai?.forcePlayerTarget) return 'skirmish';
+  return 'civilian';
+}
+
+export function formatMinimapDistance(worldUnits) {
+  const d = Number(worldUnits);
+  if (!Number.isFinite(d) || d < 0) return '';
+  if (d >= 1000) {
+    const digits = d >= 10000 ? 0 : 1;
+    return `${(d / 1000).toFixed(digits)} km`;
+  }
+  return `${Math.round(d)} m`;
+}
+
+/**
+ * Draw a contact glyph. Hostile, friendly, and neutral differ by BOTH colour and fill so the scope
+ * reads without colour:
+ *   - hostile: solid filled silhouette + crisp dark edge
+ *   - friendly: hollow outline + bright inner pip
+ *   - neutral: thin quiet outline over dark core
+ * Each fighting job has its own silhouette (see CONTACT_ROLE_GLYPHS); `boss` draws it larger with
+ * command brackets.
+ */
+export function drawRoleGlyph(g, role, stance, x, y, screenAngle = 0, {
+  color = TACTICAL_MAP_PALETTE.neutral,
+  scale = 1,
+  alpha = 1,
+  selected = false,
+  hovered = false,
+  boss = false,
+  ground = '#091824',
+} = {}) {
+  if (!g) return;
+  if (!CONTACT_ROLE_GLYPHS[role]) role = 'skirmish';
+  const meta = CONTACT_ROLE_GLYPHS[role];
+  const s = scale * meta.size * (boss ? 1.4 : 1);
+  const isHostile = stance === 'hostile';
+  const isFriendly = stance === 'friendly';
+
+  g.save();
+  g.translate(x, y);
+  if (meta.directional && Number.isFinite(screenAngle)) g.rotate(screenAngle);
+  g.scale(s, s);
+  g.globalAlpha = Math.max(0, Math.min(1, alpha));
+  g.lineJoin = 'round';
+  g.lineCap = 'round';
+
+  const darkEdge = 'rgba(4, 11, 18, 0.92)';
+  const strokeW = (selected || hovered ? 1.55 : isFriendly ? 1.45 : isHostile ? 1.0 : 1.25) / s;
+
+  const paintClosed = () => {
+    if (isHostile) {
+      g.fillStyle = color;
+      g.strokeStyle = selected || hovered ? '#f4f8fa' : darkEdge;
+      g.lineWidth = strokeW;
+      g.fill();
+      g.stroke();
+    } else if (isFriendly) {
+      g.fillStyle = ground;
+      g.strokeStyle = color;
+      g.lineWidth = strokeW;
+      g.fill();
+      g.stroke();
+      // Distinct non-colour friendly channel: bright inner pip
+      g.fillStyle = color;
+      g.beginPath();
+      g.arc(0, 0.2, 1.55, 0, Math.PI * 2);
+      g.fill();
+    } else {
+      g.fillStyle = ground;
+      g.strokeStyle = color;
+      g.lineWidth = strokeW;
+      g.fill();
+      g.stroke();
+    }
+  };
+
+  if (role === 'station') {
+    g.beginPath();
+    for (let i = 0; i < 6; i += 1) {
+      const a = (Math.PI / 3) * i - Math.PI / 6;
+      const px = Math.cos(a) * 6.0;
+      const py = Math.sin(a) * 6.0;
+      if (i === 0) g.moveTo(px, py); else g.lineTo(px, py);
+    }
+    g.closePath();
+    g.fillStyle = ground;
+    g.strokeStyle = color;
+    g.lineWidth = (selected || hovered ? 1.8 : 1.4) / s;
+    g.fill();
+    g.stroke();
+    g.strokeStyle = color;
+    g.lineWidth = 1.1 / s;
+    g.strokeRect(-2.1, -2.1, 4.2, 4.2);
+    g.fillStyle = color;
+    g.fillRect(-0.8, -0.8, 1.6, 1.6);
+  } else if (role === 'gate') {
+    g.strokeStyle = color;
+    g.lineWidth = (selected || hovered ? 1.9 : 1.55) / s;
+    g.beginPath();
+    g.arc(0, 0, 6.2, 0, Math.PI * 2);
+    g.stroke();
+    g.lineWidth = 1.15 / s;
+    g.beginPath();
+    g.arc(0, 0, 2.9, 0, Math.PI * 2);
+    g.moveTo(-6.2, 0); g.lineTo(-4.0, 0);
+    g.moveTo(4.0, 0); g.lineTo(6.2, 0);
+    g.moveTo(0, -6.2); g.lineTo(0, -4.0);
+    g.moveTo(0, 4.0); g.lineTo(0, 6.2);
+    g.stroke();
+  } else if (role === 'loot') {
+    g.beginPath();
+    g.moveTo(0, -4.8);
+    g.lineTo(1.5, -1.5);
+    g.lineTo(4.8, 0);
+    g.lineTo(1.5, 1.5);
+    g.lineTo(0, 4.8);
+    g.lineTo(-1.5, 1.5);
+    g.lineTo(-4.8, 0);
+    g.lineTo(-1.5, -1.5);
+    g.closePath();
+    g.fillStyle = color;
+    g.strokeStyle = darkEdge;
+    g.lineWidth = 0.85 / s;
+    g.fill();
+    g.stroke();
+  } else if (role === 'wreck') {
+    g.fillStyle = ground;
+    g.strokeStyle = color;
+    g.lineWidth = 1.3 / s;
+    // Two broken angled hull shards separated by a fracture gap
+    g.beginPath();
+    g.moveTo(-5.5, 2.0); g.lineTo(-3.2, -3.4); g.lineTo(0.8, -2.2); g.lineTo(-1.2, 3.2); g.closePath();
+    g.moveTo(1.4, -3.2); g.lineTo(5.6, -0.8); g.lineTo(4.0, 3.6); g.lineTo(0.2, 2.4); g.closePath();
+    g.fill();
+    g.stroke();
+  } else if (role === 'rush') {
+    // Rush: a small narrow chevron — fodder that closes in a bunch.
+    g.beginPath();
+    g.moveTo(0, -5.8);
+    g.lineTo(4.0, 4.4);
+    g.lineTo(0, 1.6);
+    g.lineTo(-4.0, 4.4);
+    g.closePath();
+    paintClosed();
+  } else if (role === 'burst') {
+    // Burst: a four-point spark — it dives and blows.
+    g.beginPath();
+    g.moveTo(0, -7.2);
+    g.lineTo(1.7, -1.7);
+    g.lineTo(5.6, 0);
+    g.lineTo(1.7, 1.7);
+    g.lineTo(0, 5.6);
+    g.lineTo(-1.7, 1.7);
+    g.lineTo(-5.6, 0);
+    g.lineTo(-1.7, -1.7);
+    g.closePath();
+    paintClosed();
+    g.fillStyle = isHostile ? '#fff1cf' : color;
+    g.beginPath();
+    g.arc(0, 0, 1.3, 0, Math.PI * 2);
+    g.fill();
+  } else if (role === 'reach') {
+    // Reach: a long needle with its beam line reaching ahead — it hurts from beyond your guns.
+    g.beginPath();
+    g.moveTo(0, -6.6);
+    g.lineTo(1.9, 1.2);
+    g.lineTo(4.4, 4.6);
+    g.lineTo(0, 3.2);
+    g.lineTo(-4.4, 4.6);
+    g.lineTo(-1.9, 1.2);
+    g.closePath();
+    paintClosed();
+    g.strokeStyle = color;
+    g.lineWidth = 1.2 / s;
+    g.beginPath();
+    g.moveTo(0, -8.4); g.lineTo(0, -10.6);
+    g.moveTo(0, -12.2); g.lineTo(0, -13.6);
+    g.stroke();
+  } else if (role === 'wall') {
+    // Wall: a broad armoured block with a heavy prow bar — slow, big, terrain.
+    g.beginPath();
+    g.moveTo(-5.6, -3.6);
+    g.lineTo(-3.4, -5.6);
+    g.lineTo(3.4, -5.6);
+    g.lineTo(5.6, -3.6);
+    g.lineTo(5.6, 4.8);
+    g.lineTo(-5.6, 4.8);
+    g.closePath();
+    paintClosed();
+    g.strokeStyle = isHostile ? darkEdge : color;
+    g.lineWidth = 1.3 / s;
+    g.beginPath();
+    g.moveTo(-3.4, -2.0); g.lineTo(3.4, -2.0);
+    g.moveTo(-3.4, 1.4); g.lineTo(3.4, 1.4);
+    g.stroke();
+  } else if (role === 'skirmish') {
+    // Skirmish: a swept crescent wing — fast passes, breaks off, comes back.
+    g.beginPath();
+    g.moveTo(0, -5.4);
+    g.quadraticCurveTo(4.6, -3.6, 6.2, 4.2);
+    g.quadraticCurveTo(3.2, 0.6, 0, 0.4);
+    g.quadraticCurveTo(-3.2, 0.6, -6.2, 4.2);
+    g.quadraticCurveTo(-4.6, -3.6, 0, -5.4);
+    g.closePath();
+    paintClosed();
+  } else if (role === 'deny') {
+    // Deny: a core inside a broken dome ring — it makes space dangerous.
+    g.beginPath();
+    g.arc(0, 0, 3.3, 0, Math.PI * 2);
+    paintClosed();
+    g.strokeStyle = color;
+    g.lineWidth = 1.25 / s;
+    g.beginPath();
+    for (let i = 0; i < 4; i += 1) {
+      const a0 = (Math.PI / 2) * i + 0.28;
+      g.moveTo(Math.cos(a0) * 6.2, Math.sin(a0) * 6.2);
+      g.arc(0, 0, 6.2, a0, a0 + Math.PI / 2 - 0.56);
+    }
+    g.stroke();
+  } else if (role === 'seize') {
+    // Seize: a claw — two pincers reaching forward for your hull.
+    g.beginPath();
+    g.moveTo(-4.6, 4.8);
+    g.lineTo(-4.8, -1.6);
+    g.lineTo(-2.4, -6.2);
+    g.lineTo(-1.6, -1.8);
+    g.lineTo(0, -0.6);
+    g.lineTo(1.6, -1.8);
+    g.lineTo(2.4, -6.2);
+    g.lineTo(4.8, -1.6);
+    g.lineTo(4.6, 4.8);
+    g.closePath();
+    paintClosed();
+  } else if (role === 'source') {
+    // Source: a carrier hexagon ringed by the brood it launches — kill it first.
+    g.beginPath();
+    for (let i = 0; i < 6; i += 1) {
+      const a = (Math.PI / 3) * i;
+      const px = Math.cos(a) * 5.4;
+      const py = Math.sin(a) * 5.4;
+      if (i === 0) g.moveTo(px, py); else g.lineTo(px, py);
+    }
+    g.closePath();
+    paintClosed();
+    g.fillStyle = color;
+    g.beginPath();
+    for (let i = 0; i < 3; i += 1) {
+      const a = (Math.PI * 2 * i) / 3 - Math.PI / 2;
+      g.moveTo(Math.cos(a) * 8.6 + 1.3, Math.sin(a) * 8.6);
+      g.arc(Math.cos(a) * 8.6, Math.sin(a) * 8.6, 1.3, 0, Math.PI * 2);
+    }
+    g.fill();
+    g.fillStyle = isHostile ? '#fff1cf' : color;
+    g.beginPath();
+    g.arc(0, 0, 1.5, 0, Math.PI * 2);
+    g.fill();
+  } else if (role === 'civilian') {
+    // Rounded freighter/utility capsule (blocky silhouette, distinct from combat craft)
+    const w = 3.2;
+    const h = 4.6;
+    const r = 1.6;
+    g.beginPath();
+    g.moveTo(-w + r, -h);
+    g.lineTo(w - r, -h);
+    g.quadraticCurveTo(w, -h, w, -h + r);
+    g.lineTo(w, h - r);
+    g.quadraticCurveTo(w, h, w - r, h);
+    g.lineTo(-w + r, h);
+    g.quadraticCurveTo(-w, h, -w, h - r);
+    g.lineTo(-w, -h + r);
+    g.quadraticCurveTo(-w, -h, -w + r, -h);
+    g.closePath();
+    paintClosed();
+    if (!isFriendly) {
+      g.strokeStyle = isHostile ? darkEdge : color;
+      g.lineWidth = 0.9 / s;
+      g.beginPath();
+      g.moveTo(-w + 0.8, -1.0); g.lineTo(w - 0.8, -1.0);
+      g.moveTo(-w + 0.8, 1.8); g.lineTo(w - 0.8, 1.8);
+      g.stroke();
+    }
+  }
+
+  if (boss) {
+    // Command brackets: a boss is its job drawn larger and bracketed.
+    g.strokeStyle = isHostile ? '#fff1cf' : color;
+    g.lineWidth = 1.2 / s;
+    g.beginPath();
+    g.moveTo(-8.6, -5.0); g.lineTo(-9.8, -5.0); g.lineTo(-9.8, 5.0); g.lineTo(-8.6, 5.0);
+    g.moveTo(8.6, -5.0); g.lineTo(9.8, -5.0); g.lineTo(9.8, 5.0); g.lineTo(8.6, 5.0);
+    g.stroke();
+  }
+
+  g.restore();
+}
+
+/**
+ * Deterministic collision-free label placement inside a chamfered minimap frame.
+ * Returns `{ x, y, w, h }` and registers the placed rect in `occupiedRects`, or returns `null`
+ * (dropping lower-priority labels rather than overlapping another label or the frame).
+ */
+export function solveMinimapLabelPlacement(anchor, labelW, labelH, occupiedRects, {
+  width,
+  height,
+  margin = 8,
+  chamfer = 14,
+  markRadius = 8,
+} = {}) {
+  const w = Math.ceil(labelW);
+  const h = Math.ceil(labelH);
+  const gap = Math.max(8, markRadius + 5);
+  const ax = Number(anchor && anchor.x);
+  const ay = Number(anchor && anchor.y);
+  if (!Number.isFinite(ax) || !Number.isFinite(ay) || !(width > 0) || !(height > 0)) return null;
+
+  const preferLeft = ax > width * 0.52;
+  const preferAbove = ay > height * 0.52;
+  const clampNum = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
+
+  const insideChamfer = (x, y) => {
+    if (x < margin || y < margin || x + w > width - margin || y + h > height - margin) return false;
+    const cut = Math.max(0, chamfer - 2);
+    if (cut <= 0) return true;
+    const tl = x + y < cut + margin;
+    const tr = (width - (x + w)) + y < cut + margin;
+    const bl = x + (height - (y + h)) < cut + margin;
+    const br = (width - (x + w)) + (height - (y + h)) < cut + margin;
+    return !(tl || tr || bl || br);
+  };
+
+  const overlaps = (a, b) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+  const markerBox = { x: ax - markRadius, y: ay - markRadius, w: markRadius * 2, h: markRadius * 2 };
+
+  // Direction pointing from anchor inward toward the minimap center (pulls rim-pinned labels cleanly inside).
+  const inDx = width * 0.5 - ax;
+  const inDy = height * 0.5 - ay;
+  const inLen = Math.hypot(inDx, inDy);
+  const inUx = inLen > 1e-3 ? inDx / inLen : 0;
+  const inUy = inLen > 1e-3 ? inDy / inLen : 1;
+
+  const candidates = [
+    [ax + (preferLeft ? -w - gap : gap), ay - h / 2],
+    [ax - w / 2, ay + (preferAbove ? -h - gap : gap)],
+    [ax + (preferLeft ? gap : -w - gap), ay - h / 2],
+    [ax - w / 2, ay + (preferAbove ? gap : -h - gap)],
+    [ax + (preferLeft ? -w - gap * 0.65 : gap * 0.65), ay + (preferAbove ? -h - gap * 0.45 : gap * 0.45)],
+    [ax + (preferLeft ? -w - gap * 0.65 : gap * 0.65), ay + (preferAbove ? gap * 0.45 : -h - gap * 0.45)],
+  ];
+
+  // Rim/corner fallback candidates: pull inward along the normal and clamp strictly inside bounds,
+  // stepping vertically or horizontally if the top-center N mark or bottom-right range blocks the first slot.
+  const minX = margin;
+  const maxX = Math.max(margin, width - margin - w);
+  const minY = margin;
+  const maxY = Math.max(margin, height - margin - h);
+  const pulledX = clampNum(ax + inUx * (gap + w * 0.35) - w * 0.5, minX, maxX);
+  const pulledY = clampNum(ay + inUy * (gap + h * 0.55) - h * 0.5, minY, maxY);
+  const edgeX = clampNum(preferLeft ? ax - w - 6 : ax + 6, minX, maxX);
+  const edgeYBelow = clampNum(ay + gap + 4, minY, maxY);
+  const edgeYAbove = clampNum(ay - h - gap - 4, minY, maxY);
+  candidates.push(
+    [pulledX, pulledY],
+    [edgeX, preferAbove ? edgeYAbove : edgeYBelow],
+    [clampNum(ax - w * 0.5, minX + chamfer, Math.max(minX + chamfer, maxX - chamfer)), preferAbove ? edgeYAbove : edgeYBelow],
+    [clampNum(pulledX, minX, maxX), clampNum(pulledY + (preferAbove ? -(h + 8) : (h + 8)), minY, maxY)],
+    [clampNum(edgeX, minX, maxX), clampNum((preferAbove ? edgeYAbove : edgeYBelow) + (preferAbove ? -(h + 8) : (h + 8)), minY, maxY)],
+  );
+
+  for (const [cx0, cy0] of candidates) {
+    const rx = Math.round(cx0);
+    const ry = Math.round(cy0);
+    const box = { x: rx, y: ry, w, h };
+    if (!insideChamfer(rx, ry)) continue;
+    if (overlaps(box, markerBox)) continue;
+    let collides = false;
+    for (let i = 0; i < occupiedRects.length; i += 1) {
+      if (overlaps(box, occupiedRects[i])) { collides = true; break; }
+    }
+    if (!collides) {
+      occupiedRects.push(box);
+      return box;
+    }
+  }
+  return null;
+}
 
 // Shared semantic grammar for the always-on radar and the paused navigation chart.
 //
@@ -266,23 +826,22 @@ export function planUnresolvedObjectiveCue({
   });
 }
 
-export function sanitizeMapLabel(value, max = 22) {
-  const text = String(value || 'OBJECTIVE').replace(/\s+/g, ' ').trim().toUpperCase();
-  if (!text) return 'OBJECTIVE';
+/**
+ * A map label either fits whole or becomes a plain role word. It is never clipped mid-name and never
+ * ends in "…": a clipped name ("RECOVER THE MASS SAMPL", "RELIEF-FREIGHTER CH…") reads as a
+ * different thing. A compound label ("TALA ROOK · RECEIVING") keeps its primary name when that fits.
+ */
+export function sanitizeMapLabel(value, max = 22, fallback = 'OBJECTIVE') {
+  const text = String(value || fallback).replace(/\s+/g, ' ').replace(/[…]+/g, '').trim().toUpperCase();
+  const word = String(fallback || 'OBJECTIVE').toUpperCase();
+  if (!text) return word;
   const limit = Math.max(4, max | 0);
   if (text.length <= limit) return text;
-  // Never slice mid-word (e.g. "TALA ROOK · RECEIVIN"): if a compound separator (' · ' or ' — ')
-  // precedes the overflow, keep the primary name; otherwise break at the last word boundary.
-  const sepIdx = text.indexOf(' · ');
-  if (sepIdx >= 4 && sepIdx <= limit) {
-    const rest = text.slice(0, limit);
-    const lastSpace = rest.lastIndexOf(' ');
-    if (lastSpace > sepIdx + 2) return rest.slice(0, lastSpace).replace(/[\s·—-]+$/, '');
-    return text.slice(0, sepIdx);
+  for (const sep of [' · ', ' — ', ': ']) {
+    const sepIdx = text.indexOf(sep);
+    if (sepIdx >= 3 && sepIdx <= limit) return text.slice(0, sepIdx);
   }
-  const clipped = text.slice(0, limit);
-  const wordBreak = clipped.lastIndexOf(' ');
-  return (wordBreak >= 4 ? clipped.slice(0, wordBreak) : clipped).replace(/[\s·—-]+$/, '');
+  return word.length <= limit ? word : word.slice(0, limit);
 }
 
 export function formatRadarDistance(worldUnits) {
@@ -290,9 +849,9 @@ export function formatRadarDistance(worldUnits) {
   if (!Number.isFinite(d) || d < 0) return 'ROUTE PENDING';
   if (d >= 1000) {
     const digits = d >= 10000 ? 0 : 1;
-    return `${(d / 1000).toFixed(digits)}k u`;
+    return `${(d / 1000).toFixed(digits)} km`;
   }
-  return `${Math.round(d)} u`;
+  return `${Math.round(d)} m`;
 }
 
 export function relativeLuminance(hex) {

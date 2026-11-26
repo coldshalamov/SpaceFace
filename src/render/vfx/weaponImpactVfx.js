@@ -13,6 +13,7 @@ import {
 } from './effectsCause.js';
 import { resolveImpactPresentationProfile } from '../vfxProfiles.js';
 import { recipeUsesSweptMuzzle, resolveWeaponRecipe } from '../weapons/index.js';
+import { gunFamilyOf } from '../../data/gunFamilies.js';
 
 // The VFX instance remains the event, beam, and shared-pool owner. These methods render its
 // existing weapon-fire and impact pictures without a second pool or lifecycle.
@@ -48,6 +49,8 @@ export function createWeaponImpactVfxMethods({
       base += (Math.random() - 0.5) * scatter * 1.1;
     }
     const profile = this._muzzleProfile(p, owner);
+    // The kit adds each gun family's own muzzle grammar (hose fizz vs thump blast), vfx/kit/powerFx.js.
+    if (p.continuous !== true) this._ensurePowerFx()?.gunMuzzle(gunFamilyOf(p.weaponId), origin.x, origin.z, base, p.ownerId === (this.state && this.state.playerId));
     if (p.continuous === true && p.to && this._combatBeams) {
       const startsBefore = this._combatBeams.startCount;
       if (!this._combatBeams.upsert(p, this._t, profile)) return;
@@ -275,6 +278,14 @@ export function createWeaponImpactVfxMethods({
     let presenterHit = null;
     if (this._weaponPresenter) {
       presenterHit = this._weaponPresenter.handleHit(p, hitShield);
+    }
+    {
+      // Each family hits the way it plays: hose pin-pricks, thump wallop (vfx/kit/powerFx.js).
+      const n0 = p && (p.normal || p.approach || p.dir);
+      let knx = n0 && Number(n0.x) || 0; let knz = n0 && Number(n0.z) || 0;
+      if (n0 && !p.normal) { knx = -knx; knz = -knz; }
+      if (!knx && !knz) knx = 1;
+      this._ensurePowerFx()?.gunImpact(gunFamilyOf(p && p.weaponId), pos.x, pos.z, knx, knz, hitShield, recipe && recipe.family === 'concussion', p && p.targetId, p && p.weaponId);
     }
     const keepLegacyHit = recipe.variant === 'flak'
       || recipe.family === 'missile'
@@ -545,27 +556,27 @@ export function createWeaponImpactVfxMethods({
           this.state && this.state.settings,
         ).flashOpacityScale < 1;
         // 1 — compressed impact flash: size0 > size1 so it collapses as the front expands.
-        this._spawnSprite(SPR_FLASH, surfaceX, 0.26, surfaceZ, 0.10,
-          3.4 * slamScale, 1.1 * slamScale, 0.95, 0, '#ffffff', 0, 0, 1, normalAngle);
+        this._spawnSprite(SPR_FLASH, surfaceX, 0.20, surfaceZ, 0.08,
+          2.2 * slamScale, 0.9 * slamScale, 0.65, 0, '#ffe8c8', 0, 0, 1, normalAngle);
         // 2 — leading shock front oriented across the force path and bowed forward along it (the
         // recipe's DOME): opposed bars elongated on the contact normal, centres pushed a touch
         // along the approach. SPR_FLASH carries aspect+roll, so the front is structure, not a card.
         for (const side of [-1, 1]) {
           this._spawnSprite(SPR_FLASH,
-            surfaceX + nx * side * 0.3 * slamScale + ax * 0.22 * slamScale, 0.24,
+            surfaceX + nx * side * 0.3 * slamScale + ax * 0.22 * slamScale, 0.18,
             surfaceZ + nz * side * 0.3 * slamScale + az * 0.22 * slamScale,
-            slamReduced ? 0.24 : 0.34, 0.6 * slamScale, (slamReduced ? 2.0 : 2.8) * slamScale,
-            slamReduced ? 0.55 : 0.72, 0,
-            '#fff4e0', 0, 0, 3.2, normalAngle);
+            slamReduced ? 0.18 : 0.22, 0.5 * slamScale, (slamReduced ? 1.4 : 1.8) * slamScale,
+            slamReduced ? 0.36 : 0.46, 0,
+            '#ffe8c8', 0, 0, 3.2, normalAngle);
         }
         // 3 — trailing pressure wash: genuinely slower and dimmer than the lead front. Two fronts
         // at different speeds is what turns "a ring" into "a shock".
         if (!slamReduced) {
           for (const side of [-1, 1]) {
             this._spawnSprite(SPR_FLASH,
-              surfaceX + nx * side * 0.24 * slamScale + ax * 0.13 * slamScale, 0.22,
+              surfaceX + nx * side * 0.24 * slamScale + ax * 0.13 * slamScale, 0.16,
               surfaceZ + nz * side * 0.24 * slamScale + az * 0.13 * slamScale,
-              0.5, 1.0 * slamScale, 2.2 * slamScale, 0.38, 0,
+              0.30, 0.75 * slamScale, 1.4 * slamScale, 0.24, 0,
               profile.accentColor, 0, 0, 3.0, normalAngle);
           }
         }

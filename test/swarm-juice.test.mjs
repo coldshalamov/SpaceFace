@@ -30,12 +30,10 @@ import { PRODUCTION_INIT_ORDER, PRODUCTION_UPDATE_ORDER } from '../src/runtime/a
 import {
   SWARM_CHAIN_TIERS,
   SWARM_CLOSE_CALL_HULL,
-  SWARM_HITSTOP_SOURCE,
   arcadeEffectsLevel,
   swarmChainNextTier,
   swarmChainTier,
   swarmChainTierCrossed,
-  swarmHitStopSeconds,
   swarmKillCauseWord,
   swarmMultiKillWord,
   swarmPileUp,
@@ -101,7 +99,7 @@ function named(h, event) {
   return h.emitted.filter((e) => e.event === event);
 }
 
-test('swarmJuice is registered beside the chain and ticks for the hit-stop and boss bar', () => {
+test('swarmJuice is registered beside the chain and ticks for the boss bar', () => {
   assert.ok(PRODUCTION_INIT_ORDER.includes('swarmJuice'));
   assert.ok(PRODUCTION_UPDATE_ORDER.includes('swarmJuice'));
   assert.ok(PRODUCTION_UPDATE_ORDER.indexOf('swarmJuice') > PRODUCTION_UPDATE_ORDER.indexOf('swarmChain'),
@@ -114,12 +112,12 @@ test('swarmJuice is registered beside the chain and ticks for the hit-stop and b
 test('chain tiers: the named marks in order, and crossing is reported once', () => {
   assert.deepEqual(SWARM_CHAIN_TIERS.map((t) => t.at), [10, 25, 50, 100, 200]);
   assert.equal(swarmChainTier(9), null);
-  assert.equal(swarmChainTier(10).name, 'IGNITION');
-  assert.equal(swarmChainTier(99).name, 'NOVA');
+  assert.equal(swarmChainTier(10).name, 'STREAK ×10');
+  assert.equal(swarmChainTier(99).name, 'STREAK ×50');
   assert.equal(swarmChainTier(500).name, 'SINGULARITY');
-  assert.equal(swarmChainNextTier(0).name, 'IGNITION');
+  assert.equal(swarmChainNextTier(0).name, 'STREAK ×10');
   assert.equal(swarmChainNextTier(200), null, 'the top has no next mark');
-  assert.equal(swarmChainTierCrossed(25, 0).name, 'FLARE');
+  assert.equal(swarmChainTierCrossed(25, 0).name, 'STREAK ×25');
   assert.equal(swarmChainTierCrossed(30, 25), null, 'between marks says nothing');
   assert.equal(swarmChainTierCrossed(120, 9).name, 'SUPERNOVA', 'a burst reports the highest');
 });
@@ -148,15 +146,13 @@ test('multi-kill words and the pile-up rule', () => {
 test('the tally lists what was earned, in order, and skips what was not', () => {
   const rows = swarmRoundTally({ flawless: true, durationS: 12, kills: 31, bestChain: 44 });
   assert.deepEqual(rows.map((r) => r.id), ['flawless', 'speed', 'kills', 'chain']);
-  assert.equal(rows[2].value, '×31');
+  // Swarm stranger pass, owner demo 2026-11-23: a count reads as a count, plain words.
+  assert.equal(rows[2].value, '31');
+  assert.equal(rows[2].label, 'Room kills');
+  assert.equal(rows[1].label, 'Cleared in');
+  assert.equal(rows[3].label, 'Best chain');
   const flat = swarmRoundTally({ flawless: false, durationS: 80, kills: 3, bestChain: 0 });
   assert.deepEqual(flat.map((r) => r.id), ['kills'], 'a flat round is short, not shamed');
-});
-
-test('hit-stop scales with chain tier inside the 40–80 ms bound', () => {
-  assert.equal(swarmHitStopSeconds(0), 0.04);
-  assert.ok(swarmHitStopSeconds(10) > swarmHitStopSeconds(9));
-  assert.equal(swarmHitStopSeconds(500), 0.08, 'capped at the top');
 });
 
 test('the Arcade effects setting: full/reduced/off, accessibility pulls it down', () => {
@@ -174,8 +170,9 @@ test('popup text: the figure rides the cause word', () => {
   assert.equal(swarmPopupText({ word: 'SLAMMED', score: 120 }), '+120 SLAMMED');
   assert.equal(swarmPopupText({ word: 'MINED', score: 0, credits: 4 }), '+4 CR MINED');
   assert.equal(swarmPopupText({ word: 'FRIENDLY FIRE' }), 'FRIENDLY FIRE');
-  assert.equal(swarmSlamSub({ boss: { name: 'The Anvil' } }), 'BOSS · The Anvil');
-  assert.equal(swarmSlamSub({ newcomer: { name: 'Detonator Dart' } }), 'NEW THREAT · Detonator Dart');
+  // Swarm arcade HUD, owner 2026-11-23: sentence case subtitle, no ALL-CAPS soup.
+  assert.equal(swarmSlamSub({ boss: { name: 'The Anvil' } }), 'Boss · The Anvil');
+  assert.equal(swarmSlamSub({ newcomer: { name: 'Detonator Dart' } }), 'New threat · Detonator Dart');
 });
 
 // --- the detector ---------------------------------------------------------------------
@@ -208,14 +205,15 @@ test('multi-kill announcer: DOUBLE, TRIPLE inside the window — and silence out
   swarmJuice.destroy();
 });
 
-test('a pure physics burst is a PILE-UP ×N, not a generic word', () => {
+test('a pure physics burst is a Pile-up count, not a generic word', () => {
   const h = boot();
   kill(h, { cause: 'terrain_collision', surface: 'terrain' });
   kill(h, { cause: 'ship_collision', surface: 'craft' });
   kill(h, { cause: 'terrain_collision', surface: 'terrain' });
   const calls = named(h, 'swarm:announce').filter((e) => e.payload.kind === 'pileup');
   assert.equal(calls.length, 2, 'each new body in the pile re-says the count');
-  assert.equal(calls[1].payload.text, 'PILE-UP ×3');
+  // Swarm stranger pass, owner demo 2026-11-23: '×3' is a multiplier; a count is 'Pile-up 3'.
+  assert.equal(calls[1].payload.text, 'Pile-up 3');
   assert.equal(named(h, 'swarm:announce').filter((e) => e.payload.kind === 'multikill').length, 0);
   swarmJuice.destroy();
 });
@@ -228,7 +226,9 @@ test('COLLATERAL: a cohort body killed by a cohort body is named and popups as F
   kill(h, { cause: 'ship_collision', surface: 'craft', killer: roomKiller.id });
   const calls = named(h, 'swarm:announce').filter((e) => e.payload.kind === 'collateral');
   assert.equal(calls.length, 1);
-  assert.equal(calls[0].payload.text, 'COLLATERAL');
+  // The sim's word is FRIENDLY FIRE; the HUD prints it as CROSSFIRE (swarmAnnounceDisplayText,
+  // HUD-2 item 9: no internal or misleading words on screen).
+  assert.equal(calls[0].payload.text, 'FRIENDLY FIRE');
   assert.equal(named(h, 'swarm:killPopup')[0].payload.word, 'FRIENDLY FIRE');
   swarmJuice.destroy();
 });
@@ -286,7 +286,7 @@ test('a debut round carries the new threat and its five-word counter', () => {
   swarmJuice.destroy();
 });
 
-test('the clear tally: FLAWLESS and ROOM KILLS land on the wave-cleared receipt', () => {
+test('the clear tally: Flawless and Room kills land on the wave-cleared receipt', () => {
   const h = boot();
   h.bus.emit('run:waveStarted', { wave: 3 });
   kill(h, { cause: 'direct' });
@@ -338,6 +338,8 @@ test('the boss bar: a champion wave reports hp, and the last champion down says 
   assert.equal(down.length, 1);
   assert.equal(down[0].payload.name, "Dreadnought 'Iron Maw'");
   assert.ok(named(h, 'swarm:announce').some((e) => e.payload.text === 'BOSS DOWN'));
+  assert.ok(named(h, 'audio:cue').some((e) => e.payload.id === 'moment.stinger'));
+  assert.equal(h.state.timeScale, 1, 'R10: champion defeat never slows simulation');
   swarmJuice.destroy();
 });
 
@@ -346,7 +348,7 @@ test('the chain tier crossing lands its name; a broken chain shatters', () => {
   h.bus.emit('swarm:chain', { chain: 25, best: 25, cause: 'terrain', step: 2, at: 0, wave: 3 });
   const tiers = named(h, 'swarm:chainTier');
   assert.equal(tiers.length, 1);
-  assert.equal(tiers[0].payload.name, 'FLARE');
+  assert.equal(tiers[0].payload.name, 'STREAK ×25');
   h.bus.emit('swarm:chainBroken', { chain: 26, best: 26 });
   const shatter = named(h, 'swarm:chainShatter');
   assert.equal(shatter.length, 1);
@@ -354,18 +356,18 @@ test('the chain tier crossing lands its name; a broken chain shatters', () => {
   swarmJuice.destroy();
 });
 
-test('hit-stop dips the world on a big kill through the time-effects channel, then releases', () => {
+test('a triple still gets its call and camera cue without a simulation lease', () => {
   const h = boot();
   kill(h, { cause: 'direct' });
   kill(h, { cause: 'direct' });
-  kill(h, { cause: 'direct' }); // TRIPLE is a beat worth the dip
-  assert.ok(h.state.timeScale < 1, `the dip is live (timeScale ${h.state.timeScale})`);
-  for (let i = 0; i < 30; i++) advance(h, DT);
-  assert.equal(h.state.timeScale, 1, 'the lease released itself');
+  kill(h, { cause: 'direct' });
+  assert.ok(named(h, 'swarm:announce').some((e) => e.payload.text === 'TRIPLE'));
+  assert.ok(named(h, 'camera:shake').some((e) => e.payload.audience === 'hero'));
+  assert.equal(h.state.timeScale, 1, 'ordinary multi-kills never lease simulation time');
   swarmJuice.destroy();
 });
 
-test('Reduced keeps the words and drops the dip; Off still emits — the presenter owns off', () => {
+test('reduced arcade effects keep the call without leasing simulation time', () => {
   const h = boot({ effects: 'reduced' });
   kill(h, { cause: 'direct' });
   kill(h, { cause: 'direct' });
@@ -389,16 +391,6 @@ test('the layer is swarm-only: the scored arc and ambient traffic get silence', 
   h2.bus.emit('entity:killed', { id, killerId: h2.state.playerId, type: 'ship', pos: { x: 0, z: 0 } });
   assert.equal(named(h2, 'swarm:killPopup').length, 0);
   swarmJuice.destroy();
-});
-
-test('the hit-stop lease cannot outlive the system', () => {
-  const h = boot();
-  kill(h, { cause: 'direct' });
-  kill(h, { cause: 'direct' });
-  kill(h, { cause: 'direct' });
-  assert.ok(h.state.timeScale < 1);
-  swarmJuice.destroy();
-  assert.equal(h.state.timeScale, 1, 'destroy releases the lease');
 });
 
 // --- the sound of the big moments -----------------------------------------------------------
@@ -688,7 +680,7 @@ test('end to end with the live chain: a milestone is one voice, the tier chord, 
   assert.equal(toasts.length, 1, 'the milestone still says its line on screen');
   assert.equal(toasts[0].payload.audio, false, 'the toast leaves the sound to the tier cue');
   const tierPlays = plays.filter((p) => p.recipeId === 'sfx_promotion_chord');
-  assert.equal(tierPlays.length, 1, 'IGNITION chords once');
+  assert.equal(tierPlays.length, 1, 'the first tier chords once');
   assert.equal(clicks(), clicksBefore, 'the milestone toast adds no click under the chord');
   assert.equal(plays.filter((p) => p.recipeId === 'sfx_ui_alert').length, 0, 'and no alert beep');
   ear.destroy();

@@ -87,7 +87,6 @@ try {
     launchSummary = ['', `LAUNCH PROFILE (${launchS.toFixed(1)} s)`, ...summarize(lp, launchS * 1000, 50, 90)];
     await launchCdp.detach();
   }
-  await page.bringToFront();
   await page.mouse.move(1100, 300);
   await page.keyboard.down('KeyW');
   await page.waitForTimeout(4000);

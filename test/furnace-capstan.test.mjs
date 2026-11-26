@@ -2,13 +2,14 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createGameState } from '../src/core/gameState.js';
 import { createBus } from '../src/core/eventBus.js';
-import { createFurnaceIntake } from '../src/systems/furnaceIntake.js';
+import { createFurnaceIntake, furnaceIntakeSpec } from '../src/systems/furnaceIntake.js';
 import { getCombatKernel } from '../src/combat/kernel.js';
 import { furnaceLots, furnaceLotSpec, furnaceMouthGlobal, FURNACE_MITE_KEYS } from '../src/missions/furnaceWorksite.js';
 import { FURNACE_CAPSTAN, initFurnaceCapstan, removeFurnaceCapstan, stepFurnaceCapstan,
   syncFurnaceCapstan, furnaceCapstanRead, furnaceCapstanAvailability, furnaceCapstanOffer,
   furnaceCapstanResponse } from '../src/missions/furnaceCapstan.js';
 import { npcCableAdmits } from '../src/render/combat/npcCableFx.js';
+import { buildAuthoredPlaceProp, resolvePlaceFileForEntity } from '../src/render/partsLibrary.js';
 
 function fixture({ initController = true } = {}) {
   const s = createGameState(23), bus = createBus(), calls = [];
@@ -87,6 +88,16 @@ test('the gantry is moored without cable, mass change, or receipt until commande
   const before = f.m.params.furnaceLots.map(l => structuredClone(f.s.entities.get(l.entityId)));
   assert.ok(f.a);
   assert.equal(f.a.physicsBody.dynamic, false);
+  const beacon = furnaceIntakeSpec();
+  const mouth = furnaceMouthGlobal();
+  assert.deepEqual(beacon.pos, mouth, 'the real amber intake retains its position');
+  assert.deepEqual(f.a.pos, { x: mouth.x - 30, z: mouth.z }, 'the hail contact has its own authored berth');
+  const separation = Math.hypot(f.a.pos.x - beacon.pos.x, f.a.pos.z - beacon.pos.z);
+  assert.ok(separation > beacon.radius, 'the gantry center is outside the buoy footprint');
+  assert.ok(separation + FURNACE_CAPSTAN.minLength < beacon.data.ringRadius,
+    'even a far-side pod on the minimum cable is inside the real mouth');
+  assert.ok(FURNACE_CAPSTAN.minLength > f.a.physicsBody.radius + before[0].physicsBody.radius,
+    'the minimum cable clears both native body footprints');
   assert.equal(f.record().cable, null);
   stepFurnaceCapstan(f.owner, 1 / 60);
   assert.equal(f.calls.filter(c => c.kind === 'attach').length, 0);
@@ -98,6 +109,51 @@ test('the gantry is moored without cable, mass change, or receipt until commande
   });
   assert.equal(f.s.player.credits, 743);
   assert.equal(f.m.params.furnaceFeeds, undefined);
+});
+
+test('the live gantry resolves an authored render boundary for its actual place', () => {
+  const { a } = fixture();
+  assert.equal(resolvePlaceFileForEntity(a), 'places/place_maintenance_gantry.glb');
+  const boundary = buildAuthoredPlaceProp(a);
+  assert.ok(boundary?.isObject3D);
+  assert.equal(boundary.userData.placeId, 'place_maintenance_gantry');
+});
+
+test('the offset gantry winds a pod from its far side into the real intake', async () => {
+  const { bootRealPath } = await import('../scripts/lib/bench/realPath.mjs');
+  const { combat } = await import('../src/systems/combat.js');
+  const mouth = furnaceMouthGlobal();
+  const h = await bootRealPath({ seed: 23, systems: [createFurnaceIntake(), combat, 'physics'],
+    hulls: [{ hullId: 'ship_kestrel', isPlayer: true, pos: { x: mouth.x, z: mouth.z - 150 } }] });
+  try {
+    const s = h.state, intake = h.runtime.getSystem('furnaceIntake');
+    const { m } = fixture({ initController: false });
+    s.mode = 'flight';
+    s.run.kind = 'adventure';
+    s.world.currentSectorId = m.destSectorId;
+    s.world.alienEcology = { sites: { closed_refinery: {
+      deadFauna: Object.fromEntries(FURNACE_MITE_KEYS.map(key => [key, true])),
+    } } };
+    s.missions.active = [m];
+    const lot = furnaceLots(m)[0];
+    lot.pos = { x: mouth.x - 190, z: mouth.z };
+    const pod = intake.helpers.spawnEntity(furnaceLotSpec(m, lot));
+    lot.entityId = pod.id;
+    intake._sync();
+    h.step(1);
+    const gantry = s.entities.get(intake._capstanId);
+    s.player.targetId = gantry.id;
+    const offer = furnaceCapstanOffer(s, furnaceCapstanAvailability(s, gantry), 'far-side', s.simTime + 5);
+    assert.ok(offer.actions.some(action => action.id === 'furnace_haul'));
+    const fed = [];
+    h.bus.on('furnace:fed', receipt => fed.push(receipt));
+    h.bus.emit('contactHail:offer', offer);
+    h.bus.emit('contactHail:response', furnaceCapstanResponse(s, offer, 'furnace_haul'));
+    for (let i = 0; i < 480 && !fed.length; i++) h.step(1);
+    assert.deepEqual(fed.map(r => [r.entityId, r.missionId, r.lotSlot]), [[pod.id, m.id, lot.slot]]);
+    assert.ok(Math.hypot(fed[0].pos.x - mouth.x, fed[0].pos.z - mouth.z) <= 90);
+    assert.equal(pod.hull, 220, 'the far-side cable never dragged the pod into the chassis');
+  } finally { h.dispose(); }
 });
 
 test('a live hail command winds one marked pod; hold and resume keep the same cable', () => {
@@ -119,6 +175,34 @@ test('a live hail command winds one marked pod; hold and resume keep the same ca
   f.choose(resume, 'furnace_haul');
   assert.equal(f.record().cable.mode, 'winding');
   assert.equal(f.calls.filter(c => c.kind === 'attach').length, 1); // still one cable
+});
+
+test('the yard offers the next reachable original pod while the first drifts beyond the cable', () => {
+  const f = fixture();
+  const [first, reachable] = furnaceLots(f.m).map(lot => f.s.entities.get(lot.entityId));
+  first.pos = { x: f.a.pos.x + FURNACE_CAPSTAN.reach + 25, z: f.a.pos.z };
+  const offer = f.offer('furnace_haul');
+  assert.equal(offer.actions.find(row => row.id === 'furnace_haul').label, 'WINCH POD 2');
+  assert.equal(offer.furnaceCapstan.podId, reachable.id);
+  f.choose(offer, 'furnace_haul');
+  assert.equal(f.record().cable.slot, 1);
+  assert.equal(f.calls.find(call => call.kind === 'attach').targetId, reachable.id);
+  assert.equal(f.m.params.furnaceLots[0].received, false);
+  assert.equal(f.s.player.credits, 743);
+});
+
+test('a quoted pod drifting out of range gives no winding acknowledgment', () => {
+  const f = fixture();
+  const lots = furnaceLots(f.m);
+  lots[1].received = true;
+  lots[2].received = true;
+  const offer = f.offer('furnace_haul');
+  const pod = f.s.entities.get(offer.furnaceCapstan.podId);
+  pod.pos = { x: f.a.pos.x + FURNACE_CAPSTAN.reach + 5, z: f.a.pos.z };
+  assert.equal(furnaceCapstanResponse(f.s, offer, 'furnace_haul'), null);
+  const refresh = f.offer('status');
+  assert.match(refresh.lines[1], /Pod 1.*Tow it closer/);
+  assert.equal(f.record().cable, null);
 });
 
 test('release cuts the yard line and frees the pod for the next hail', () => {

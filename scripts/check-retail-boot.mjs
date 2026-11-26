@@ -10,7 +10,7 @@
 // code-split into hashed chunks, module workers rewritten, SF_DEBUG_ONLY statements dropped. A bundle that
 // builds green but throws on its first line, 404s a chunk, or serves an empty page is invisible to every
 // other gate. This one builds exactly what Vercel builds (npm run build:bundle), serves it the way Vercel
-// serves it, loads it in headless Chromium on SOFTWARE GL (no GPU needed), and demands the title menu.
+// serves it, and uses headless Chromium on software GL to launch Adventure or Swarm and fly with public input.
 //
 // Checks (one PASS/FAIL line each; exit 1 if any fails, exit 2 on bad arguments):
 //   build               scripts/build-bundle.mjs exits 0                       (skipped with --use-existing / --dir)
@@ -18,6 +18,9 @@
 //   server              the static server is listening on an ephemeral loopback port
 //   page-load           the document answered 200 and the page did not crash
 //   menu                [data-screen="mainMenu"] with its New Game button is visible within --menu-timeout-ms
+//   flight              the player's launch route reveals the flight HUD and the retail first-playable-picture receipt
+//   thrust              holding the default W binding increases the speed displayed on the HUD
+//   world-picture       the presented gameplay pixels have detail and change during flight
 //   uncaught-exceptions the page threw nothing (window error / unhandled rejection)
 //   console-errors      no console.error, HTTP >= 400, or failed request (known-benign classes excused by
 //                       scripts/lib/browser-issues.mjs)
@@ -25,7 +28,7 @@
 //
 // DELIBERATE CHOICES.
 //  * build-bundle.mjs publishes only to build/web (lock + atomic swap + path guards, Vercel-critical), so the
-//    default mode builds THERE and serves it in place; evidence (report.json, retail-boot.png) goes to
+//    default mode builds THERE and serves it in place; evidence (report.json and screenshots) goes to
 //    .devshots/retail-boot/ (ignored). Nothing here edits or redirects the builder.
 //  * A tiny static server, not scripts/lib/gameServer.cjs: that server adds COOP/COEP cross-origin isolation,
 //    dev diagnostics and a player store, which the retail route does not have (vercel.json sets none of them).
@@ -35,26 +38,34 @@
 //  * Do NOT set VERCEL_URL when running this: it would pin chunk URLs to /_releases/<deployment>/ (see
 //    scripts/lib/vercelReleaseBase.mjs) and the local server has no such rewrite.
 import { spawn } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { createReadStream, existsSync, statSync } from 'node:fs';
 import { mkdir, readFile, readdir, stat, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import { extname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { PNG } from 'pngjs';
 
 import { collectPageIssues, summarizeIssues } from './lib/browser-issues.mjs';
+import { installFirstLightPromptHandler } from './player-truth/routes.mjs';
 
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const DEFAULT_WEB_ROOT = join(ROOT, 'build', 'web');
 const DEFAULT_OUT_DIR = join(ROOT, '.devshots', 'retail-boot');
 const DEFAULT_MENU_TIMEOUT_MS = 240_000;
+const DEFAULT_FLIGHT_TIMEOUT_MS = 420_000;
 const DEFAULT_BUILD_TIMEOUT_MS = 1_800_000;
-const POST_MENU_SETTLE_MS = 3_000;
 const ERROR_GRACE_MS = 30_000;
+const THRUST_TIMEOUT_MS = 12_000;
+const MIN_THRUST_SPEED_GAIN = 5;
 
 export const MENU_SELECTOR = '[data-screen="mainMenu"]';
 export const NEW_GAME_SELECTOR = '[data-screen="mainMenu"] button[data-action="newGame"]';
+const SWARM_SELECTOR = '[data-screen="mainMenu"] [data-action="swarm"]';
+const LAUNCH_SELECTOR = '[data-screen="newGame"] button[data-action="launch"]';
 export const CHECK_NAMES = Object.freeze([
-  'build', 'bundle-shape', 'server', 'page-load', 'menu', 'uncaught-exceptions', 'console-errors', 'window.SF',
+  'build', 'bundle-shape', 'server', 'page-load', 'menu', 'flight', 'thrust', 'world-picture',
+  'uncaught-exceptions', 'console-errors', 'window.SF',
 ]);
 export const CHROMIUM_ARGS = Object.freeze([
   '--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader',
@@ -65,10 +76,12 @@ export class UsageError extends Error {}
 
 const USAGE = [
   'usage: node scripts/check-retail-boot.mjs [options]',
+  '  --mode=adventure|swarm   public launch route to exercise (default adventure)',
   '  --use-existing           skip the build and serve the build/web already on disk',
   '  --dir=<path>             serve this prebuilt retail folder instead of build/web (implies --use-existing)',
   '  --out=<path>             evidence folder (default .devshots/retail-boot)',
   `  --menu-timeout-ms=<n>    wait this long for the title menu (default ${DEFAULT_MENU_TIMEOUT_MS})`,
+  `  --flight-timeout-ms=<n>  wait this long for flight after Launch (default ${DEFAULT_FLIGHT_TIMEOUT_MS})`,
   `  --build-timeout-ms=<n>   give the bundle build this long (default ${DEFAULT_BUILD_TIMEOUT_MS})`,
   '  --dry-run                validate arguments and print the plan; build, serve and launch nothing',
   '  --help                   this text',
@@ -89,8 +102,8 @@ function pathFlag(flag, raw) {
 /** Parse argv (without node + script). Throws UsageError on anything unknown or malformed. */
 export function parseArgs(argv) {
   const options = {
-    dryRun: false, help: false, build: true, webRoot: DEFAULT_WEB_ROOT, outDir: DEFAULT_OUT_DIR,
-    menuTimeoutMs: DEFAULT_MENU_TIMEOUT_MS, buildTimeoutMs: DEFAULT_BUILD_TIMEOUT_MS,
+    dryRun: false, help: false, build: true, mode: 'adventure', webRoot: DEFAULT_WEB_ROOT, outDir: DEFAULT_OUT_DIR,
+    menuTimeoutMs: DEFAULT_MENU_TIMEOUT_MS, flightTimeoutMs: DEFAULT_FLIGHT_TIMEOUT_MS, buildTimeoutMs: DEFAULT_BUILD_TIMEOUT_MS,
   };
   for (const arg of argv) {
     const eq = arg.indexOf('=');
@@ -103,9 +116,14 @@ export function parseArgs(argv) {
       case '--dry-run': bare(flag); options.dryRun = true; break;
       case '--help': case '-h': bare(flag); options.help = true; break;
       case '--use-existing': bare(flag); options.build = false; break;
+      case '--mode':
+        if (value !== 'adventure' && value !== 'swarm') throw new UsageError('--mode must be adventure or swarm');
+        options.mode = value;
+        break;
       case '--dir': options.webRoot = pathFlag(flag, value); options.build = false; break;
       case '--out': options.outDir = pathFlag(flag, value); break;
       case '--menu-timeout-ms': options.menuTimeoutMs = positiveInt(flag, value); break;
+      case '--flight-timeout-ms': options.flightTimeoutMs = positiveInt(flag, value); break;
       case '--build-timeout-ms': options.buildTimeoutMs = positiveInt(flag, value); break;
       default: throw new UsageError(`unknown argument "${arg}"`);
     }
@@ -120,6 +138,9 @@ const display = (path) => {
 
 /** The lines --dry-run prints (and a real run prints as its header). Pure: touches nothing. */
 export function buildPlan(options) {
+  const route = options.mode === 'swarm'
+    ? 'Swarm -> Choose ship (Hornet) -> Review equipment -> Launch round 1'
+    : 'New Game -> Launch';
   return [
     `mode: ${options.build ? 'build then boot' : 'boot an existing bundle (no build)'}`,
     options.build
@@ -128,8 +149,9 @@ export function buildPlan(options) {
     `serve: ${display(options.webRoot)} on an ephemeral 127.0.0.1 port (static files, Range, no COOP/COEP - like vercel.json)`,
     `browser: headless chromium on software GL (${CHROMIUM_ARGS.filter((a) => a !== '--mute-audio').join(' ')})`,
     `menu marker: ${NEW_GAME_SELECTOR} visible within ${options.menuTimeoutMs} ms`,
-    'fails on: page error, console error, HTTP >= 400, failed request, window.SF defined, menu never visible',
-    `evidence: ${display(options.outDir)}/report.json + retail-boot.png`,
+    `flight: ${route} -> first playable picture within ${options.flightTimeoutMs} ms, then check speed and world pixels under W`,
+    'fails on: page error, console error, HTTP >= 400, failed request, window.SF defined, or a broken menu/flight route',
+    `evidence: ${display(options.outDir)}/report.json + retail-boot.png + paired retail-flight screenshots`,
     `checks: ${CHECK_NAMES.join(', ')}`,
   ];
 }
@@ -353,11 +375,164 @@ async function waitForMenu(page, timeoutMs, state) {
   return { ok: false, reason: `the title menu did not become visible within ${timeoutMs} ms (last observation: ${JSON.stringify(state.lastMenu)})` };
 }
 
+function inspectFlight() {
+  const visible = (element) => {
+    if (!element || element.hidden || element.getClientRects().length === 0) return false;
+    const style = getComputedStyle(element);
+    return style.visibility === 'visible' && Number(style.opacity) > 0;
+  };
+  const hud = document.querySelector('#hud');
+  const screens = document.querySelector('#screens');
+  const canvas = document.querySelector('#gl-canvas');
+  const overlay = document.querySelector('#boot-overlay');
+  const armory = screens?.querySelector('[data-screen="crucibleDraft"][aria-modal="true"]');
+  const round = document.querySelector('.sf-crun__wave');
+  const meter = hud?.querySelector('[role="meter"][aria-label="Speed"]');
+  const value = meter?.getAttribute('aria-valuenow');
+  const speed = visible(meter) && value?.trim() ? Number(value) : null;
+  // The shipped journal persists the renderer's first playable paint only after the flight veil
+  // releases. Reading the persisted copy avoids triggering the on-demand loading census.
+  const journal = JSON.parse(sessionStorage.getItem('sf:startup-journal:v1') || 'null')?.current;
+  const failure = [...document.querySelectorAll('[data-startup-failure], .sf-ng-launch-error')].find(visible);
+  const hudVisible = visible(hud) && hud.getAttribute('aria-hidden') !== 'true' && !hud.inert;
+  const screensClosed = !!screens && screens.getAttribute('aria-hidden') === 'true' && !visible(screens);
+  const canvasVisible = visible(canvas) && canvas.clientWidth > 100 && canvas.clientHeight > 100;
+  const overlayVisible = visible(overlay);
+  const firstPictureAt = journal?.sample?.firstPlayableFrameAt ?? null;
+  const journalStatus = journal?.status || null;
+  const currentNavigation = journal?.timeOrigin === performance.timeOrigin;
+  const swarmRound = document.body.classList.contains('sf-swarm-flight') && visible(round) ? round.textContent.trim() : null;
+  return {
+    ready: journalStatus === 'playing' && Number.isFinite(firstPictureAt) && journal.sample.contextLost !== true
+      && hudVisible && screensClosed && canvasVisible && !overlayVisible
+      && !document.body.classList.contains('ui-modal-open') && Number.isFinite(speed),
+    speed, firstPictureAt, journalStatus, phase: journal?.phase || null, hudVisible, screensClosed, canvasVisible,
+    currentNavigation, swarmRound, armoryVisible: visible(screens) && visible(armory), overlayVisible,
+    failure: failure?.textContent.trim().slice(0, 300) || null,
+  };
+}
+
+async function waitForFlightObservation(page, timeoutMs, flight, select) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline && !page.isClosed()) {
+    const seen = await withTimeout(page.evaluate(inspectFlight), Math.min(deadline - Date.now(), 8_000), 'flight inspection')
+      .catch(() => null); // SwiftShader can hold the main thread between loading milestones.
+    if (seen) {
+      flight.lastObservation = seen;
+      if (seen.failure || ['failed', 'returned-to-menu'].includes(seen.journalStatus)) {
+        throw new Error(seen.failure || `the startup journal reported ${seen.journalStatus}`);
+      }
+      if (select(seen)) return seen;
+    }
+    await sleep(Math.min(250, Math.max(0, deadline - Date.now())));
+  }
+  throw new Error(`no matching flight observation within ${timeoutMs} ms (last: ${JSON.stringify(flight.lastObservation)})`);
+}
+
+export function summarizeWorldPicture(before, after) {
+  const sameSize = before.width === after.width && before.height === after.height;
+  if (!sameSize) throw new Error('the gameplay screenshots are different sizes');
+  const { width, height } = before;
+  const beforeColors = new Set();
+  const afterColors = new Set();
+  let changedPixels = 0;
+  for (let offset = 0; offset < before.data.length; offset += 4) {
+    const r = before.data[offset], g = before.data[offset + 1], b = before.data[offset + 2];
+    const nextR = after.data[offset], nextG = after.data[offset + 1], nextB = after.data[offset + 2];
+    if (beforeColors.size < 16) beforeColors.add((r >> 4) * 256 + (g >> 4) * 16 + (b >> 4));
+    if (afterColors.size < 16) afterColors.add((nextR >> 4) * 256 + (nextG >> 4) * 16 + (nextB >> 4));
+    if (Math.max(Math.abs(r - nextR), Math.abs(g - nextG), Math.abs(b - nextB)) >= 8) changedPixels++;
+  }
+  const minimumChangedPixels = Math.max(64, Math.ceil(width * height * 0.001));
+  const minimumColorCount = Math.min(beforeColors.size, afterColors.size);
+  return { width, height, changedPixels, minimumChangedPixels, minimumColorCount,
+    ok: minimumColorCount >= 4 && changedPixels >= minimumChangedPixels };
+}
+
+async function launchSwarm(page, options, flight) {
+  const timeout = options.menuTimeoutMs;
+  const swarm = page.locator(`${SWARM_SELECTOR}:visible`).first();
+  const more = page.locator(`${MENU_SELECTOR} [data-title-more]:visible`).first();
+  flight.stage = 'Swarm door';
+  if (!(await swarm.isVisible()) && await more.isVisible()) await more.click({ timeout });
+  await swarm.click({ timeout });
+  const door = page.locator('[data-screen="crucible"]');
+  await door.locator('.sf-crd-mode[data-ruleset="swarm"]:visible').click({ timeout });
+
+  flight.stage = 'Hornet ship setup';
+  await door.getByRole('button', { name: /^Choose ship/ }).click({ timeout });
+  await door.locator('.sf-crd-hull[data-starter-id="hull:ship_hornet"][aria-pressed="true"]')
+    .waitFor({ state: 'visible', timeout });
+  await door.getByRole('button', { name: /^Review equipment/ }).click({ timeout });
+
+  flight.stage = 'Ship equipment';
+  await waitForFlightObservation(page, options.flightTimeoutMs, flight,
+    (seen) => seen.armoryVisible && !seen.overlayVisible);
+  await page.locator('[data-screen="crucibleDraft"]').getByRole('button', { name: /^Launch round 1\b/ })
+    .click({ timeout });
+}
+
+async function exerciseFlight(page, options, record) {
+  const flight = { lastObservation: null, thrust: null, worldPicture: null, screenshots: [] };
+  let check = 'flight';
+  try {
+    await installFirstLightPromptHandler(page);
+    const swarm = options.mode === 'swarm';
+    if (swarm) {
+      await launchSwarm(page, options, flight);
+    } else {
+      await page.locator(NEW_GAME_SELECTOR).click({ timeout: options.menuTimeoutMs });
+      await page.locator(LAUNCH_SELECTOR).click({ timeout: options.menuTimeoutMs });
+    }
+    flight.stage = 'first playable picture';
+    // The journal stamps first paint once per game launch, even if Equipment is still covering it.
+    const flightReady = (seen) => seen.ready && (!swarm || (seen.currentNavigation && seen.swarmRound === 'ROUND 01'));
+    const ready = await waitForFlightObservation(page, options.flightTimeoutMs, flight, flightReady);
+    record('flight', true, `${swarm ? 'Swarm round 1 (Hornet)' : 'Adventure'} flight HUD and first playable picture (${Math.round(ready.firstPictureAt)} ms since navigation)`);
+
+    check = 'thrust';
+    const canvas = page.locator('#gl-canvas');
+    const size = page.viewportSize();
+    await page.mouse.move(size.width * 0.6, size.height * 0.5);
+    const screenshot = async (name) => {
+      // Capture the compositor's canvas pixels with the DOM instruments hidden for this image.
+      // Playwright removes the capture stylesheet before the next public input or HUD read.
+      const bytes = await canvas.screenshot({ path: join(options.outDir, name), timeout: 30_000,
+        style: '#ui-root { opacity: 0 !important; }' });
+      flight.screenshots.push(name);
+      return PNG.sync.read(bytes);
+    };
+    const beforePicture = await screenshot('retail-flight-before.png');
+    const baseline = await waitForFlightObservation(page, THRUST_TIMEOUT_MS, flight, flightReady);
+    flight.thrust = { key: 'KeyW', before: baseline.speed, after: null };
+    try {
+      await withTimeout(page.keyboard.down('KeyW'), 8_000, 'KeyW down');
+      const result = await waitForFlightObservation(page, THRUST_TIMEOUT_MS, flight,
+        (seen) => flightReady(seen) && seen.speed >= baseline.speed + MIN_THRUST_SPEED_GAIN);
+      flight.thrust.after = result.speed;
+    } finally {
+      await withTimeout(page.keyboard.up('KeyW'), 8_000, 'KeyW up');
+    }
+    const { before, after } = flight.thrust;
+    record('thrust', true, `W increased the displayed speed from ${before} to ${after} world units per second`);
+
+    check = 'world-picture';
+    const afterPicture = await screenshot('retail-flight-after.png');
+    flight.worldPicture = summarizeWorldPicture(beforePicture, afterPicture);
+    const { ok, changedPixels, minimumChangedPixels, minimumColorCount } = flight.worldPicture;
+    record(check, ok, `${changedPixels} gameplay pixels changed (minimum ${minimumChangedPixels}), ${minimumColorCount} sampled color bins in both captures`);
+  } catch (error) {
+    const detail = String(error.message || error).split('\n')[0];
+    record(check, false, check === 'flight' && flight.stage ? `${flight.stage} - ${detail}` : detail);
+  }
+  return flight;
+}
+
 async function bootInBrowser({ baseUrl, options, record }) {
   const { loadPlaywright } = await import('./lib/load-playwright.mjs');
   let browser = null;
   const state = { crashed: false, firstErrorAt: 0, lastMenu: null };
-  const observed = { windowSf: null, menu: null, navigation: null };
+  const observed = { windowSf: null, menu: null, flight: null, navigation: null };
   try {
     try {
       const { chromium } = await loadPlaywright();
@@ -388,13 +563,14 @@ async function bootInBrowser({ baseUrl, options, record }) {
     }
 
     observed.menu = response ? await waitForMenu(page, options.menuTimeoutMs, state) : { ok: false, reason: 'no document to wait on' };
-    if (observed.menu.ok) await sleep(POST_MENU_SETTLE_MS); // let errors that fire right after the menu paint surface
-
+    record('menu', observed.menu.ok, observed.menu.ok ? `${NEW_GAME_SELECTOR} visible` : observed.menu.reason);
+    await mkdir(options.outDir, { recursive: true });
+    await page.screenshot({ path: join(options.outDir, 'retail-boot.png'), timeout: 20_000 }).catch(() => {});
+    if (response?.ok() && observed.menu.ok) observed.flight = await exerciseFlight(page, options, record);
     if (response) {
       const problem = observed.pendingPageLoad || (state.crashed ? 'the page crashed' : null);
       record('page-load', !problem, problem || `document answered ${observed.navigation}, page stayed alive`);
     }
-    record('menu', observed.menu.ok, observed.menu.ok ? `${NEW_GAME_SELECTOR} visible` : observed.menu.reason);
 
     const issues = watcher.issues.filter((issue) => issue.type === 'error' || issue.type === 'pageerror');
     const uncaught = issues.filter((issue) => issue.type === 'pageerror');
@@ -415,9 +591,6 @@ async function bootInBrowser({ baseUrl, options, record }) {
     } catch (error) {
       record('window.SF', false, `could not read window.SF: ${String(error.message || error).split('\n')[0]}`);
     }
-
-    await mkdir(options.outDir, { recursive: true });
-    await withTimeout(page.screenshot({ path: join(options.outDir, 'retail-boot.png'), timeout: 20_000 }), 25_000, 'screenshot').catch(() => {});
   } finally {
     if (browser) await withTimeout(browser.close(), 15_000, 'browser close').catch(() => {});
   }
@@ -457,6 +630,7 @@ export async function main(argv = process.argv.slice(2)) {
   const startedAt = Date.now();
   let server = null;
   let observed = null;
+  let artifact = null;
   try {
     if (options.build) {
       const built = await runBuild(options.buildTimeoutMs);
@@ -469,6 +643,10 @@ export async function main(argv = process.argv.slice(2)) {
     const problems = await bundleShapeProblems(options.webRoot);
     record('bundle-shape', problems.length === 0, problems.length ? problems.join('; ') : 'index.html -> ./main.js, no importmap, hashed chunks and release receipt present');
     if (problems.length) return finish(results, options, startedAt, observed);
+    const releaseReceipt = await readFile(join(options.webRoot, 'spaceface-release-build.json'));
+    const receipt = JSON.parse(releaseReceipt);
+    artifact = { receiptSha256: createHash('sha256').update(releaseReceipt).digest('hex'),
+      schema: receipt.schema ?? null, outputDigest: receipt.output?.digest ?? null };
 
     server = createStaticServer(options.webRoot);
     const baseUrl = await listen(server);
@@ -480,16 +658,16 @@ export async function main(argv = process.argv.slice(2)) {
   } finally {
     if (server) await closeServer(server);
   }
-  return finish(results, options, startedAt, observed);
+  return finish(results, options, startedAt, observed, artifact);
 }
 
-async function finish(results, options, startedAt, observed) {
+async function finish(results, options, startedAt, observed, artifact = null) {
   const failed = results.filter((entry) => !entry.ok);
   try {
     await mkdir(options.outDir, { recursive: true });
     await writeFile(join(options.outDir, 'report.json'), `${JSON.stringify({
       pass: failed.length === 0, elapsedMs: Date.now() - startedAt, webRoot: display(options.webRoot),
-      built: options.build, chromiumArgs: CHROMIUM_ARGS, results, observed,
+      built: options.build, mode: options.mode, artifact, chromiumArgs: CHROMIUM_ARGS, results, observed,
     }, null, 2)}\n`, 'utf8');
   } catch { /* evidence is best-effort; the verdict stands without it */ }
   console.log(failed.length

@@ -59,6 +59,7 @@ import {
 } from '../data/sectorCoordinates.js';
 import { SpatialHash } from './spatialHash.js';
 import { opticGenerationOf, opticMaterialOf, isOpticEnergyBolt, isOpticOrdnance } from '../combat/opticField.js';
+import { retireContinuingProjectile } from '../combat/attackHit.js';
 import { projectileTravelLimit } from '../combat/projectileFlight.js';
 import { traumaFromContact } from '../render/feel.js';
 import { promoteAsteroidFieldRock, queryAsteroidField } from '../world/asteroidField.js';
@@ -84,6 +85,16 @@ const PICKUP_SPATIAL_PAIR_THRESHOLD = 128;
 const PLAYER_PROJECTILE_NEAR_MISS_MARGIN = 22;
 const ZERO_FRAME_ORIGIN = Object.freeze({ x: 0, z: 0 });
 const EMPTY_SWEEP_LIST = Object.freeze([]);
+// Per-sweep admission grid: the union rock/actor rows are binned once per sweepProjectiles
+// call so each projectile filters only the cells its segment touches instead of the whole
+// union list — O(P·(R+A)) becomes O(P + Σcell hits). Cells store union-list indices and the
+// gather sorts them back ascending, so the candidate order (and therefore promotion order
+// and `into` order) is identical to the former linear scan.
+const SWEEP_ADMIT_CELL = 256; // WU
+// A sweep may wake only this many dormant bodies per call. Each promotion is a full entity
+// mint (index insert + next-sync native body); a kill-wave barrage could mint dozens inside
+// one physics step. Overflow ids retry deterministically on the next sweep that covers them.
+const SWEEP_ADMIT_PROMOTE_CAP = 8;
 const SG02_STEP_SUMMARY_OPTIONS = Object.freeze({ detailedDiagnostics: false });
 // Exact (or sub-ulp) XZ overlap: hypot is 0 so dx/dist is {0,0} and pushApart is a no-op.
 // 1e-12 world units is far below gameplay contact scale; 47-A goldens never co-locate.
@@ -175,6 +186,13 @@ export const physics = {
     // rewritten per receipt — including writing undefined over a prior receipt's measured fields.
     // Kept separate from _impactOptionsScratch so the custom-backend path never inherits stale
     // player-receipt fields if the backend flips on load.
+    // Impact receipts past the per-tick fan-out cap wait here for the next tick (in order, each
+    // with the tick it happened on). See _emitSg02ContactImpacts.
+    this._sg02ImpactCarry = [];
+    this._sg02ImpactCarryNext = [];
+    // Resting-contact coalescing (see SG02_RESTING_PAIR_TICKS): pair key -> tick of the pair's
+    // last reported receipt. Transient: a load or teardown clears it with the carry.
+    this._sg02PairLastEmit = new Map();
     this._sg02ImpactOptionsScratch = {
       backend: 'rapier-dynamic',
       tick: 0,
@@ -210,9 +228,15 @@ export const physics = {
     this._spatialHashNeedsRebuild = false;
     if (ctx.helpers && !ctx.helpers.combatPhysics) ctx.helpers.combatPhysics = this._sg02CombatPhysics;
     if (this.bus && typeof this.bus.on === 'function') {
-      this.bus.on('save:loaded', () => { clearPhysicalEffects(this.state); this._resetSg02AfterLoad(); });
-      this.bus.on('game:newGame', () => clearPhysicalEffects(this.state));
-      this.bus.on('sector:exit', () => clearPhysicalEffects(this.state));
+      // Re-init on a live bus must drop the stale handlers first — otherwise every
+      // save:loaded / newGame / sector:exit fires once per past registration.
+      const offs = this._unsubs || (this._unsubs = []);
+      for (const off of offs) if (typeof off === 'function') off();
+      offs.length = 0;
+      offs.push(this.bus.on('save:loaded', () => { clearPhysicalEffects(this.state); this._resetSg02AfterLoad(); }));
+      offs.push(this.bus.on('game:newGame', () => clearPhysicalEffects(this.state)));
+      offs.push(this.bus.on('sector:exit', () => clearPhysicalEffects(this.state)));
+      offs.push(this.bus.on('world:playerRelocated', () => this._seatRelocatedPlayerBody()));
     }
     const facade = this;
     let colliderCount = 0;
@@ -253,6 +277,13 @@ export const physics = {
       activityS3: 0,
       activityPhysicsBodies: 0,
     };
+  },
+
+  destroy() {
+    if (Array.isArray(this._unsubs)) {
+      for (const off of this._unsubs) if (typeof off === 'function') off();
+      this._unsubs.length = 0;
+    }
   },
 
   update(dt, state) {
@@ -686,7 +717,9 @@ export const physics = {
     // An explicit prepare is bounded by user action — a backoff residual short enough
     // to fit inside the init envelope is worth waiting out so the prepare mints a real
     // attempt instead of fast-answering `false` on a skipped mint. Per-tick callers
-    // still see the refusal via rapierRuntimeBlocked (that's what the window exists for).
+    // retry every sim tick no attempt is pending (the `_sg02Init`/`_sg02` gate in
+    // _updateSg02DynamicAuthority); the runtime's own failure window still refuses the
+    // mint inside loadRapierCompatRuntime itself (that's what the window exists for).
     // Reset prepares wait too: in this state (`!_sg02Init && !_sg02`) the reset's
     // _disableSg02DynamicAuthority is a pure no-op — no live authority, no token bump —
     // so the exclusion only bought an instant PHYSICS_BACKEND_UNAVAILABLE bounce.
@@ -885,9 +918,11 @@ export const physics = {
   _updateSg02DynamicAuthority(dt, state) {
     this._disableRapierBackend();
     this._diag.backend = 'rapier-dynamic';
-    // Init is in failure backoff — retry when the window expires instead of
-    // minting a doomed attempt (and its warn) every tick.
-    if (!this._sg02Init && !this._sg02 && !rapierRuntimeBlocked()) {
+    // A missing authority retries every tick the sim runs — the only gate is whether an
+    // attempt is already pending. The runtime's wall-clock failure window refuses inside
+    // loadRapierCompatRuntime itself: a refused mint is one rejected promise, never a
+    // re-paid WASM bootstrap, so host timing never picks which tick an attempt lands on.
+    if (!this._sg02Init && !this._sg02) {
       const token = ++this._sg02Token;
       const init = (this._sg02OwnerFactory || createSg02DynamicBodyOwner)({
         orchardRestoreCapability:ORCHARD_RESTORE_CAPABILITIES.get(this),
@@ -954,14 +989,16 @@ export const physics = {
       }
     }
     this._noteSg02Available();
+    const phPre = getSimStepProfiler();
+    const phPreOn = phPre.active;
+    let phPreT = phPreOn ? nowNs() : 0;
     this._sg02.publishTelemetry = shouldPublishSg02Telemetry(state);
     this._syncSg02FrameOrigin(state);
     this._queueSectorFenceImpulses(dt, state);
     this._syncSg02DynamicAuthorityEntities(state);
+    if (phPreOn) { phPre.record('physics.sync', nowNs() - phPreT); phPreT = nowNs(); }
     this._reconcileCombatPhysicsBeforeStep();
-    const phPre = getSimStepProfiler();
-    const phPreOn = phPre.active;
-    let phPreT = phPreOn ? nowNs() : 0;
+    if (phPreOn) { phPre.record('physics.attachReconcile', nowNs() - phPreT); phPreT = nowNs(); }
     const owner=this._sg02, world=owner.world, epoch=this._sg02Token;
     const sdiag = owner.step(dt, state.tick, SG02_STEP_SUMMARY_OPTIONS);
     if (phPreOn) { phPre.record('physics.worldStep', nowNs() - phPreT); phPreT = nowNs(); }
@@ -994,14 +1031,95 @@ export const physics = {
 
   _emitSg02ContactImpacts(state) {
     if (!this._sg02 || typeof this._sg02.drainContactImpacts !== 'function') return 0;
-    const receipts = this._sg02.drainContactImpacts();
-    if (!Array.isArray(receipts) || !receipts.length) return 0;
+    const drained = this._sg02.drainContactImpacts();
+    const fresh = Array.isArray(drained) ? drained : [];
+    const carried = this._sg02ImpactCarry;
+    if (!fresh.length && !carried.length) return 0;
+    // Bus fan-out is the cost of an impact burst (a rock pile collapsing, a horde shoved into a
+    // wall): every receipt runs every physics:impact listener. Carry excess ambient receipts in
+    // order with their contact tick. Direct player contacts and the consequences of the player's
+    // own throws, kicks, and shots must publish on the contact tick.
+    const cap = SG02_IMPACT_FANOUT_CAP;
+    const next = this._sg02ImpactCarryNext;
+    next.length = 0;
+    let delivered = 0;
     let emitted = 0;
-    const options = this._sg02ImpactOptionsScratch;
-    for (const receipt of receipts) {
+    // A pile pressed onto furniture by a well reports the same pairs every step at almost no
+    // closing speed (round-6 Swarm fight: 80 % of receipts repeated the previous step's pair and
+    // 47 % closed under 1 WU/s), and every receipt runs every physics:impact listener. A fresh
+    // non-player receipt for a resting pair that already reported inside the consequence cooldown
+    // is folded away: collision consequences refuse the same pair inside that cooldown anyway, a
+    // real hit (closing fast) always goes, and the pair reports again once the window lapses, so
+    // crusher pressure keeps its cadence.
+    const coalesce = simCoreFlag('impactCoalesce');
+    let folded = 0;
+    const playerId = state && state.playerId;
+    for (let pass = 0; pass < 2; pass++) {
+      const list = pass === 0 ? carried : fresh;
+      for (let i = 0; i < list.length; i++) {
+        const receipt = list[i];
+        const touchesPlayer = playerId != null && (receipt.aId === playerId || receipt.bId === playerId);
+        if (pass === 1 && coalesce && !touchesPlayer && this._restingPairRepeat(receipt, state.tick)) {
+          folded++;
+          continue;
+        }
+        if (!touchesPlayer && delivered >= cap && next.length < SG02_IMPACT_CARRY_MAX) {
+          // Consult the same provenance selector as damage only when a fresh contact would
+          // otherwise wait. A later hit must never reprioritize an older carried receipt.
+          if (pass === 1 && this._emitOneSg02Impact(state, receipt, true)) {
+            emitted++;
+            continue;
+          }
+          if (pass === 1) receipt.carriedFromTick = state.tick;
+          next.push(receipt);
+          continue;
+        }
+        if (!touchesPlayer) delivered++;
+        if (this._emitOneSg02Impact(state, receipt)) emitted++;
+      }
+    }
+    // Swap the carry buffers: what waited this tick and still waits becomes the new carry.
+    this._sg02ImpactCarry = next;
+    this._sg02ImpactCarryNext = carried;
+    carried.length = 0;
+    const diag = this._diag;
+    if (diag) {
+      // How big bursts really are, and how much waits: read by the no-freeze probe.
+      if (!(diag.impactReceiptsMaxPerTick >= fresh.length)) diag.impactReceiptsMaxPerTick = fresh.length;
+      if (!(diag.impactCarryMax >= next.length)) diag.impactCarryMax = next.length;
+      diag.impactCarriedTotal = (diag.impactCarriedTotal || 0) + next.length;
+      diag.impactFoldedTotal = (diag.impactFoldedTotal || 0) + folded;
+    }
+    return emitted;
+  },
+
+  // True when this fresh receipt repeats a resting pair that already reported within the window,
+  // so it is folded away. Otherwise the pair's report tick is stamped (the receipt goes now or
+  // waits in the carry) and false is returned.
+  _restingPairRepeat(receipt, tick) {
+    const last = this._sg02PairLastEmit;
+    const key = impactPairKeyFor(String(receipt.aId), String(receipt.bId));
+    const closing = receipt.preSolveClosingSpeed;
+    const prev = last.get(key);
+    if (prev !== undefined && Number.isFinite(closing) && closing < SG02_RESTING_CLOSING_WU_S
+      && tick - prev >= 0 && tick - prev < SG02_RESTING_PAIR_TICKS) return true;
+    last.set(key, tick);
+    if (last.size > 2048) {
+      for (const [k, t] of last) if (!(tick - t < SG02_RESTING_PAIR_TICKS)) last.delete(k);
+    }
+    return false;
+  },
+
+  _emitOneSg02Impact(state, receipt, playerCauseOnly = false) {
+    {
       const a = impactBodyForReceipt(state, receipt.aId);
       const b = impactBodyForReceipt(state, receipt.bId);
-      if (!a || !b || a.alive === false || b.alive === false) continue;
+      if (!a || !b || a.alive === false || b.alive === false) return false;
+      if (staleImpactGeneration(a, receipt.aGeneration) || staleImpactGeneration(b, receipt.bGeneration)) return false;
+      if (playerCauseOnly && !this.registry?.get?.('collisionConsequences')?.hasPlayerContactCause?.(a, b, state.tick)) {
+        return false;
+      }
+      const options = this._sg02ImpactOptionsScratch;
       const material = pairMaterialInto(this._pairMaterialScratch, a, b);
       // Every option field is rewritten per receipt; receipt fields absent on non-player
       // receipts come through as undefined, matching the old literal's Number.isFinite checks.
@@ -1010,7 +1128,7 @@ export const physics = {
       options.bGeneration = receipt.bGeneration;
       // Owner tick is lifetime-local and restarts whenever SG-02 is rebuilt. Consequence
       // provenance/status expiry belongs to the canonical simulation tick.
-      options.tick = state.tick;
+      options.tick = Number.isFinite(receipt.carriedFromTick) ? receipt.carriedFromTick : state.tick;
       options.normal = receipt.normal;
       options.causalActorId = receipt.causalActorId;
       options.preSolveClosingSpeed = receipt.preSolveClosingSpeed;
@@ -1024,9 +1142,35 @@ export const physics = {
       options.appliedPlayerHeadingRad = receipt.appliedPlayerHeadingRad;
       options.appliedPlayerCourseRad = receipt.appliedPlayerCourseRad;
       const dp = emitPhysicsImpact(this.bus, state, a, b, receipt.impulse, material, receipt.pos, options);
-      if (dp > 0) emitted++;
+      return dp > 0;
     }
-    return emitted;
+  },
+
+  // A same-sector relocation (a Swarm arena seat, a race reset, a venue return) is a teleport, so
+  // the pilot's native body moves with it now. Leaving it to the owner's next entity sync was a
+  // race: a Swarm pilot is spawned at the origin, its body is built there by the reset prepare,
+  // and only then does the arena seat it at the Foundry. When the first flight steps stepped that
+  // body before syncing the seat, the solver's pose was written back over the entity and the
+  // first run of a session opened 2.9 km from the fight in empty space.
+  _seatRelocatedPlayerBody() {
+    const state = this.state;
+    const owner = this._sg02;
+    if (!state || !owner || typeof owner.resyncEntityPose !== 'function') return false;
+    const player = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId) : null;
+    if (!player || player.alive === false) return false;
+    // Only an owner already holding this pilot's body is touched (a new game's seat runs while
+    // the previous run's owner is still alive, before its reset prepare replaces it).
+    const rec = owner.records && typeof owner.records.get === 'function' ? owner.records.get(player.id) : null;
+    if (!rec || rec.entity !== player) return false;
+    this._syncSg02FrameOrigin(state);
+    // The relocation's no-blend mark stays for the presentation and the next sync to read; only
+    // the body moves early.
+    const flags = player.flags;
+    const noBlend = !!(flags && flags.noInterp);
+    const moved = owner.resyncEntityPose(player);
+    if (noBlend && flags) flags.noInterp = true;
+    return moved;
   },
 
   _syncSg02FrameOrigin(state) {
@@ -1036,6 +1180,9 @@ export const physics = {
 
   _resetSg02AfterLoad() {
     const state = this.state;
+    // Receipts carried from before the load name bodies of the old world.
+    this._sg02ImpactCarry.length = 0;
+    if (this._sg02PairLastEmit) this._sg02PairLastEmit.clear();
     if (!usesSg02DynamicAuthority(state)) {
       this._disableSg02DynamicAuthority();
     } else if (!this._nativeRestoreDeferred) {
@@ -1058,7 +1205,11 @@ export const physics = {
   _syncSg02DynamicAuthorityEntities(state) {
     reconcileMachineryBeforePhysics(state);
     reconcileLatchBeforePhysics(state);
+    const ph = getSimStepProfiler();
+    const phOn = ph.active;
+    const phT = phOn ? nowNs() : 0;
     const activity = ensureActivityClassified(state);
+    if (phOn) ph.record('physics.sync.classify', nowNs() - phT);
     if (activity && this._diag) {
       this._diag.activityS0 = activity.counts.s0;
       this._diag.activityS1 = activity.counts.s1;
@@ -1141,6 +1292,8 @@ export const physics = {
   },
 
   _disableSg02DynamicAuthority() {
+    if (this._sg02ImpactCarry) this._sg02ImpactCarry.length = 0;
+    if (this._sg02PairLastEmit) this._sg02PairLastEmit.clear();
     if (this._sg02 || this._sg02Init) this._sg02Token++;
     this._sg02DiagnosticsOwner = null;
     // A teardown (load boundary, backend change) ends the episode being timed; a fresh one starts.
@@ -1344,7 +1497,11 @@ export const physics = {
       const unionReach = Math.hypot(unionMaxX - unionMinX, unionMaxZ - unionMinZ) * 0.5;
       queryAsteroidField(state, unionCenter, unionReach, unionRocks);
       queryFarActors(state, unionCenter, unionReach, unionActors);
+      this._binSweepUnionRows(unionRocks, unionActors);
     }
+    // Promotion budget for this sweep call: mints beyond the cap stay dormant and retry
+    // next sweep (see SWEEP_ADMIT_PROMOTE_CAP). Reset here, not per projectile.
+    this._sweepPromoteBudget = SWEEP_ADMIT_PROMOTE_CAP;
     // Any projectile that appears mid-sweep (a promote spawning one) was not covered by the
     // union disc; _admitProjectileSweepBodies falls back to its own queries in that case.
     this._sweepUnionBoundsX0 = unionMinX;
@@ -1365,7 +1522,7 @@ export const physics = {
       const start = previousPosInto(this._prevPosScratch, proj, dt);
       const limit = this._projectileSweepLimitScratch;
       if (!projectileSweepLimitInto(limit, proj, start, proj.pos)) {
-        proj.alive = false;
+        retireContinuingProjectile(proj);
         continue;
       }
       const end = limit;
@@ -1390,7 +1547,8 @@ export const physics = {
       }
       extra.length = 0;
       this._admitProjectileSweepBodies(state, proj, start, end, extra);
-      let bestTarget = this._bestProjectileTarget(proj, start, end, candidates, null, honorAuthored);
+      let bestTarget = this._bestProjectileTarget(
+        proj, start, end, candidates, null, honorAuthored, useBroadphase ? this._projectileHullPadding : -1);
       bestTarget = this._bestProjectileTarget(proj, start, end, extra, bestTarget, honorAuthored);
       let broodOwner = null;
       let broodCandidate = null;
@@ -1422,7 +1580,7 @@ export const physics = {
             projectileId: proj.id, ownerId: proj.ownerId, team: proj.team, pairId: wall.pairId,
             x: wall.x, z: wall.z, nx: wall.nx, nz: wall.nz, tick: state && Number.isInteger(state.tick) ? state.tick : 0,
           });
-          proj.alive = false;
+          retireContinuingProjectile(proj);
           continue;
         }
       }
@@ -1430,7 +1588,7 @@ export const physics = {
         const previousX = proj.pos.x, previousZ = proj.pos.z;
         proj.pos.x = broodCandidate.x;
         proj.pos.z = broodCandidate.z;
-        proj.alive = false;
+        retireContinuingProjectile(proj);
         const broodReceipt = broodOwner.commitBroodProjectileHit(broodCandidate, {
           projectileId: proj.id,
           ownerId: proj.ownerId,
@@ -1456,7 +1614,7 @@ export const physics = {
         if (limit.expired) {
           proj.pos.x = end.x;
           proj.pos.z = end.z;
-          proj.alive = false;
+          retireContinuingProjectile(proj);
         }
         continue;
       }
@@ -1473,19 +1631,36 @@ export const physics = {
         velocity: proj.vel,
       }, state && Number.isInteger(state.tick) ? state.tick : 0);
       this.bus.emit('projectile:hit', projectileHitPayload(proj, bestTarget, hitPos, receipt));
-      proj.alive = false;
+      retireContinuingProjectile(proj);
       this._diag.sweptProjectileHits++;
     }
   },
 
   _syncProjectileBroadphase(state) {
     const index = state && state.entityIndex;
-    this._projectileHullPadding = 0;
-    for (const entity of index?.collidables || state.entityList || []) {
-      if (!entity?.alive || !entity.collides || entity.shield > 0 || entity.type === 'projectile') continue;
-      const manifest = resolveCollisionProxyManifest(entity);
-      this._projectileHullPadding = Math.max(this._projectileHullPadding,
-        projectileProxyRadius(entity, manifest) - (entity.radius || 0));
+    const list = index?.collidables || state.entityList || [];
+    const version = index && index.__spacefaceEntityIndexV1 ? (index.classifiableVersion | 0) : -1;
+    // Hull padding is a pure function of the classified collider roster (which entities own
+    // proxy manifests and how much larger each proxy is than entity.radius). Membership
+    // changes move classifiableVersion/length; a same-life manifest, body revision or proxy
+    // swap rides refreshEntityPhysicsIndex, which bumps spatialStaticVersion — so the three
+    // together capture every change the sweep can observe, and the per-step fingerprint
+    // cache inside resolveCollisionProxyManifest keeps the rescan cheap when it does run.
+    const padKey = version < 0 ? -1 : `${version}|${index.spatialStaticVersion | 0}|${list.length}`;
+    if (version < 0 || padKey !== this._broadphaseHullPadVersion) {
+      let pad = 0;
+      for (let i = 0; i < list.length; i++) {
+        const entity = list[i];
+        // Shielded colliders stay in the padding even though the sweep gives them a null
+        // manifest: entity.shield is a runtime stat the versions below do not track, so a
+        // shield dropping mid-sweep must not leave the cached pad smaller than the now-live
+        // proxy needs. Over-covering is safe — the pad only pre-filters; exact checks rule.
+        if (!entity?.alive || !entity.collides || entity.type === 'projectile') continue;
+        const manifest = resolveCollisionProxyManifest(entity);
+        pad = Math.max(pad, projectileProxyRadius(entity, manifest) - (entity.radius || 0));
+      }
+      this._projectileHullPadding = Math.max(0, pad);
+      this._broadphaseHullPadVersion = padKey;
     }
     const ready = !!(index && index.__spacefaceEntityIndexV1
       && Array.isArray(index.spatialStatics) && Array.isArray(index.spatialDynamics));
@@ -1494,15 +1669,46 @@ export const physics = {
     if (!this._projectileBroadphase) this._projectileBroadphase = new SpatialHash(64);
     // Solid dressing rows join the sweep so rounds stop on the hulls the player sees.
     const staticLayer = dressingStaticLayerFor(state, index.spatialStatics, index.spatialStaticVersion || 0);
+    const dynamics = index.spatialDynamics;
+    const dynamicsVersion = index.spatialDynamicsVersion || 0;
+    // The incremental rebuildLayers pass still walks every lane member each call — an
+    // O(spatialDynamics) visit per projectile-live tick on top of the main hash's own sync.
+    // The committed buckets are already exact when versions, membership and each member's
+    // cell-span mix match the last committed sync (queries read live entity.pos either way),
+    // so an identical gate skips the walk entirely — same verdict shouldMaintainDynamicSpatialHash
+    // gives the primary hash. A periodic force-sync backstops silent pose writers.
+    const gate = this._projectileBroadphaseGate
+      || (this._projectileBroadphaseGate = { mix: 0, members: -1, staticVersion: -1, dynamicsVersion: -1, indexVersion: -1, source: null, lastSyncTick: -1 });
+    const tick = Number.isInteger(state?.tick) ? state.tick : 0;
+    const indexVersion = entityIndexGateVersion(state);
+    const members = this._projectileBroadphase._dynamicMembers
+      ? this._projectileBroadphase._dynamicMembers.size : 0;
+    const settled = gate.lastSyncTick >= 0
+      && tick - gate.lastSyncTick < SPATIAL_HASH_FORCE_SYNC_TICKS
+      && gate.staticVersion === staticLayer.staticVersion
+      && gate.dynamicsVersion === dynamicsVersion
+      && gate.source === dynamics
+      && gate.members === members
+      && (indexVersion == null || indexVersion === gate.indexVersion)
+      && gate.mix === dynamicMembershipMix(this._projectileBroadphase.cell, dynamics);
+    if (settled) return;
     this._projectileBroadphase.rebuildLayers(
       staticLayer.statics,
-      index.spatialDynamics,
+      dynamics,
       staticLayer.staticVersion,
-      index.spatialDynamicsVersion || 0,
+      dynamicsVersion,
     );
+    gate.mix = dynamicMembershipMix(this._projectileBroadphase.cell, dynamics);
+    gate.members = this._projectileBroadphase._dynamicMembers
+      ? this._projectileBroadphase._dynamicMembers.size : 0;
+    gate.staticVersion = staticLayer.staticVersion;
+    gate.dynamicsVersion = dynamicsVersion;
+    gate.indexVersion = indexVersion;
+    gate.source = dynamics;
+    gate.lastSyncTick = tick;
   },
 
-  _bestProjectileTarget(proj, start, end, list, bestTarget, honorAuthored) {
+  _bestProjectileTarget(proj, start, end, list, bestTarget, honorAuthored, padReject = -1) {
     if (!list || list.length === 0) return bestTarget;
     const hit = this._segmentHitScratch;
     const bestHit = this._bestSegmentHitScratch;
@@ -1514,6 +1720,7 @@ export const physics = {
       // passes through it (PQ-205.02) exactly as if it had hit the owner ship itself.
       if (tgt.type === 'bomb' && tgt.data && tgt.data.ownerId === proj.ownerId) continue;
       if (!canCollide(proj, tgt, honorAuthored) && !canCollide(tgt, proj, honorAuthored)) continue;
+      if (padReject >= 0 && !segmentCircleHitInto(hit, start, end, tgt.pos, (proj.radius || 0) + (tgt.radius || 0) + padReject)) continue;
       // Optic recipes own circular receiver geometry at the reference radius; the visual
       // asset proxy and calibrated moving-body envelope cannot change their bank/fuse paths.
       const manifest = tgt.shield > 0 || authoredOpticReceiver(tgt, proj) ? null : resolveCollisionProxyManifest(tgt);
@@ -1550,15 +1757,18 @@ export const physics = {
     const ids = this._sweepAdmitIds || (this._sweepAdmitIds = []);
     const hit = this._segmentHitScratch;
     // The step-level union rows from sweepProjectiles replace the per-projectile grid query
-    // when this segment sits inside the union bbox (a projectile spawned mid-sweep does not);
-    // rows outside this segment still get filtered by segmentCircleHitInto exactly as before.
+    // when this segment sits inside the union bbox (a projectile spawned mid-sweep does not).
+    // Covered segments read the binned union rows — only the cells the segment's disc
+    // touches are visited — then the same segmentCircleHitInto filter decides admission.
     const cx = (start.x + end.x) * 0.5;
     const cz = (start.z + end.z) * 0.5;
     const covered = this._sweepUnionBoundsX0 <= cx - reach && cx + reach <= this._sweepUnionBoundsX1
       && this._sweepUnionBoundsZ0 <= cz - reach && cz + reach <= this._sweepUnionBoundsZ1;
     let rocks;
+    let rockOrder = null;
     if (covered) {
       rocks = this._sweepUnionRocksLive || EMPTY_SWEEP_LIST;
+      rockOrder = this._gatherSweepAdmitIndices(rocks, this._sweepAdmitBinRocks, '_sweepAdmitSeenRocks', cx, cz, reach);
     } else {
       const center = this._sweepQueryCenter || (this._sweepQueryCenter = { x: 0, z: 0 });
       center.x = cx;
@@ -1571,16 +1781,28 @@ export const physics = {
       );
     }
     ids.length = 0;
-    for (let i = 0; i < rocks.length; i++) {
-      const rec = rocks[i];
-      if (!rec || rec.alive === false || !rec.pos) continue;
-      if (!segmentCircleHitInto(hit, start, end, rec.pos, radius + (rec.radius || 0))) continue;
-      ids.push(rec.id);
+    if (rockOrder) {
+      for (let k = 0; k < rockOrder.length; k++) {
+        const rec = rocks[rockOrder[k]];
+        if (!rec || rec.alive === false || !rec.pos) continue;
+        if (!segmentCircleHitInto(hit, start, end, rec.pos, radius + (rec.radius || 0))) continue;
+        ids.push(rec.id);
+      }
+    } else {
+      for (let i = 0; i < rocks.length; i++) {
+        const rec = rocks[i];
+        if (!rec || rec.alive === false || !rec.pos) continue;
+        if (!segmentCircleHitInto(hit, start, end, rec.pos, radius + (rec.radius || 0))) continue;
+        ids.push(rec.id);
+      }
     }
     const helpers = this.helpers;
     for (let i = 0; i < ids.length; i++) {
+      // Over budget: leave the rock dormant; the shot re-tests it on a later sweep.
+      if (this._sweepPromoteBudget <= 0) break;
       const entity = promoteAsteroidFieldRock(state, ids[i], helpers, 'projectile');
       if (!entity || entity.alive === false) continue;
+      this._sweepPromoteBudget--;
       wake.push(entity);
       into.push(entity);
     }
@@ -1592,19 +1814,108 @@ export const physics = {
         reach,
         this._farQueryScratch || (this._farQueryScratch = []),
       );
+    const actorOrder = covered
+      ? this._gatherSweepAdmitIndices(actors, this._sweepAdmitBinActors, '_sweepAdmitSeenActors', cx, cz, reach)
+      : null;
     ids.length = 0;
-    for (let i = 0; i < actors.length; i++) {
-      const rec = actors[i];
-      if (!rec || rec.alive === false || rec.collides === false || !rec.pos) continue;
-      if (!segmentCircleHitInto(hit, start, end, rec.pos, radius + (rec.radius || 0))) continue;
-      ids.push(rec.id);
+    if (actorOrder) {
+      for (let k = 0; k < actorOrder.length; k++) {
+        const rec = actors[actorOrder[k]];
+        if (!rec || rec.alive === false || rec.collides === false || !rec.pos) continue;
+        if (!segmentCircleHitInto(hit, start, end, rec.pos, radius + (rec.radius || 0))) continue;
+        ids.push(rec.id);
+      }
+    } else {
+      for (let i = 0; i < actors.length; i++) {
+        const rec = actors[i];
+        if (!rec || rec.alive === false || rec.collides === false || !rec.pos) continue;
+        if (!segmentCircleHitInto(hit, start, end, rec.pos, radius + (rec.radius || 0))) continue;
+        ids.push(rec.id);
+      }
     }
     for (let i = 0; i < ids.length; i++) {
+      if (this._sweepPromoteBudget <= 0) break;
       const entity = promoteFarActor(state, ids[i], helpers);
       if (!entity || entity.alive === false) continue;
+      this._sweepPromoteBudget--;
       wake.push(entity);
       into.push(entity);
     }
+  },
+
+  // Bin the once-per-sweep union rows into cell buckets keyed by covered cells. Each entity
+  // is inserted into every cell its circle overlaps, so a segment's disc always shares at
+  // least one cell with any entity it could hit (the disc-overlap point lies in one cell for
+  // both). Buckets hold union-list indices; gathers sort them back to union order, which
+  // keeps promotion/wake order identical to the old linear scan.
+  _binSweepUnionRows(unionRocks, unionActors) {
+    this._sweepAdmitBinRocks = this._binSweepRowsInto(this._sweepAdmitBinRocks, unionRocks);
+    this._sweepAdmitBinActors = this._binSweepRowsInto(this._sweepAdmitBinActors, unionActors);
+  },
+
+  _binSweepRowsInto(map, list) {
+    if (!map) {
+      map = new Map();
+      map._pool = [];
+    }
+    for (const row of map.values()) {
+      for (const bucket of row.values()) {
+        bucket.length = 0;
+        map._pool.push(bucket);
+      }
+      row.clear();
+    }
+    map.clear();
+    const C = SWEEP_ADMIT_CELL;
+    for (let i = 0; i < list.length; i++) {
+      const e = list[i];
+      if (!e || e.alive === false || !e.pos) continue;
+      const r = Math.max(0, e.radius || 0);
+      const x0 = Math.floor((e.pos.x - r) / C), x1 = Math.floor((e.pos.x + r) / C);
+      const z0 = Math.floor((e.pos.z - r) / C), z1 = Math.floor((e.pos.z + r) / C);
+      for (let gx = x0; gx <= x1; gx++) {
+        let row = map.get(gx);
+        if (!row) { row = new Map(); map.set(gx, row); }
+        for (let gz = z0; gz <= z1; gz++) {
+          let bucket = row.get(gz);
+          if (!bucket) { bucket = map._pool.pop() || []; row.set(gz, bucket); }
+          bucket.push(i);
+        }
+      }
+    }
+    return map;
+  },
+
+  // Collect the union-list indices of every entity binned into a cell the segment's disc
+  // touches, deduped via a stamp array and sorted ascending — the same subset and order a
+  // linear scan of the union list produces, minus the cells the disc cannot reach.
+  _gatherSweepAdmitIndices(list, binMap, seenProp, cx, cz, reach) {
+    const out = this._sweepAdmitOrder || (this._sweepAdmitOrder = []);
+    out.length = 0;
+    if (!binMap || !list || list.length === 0) return out;
+    let seen = this[seenProp];
+    if (!seen) seen = this[seenProp] = [];
+    while (seen.length < list.length) seen.push(0);
+    const stamp = (this._sweepAdmitVisit = (this._sweepAdmitVisit | 0) + 1);
+    const C = SWEEP_ADMIT_CELL;
+    const x0 = Math.floor((cx - reach) / C), x1 = Math.floor((cx + reach) / C);
+    const z0 = Math.floor((cz - reach) / C), z1 = Math.floor((cz + reach) / C);
+    for (let gx = x0; gx <= x1; gx++) {
+      const row = binMap.get(gx);
+      if (!row) continue;
+      for (let gz = z0; gz <= z1; gz++) {
+        const bucket = row.get(gz);
+        if (!bucket) continue;
+        for (let k = 0; k < bucket.length; k++) {
+          const i = bucket[k];
+          if (seen[i] === stamp) continue;
+          seen[i] = stamp;
+          out.push(i);
+        }
+      }
+    }
+    out.sort((a, b) => a - b);
+    return out;
   },
 
   _considerProjectileNearMiss(proj, start, end, state) {
@@ -1664,7 +1975,7 @@ export const physics = {
         velocity: proj.vel,
       }, state && Number.isInteger(state.tick) ? state.tick : 0);
       bus.emit('projectile:hit', projectileHitPayload(proj, tgt, hitPos, receipt));
-      proj.alive = false;
+      retireContinuingProjectile(proj);
       return;
     }
     // pickups
@@ -1739,9 +2050,9 @@ export const physics = {
       return;
     }
     if (!this._rapierInit) {
-      // Init is in failure backoff — retry when the window expires instead of
-      // minting a doomed attempt (and its warn) every tick.
-      if (rapierRuntimeBlocked()) return;
+      // Same rule as the SG-02 mint: retry every tick an attempt is not pending. The
+      // loader's wall-clock failure window refuses inside loadRapierCompatRuntime itself,
+      // so host timing never picks which tick an attempt lands on.
       const token = ++this._rapierToken;
       this._rapierInit = import('./rapierCollisionWorld.js')
         .then((m) => m.createRapierCollisionWorld())
@@ -1833,6 +2144,23 @@ function usesSg02DynamicAuthority(state) {
  * Contact-receipt body resolution: solver bodies that are not entities (solid dressing rows)
  * still owe their contact receipts an impact event, so fall back to the dressing table.
  */
+// Ambient impact receipts delivered to the bus per tick before the carry is used.
+// The carry itself is bounded: past it, receipts deliver inline rather than wait (never lost).
+export const SG02_IMPACT_FANOUT_CAP = 32;
+const SG02_IMPACT_CARRY_MAX = 512;
+// Resting-contact coalescing: a non-player pair closing slower than this (WU/s) that already
+// reported inside the window is folded away. The window is the consequence cooldown
+// (COLLISION_CONSEQUENCE_PAIR_COOLDOWN_TICKS in collisionConsequences.js), so every receipt that
+// system would admit still arrives.
+const SG02_RESTING_CLOSING_WU_S = 5;
+const SG02_RESTING_PAIR_TICKS = 12;
+
+// Contact publication can recycle an endpoint before the next receipt is delivered.
+function staleImpactGeneration(entity, generation) {
+  return Number.isSafeInteger(generation) && Number.isSafeInteger(entity.occupantGeneration)
+    && entity.occupantGeneration !== generation;
+}
+
 function impactBodyForReceipt(state, id) {
   const entity = state && state.entities && state.entities.get
     ? state.entities.get(id)

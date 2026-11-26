@@ -304,7 +304,7 @@ const h4 = Object.freeze({
       live.data.h4ServiceDeadline = now + H4_SERVICE_TIMEOUT_S;
       live.data.h4ServiceSampleAt = now;
       live.data.h4ServiceSince = h4ServiceNear(d, live, state, buoy) ? now : null;
-      d.say(live, 'info', 'BUOY SERVICE: Hold within 90 WU of the original route buoy for six seconds to re-seed its transmission. Leaving range interrupts the transfer.', null, { literal: true });
+      d.say(live, 'info', 'BUOY SERVICE: Hold within 90 m of the original route buoy for six seconds to re-seed its transmission. Leaving range interrupts the transfer.', null, { literal: true });
     } else if (choiceId === 'listen') {
       finish(d, live, state, 'heard', { loveLetterHeard: true });
     }

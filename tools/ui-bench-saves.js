@@ -84,8 +84,8 @@ export function createBenchSaveSystem() {
       // A pilot-authored long name (D249): the filmstrip label must wrap inside its own column.
       label: 'Black Flag public recovery',
       sectorName: 'Helios Prime', shipName: 'ship_kestrel',
-      missionSummary: 'Mission: Contract 47-A: Mass Variance Sample',
-      objectiveSummary: 'Mission: Contract 47-A: Mass Variance Sample',
+      missionSummary: 'Mission: Recover the 47-A sample',
+      objectiveSummary: 'Mission: Recover the 47-A sample',
       version: CURRENT_VERSION,
     },
     1: {

@@ -72,6 +72,7 @@ export function isConfronting(player, hull, rangeWu) {
 }
 
 export const measuringHullPlant = {
+  modes: ['flight'],
   name: 'plants206',
 
   init(ctx) {

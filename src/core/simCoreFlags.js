@@ -24,14 +24,105 @@ const DEFAULTS = Object.freeze({
   telemetryDemand: false,
   /**
    * A due economy pass advances by a fixed quantum per fixed tick instead of one 130 ms step.
-   * HELD OFF (2026-11-06): the per-fixed-tick drain, save cursor and 2100-tick/60 s cadence tests
-   * are green behind this flag, but the shipped 47-A tape is currently contaminated by foreign
-   * working-tree changes, so v26 cannot be recorded honestly. v24 (`1fedbd09…`) stays active;
-   * v25 (`080c5bd9…`) is the obsolete un-drained shape. Flip this on only with a clean v26.
+   * DEFAULT ON: the per-fixed-tick drain (`drainTick`), serialized pass cursor and 2100-tick/60 s
+   * cadence tests are green, and mid-pass save/reload reproduces uninterrupted runs byte-equal.
+   * Override with `SF_SIM_CORE='{"economySlicing":false}'` for matched A/B comparisons.
    */
-  economySlicing: false,
+  economySlicing: true,
   /** The quantized per-body SG-02 snapshot is built lazily at a checkpoint, not every tick. */
   lazySg02Snapshot: true,
+  /**
+   * Let resting rocks, wrecks, payloads, debris and pickups near the player sleep in Rapier.
+   * DEFAULT OFF: with it on, fracture shards were not in flight after a detonation, the Lantern
+   * Ward service stand fouled its loaded route and the prospector did not finish its work
+   * (physics-sandbox-routes, lantern-ward-center-lane, prospector-field-report). A sleeping body
+   * needs a wake on every path that expects it to move before this can ship.
+   */
+  s0BodySleep: false,
+  /**
+   * Broken rock is debris with a budget (FREEZE lane, 2026-11-23): a rock too small to split
+   * into throwable pieces crumbles to grit, and past ROCK_FRAGMENT_BUDGET live fragments the
+   * oldest ones out of the player's sight crumble away. DEFAULT ON. Off restores unbounded
+   * fragments (every break makes four pieces that live 90 s and can break again), which filled
+   * a Swarm arena from 22 to 83 rocks by round 5.
+   */
+  fragmentBudget: true,
+  /**
+   * Resting contacts report once per consequence window (FREEZE lane, 2026-11-23): a non-player
+   * pair closing under 5 WU/s that already reported in the last 12 steps is folded away before
+   * the bus. DEFAULT ON. Off restores one receipt per pair per step.
+   */
+  impactCoalesce: true,
+  /**
+   * Entities are fast V8 objects (sim performance, 2026-11-23): makeEntity re-parents its default
+   * literal instead of copying 45 fields onto an empty shell, which had put every entity in
+   * dictionary mode (each property read a hash probe, in every system). DEFAULT ON. Same keys,
+   * order, values and prototype; off restores the legacy construction for matched A/B runs.
+   */
+  fastEntityShape: true,
+  /**
+   * Leaner physics bookkeeping around the Rapier solve (sim performance, 2026-11-23): native body
+   * records share one hidden class, and per-step work that cannot change the step's result is
+   * skipped. DEFAULT ON. Result-identical (check:sim and the bench hash hold); off restores the
+   * legacy path for matched A/B runs.
+   */
+  physicsBookkeeping: true,
+  /**
+   * Fewer per-body property reads in the physics owner's entity sync and fixed step (sim
+   * performance, 2026-11-23, pass 2). Entity, data and body objects span dozens of hidden classes,
+   * so every read of one is a megamorphic lookup; pure predicates now test their cheapest decisive
+   * input first and the step reads a field it needs several times once per body. DEFAULT ON.
+   * Result-identical (check:sim and the bench hash hold); off restores the legacy read order.
+   */
+  physicsLeanStep: true,
+  /**
+   * Every tactical hull refreshes what it sees on its own beat (AI lane, 2026-11-23). The stack
+   * thinks every third tick (20 Hz), and its per-hull refresh stagger (id % 3, and the 3-per-window
+   * member batch) assumed it ran every tick, so the two cadences aliased: only hulls whose id bucket
+   * matched the decision phase ever refreshed, and the rest flew on a contact picture up to 16 s
+   * old. DEFAULT ON: a hull is due when its bucket tick fell anywhere in the ticks since the last
+   * think. Off restores the aliased schedule for matched A/B runs.
+   */
+  aiRefreshCadence: true,
+  /**
+   * Cheaper tactical sensor frames, same contents (AI lane, 2026-11-23): the recent-event index
+   * stops walking the 4096-event combat trace at the first event older than its 90-tick window
+   * once the trace's tick order is proven. DEFAULT ON. Result-identical; off restores the full walk.
+   */
+  aiSensorCaches: true,
+  /**
+   * The force-field pass writes each body's impulse through one lean continuous-delivery call
+   * (fields lane, 2026-11-23): same admission, player budget and queued command record as the
+   * generic membrane, without its three evidence copies and result objects per body per step.
+   * DEFAULT ON. Result-identical; off restores the generic delivery for matched A/B runs.
+   */
+  fieldLeanDelivery: true,
+  /**
+   * Tactical perception keys each remembered contact by one cached string per (kind, id) instead
+   * of building two strings per contact per think (AI lane, 2026-11-23). DEFAULT ON. Same keys,
+   * so result-identical; off restores the per-contact string build for matched A/B runs.
+   */
+  aiContactKeyCache: true,
+  /**
+   * Each hostile hull thinks on its own deterministic phase (AI lane, 2026-11-24): the tactical
+   * stack runs every fixed tick, and a hull's full think (sensor frame, doctrine, action pick,
+   * maneuver plan) lands only on its stagger slot — the same ~20 Hz cadence per hull, ~1/3 of
+   * the hulls per step, instead of all of them on one step. Steering and firing stay 60 Hz
+   * (cached decisions replay); doctrine/director pacing is unchanged. DEFAULT ON. Off restores
+   * the all-hulls-on-one-tick 20 Hz think for matched A/B runs.
+   */
+  aiPhasedThink: true,
+  /**
+   * Live entities stay fast V8 objects through a fight (sim performance, 2026-11-23). Two things
+   * were putting the bodies the physics reads into dictionary mode, where every property read is a
+   * hash probe: bouncing and piercing rounds replaced `alive` with a per-body accessor, and the
+   * shared entity map was deprecated by the fan of fields added after construction (stations all
+   * migrated on the first read of a round). `alive` stays a data field — a pending continuation
+   * swallows one death write at the physics retire — and every entity is born with the fields the
+   * fight adds later, in one order, so those writes are stores. DEFAULT ON. Same values; off
+   * restores the accessor and the legacy field-at-a-time shape for a matched A/B run.
+   */
+  fastLiveEntities: true,
 });
 
 let overrides = null;

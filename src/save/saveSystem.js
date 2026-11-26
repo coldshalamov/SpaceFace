@@ -49,13 +49,14 @@ import { gzipSaveEnvelopeSync, decodeSaveEnvelopeForWriter } from './saveSyncGzi
 import { MIGRATIONS, CURRENT_VERSION } from './migrations.js';
 import { createScreenMemory } from '../ui/screenMemory.js';
 import { normalizeWatchlist } from '../ui/watchlist.js';
+import { playerFacingContractTitle } from '../ui/sim/missionRecap.js';
 import { AI_CONTRACT_VERSION } from '../ai/contracts.js';
 import { mulberry32, mulberry32FromContinuation } from '../core/rng.js';
 import { NEW_GAME } from '../data/newGameDefaults.js';
 import { starterBuoySavedMass } from '../missions/starterWorkday.js';
 import { STORY_BEATS } from '../data/missions.js';
 import { restoreCombatState, restoreCombatStateSteps, serializeCombatState, resolveWorldJobCombatRef, hasPendingCeresWorkfleetAttachments,
-  resumeCeresWorkfleetAttachments, cancelPendingCeresWorkfleetAttachments,
+  resumeCeresWorkfleetAttachments, cancelPendingCeresWorkfleetAttachments, restoreCinderTowAttachment,
   ceresWorkfleetEntityRef, ceresWorkfleetRefKey, resolveCeresWorkfleetEntityRef, ceresWorkfleetHostileAttachmentOwners, ceresWorkfleetIncomingSavedOwnerIds } from '../combat/persistence.js';
 import { resolveCapitalBossRoleBinding } from '../missions/capitalBossSpawn.js';
 import { pendingStuntBodyIds } from '../combat/stuntEvidence.js';
@@ -77,7 +78,7 @@ import {
   profileGameplaySnapshot,
 } from './profileSettings.js';
 import { stampSlotCard, boundSlotThumbnail } from './slotStill.js';
-import { clearEntityRuntime, worldLedgerHoldsId } from '../core/entity.js';
+import { clearEntityRuntime, worldLedgerHoldsId, scrubRestoredNumericFields } from '../core/entity.js';
 import { indexedWorldRecordEntity } from '../world/livingWorldViews.js';
 import {
   createCatalogStationRestore, restoredCatalogStation,
@@ -108,7 +109,6 @@ import {
   mergeProfileSettings,
   migrateDefaultMutedAudioProfile,
   migrateGameMotionDefault,
-  migrateLegacyMasslineBindingProfile,
   migrateOneSetOfKeysProfile,
   readProfileSettings,
 } from '../core/graphicsProfileBootstrap.js';
@@ -269,7 +269,7 @@ const DEFAULT_FLIGHT_MODE = 'assisted';
 const DEFAULT_PHYSICS_BACKEND = 'rapier-dynamic';
 const DEFAULT_AI_BACKEND = 'sg06-tactical';
 const DEFAULT_FLIGHT_BACKEND = 'v3';
-const DEFAULT_CONTROL_SCHEME = 'pilot';
+const DEFAULT_CONTROL_SCHEME = 'helm-assist'; // R17: ship faces the cursor, A/D strafe
 const DEFAULT_MASSLINE_RELEASE_ASSIST = 'snap';
 const DEFAULT_ORBIT_ASSIST_STRENGTH = 'standard';
 const DEFAULT_TARGET_ASSIST_STRENGTH = 'full';
@@ -1099,10 +1099,15 @@ export const save = {
       ['charges', () => this._callSerialize('impulseCharges')],
       ['stunts', () => this._callSerialize('stuntGrammar')],
       ['fields', () => this._callSerialize('fields')],
+      ['kineticCatalysts', () => this._callSerialize('kineticCatalysts')],
       ['missions', () => this._callSerialize('missions') || this._serializeMissions()],
       // Packet 09: executable capital boss scores. The system owns serialize() (score clocks,
       // casts, victim receipts, orders); absent owner (headless fixtures) serializes nothing.
       ['capitalBoss', () => this._callSerialize('capitalBossEncounters')],
+      ['convoyRaid', () => this._callSerialize('convoyRaid')],
+      ['towjaw', () => this._callSerialize('towjaw')],
+      ['derelictExpedition', () => this._callSerialize('derelictExpedition')],
+      ['stormChase', () => this._callSerialize('stormChase')],
       ['careerOrigins', () => this._callSerialize('careerOrigins') || clonePlain(state.careers && state.careers.origins || {})],
       ['careerLadders', () => this._callSerialize('careerLadders') || clonePlain(state.careers && state.careers.ladders || {})],
       ['scenario', () => this._callSerialize('scenarioRuntime') || clonePlain(state.scenario || {})],
@@ -1205,11 +1210,19 @@ export const save = {
 
   /** Build the `data` payload (plain JSON, deps-first key order). No mesh/THREE/Map/fn/Infinity. */
   _serializeNativePhysics() {
+    const timings = this._activePacedSave?.captureSerializerTimings;
+    let started = timings ? workNowMs() : 0;
     const nativePhysics = this._callSerialize('physics');
+    if (timings) {
+      const ended = workNowMs();
+      timings.push({ key: 'physics.exportAndCanonicalize', ms: ended - started });
+      started = ended;
+    }
     if (nativePhysics == null) return nativePhysics;
     // Physics can retain entity-side anchored recoil when no native snapshot is admissible.
     if (Object.keys(nativePhysics).length === 1 && Object.hasOwn(nativePhysics, 'anchoredRecoil')) return nativePhysics;
     const compact = compactNativeAttestationTables(nativePhysics);
+    if (timings) timings.push({ key: 'physics.compactAttestations', ms: workNowMs() - started });
     if (!compact) throw new Error('native_attestation_encode_failed');
     return compact;
   },
@@ -1310,10 +1323,20 @@ export const save = {
     yield 'serialize:stunts';
     data.fields = this._callSerialize('fields');
     yield 'serialize:fields';
+    data.kineticCatalysts = this._callSerialize('kineticCatalysts');
+    yield 'serialize:kineticCatalysts';
     data.missions = this._callSerialize('missions') || this._serializeMissions();
     yield 'serialize:missions';
     data.capitalBoss = this._callSerialize('capitalBossEncounters');
     yield 'serialize:capitalBoss';
+    data.convoyRaid = this._callSerialize('convoyRaid');
+    yield 'serialize:convoyRaid';
+    data.towjaw = this._callSerialize('towjaw');
+    yield 'serialize:towjaw';
+    data.derelictExpedition = this._callSerialize('derelictExpedition');
+    yield 'serialize:derelictExpedition';
+    data.stormChase = this._callSerialize('stormChase');
+    yield 'serialize:stormChase';
     data.careerOrigins = this._callSerialize('careerOrigins') || clonePlain(state.careers && state.careers.origins || {});
     yield 'serialize:careerOrigins';
     data.careerLadders = this._callSerialize('careerLadders') || clonePlain(state.careers && state.careers.ladders || {});
@@ -1605,12 +1628,23 @@ export const save = {
 
   _serializeCargo() {
     const c = this.state.player.cargo || {};
-    const out = { items: clonePlain(c.items || {}), capVolume: c.capVolume, capMass: c.capMass };
+    // CARGO-BUILD-1: the slot list is the hold; items stays serialized alongside as the derived
+    // mirror so older tooling and v23 fallback reads still see the same totals.
+    const out = {
+      items: clonePlain(c.items || {}),
+      capVolume: c.capVolume,
+      capMass: c.capMass,
+    };
+    if (Array.isArray(c.slots)) out.slots = clonePlain(c.slots);
+    if (Number.isFinite(c.slotCount)) out.slotCount = c.slotCount;
     if (Array.isArray(c.richLots) && c.richLots.length) out.richLots = clonePlain(c.richLots);
     // Hull-burst overhaul slice D: the salvage bay rides the cargo record as an OPTIONAL key (absent = empty), so old
     // saves load unchanged and a save without one is byte-identical to before.
     const bay = this.state.player.salvageBay;
-    if (bay && bay.items && Object.keys(bay.items).length) out.salvageBay = { items: clonePlain(bay.items) };
+    if (bay && bay.items && Object.keys(bay.items).length) {
+      out.salvageBay = { items: clonePlain(bay.items) };
+      if (Array.isArray(bay.slots)) out.salvageBay.slots = clonePlain(bay.slots);
+    }
     // W-CAST-HANDS row 542 (Drift): the fractional sun-sublimation progress rides the cargo record
     // as an OPTIONAL key (absent = nothing ever melted), so a save without one is byte-identical.
     if (c.moisture && typeof c.moisture === 'object' && Object.keys(c.moisture).length) out.moisture = clonePlain(c.moisture);
@@ -1800,7 +1834,7 @@ export const save = {
 
   _loadProfileSettings() {
     const profile = migrateGameMotionDefault(migrateDefaultMutedAudioProfile(
-      migrateLegacyMasslineBindingProfile(this._readProfileSettings()),
+      migrateOneSetOfKeysProfile(this._readProfileSettings()),
     ));
     if (!profile) return false;
     this.state.settings = sanitizeRestoredSettings(mergeProfileSettings(this.state.settings, profile));
@@ -2073,6 +2107,10 @@ export const save = {
     const t = nowMs();
     const write = this._writeSlot(slot, envelope);
     const writeMs = nowMs() - t;
+    // A later synchronous write already owns this slot. A waiting live Quick must not
+    // read that new generation as its predecessor and replace it with an older capture.
+    const liveQuick = this._activePacedSave;
+    if (write.ok && liveQuick?.liveQuick && liveQuick.slot === slot) liveQuick.superseded = true;
     const timing = this._saveTiming({
       slot,
       reason,
@@ -2104,10 +2142,9 @@ export const save = {
    * guards, receipts, boundary markers and durable write, but the chain runs across
    * _scheduleAutosaveWork hops instead of as one multi-hundred-ms task inside the emit.
    *
-   * Only legal while `_frozenTickBoundary()` holds — pause/dock/stacked surfaces — where
-   * `_serializeDataFrozenAsync` can slice the O(world) capture coherently (an unfreeze
-   * retakes atomically). A live-flight save takes the documented one-task coherent
-   * capture on the sync lane, so this defers to save() outright when unfrozen.
+   * A frozen boundary can slice capture coherently; an unfreeze retakes atomically.
+   * The live Quick route captures detached data in one task before pacing encoding and
+   * storage. Other live writes use the synchronous owner.
    *
    * Overlapping paced writes supersede: a new job marks the in-flight one, which aborts
    * at its next hop with a 'superseded' receipt (a cancellation — the slot keeps its
@@ -2127,14 +2164,16 @@ export const save = {
       this._emitSaveTimingError(timing);
       return Promise.resolve(false);
     }
-    // Live sim: the chunked walk can't stay coherent across yields, so the documented
-    // one-task coherent capture still owns this lane.
-    if (!this._frozenTickBoundary()) {
+    const frozen = this._frozenTickBoundary();
+    const liveQuick = !frozen && this.state.mode === 'flight' && slot === 'quick'
+      && reason === 'manual' && !autosave && this.serialize === CANONICAL_SAVE_SERIALIZE;
+    if (!frozen && !liveQuick) {
       const accepted = this.save(slot, options);
       return accepted ? this._lastSaveDurability : Promise.resolve(false);
     }
 
-    const job = { slot, reason, autosave, started, superseded: false, runEpoch: this._runEpoch };
+    const job = { slot, reason, autosave, started, superseded: false, runEpoch: this._runEpoch,
+      liveQuick, restoreSequence: this._restoreSequence };
     if (this._activePacedSave) this._activePacedSave.superseded = true;
     this._activePacedSave = job;
     // An explicit paced write to the autosave slot (exit-to-menu, or a UI save that names
@@ -2147,6 +2186,7 @@ export const save = {
     if (slot === AUTOSAVE_SLOT) this._cancelActiveAutosave('superseded', { immediate: true });
     this.bus.emit('save:started', { slot, reason, autosave });
     this._noteWritePending(slot, reason, autosave);
+    if (liveQuick) job.pendingWrite = this.state.save?.pendingWrite;
     beginFocusLossSaveWrite(this.state);
     const snapshotBoundary = this._captureSaveSnapshotBoundary();
     const chain = this._runPacedSaveChain(job, options, snapshotBoundary);
@@ -2157,24 +2197,34 @@ export const save = {
   },
 
   async _runPacedSaveChain(job, options, snapshotBoundary) {
-    const { slot, reason, autosave, started } = job;
+    const { slot, reason, autosave, started, liveQuick } = job;
     // The serialized realm is captured once — init()/run teardowns rebind this.state
     // and this.bus, and the chain must keep reading the state it snapshotted.
     const state = this.state;
+    let holdsFocusLoss = true;
     const samples = [];
+    const serializerTimings = liveQuick ? [] : null;
     const hop = () => new Promise((resolve) => { this._scheduleAutosaveWork(resolve); });
-    const abortReason = () => (
-      job.superseded ? 'superseded'
-        : (this._restoring ? 'restoring'
-        : (job.runEpoch !== this._runEpoch ? 'stale' : null))
-    );
+    const abortReason = () => {
+      const staleRun = job.runEpoch !== this._runEpoch;
+      if (liveQuick && (staleRun || job.restoreSequence !== this._restoreSequence)) return 'stale';
+      if (job.superseded) return 'superseded';
+      if (this._restoring) return 'restoring';
+      return staleRun ? 'stale' : null;
+    };
     const fail = (failure, write = null, extra = {}) => {
       // A stale-epoch abort owes no receipt: the realm that heard save:started is
       // already torn down — the new session must not inherit a save:error it never made.
-      if (failure === 'stale') return false;
+      if (failure === 'stale') {
+        if (liveQuick && job.pendingWrite && state.save?.pendingWrite === job.pendingWrite) {
+          state.save.pendingWrite = null;
+        }
+        return false;
+      }
       const timing = this._saveTiming({
         slot, reason, autosave, started, ok: false, failure,
         blockingSamples: samples.length ? samples : null,
+        serializerTimings,
         ...extra,
       });
       this._publishSaveResult(slot, null, write || { ok: false, reason: failure }, timing);
@@ -2187,18 +2237,44 @@ export const save = {
       return false;
     };
     try {
-      // Serialize — sliced while the frozen boundary holds; an unfreeze retakes
-      // atomically inside _serializeDataFrozenAsync before it can mix ticks.
+      // Live Quick stays in this turn through data and descriptor capture. The frozen
+      // lane may yield between serializers and checks the boundary before each resume.
       let t = nowMs();
       let data;
       try {
+        if (liveQuick) {
+          const r = abortReason();
+          if (r) return fail(r);
+        }
         if (this._saveJumpInProgress()) return fail('jump_in_progress');
-        data = await this._serializeDataFrozenAsync(() => {
-          if (this._saveJumpInProgress()) {
-            throw Object.assign(new Error('Cannot retake a save in transit'), { code: 'jump_in_progress' });
+        if (liveQuick) {
+          const captureStarted = workNowMs();
+          let captured;
+          // Feature adapters forward the generator's output but not its arguments. Keep
+          // the observer on this job for the same synchronous capture through every adapter.
+          job.captureSerializerTimings = serializerTimings;
+          try { captured = this.serializeData(); }
+          finally { job.captureSerializerTimings = null; }
+          const captureEnded = workNowMs();
+          const physicsMs = serializerTimings.reduce((total, sample) => total + sample.ms, 0);
+          serializerTimings.push({ key: 'otherSaveReaders', ms: Math.max(0, captureEnded - captureStarted - physicsMs) });
+
+          const detachStarted = workNowMs();
+          let detachKey = 'detach.structuredClone';
+          try { data = structuredClone(captured); }
+          catch (_) {
+            detachKey = 'detach.cloneThenJsonFallback';
+            data = JSON.parse(safeStringify(captured));
           }
-          return this._frozenTickBoundary();
-        });
+          serializerTimings.push({ key: detachKey, ms: workNowMs() - detachStarted });
+        } else {
+          data = await this._serializeDataFrozenAsync(() => {
+            if (this._saveJumpInProgress()) {
+              throw Object.assign(new Error('Cannot retake a save in transit'), { code: 'jump_in_progress' });
+            }
+            return this._frozenTickBoundary();
+          });
+        }
       } catch (err) {
         // A torn-down realm fails the same way a corrupt one does — stale wins.
         const rr = abortReason();
@@ -2232,6 +2308,10 @@ export const save = {
         return fail('serialize_failed');
       }
       samples.push({ phase: 'envelope', ms: nowMs() - t });
+      if (liveQuick) {
+        endFocusLossSaveWrite(state);
+        holdsFocusLoss = false;
+      }
 
       await hop();
       r = abortReason();
@@ -2353,12 +2433,13 @@ export const save = {
           ? `${write.reason}:${write.verifyReason}${Number.isFinite(write.verifyActual) ? `(${write.verifyActual}>${write.verifyLimit})` : ''}`
           : write.reason || null,
         blockingSamples: samples,
+        serializerTimings,
       });
       const ok = this._publishSaveResult(slot, envelope, write, timing);
       if (ok) this._acknowledgeSaveSnapshotBoundary(snapshotBoundary);
       return ok ? this._lastSaveDurability : false;
     } finally {
-      endFocusLossSaveWrite(state);
+      if (holdsFocusLoss) endFocusLossSaveWrite(state);
       if (this._activePacedSave === job) this._activePacedSave = null;
     }
   },
@@ -4165,6 +4246,13 @@ export const save = {
   primeAutosaveCapture() {
     if (!this.state || this.state.mode !== 'loading' || !this._hasPlayerEntity()) return false;
     const plan = this._saveCapturePlan();
+    // The warm keeps every reader but owns the slice order (nothing is retained), so the one
+    // mutating reader runs inside this synchronous first slice: 'physics' exports AND
+    // re-adopts the live Rapier world (save-time canonicalization in physics.serialize) —
+    // deferred into a later wall-clock slice it raced flight start and rebuilt the world
+    // with a different body set per run, flipping the sim's downstream hash.
+    const physicsIdx = plan.findIndex(([key]) => key === 'physics');
+    if (physicsIdx > 0) plan.unshift(plan.splice(physicsIdx, 1)[0]);
     const incrementalPlayer = this._shouldCapturePlayerIncrementally();
     // A slice armed by restore A must never resume inside restore B's loading window
     // (mode is 'loading' again, so the mode guard alone can't tell them apart — B's
@@ -7213,6 +7301,18 @@ export const save = {
       // its clock). Absent key (pre-pod saves) → deserialize seeds an empty table.
       this._callDeserialize('survivorPod', data.survivorPod);
       yield 'survivor-pods-restored';
+      // PORT-PRO-FIVE BLACKBOX RUNS: the wreck ledger/custody must restore before
+      // enterSector replans the site and before _spawnPersistentEntities reconstructs
+      // its saved bodies — a later call would let outgoing cleanup delete restored cargo.
+      // Absent slice (pre-feature saves) seeds an empty ledger via deserialize(undefined).
+      this._callDeserialize('derelictExpedition', data.derelictExpedition);
+      yield 'derelict-expedition-restored';
+      // PORT-PRO-FIVE GLASSWAKE: stage the storm ledger early; its own save:loaded
+      // listener consumes the envelope after persistent actors respawn, using
+      // sessionEntityIdRemap for generation-aware custody. Absent slice (old saves)
+      // stages an empty expedition.
+      this._callDeserialize('stormChase', data.stormChase);
+      yield 'storm-chase-restored';
       yield* this._callDeserializeChunked('economy', data.economy);
       this._callDeserialize('economyContracts', data.economyContracts);
       yield 'economy-contracts-restored';
@@ -7350,12 +7450,12 @@ export const save = {
         // enemies|records) yields at phase boundaries so the loading shell paints between
         // spawn bricks — spawn order and the sector:enter emit tail are identical to the
         // sync lane. Enter-side yields pass through as restore paint points.
-        for (const _ of worldSys.enterSectorChunked(sectorId, { restoreDurableRecords: true, sliceNeighbors: true })) {
+        for (const _ of worldSys.enterSectorChunked(sectorId, { restoreDurableRecords: true, sliceNeighbors: true, restoredSession: true })) {
           this._reportRestoreProgress(0.16, 'Rebuilding the saved sector');
           yield 'sector-materialize-step';
         }
       } else if (worldSys && typeof worldSys.enterSector === 'function' && sectorId) {
-        worldSys.enterSector(sectorId, { restoreDurableRecords: true, sliceNeighbors: true });
+        worldSys.enterSector(sectorId, { restoreDurableRecords: true, sliceNeighbors: true, restoredSession: true });
       }
       // enterSector's _placePlayer clobbers position → re-apply the saved pose now.
       this._applySavedPose(savedPlayer);
@@ -7609,6 +7709,12 @@ export const save = {
       // stale world-space geometry and grant the resume warmup). Absent slice (old saves) is a
       // no-op; a present slice without its owner is a hard error rather than silent loss.
       yield* this._restoreCapitalBossFightsChunked(data.capitalBoss);
+      // PORT-PRO-FIVE SWITCHBACK: rebinding waits for save:loaded; absent slice (old saves)
+      // stages an empty raid ledger.
+      this._callDeserialize('convoyRaid', data.convoyRaid);
+      // PORT-PRO-FIVE TOWJAW: the adapter rebinding waits for the first fixed tick
+      // after native entity owners have restored their bodies; absent slice no-ops.
+      this._callDeserialize('towjaw', data.towjaw);
       // Transient systems are not persisted: salvage wrecks are non-persistent entities (gone after
       // load), drill sessions are closed on load, and SG-06 encounter commands/owner state are
       // reconstructed from the live director. Clear tracking so stale cross-save references and
@@ -7652,6 +7758,11 @@ export const save = {
         }
       }
       yield 'fields-restored';
+      try {
+        this.registry?.get?.('kineticCatalysts')?.deserialize?.(data.kineticCatalysts, entityIdRemap);
+      } catch (err) {
+        throw this._annotateRegion(err, 'kineticCatalysts');
+      }
       try {
         this.registry?.get?.('environmentMaterials')?.deserialize?.(data.environmentMaterials, entityIdRemap);
       } catch (err) {
@@ -7923,7 +8034,9 @@ export const save = {
     if (!m) return;
     const meta = this.state.meta;
     if (typeof m.seed === 'number') meta.seed = m.seed >>> 0;
-    if (typeof m.playtimeS === 'number') meta.playtimeS = m.playtimeS;
+    // Finite, non-negative, and bounded — a corrupt 1e308/negative playtime corrupts the
+    // HUD readout and any cadence derived from it.
+    if (Number.isFinite(m.playtimeS) && m.playtimeS >= 0 && m.playtimeS < 1e9) meta.playtimeS = m.playtimeS;
     if (m.createdAt) meta.createdAt = m.createdAt;
     if (m.lastSavedAt) meta.lastSavedAt = m.lastSavedAt;
     meta.version = CURRENT_VERSION;
@@ -7955,7 +8068,9 @@ export const save = {
     const free = [];
     const seen = new Set();
     for (const id of savedFree) {
-      if (!Number.isSafeInteger(id) || id < 1 || seen.has(id)) continue;
+      // < MAX_SAFE_INTEGER: allocation sets nextEntityId = id + 1, which must stay safe or
+      // the next allocateEntityId throws.
+      if (!Number.isSafeInteger(id) || id < 1 || id >= Number.MAX_SAFE_INTEGER || seen.has(id)) continue;
       if (live && live.has(id)) continue;
       if (worldLedgerHoldsId(state.world, id)) continue;
       seen.add(id);
@@ -7963,10 +8078,12 @@ export const save = {
     }
     state.freeIds.length = 0;
     state.freeIds.push(...free);
-    if (Number.isSafeInteger(entities.nextEntityId) && entities.nextEntityId > 0) {
+    if (Number.isSafeInteger(entities.nextEntityId) && entities.nextEntityId > 0
+        && entities.nextEntityId < Number.MAX_SAFE_INTEGER) {
       state.nextEntityId = entities.nextEntityId;
     }
-    if (Number.isSafeInteger(entities.nextOccupantGeneration) && entities.nextOccupantGeneration > 0) {
+    if (Number.isSafeInteger(entities.nextOccupantGeneration) && entities.nextOccupantGeneration > 0
+        && entities.nextOccupantGeneration < Number.MAX_SAFE_INTEGER) {
       // Continue may reuse numeric entity IDs, but every newly constructed occupant
       // needs a fresh lifetime. Replaying an older save must not rewind the fence.
       const liveGeneration = Number.isSafeInteger(state.nextOccupantGeneration)
@@ -8021,14 +8138,38 @@ export const save = {
   _restoreCargo(c) {
     const cargo = this.state.player.cargo;
     if (!c) return;
-    cargo.items = c.items || {};
+    // The slot list is the record. v24 saves carry it; anything older arrived through the
+    // migration with slots already packed. A crafted/absent list falls back to the items map,
+    // which the cargo owner packs into slots on first touch — same law, nothing lost.
+    if (Array.isArray(c.slots)) {
+      cargo.slots = clonePlain(c.slots).filter((s) => s && typeof s.commodityId === 'string'
+        && Number.isFinite(s.qty) && s.qty > 0)
+        .map((s) => ({ commodityId: s.commodityId, qty: Math.floor(s.qty) }));
+    } else if (Object.hasOwn(cargo, 'slots')) delete cargo.slots;
+    if (typeof c.slotCount === 'number' && c.slotCount > 0) cargo.slotCount = Math.floor(c.slotCount);
+    if (Array.isArray(cargo.slots)) {
+      const items = {};
+      for (const s of cargo.slots) items[s.commodityId] = (items[s.commodityId] || 0) + s.qty;
+      cargo.items = items;
+    } else {
+      cargo.items = c.items || {};
+    }
     if (typeof c.capVolume === 'number') cargo.capVolume = c.capVolume;
     if (typeof c.capMass === 'number') cargo.capMass = c.capMass;
     if (Array.isArray(c.richLots)) cargo.richLots = clonePlain(c.richLots);
     else if (Object.hasOwn(cargo, 'richLots')) delete cargo.richLots;
-    if (c.salvageBay && typeof c.salvageBay === 'object' && c.salvageBay.items && typeof c.salvageBay.items === 'object') {
-      // usedVolume is a cache: the cargo owner recomputes it from the items right after the restore.
-      this.state.player.salvageBay = { items: clonePlain(c.salvageBay.items), usedVolume: 0 };
+    if (c.salvageBay && typeof c.salvageBay === 'object' && (c.salvageBay.items || Array.isArray(c.salvageBay.slots))) {
+      // usedVolume is a cache: the cargo owner recomputes it from the slots right after the restore.
+      const bay = {
+        items: c.salvageBay.items && typeof c.salvageBay.items === 'object' ? clonePlain(c.salvageBay.items) : {},
+        usedVolume: 0,
+      };
+      if (Array.isArray(c.salvageBay.slots)) {
+        bay.slots = clonePlain(c.salvageBay.slots).filter((s) => s && typeof s.commodityId === 'string'
+          && Number.isFinite(s.qty) && s.qty > 0)
+          .map((s) => ({ commodityId: s.commodityId, qty: Math.floor(s.qty) }));
+      }
+      this.state.player.salvageBay = bay;
     } else if (Object.hasOwn(this.state.player, 'salvageBay')) delete this.state.player.salvageBay;
     // Drift moisture-loss accumulator (row 542): restored or cleared with the cargo record, same
     // optional-key law as salvageBay — a save that never melted leaves no key behind.
@@ -8120,10 +8261,11 @@ export const save = {
     if (tether?.active === true) {
       const id = tether.attachmentId;
       const saved = typeof id === 'string' ? d?.attachments?.byId?.[id] : null;
+      const cinderWreck = restoreCinderTowAttachment(state, d, this.registry?.get?.('aftermathWrecks'), entityIdRemap);
       const attachment = typeof id === 'string' ? state.combat?.attachments?.byId?.[id] : null;
       const savedTarget = saved?.targetRef?.kind === 'persistent' ? saved.targetRef.saveId : null;
       const semanticKey = ceresWorkfleetRefKey(saved?.targetRef);
-      const semanticTarget = semanticKey ? resolveCeresWorkfleetEntityRef(state, saved.targetRef) : null;
+      const semanticTarget = cinderWreck || (semanticKey ? resolveCeresWorkfleetEntityRef(state, saved.targetRef) : null);
       const mappedTarget = semanticTarget ? semanticTarget.id
         : savedTarget != null && entityIdRemap instanceof Map ? entityIdRemap.get(String(savedTarget)) : null;
       const player = state.entities?.get?.(state.playerId);
@@ -8394,18 +8536,9 @@ export const save = {
     if (!d) return;
     // Deep-merge so new nested defaults absent from an old save survive (forward-compat).
     const saveSettings = migrateGameMotionDefault(migrateDefaultMutedAudioProfile(
-      migrateLegacyMasslineBindingProfile(clonePlain(d)),
+      migrateOneSetOfKeysProfile(clonePlain(d)),
     ));
     let restored = sanitizeRestoredSettings(mergeProfileSettings(this.state.settings, saveSettings));
-    // A binding map is an atomic player choice, and that rule has to apply to the SAVE as well as to
-    // the profile below — it was only applied to the profile. mergePlain() is a deep merge, so a
-    // restore used to union the incoming map over whatever bindings were already live in
-    // state.settings. Loading slot A (with a rebound `forward`) and then slot B (which never rebound
-    // anything) left B running A's key. Take the save's map wholesale when it carries one.
-    if (saveSettings && saveSettings.controls
-      && Object.prototype.hasOwnProperty.call(saveSettings.controls, 'bindings')) {
-      restored.controls.bindings = normalizeControlBindings(saveSettings.controls.bindings);
-    }
     // FB-114: the pad override map is an atomic player choice for the same reason —
     // a deep merge would union the save's chords over whatever the live profile bound,
     // so a slot that never rebound pad buttons would keep the previous game's map.
@@ -8416,15 +8549,10 @@ export const save = {
       restored.controls.gamepad.bindings = clonePlain(saveSettings.controls.gamepad.bindings);
     }
     const profile = migrateGameMotionDefault(migrateDefaultMutedAudioProfile(
-      migrateLegacyMasslineBindingProfile(this._readProfileSettings()),
+      migrateOneSetOfKeysProfile(this._readProfileSettings()),
     ));
     if (profile) {
       restored = sanitizeRestoredSettings(mergeProfileSettings(restored, profile));
-      // Binding maps are an atomic player profile choice. Deep-merging here would retain keys
-      // injected by old-save migration underneath a newer Space-primary profile.
-      if (profile.controls && Object.prototype.hasOwnProperty.call(profile.controls, 'bindings')) {
-        restored.controls.bindings = normalizeControlBindings(profile.controls.bindings);
-      }
       // FB-005: rumble level is profile-scoped and never persisted inside a save slot. The
       // profile merge normally wins outright; when the profile predates the setting, the save's
       // copy must not leak through either — the shipped default stands.
@@ -8615,6 +8743,8 @@ export const save = {
       }
       const spec = clonePlain(saved);
       delete spec._isPlayer;
+      // Wrong-typed numerics survive clonePlain — makeEntity copies spec fields verbatim.
+      scrubRestoredNumericFields(spec);
       const starterRecordId = spec.data?.worldRecordId;
       const starterRecord = starterRecordId == null ? null : state.world?.records?.byId?.[starterRecordId];
       const starterMass = starterBuoySavedMass(spec, starterRecord);
@@ -8639,7 +8769,7 @@ export const save = {
       // order (dead bodies leave swap-removed holes), so sequential re-allocation silently
       // permutes survivor ids and breaks save→load→continue state parity. The spawn helper
       // treats a positive spec.id as a reservation and falls back when it is taken.
-      if (!(Number.isSafeInteger(spec.id) && spec.id > 0
+      if (!(Number.isSafeInteger(spec.id) && spec.id > 0 && spec.id < Number.MAX_SAFE_INTEGER
           && !(state.entities && state.entities.has(spec.id))
           && !worldLedgerHoldsId(state.world, spec.id))) {
         delete spec.id;
@@ -9341,6 +9471,19 @@ function needsPlayerEntityRepair(saved) {
  * a record legitimately carries and drop the field entirely when nothing valid is inside, so an
  * old or crafted save cannot smuggle negative or phantom units into a parked hold.
  */
+function normalizeSlotList(list) {
+  if (!Array.isArray(list)) return null;
+  const out = [];
+  for (const s of list) {
+    const qty = Math.floor(Number(s && s.qty));
+    if (s && typeof s.commodityId === 'string' && s.commodityId && qty > 0) {
+      out.push({ commodityId: s.commodityId, qty });
+    }
+    if (out.length >= 512) break; // a crafted save cannot grow an unbounded bag
+  }
+  return out.length ? out : [];
+}
+
 function normalizeParkedHoldSaveRecord(cargo) {
   const out = (cargo && typeof cargo === 'object' && !Array.isArray(cargo)) ? cargo : {};
   const items = {};
@@ -9349,6 +9492,14 @@ function normalizeParkedHoldSaveRecord(cargo) {
     if (typeof id === 'string' && id && n > 0) items[id] = n;
   }
   out.items = items;
+  // v24: the parked hold's slot list is truth when present; an absent list re-packs from items.
+  const slots = normalizeSlotList(out.slots);
+  if (slots) {
+    out.slots = slots;
+    const mirror = {};
+    for (const s of slots) mirror[s.commodityId] = (mirror[s.commodityId] || 0) + s.qty;
+    out.items = mirror;
+  }
   if (Array.isArray(out.richLots)) {
     out.richLots = out.richLots.filter((lot) => lot && typeof lot === 'object'
       && typeof lot.commodityId === 'string' && Number(lot.qty) > 0);
@@ -9364,6 +9515,15 @@ function normalizeParkedHoldSaveRecord(cargo) {
 function normalizeCargoSaveRecord(cargo) {
   const out = (cargo && typeof cargo === 'object' && !Array.isArray(cargo)) ? cargo : {};
   if (!out.items || typeof out.items !== 'object' || Array.isArray(out.items)) out.items = {};
+  // v24: a supplied slot list re-derives the items mirror; absent, items packs lazily on load.
+  const slots = normalizeSlotList(out.slots);
+  if (slots) {
+    out.slots = slots;
+    const mirror = {};
+    for (const s of slots) mirror[s.commodityId] = (mirror[s.commodityId] || 0) + s.qty;
+    out.items = mirror;
+  }
+  if (Number.isFinite(out.slotCount) && out.slotCount > 0) out.slotCount = Math.floor(out.slotCount);
   if (!Number.isFinite(out.capVolume) || out.capVolume <= 0) out.capVolume = NEW_GAME.cargoCapacity || 40;
   if (!Number.isFinite(out.capMass) || out.capMass <= 0) out.capMass = Math.max(60, out.capVolume);
   if (Array.isArray(out.richLots)) {
@@ -10087,7 +10247,7 @@ function missionObjectiveSummary(missions, trackedMissionId) {
   if (!active.length) return '';
   const tracked = trackedMissionId ? active.find((m) => m.id === trackedMissionId) : null;
   const mission = tracked || active[0];
-  const title = mission && (mission.title || mission.name || readableMissionType(mission.type));
+  const title = playerFacingContractTitle(mission);
   return clipSaveSummary('Mission: ' + (title || 'Active contract'));
 }
 
@@ -10328,9 +10488,9 @@ function sanitizeRestoredSettings(settings) {
   if (Object.prototype.hasOwnProperty.call(s.gameplay, 'runtimeProfile')) {
     delete s.gameplay.runtimeProfile;
   }
-  // One-time scheme migration: 'helm-assist' was the ambient default before the pilot scheme
-  // shipped, so old saves carry it as a non-choice. Flip those to 'pilot' once; the flag makes
-  // any explicit re-pick of helm-assist in Settings stick from then on.
+  // One-time scheme migration: pre-v2 saves carry the ambient default as a non-choice, so
+  // move them onto the current shipping default once. The flag makes any explicit re-pick
+  // of a scheme in Settings stick from then on.
   if (!s.gameplay.controlSchemeV2) {
     if (s.gameplay.controlScheme === 'helm-assist') s.gameplay.controlScheme = DEFAULT_CONTROL_SCHEME;
     s.gameplay.controlSchemeV2 = true;
@@ -10352,10 +10512,9 @@ function sanitizeRestoredSettings(settings) {
   if (!VALID_TARGET_ASSIST_STRENGTHS.has(s.gameplay.targetAssistStrength)) {
     s.gameplay.targetAssistStrength = DEFAULT_TARGET_ASSIST_STRENGTH;
   }
-  // Absent from the shipped defaults, so absent means "on" — floatingText suppresses damage
-  // numbers only on an explicit false. Leaving it undefined is honest; forcing it would let an
-  // old save pin Off forever.
-  if (typeof s.gameplay.damageNumbers !== 'boolean') delete s.gameplay.damageNumbers;
+  // OVH-06a / R10: damage numbers default OFF. An old save that never stored the key (or stored
+  // junk) gets the shipped default; an explicit true/false is the pilot's own choice.
+  if (typeof s.gameplay.damageNumbers !== 'boolean') s.gameplay.damageNumbers = false;
   s.gameplay.pauseOnFocusLoss = s.gameplay.pauseOnFocusLoss !== false;
   // Profile-scoped Settings that used to reset on every launch. Defaults live in gameState.js; the
   // camera keys are absent from them on purpose (their readers fall back), so an invalid value
@@ -10386,7 +10545,8 @@ function sanitizeRestoredSettings(settings) {
   // Same hole, quieter failure: a non-numeric autosave interval makes the `intervalS > 0` guard
   // false, so interval autosave stops firing for the rest of the session with no error at all,
   // and the Settings row renders it as '[object Object]'.
-  if (typeof s.gameplay.autosaveIntervalS !== 'number' || !(s.gameplay.autosaveIntervalS >= 0)) {
+  if (!Number.isFinite(s.gameplay.autosaveIntervalS) || s.gameplay.autosaveIntervalS < 0
+      || s.gameplay.autosaveIntervalS > 3600) {
     s.gameplay.autosaveIntervalS = DEFAULT_AUTOSAVE_INTERVAL_S;
   }
 
@@ -10409,7 +10569,9 @@ function sanitizeRestoredSettings(settings) {
   if (typeof gp.enabled !== 'boolean') gp.enabled = true;
   if (typeof gp.deadzone !== 'number' || !(gp.deadzone >= 0 && gp.deadzone <= 1)) gp.deadzone = 0.12;
   if (typeof gp.invertY !== 'boolean') gp.invertY = false;
-  if (gp.scheme !== 'twinstick' && gp.scheme !== 'drive') gp.scheme = 'drive';
+  // CONTROLLER-1: 'twinstick' is the shipping pad scheme; 'drive' survives only as an explicit
+  // stored choice — a missing or garbage value normalizes to the default.
+  if (gp.scheme !== 'twinstick' && gp.scheme !== 'drive') gp.scheme = 'twinstick';
   if (typeof gp.schemeSuggested !== 'boolean') gp.schemeSuggested = false;
   // FB-004: pad response tuning. 'linear' is the shipped curve; deadzoneRight absent/invalid
   // inherits the shared deadzone at tick time rather than pinning a stale number here; the
@@ -10485,7 +10647,7 @@ function normalizeControlBindings(bindings) {
       const trimmed = code.trim();
       if (trimmed) clean.push(trimmed);
     }
-    if (clean.length) out[action] = clean;
+    if (clean.length || (Array.isArray(raw) && raw.length === 0)) out[action] = clean;
   }
   return Object.keys(out).length ? out : null;
 }

@@ -351,6 +351,9 @@ test('one civilian kill produces the survivor and the actual aftermath wreck cla
     const marker = aftermathForSector(s, sector).find(m => m.victimId === victim.id);
     const survivor = s.entityList.find(e => e.alive && e.data?.survivorPodCausal?.victimId === victim.id);
     assert.ok(marker); assert.ok(survivor);
+    // Kill decorations mint on the next step's lane (owe, never drop) — drain it where the
+    // step's lifetimeSweep would have run before reading the wreck.
+    sim.helpers.drainEntitySpawnJobs?.();
     const wreck = s.entityList.find(e => e.alive && e.type === 'wreck' && e.data?.provenance?.markerId === marker.markerId);
     assert.ok(wreck); wreck.data.salvorNoticeAt = 0;
     sim.registry.get('survivorPod').update(.1, s);

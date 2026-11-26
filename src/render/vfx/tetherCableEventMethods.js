@@ -167,9 +167,8 @@ export function createTetherCableEventMethods({
             0.24 + random() * 0.34, 1.5, 0.0, this._c0, this._c1, 4.2, 0, 0, a, stretch);
         }
         this._spawnSprite(SPR_FLASH, endX, 0, endZ, 0.10, 4.6, 9.5, 1.0, 0.0, '#fff2e2', 0, 0);
-        // The recoil ring is a shock, not a smoke cloud: fast, thin and hot. At 16 wu it swallowed the
-        // whole ship in a flat orange donut for a third of a second.
-        this._spawnSprite(SPR_RING, endX, 0.9, endZ, 0.26, 1.4, 8.5, 0.55, 0.0, '#ffc9a0', 0, 0);
+        // Directional snap flash along the recoil axis instead of a circle around the ship.
+        this._spawnSprite(SPR_FLASH, endX, 0.9, endZ, 0.18, 2.2, 7.0, 0.52, 0.0, '#ffc9a0', 0, 0, 2.6, releaseAngle);
         this._eventLight({ x: endX, z: endZ }, 'tether', { severity: 'snap' });
       }
     },
@@ -472,11 +471,12 @@ export function createTetherCableEventMethods({
         this._spawnParticle(anchor.x, anchor.z, Math.cos(a) * v, Math.sin(a) * v,
           (0.18 + random() * 0.3) * lifeMul, 1.35 * sizeMul, 0.0, this._c0, this._c1, 2.8 * dragMul, 0, 0);
       }
-      // The load seating: a ring rolls off the caught body, sized to its own radius, wider and
-      // slower the less it will swing. Drawn only when a mass justifies it.
+      // The load seating: an elongated contact bite along the hitch perpendicular (no ring around
+      // the caught body — owner 2026-11-23).
       if (heftLive && heft.ringLive) {
-        this._spawnSprite(SPR_RING, anchor.x, 0.9, anchor.z, heft.ringLife, heft.ringSize0,
-          heft.ringSize1, heft.ringOp, 0.0, heft.ringColor, 0, 0);
+        this._spawnSprite(SPR_FLASH, anchor.x, 0.9, anchor.z, Math.min(0.24, heft.ringLife),
+          heft.ringSize0 * 0.7, heft.ringSize1 * 0.65, heft.ringOp * 0.85, 0.0, heft.ringColor,
+          0, 0, 2.8, perpAngle);
       }
     },
   };

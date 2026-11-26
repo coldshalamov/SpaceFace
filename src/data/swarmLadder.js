@@ -146,14 +146,13 @@ export function swarmCheckpointStartWave(zoneIndex) {
 }
 
 /**
- * A typical run's purse at that point — sized so the checkpoint armory can actually fit a
- * mid-build, not so the player coasts. Clear credits pay roughly 700–900 a zone before
- * chip pickups and armory spending, so zone 2 opens at 800 and each later zone adds ~350.
+ * Every run starts at zero Scrap — a checkpoint start too (director, 2026-11-20; 04_SWARM.md §5).
+ * A checkpoint is knowledge and a later door, never money. Kept as a function so the callers
+ * (the launch award, the dev round route, the results line) stay one seam.
  */
 export function swarmCheckpointPurseFor(zoneIndex) {
-  const idx = Number.isInteger(zoneIndex) ? zoneIndex : 0;
-  if (idx < 1) return 0;
-  return 800 + 350 * (idx - 1);
+  void zoneIndex;
+  return 0;
 }
 
 /** The `?swarmRound=N` developer route accepts the ladder's authored rounds, 1..30. */

@@ -10,6 +10,7 @@ import { OPTIC_LATTICE_SPACING } from '../combat/opticField.js';
 import { initializePresentationAdmission } from '../core/presentationAdmission.js';
 import { resolvePhysicsBodySpec } from '../core/physicsAuthority.js';
 import { authoredPrefetchRadius, tableTravelSpeed } from '../render/tabletopPolicy.js';
+import { markFieldRockAtRest } from '../systems/spawnClearance.js';
 import { NEAR_ENTER_PAD_WU, NEAR_EXIT_PAD_WU } from './activityClassification.js';
 import { indexedTypeScan, entityIndexLaneVersion } from './livingWorldViews.js';
 import { advanceResourceBody } from './worldCatchup.js';
@@ -182,6 +183,22 @@ export function insertAsteroidFieldRock(state, spec = {}) {
   field.version++;
   markAuxRowDirty(field, id);
   return rec;
+}
+
+/**
+ * A dormant row changed shape or state in place (rock regrowth: a spent core forms, or its slot
+ * restocks). Re-file it in the grid and publish it to the presentation journal like an insert.
+ */
+export function refreshAsteroidFieldRow(state, rec) {
+  const field = state && state.world && state.world.asteroidField;
+  if (!field || !rec || field.byId.get(rec.id) !== rec) return false;
+  gridRemove(field, rec);
+  gridAdd(field, rec);
+  field.dirtyPoseIds.add(rec.id);
+  noteFieldRockMotion(field, rec);
+  field.version++;
+  markAuxRowDirty(field, rec.id);
+  return true;
 }
 
 export function getAsteroidFieldRock(state, id) {
@@ -532,7 +549,7 @@ function masslineEndpointIds(player, target) {
  * clear; malformed endpoints fail closed.
  */
 export function isMasslineObstructed({
-  state, player, target, sourceWorld, targetWorld, obstacles,
+  state, player, target, sourceWorld, targetWorld, obstacles, report = null,
 } = {}) {
   const sx = finite(sourceWorld && sourceWorld.x, NaN);
   const sz = finite(sourceWorld && sourceWorld.z, NaN);
@@ -578,6 +595,11 @@ export function isMasslineObstructed({
       const hz = tz - xz.z;
       const hr = masslineObstacleRadius(rock);
       if (hx * hx + hz * hz <= hr * hr) continue;
+      // The same holds for the ship. A pilot parked inside a derelict's or a station's bounding
+      // disc is inside its sparse bounds, not inside metal: a line that STARTS there is not a
+      // line through the hull. Without this, every latch (and the rover's own line) was refused
+      // as "blocked" for as long as the ship sat anywhere near a big wreck.
+      if (px * px + pz * pz <= hr * hr) continue;
     }
     // Quadratic segment-vs-disc on the OPEN span: the disc's intersection interval is
     // [along - half, along + half] in unit-direction world units, and only an overlap with
@@ -590,6 +612,8 @@ export function isMasslineObstructed({
     const half = Math.sqrt(Math.max(0, radius2 - perp2));
     if (along + half <= MASSLINE_T_EPS) continue;
     if (along - half >= span - MASSLINE_T_EPS) continue;
+    // A caller that wants to say WHAT is in the way hands in a report object.
+    if (report && typeof report === 'object') report.blocker = rock;
     return true;
   }
   return false;
@@ -770,6 +794,10 @@ export function promoteAsteroidFieldRock(state, id, helpers, reason = 'promote')
     data,
   });
   if (!ent) return null;
+  // R11: promotion is the field rock's live birth — it carries no self-motion even if a
+  // dormant record drifted. A promote on approach is near-tier and honest awake physics;
+  // the ram path's own contact is the touch that wakes it.
+  markFieldRockAtRest(ent, { simTime });
   promotedFieldRocks.add(ent);
   if (rec.homeSectorId) {
     ent.homeSectorId = rec.homeSectorId;
@@ -783,12 +811,9 @@ export function promoteAsteroidFieldRock(state, id, helpers, reason = 'promote')
   return ent;
 }
 
-/** Shelve a live optic lattice body back into the compact field (far-actor style). */
-export function demoteOpticAsteroidToField(state, entity, helpers, reason = 'optic-shelve') {
-  if (!state || !entity || entity.type !== 'asteroid') return null;
-  if (!isOpticRockData(entity.data)) return null;
+function opticShelveSnapshot(entity) {
   const id = entity.id;
-  const snapshot = {
+  return {
     id,
     pos: entity.pos ? { x: finite(entity.pos.x), z: finite(entity.pos.z) } : { x: 0, z: 0 },
     vel: entity.vel ? { x: finite(entity.vel.x), z: finite(entity.vel.z) } : { x: 0, z: 0 },
@@ -801,17 +826,67 @@ export function demoteOpticAsteroidToField(state, entity, helpers, reason = 'opt
     homeSectorId: entity.homeSectorId || (entity.data && entity.data.homeSectorId) || null,
     data: entity.data && typeof entity.data === 'object' ? { ...entity.data } : {},
   };
+}
+
+/**
+ * Batch twin of demoteOpticAsteroidToField: snapshots every victim first (rows must
+ * read live bodies), removes the whole set through one index pass, then inserts the
+ * field rows in the caller's victim order. Rows still claim their own reserved ids —
+ * the bodies are gone first, so the re-armed lock and the recyclable id keep the same
+ * semantics the sequential remove+insert pairs had.
+ */
+export function demoteOpticAsteroidsToField(state, entities, helpers, reason = 'optic-shelve') {
+  if (!state || !Array.isArray(entities) || entities.length === 0) return [];
+  const tag = String(reason || 'optic-shelve');
+  const staged = [];
+  for (const entity of entities) {
+    if (!entity || entity.type !== 'asteroid') continue;
+    if (!isOpticRockData(entity.data)) continue;
+    staged.push({ entity, snapshot: opticShelveSnapshot(entity) });
+  }
+  if (!staged.length) return [];
+  const removeAt = helpers && typeof helpers.removeEntitiesAtIndices === 'function'
+    ? helpers.removeEntitiesAtIndices : null;
   const remove = helpers && typeof helpers.removeEntity === 'function' ? helpers.removeEntity : null;
-  // The demote removes before the field row claims the id, so the removal path sees a
-  // recyclable id and drops the player's lock — re-arm it on the row that still resolves
-  // (the reserved claim needs the body gone first, so a reorder cannot fix this).
-  const wasTargeted = !!(state.player && state.player.targetId === id);
-  if (remove) remove(id, { immediate: true, reason: String(reason || 'optic-shelve') });
-  else entity.alive = false;
-  snapshot.data.opticShelveReason = String(reason || 'optic-shelve');
-  const row = insertAsteroidFieldRock(state, snapshot);
-  if (wasTargeted && row && row.id === id) state.player.targetId = id;
-  return row;
+  const targetedId = state.player && state.player.targetId != null ? state.player.targetId : null;
+  if (removeAt && Array.isArray(state.entityList)) {
+    const indices = [];
+    const leftover = [];
+    for (const { entity } of staged) {
+      const idx = state.entityList.indexOf(entity);
+      if (idx >= 0) indices.push(idx);
+      else leftover.push(entity);
+    }
+    if (indices.length) removeAt(indices, { immediate: true, reason: tag });
+    for (const entity of leftover) {
+      if (remove) remove(entity.id, { immediate: true, reason: tag });
+      else entity.alive = false;
+    }
+  } else {
+    for (const { entity } of staged) {
+      if (remove) remove(entity.id, { immediate: true, reason: tag });
+      else entity.alive = false;
+    }
+  }
+  const rows = [];
+  for (const { snapshot } of staged) {
+    snapshot.data.opticShelveReason = tag;
+    const row = insertAsteroidFieldRock(state, snapshot);
+    if (!row) continue;
+    rows.push(row);
+    // The removal path dropped the player's lock on a recycled id — re-arm it on the
+    // row that still resolves (same post-insert restore as the single demote).
+    if (targetedId != null && row.id === targetedId) state.player.targetId = targetedId;
+  }
+  return rows;
+}
+
+/** Shelve a live optic lattice body back into the compact field (far-actor style). */
+export function demoteOpticAsteroidToField(state, entity, helpers, reason = 'optic-shelve') {
+  if (!state || !entity || entity.type !== 'asteroid') return null;
+  if (!isOpticRockData(entity.data)) return null;
+  const rows = demoteOpticAsteroidsToField(state, [entity], helpers, reason);
+  return rows.length ? rows[0] : null;
 }
 
 function opticTableRadii(state, player) {
@@ -930,6 +1005,8 @@ export function tickOpticFieldRocks(state, helpers) {
   // projectile on every demote pass while the index already carries exactly this filter.
   const index = state.entityIndex;
   const list = (index && Array.isArray(index.asteroids)) ? index.asteroids : (state.entityList || []);
+  const demoteSet = tickOpticFieldRocks._demoteScratch || (tickOpticFieldRocks._demoteScratch = []);
+  demoteSet.length = 0;
   for (let i = list.length - 1; i >= 0; i--) {
     const entity = list[i];
     if (!entity || entity.alive === false || entity.type !== 'asteroid') continue;
@@ -939,10 +1016,12 @@ export function tickOpticFieldRocks(state, helpers) {
     const dz = entity.pos.z - pz;
     if (dx * dx + dz * dz <= radii.exit2) continue;
     // Symmetric budget: a mass exit shelves N more bodies next tick rather
-    // than paying N removal fans inside this step.
-    if (shelved >= OPTIC_DEMOTE_PER_TICK) continue;
-    if (demoteOpticAsteroidToField(state, entity, helpers, 'optic-exit')) shelved += 1;
+    // than paying N removal fans inside this step — and the collected set goes
+    // through one batched removal instead of ~20 lane scans per corpse.
+    if (demoteSet.length >= OPTIC_DEMOTE_PER_TICK) continue;
+    demoteSet.push(entity);
   }
+  if (demoteSet.length) shelved = demoteOpticAsteroidsToField(state, demoteSet, helpers, 'optic-exit').length;
 
   if (OPTIC_FAR_QUIET_LATCH !== false && promoted === 0 && shelved === 0 && !opticInterest) {
     const wakeR = Math.max(32, radii.enter * 0.15);

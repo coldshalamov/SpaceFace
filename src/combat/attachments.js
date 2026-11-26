@@ -6,6 +6,7 @@ import { occupantGenerationOf } from '../core/entity.js';
 import { createMasslineRuntime, stepMassline } from '../core/constraints/masslineController.js';
 import { SIM_DT } from '../core/sim.js';
 import { massline2Flag } from '../data/featureFlags.js';
+import { pilotHas } from '../data/pilotTree.js';
 import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
 import { trainingWheelsHold } from '../onboarding/trainingWheels.js';
 
@@ -186,11 +187,31 @@ function baseTetherMaxLength(def) {
   return Number.isFinite(def && def.maxLength) && def.maxLength > 0 ? def.maxLength : null;
 }
 
-function effectiveTetherMaxLength(def, owner) {
+/**
+ * PT-FIX-C item 2 — rigger_long_reel: the line reaches 50 % further for the pilot who holds the
+ * node. This is the ONE scale every reach reader shares — the policy maxLength stamped on the
+ * attachment (and through it the Rapier joint's rest-length clamp) and tetherGameplay's
+ * acquisition/latch/pair checks multiply the same number, so a 500 WU latch stops being clamped
+ * back to 390 by the physics contract. Player-only: the pilot record is the player's own, and an
+ * NPC owner never matches it.
+ */
+export function tetherReachScale(state, owner) {
+  return state && owner && owner.id === state.playerId && pilotHas(state, 'rigger_long_reel')
+    ? 1.5
+    : 1;
+}
+
+function effectiveTetherMaxLength(def, owner, state = null) {
   const base = baseTetherMaxLength(def);
-  if (!(base > 0) || !def || def.id !== 'tether_standard') return base;
-  const scaled = base * standardTetherSpoolMultiplier(owner);
-  return Number.isFinite(scaled) && scaled >= base ? scaled : base;
+  if (!(base > 0) || !def) return base;
+  if (def.id === 'tether_standard') {
+    const scaled = base * standardTetherSpoolMultiplier(owner) * tetherReachScale(state, owner);
+    return Number.isFinite(scaled) && scaled >= base ? scaled : base;
+  }
+  // The twin bridle is the pilot's second rope (rigger_second_line): it reaches as far as the
+  // pilot's reel does, so the pair admission check and the joint never disagree either.
+  if (def.id === 'attachment_twin_bridle') return base * tetherReachScale(state, owner);
+  return base;
 }
 
 /** Resolve player spool strength from immutable attachment data. Ratings are max-folded by ships;
@@ -220,10 +241,10 @@ function scaleBreakEnvelope(base, mult) {
 /** Resolve every player-facing tether capability from immutable catalog data. Strength, payout,
  * and reel rate are independent max-folded ratings; active attachments snapshot this policy at
  * creation so a refit cannot silently rewrite an already-deployed line. */
-export function effectiveTetherPolicy(def, owner, features = null) {
+export function effectiveTetherPolicy(def, owner, features = null, state = null) {
   const baseReelRate = Number.isFinite(def && def.reelRate) ? def.reelRate : 0;
   if (!def || def.id !== 'tether_standard') {
-    const maxLength = baseTetherMaxLength(def);
+    const maxLength = effectiveTetherMaxLength(def, owner, state);
     return {
       break: effectiveTetherBreak(def, owner),
       reelRate: baseReelRate,
@@ -238,7 +259,7 @@ export function effectiveTetherPolicy(def, owner, features = null) {
   const policy = {
     break: effectiveTetherBreak(def, owner),
     reelRate: baseReelRate * reelMult,
-    maxLength: effectiveTetherMaxLength(def, owner),
+    maxLength: effectiveTetherMaxLength(def, owner, state),
     strengthRevision: STANDARD_TETHER_STRENGTH_REVISION,
     payoutRevision: STANDARD_TETHER_PAYOUT_REVISION,
   };
@@ -520,7 +541,7 @@ export function createAttachmentService(context) {
       braceLoadN: 0,
       nearBreakWarned: false,
       actionInstanceId: spec.actionInstanceId || null,
-      tetherPolicy: effectiveTetherPolicy(def, controller || owner, state.runtime && state.runtime.features),
+      tetherPolicy: effectiveTetherPolicy(def, controller || owner, state.runtime && state.runtime.features, state),
     };
     const physicsResult = createPhysicsAttachment(attachment, def);
     if (!physicsResult.ok) return fail(physicsResult.reason, physicsResult.error);
@@ -944,6 +965,7 @@ export function createAttachmentService(context) {
       nextDef,
       nextController || nextOwner,
       state.runtime && state.runtime.features,
+      state,
     );
 
     const rebound = createPhysicsAttachment(attachment, nextDef);
@@ -1360,7 +1382,7 @@ export function createAttachmentService(context) {
       if (rebased !== attachment.tetherPolicy) attachment.tetherPolicy = rebased;
       return rebased;
     }
-    const policy = effectiveTetherPolicy(def, owner, state.runtime && state.runtime.features);
+    const policy = effectiveTetherPolicy(def, owner, state.runtime && state.runtime.features, state);
     if (attachment) attachment.tetherPolicy = policy;
     return policy;
   }

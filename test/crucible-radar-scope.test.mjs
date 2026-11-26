@@ -1,7 +1,23 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { censusRadarContactsStillLayer, createRadarContactsStillCache } from '../src/ui/radar.js';
-import { tacticalRadarMetrics } from '../src/ui/map/tacticalMapGrammar.js';
+import { censusRadarContactsStillLayer, createRadarContactsStillCache, radarScopeRange } from '../src/ui/radar.js';
+import { projectRadarPoint, tacticalRadarMetrics } from '../src/ui/map/tacticalMapGrammar.js';
+
+test('the normal Swarm scale separates ships in the arena and its enlarged scope sees farther', () => {
+  const state = { ui: { radarRange: 4000 }, run: { kind: 'survival', ruleset: 'swarm', phase: 'active' } };
+  const range = radarScopeRange(state);
+  const metrics = tacticalRadarMetrics(false);
+  const pilot = { x: 0, z: 0 };
+  const left = projectRadarPoint(pilot, { x: 120, z: 0 }, range, metrics);
+  const right = projectRadarPoint(pilot, { x: -120, z: 0 }, range, metrics);
+  assert.ok(Math.abs(left.x - right.x) > 20, 'nearby enemies are distinct from the pilot and each other');
+  assert.equal(radarScopeRange(state, true), range * 2);
+  state.ui.radarRange = 450;
+  assert.equal(radarScopeRange(state), 450, 'the dial respects a lower fitted sensor range');
+  state.ui.radarRange = 4100;
+  state.run.kind = 'adventure';
+  assert.equal(radarScopeRange(state), 4100, 'Adventure keeps its ship scope');
+});
 
 test('Crucible radar drops sector infrastructure but retains room and wave markers', () => {
   const state = { playerId: 1, factions: {}, run: { kind: null, phase: 'inactive' } };

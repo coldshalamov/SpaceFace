@@ -48,6 +48,7 @@ export { stepAnchorRelativeOrbitAssist } from '../core/flight/orbitAssist.js';
 // gates it behind the opt-in gameplay.pursuitSlotAssist setting (default off).
 import { createPursuitSlot, stepPursuitSlotAssist } from '../core/flight/pursuitSlotAssist.js';
 import { massline2Flag, travelFlag } from '../data/featureFlags.js';
+import { pilotHas } from '../data/pilotTree.js';
 import { raceGridHolding } from './racingSteer.js';
 import { consumePrecisionBoostIntent } from './racingPrecision.js';
 import { entityNeedsFlightStep } from '../world/activityRuntime.js';
@@ -79,6 +80,32 @@ const AUTOPILOT_MAX_LOOKAHEAD = 760;
 const AUTOPILOT_MIN_LOOKAHEAD = 180;
 const AUTOPILOT_CAPTURE_SPEED_FRACTION = 0.72;
 const AUTOPILOT_CAPTURE_ALIGNMENT = 0.58;
+// How far off the aim line one obstacle may ever bend the flight computer's steering. The dodge
+// is a sidestep around something in the road, never a new course: an unbounded sum of obstacle
+// terms could rotate the desired heading far enough that the hull flew away from the berth it
+// had been sent to (DEMO-BERTH-1: the station's own traffic bent the run 80 degrees off the
+// corridor mouth and the ship made a lap). Capped at a quarter turn it always still closes on the
+// aim, while a body dead ahead keeps the full sidestep it needs.
+const AUTOPILOT_MAX_DEFLECT = Math.PI / 4;
+// The band a passing body must be cleared by when the course would genuinely touch it. The wider
+// steering band is a comfort hint that fades with distance off the line; this one is the contact
+// question, and it is what sizes the sidestep angle.
+const AUTOPILOT_PASS_MARGIN = 12;
+// Stall escape: commanded motion with essentially none produced, for this long, means the hull is
+// leaning on something solid. The backout is long enough to clear a hull radius or two at
+// reverse thrust and short enough that a wrong guess costs a second, not the run.
+const AUTOPILOT_STALL_SPEED = 2;
+const AUTOPILOT_STALL_TICKS = 45;
+const AUTOPILOT_BACKOUT_TICKS = 45;
+// A hull that has closed this many wu since it last made progress is not stalled, whatever its
+// speed reads — the check must never fire on a slow creep that is actually arriving.
+const AUTOPILOT_STALL_PROGRESS = 12;
+// The governed settle creep inside the berth lane runs at 0.9x the authored dock gate (see the
+// creepCap below). The dock-envelope brake has to open under that ceiling or the two laws meet
+// exactly at the gate and the hull hovers on it instead of docking (DEMO-BERTH-1).
+const AUTOPILOT_BERTH_BRAKE_FRACTION = 0.8;
+// Arrive INSIDE a berth's dock gate, not on it. See resolveAutopilotArrivalRadius.
+const AUTOPILOT_BERTH_ARRIVAL_FRACTION = 0.85;
 
 // MASSLINE flight-lane handoff. A sling tag does not grant speed: it only tells the assisted
 // governor that the current overspeed came from an external physics verb, so the governor may
@@ -293,8 +320,8 @@ export const flightV3 = {
       // resource-gated value; re-deriving it from raw input would desync audio/VFX when energy
       // cuts boost mid-hold (same fix as the legacy controller, src/systems/flight.js:95-101).
       const wasBoosting = player._wasBoosting || false;
-      if (player.flags.boosting && !wasBoosting) this.bus.emit('ship:boostStart', { shipId: player.id });
-      else if (!player.flags.boosting && wasBoosting) this.bus.emit('ship:boostStop', { shipId: player.id });
+      if (player.flags.boosting && !wasBoosting) emitBoostToggle(this.bus, 'ship:boostStart', player.id);
+      else if (!player.flags.boosting && wasBoosting) emitBoostToggle(this.bus, 'ship:boostStop', player.id);
       player._wasBoosting = player.flags.boosting;
     } else if (player) {
       settleBank(player, dt);
@@ -368,7 +395,8 @@ export const flightV3 = {
     if (heroManeuverActive) {
       input.throttle = clamp(finite(maneuverIntent.throttle), -1, 1);
       input.strafe = clamp(finite(maneuverIntent.strafe), -1, 1);
-      input.turn = clamp(finite(maneuverIntent.turn), -1, 1);
+      // HARMONY-FIX 7 (R23): the maneuver owns throttle, strafe and boost; the nose stays the
+      // pilot's (input.turn is left exactly as the pilot's own stick made it).
       input.boost = maneuverIntent.boost === true;
       input.boostPressed = input.boost && !this._prevBoost;
       input.brake = false;
@@ -509,6 +537,17 @@ export const flightV3 = {
       const burnerTopSpeedPct = finite(entity.boost && entity.boost.topSpeedPct, 0);
       if (boosting && burnerTopSpeedPct > 0) {
         profile = { ...profile, boostSpeedMult: positive(profile.boostSpeedMult, 1) * (1 + burnerTopSpeedPct) };
+      }
+      // OVH-01c1 juggernaut_run_up — each unbroken second of boost raises the cap by 20 %
+      // of base top speed, ×2 at 5 s; a broken boost drops the bonus. The counter rides a
+      // runtime field like the dash/veil state above — never serialized — so a run without
+      // the node never writes it at all.
+      if (pilotHas(state, 'juggernaut_run_up')) {
+        entity._pilotRunUpS = boosting ? finite(entity._pilotRunUpS, 0) + dt : 0;
+        if (boosting && entity._pilotRunUpS > 0) {
+          profile = { ...profile, boostSpeedMult: positive(profile.boostSpeedMult, 1)
+            * Math.min(2, 1 + 0.2 * Math.min(5, entity._pilotRunUpS)) };
+        }
       }
       applyMasslineFlightModifiers(input, state, this._masslineSlingUntil, this._dashEarnedUntil, this._launchEarnedUntil);
       // Velocity-vectoring assist (design/FEEL_CONTRACT.md §C; docs/TUNING_JOBS.md job 1). A
@@ -935,7 +974,7 @@ export const flightV3 = {
     if (boost.energy > 1) {
       boost._overshootUntil = finite(state && state.simTime, 0) + BOOST_ACCEL_OVERSHOOT_S;
       if (this.bus && typeof this.bus.emit === 'function') {
-        this.bus.emit('ship:boostPreKick', { shipId: e.id, windowS: BOOST_PREKICK_S });
+        emitBoostPreKick(this.bus, e.id, BOOST_PREKICK_S);
       }
     }
     queuePhysicsImpulse(e, { x: dirX * scaled * mass, y: 0, z: dirZ * scaled * mass });
@@ -1014,7 +1053,7 @@ export const flightV3 = {
     e.flags.boosting = false;
     e._wasBoosting = false;
     if (wasBoosting && this.bus && typeof this.bus.emit === 'function') {
-      this.bus.emit('ship:boostStop', { shipId: e.id });
+      emitBoostToggle(this.bus, 'ship:boostStop', e.id);
     }
   },
 
@@ -1461,6 +1500,10 @@ function normalizeCraftInput(entity, raw = {}, runtime, state, isPlayer, dt = SG
   o.travelDrive = undefined;
   o.velocityVectoring = undefined;
   o.unvectoredCruiseSteering = undefined;
+  // Ruling 2026-11-20: in the Standard scheme the nose follows the cursor and comes round as fast
+  // with W held as without. The input owner marks an aim-steered turn; the kernel then skips the
+  // nose-follows-path bound and the coast-helm bonus (mass and size alone set the turn rate).
+  o.aimSteered = isPlayer && raw.turnIntentFromAim === true;
   // Job guidance uses the existing bounded moving-frame controller, never a pose writer.
   o.rendezvous = !isPlayer && raw.rendezvous ? raw.rendezvous : undefined;
   o.manualReverse = false;
@@ -1575,6 +1618,16 @@ function resolveAutopilotInput(host, entity, rawInput, input, dt, state, profile
     1,
   );
   let desiredSpeed = Math.sqrt(Math.max(0, 2 * brakeAccel * Math.max(0, dist - arrivalRadius)));
+  // A berth run plans to ARRIVE at the berth's own dock gate, never faster. The berth pocket is a
+  // 20 wu disc with a 12 wu/s gate; a plan that aims the hull at it at cruise speed relies on the
+  // brake to make up the difference in the last few wu, and the counter-burn cannot: measured on
+  // the after-throw seat, the hull crossed the berth line at 10-12 wu/s while the plan still read
+  // "cruise", sailed 43 wu past the berth to 22 wu from the station centre, and the aim fell out
+  // of the berth stage behind it (DEMO-BERTH-1). Capping the plan at the gate makes the whole last
+  // stretch a controlled crawl that can stop inside the pocket.
+  if (target && target.dockingProxyId && target.dockingStage === 'berth') {
+    desiredSpeed = Math.min(desiredSpeed, positive(target.dockSpeedGate, 12));
+  }
   // Lane-locked berth runs report the distance to a blocker squarely ahead as a virtual arrival
   // point: pace to ~30 WU behind it rather than ram. Below ~20 WU/s the hold releases — a slow
   // contact is bounded, and parking forever behind a static hull in the lane is worse.
@@ -1637,8 +1690,15 @@ function resolveAutopilotInput(host, entity, rawInput, input, dt, state, profile
   // tangential orbit inside the capture volume — aligned with the avoidance vector, so neither
   // terminalBrake (approach-half only) nor headingCapture (needs misalignment) sustains the
   // stop. Sustain the counter-burn until under the berth gate instead of flickering at it.
+  //
+  // The trigger sits BELOW the gate, not at it. The governed settle creep is capped at 0.9x the
+  // gate; a brake that only bites above 1.0x can never hold a hull that is already creeping at
+  // that cap, so the two laws left the hull oscillating either side of the gate while it drifted
+  // straight through the berth pocket at ~12 wu/s (measured: 24.5 wu was the closest it ever got
+  // to a 20 wu dock gate, on a 70 s run). Braking at the creep's own ceiling keeps the approach
+  // monotone and under the gate instead of hovering on it (DEMO-BERTH-1).
   const dockEnvelopeBrake = target && target.dockingProxyId && target.dockingStage === 'berth'
-    && speed > positive(target.dockSpeedGate, 12);
+    && speed > positive(target.dockSpeedGate, 12) * AUTOPILOT_BERTH_BRAKE_FRACTION;
   const trafficBrake = trafficHold != null && speed > 20 && closingSpeed > 4
     && trafficHold <= stoppingDistance + 45;
   let shouldBrake = terminalBrake || headingCapture || dockEnvelopeBrake || trafficBrake;
@@ -1648,13 +1708,47 @@ function resolveAutopilotInput(host, entity, rawInput, input, dt, state, profile
     && speed > brakeFloor - 3) {
     shouldBrake = true;
   }
+  // Stall escape: a hull pressing a solid body at full thrust reads a healthy cruise command
+  // (it is aimed at the aim, guidance is clear, the plan wants speed) and never moves. The
+  // autopilot then held throttle against a wreck for the whole run — the Forge stall in
+  // DEMO-BERTH-1's own fixture, and the same shape at Helios. Detect "commanded motion, none
+  // produced" and hand the hull a few seconds of reverse with a fresh sidestep, so it backs off
+  // the body and comes round it rather than grinding. The counters are latch-only and re-derived
+  // every tick, never persisted course state.
+  if (!Number.isFinite(autopilot._stallDist0) || autopilot._stallDist0 < dist) autopilot._stallDist0 = dist;
+  const stalled = speed < AUTOPILOT_STALL_SPEED
+    && dist > arrivalRadius * 2
+    && !shouldBrake
+    && dist > autopilot._stallDist0 - AUTOPILOT_STALL_PROGRESS;
+  autopilot._stallTicks = stalled ? (autopilot._stallTicks | 0) + 1 : 0;
+  if (!stalled) autopilot._stallDist0 = dist;
+  if (autopilot._stallTicks > AUTOPILOT_STALL_TICKS && !(autopilot._backoutTicks > 0)) {
+    autopilot._backoutTicks = AUTOPILOT_BACKOUT_TICKS;
+    // Flip after the clear, not before: clearAutopilotAvoidance zeroes _avoidanceSide, so the
+    // old order wrote the opposite side and then erased it — the "come round the other way"
+    // half of the escape was dead code (review of DEMO-BERTH-1).
+    const previousSide = finite(autopilot._avoidanceSide, 0) || 1;
+    clearAutopilotAvoidance(autopilot, true);
+    autopilot._avoidanceSide = previousSide === 1 ? -1 : 1;
+  }
+  if (autopilot._backoutTicks > 0) {
+    autopilot._backoutTicks -= 1;
+    autopilot._stallTicks = 0;
+    autopilot._stallDist0 = dist;
+  }
   autopilot.brakeHold = autopilot.brakeSettled === true && shouldBrake;
 
   let throttle = 0;
   let strafe = 0;
   let brake = false;
   let boost = false;
-  if (shouldBrake) {
+  if (autopilot._backoutTicks > 0) {
+    // Back straight off the body that is holding the hull, then let the fresh sidestep and the
+    // ordinary plan take over. Reverse is the one command a pressed-against-hull ship can act on.
+    throttle = -1;
+    strafe = 0;
+    brake = false;
+  } else if (shouldBrake) {
     const counter = counterVelocityInput(entity);
     throttle = counter.throttle;
     strafe = counter.strafe;
@@ -1673,7 +1767,25 @@ function resolveAutopilotInput(host, entity, rawInput, input, dt, state, profile
     // edge would flicker brake on/off for the whole margin transit.
     if (autopilot.brakeSettled) {
       const combatSpeed = positive(profile.combatSpeed, 150);
-      const settleFraction = Math.min(0.3, (brakeFloor * 0.8) / combatSpeed);
+      // HARMONY-FIX 6: the corridor's capture tug no longer helps the autopilot park, so the creep
+      // must sit under the berth's own dock-speed gate too, or the dock-envelope brake duty-cycles
+      // at that gate for the whole last stretch.
+      //
+      // The creep also TAPERS into the pocket. A flat cap is fine at 45 wu out and far too fast at
+      // 15: the berth's own dock prompt is a 20 wu disc, so a constant 9 wu/s crawl carries the
+      // hull straight through the aim point, out the far side, and back — measured as a 19 wu
+      // closest approach that then swung out to 51 wu and had to re-approach twice before it
+      // parked (DEMO-BERTH-1). Scaling the cap by how much room is left makes the last stretch a
+      // proper arrival: full creep while there is distance to cover, a crawl inside it.
+      const berthCreepTarget = target && target.dockingProxyId && target.dockingStage === 'berth'
+        ? positive(target.dockSpeedGate, 12) * 0.9
+        : Infinity;
+      const creepCapBase = Math.min(brakeFloor, berthCreepTarget);
+      const arrivalRoom = Math.max(0, dist - arrivalRadius);
+      const creepCap = Number.isFinite(berthCreepTarget)
+        ? Math.max(1.5, Math.min(creepCapBase, arrivalRoom * 0.55))
+        : creepCapBase;
+      const settleFraction = Math.min(0.3, (creepCap * 0.8) / combatSpeed);
       const commanded = Math.hypot(Math.max(0, throttle), strafe);
       if (commanded > settleFraction) {
         const k = settleFraction / commanded;
@@ -1771,9 +1883,14 @@ function resolveMovingRendezvous(host, entity, input, state, profile, target, au
 
 function hasManualFlightInput(input) {
   if (!input) return false;
+  // A turn the input system derived from where the cursor (or aim stick) sits is not a hand on the
+  // helm: under the nose-follows-cursor scheme it is non-zero whenever the autopilot turns the ship
+  // away from a parked mouse, and counting it made every route and berth approach cancel itself
+  // ("interrupted: manual") a moment after it began. Keys, strafe, thrust, boost and brake cancel.
+  const turnIsHand = input.turnIntentFromAim !== true;
   return Math.abs(finite(input.moveX ?? input.strafe, 0)) > 0.08 ||
     Math.abs(finite(input.moveZ ?? input.throttle, 0)) > 0.08 ||
-    Math.abs(finite(input.turnIntent ?? input.turn, 0)) > 0.08 ||
+    (turnIsHand && Math.abs(finite(input.turnIntent ?? input.turn, 0)) > 0.08) ||
     !!input.boost ||
     !!input.brake;
 }
@@ -1819,6 +1936,9 @@ function stopAutopilot(host, state, reason) {
   autopilot.brakeSettled = false;
   autopilot.brakeHold = false;
   autopilot.arrivalHolding = false;
+  autopilot._stallTicks = 0;
+  autopilot._backoutTicks = 0;
+  autopilot._stallDist0 = null;
   if (autopilot.active !== true) return;
   clearAutopilotAvoidance(autopilot, true);
   autopilot.active = false;
@@ -1851,12 +1971,37 @@ export function resolveAutopilotArrivalRadius(entity, autopilot, target) {
   const requested = Number.isFinite(target && target.arrivalRadius)
     ? target.arrivalRadius
     : finite(autopilot && autopilot.arrivalRadius, 0);
-  if (target && target.dockingProxyId && requested > 0) return requested;
+  if (target && target.dockingProxyId && requested > 0) {
+    // A berth's arrival radius IS its public dock gate; parking the hull exactly on that radius
+    // leaves it 20.2 wu from a 20 wu prompt, so the computer let go with the prompt down and the
+    // pilot had to nudge in by hand (DEMO-BERTH-1). Come inside the gate before declaring the
+    // berth reached — the prompt is up first, then the hand-back.
+    return requested * (target.dockingStage === 'berth' ? AUTOPILOT_BERTH_ARRIVAL_FRACTION : 1);
+  }
   return Math.max(
     AUTOPILOT_ARRIVAL_RADIUS,
     requested,
     positive(entity && entity.radius, 0) + positive(target && target.radius, 0) + 18,
   );
+}
+
+function autopilotObstacleStrength(projection, lateral, maxProjection, contactReach, clearance) {
+  const courseProjection = clamp(projection, 0, maxProjection);
+  const endGap = projection - courseProjection;
+  // A center outside the course contributes only when its physical reach overlaps an end.
+  // The additional steering clearance applies within the course, where there is room to pass.
+  const absLateral = Math.abs(lateral);
+  if (absLateral >= clearance || (endGap !== 0 && endGap * endGap + lateral * lateral >= contactReach * contactReach)) return 0;
+  // Contact risk, not mere presence: the term is 1 on the course line and falls to 0 at the
+  // clearance edge, then squared so a body 60-100 wu off the line bends the course a little
+  // instead of as hard as a body dead ahead. The old linear ramp plus a 1.65 gain let one hull
+  // parked 3-7 wu off the line add ~0.7 to the steer vector, which is more than the aim itself:
+  // from the after-throw seat the berth run curved 80 degrees off the mouth aim for a whole lap
+  // of the station, and a 1480 wu start was flung to 2.5 km before it ever turned back
+  // (DEMO-BERTH-1). A real obstacle still saturates the term at full strength.
+  const room = 1 - absLateral / Math.max(1, clearance);
+  const depth = 1 - courseProjection / Math.max(1, maxProjection);
+  return room * room * (0.7 + depth * 0.8);
 }
 
 export function computeAutopilotGuidance(state, player, target, distance, arrivalRadius, autopilot) {
@@ -1882,19 +2027,17 @@ export function computeAutopilotGuidance(state, player, target, distance, arriva
   let trafficHold = null;
   if (maxProjection > 0) {
     const obstacles = autopilotObstacles(state, player, target, baseX, baseZ, maxProjection);
+    const hullRadius = positive(player.radius, 0);
+    const clearanceSlack = 58 + Math.min(70, speed * 0.22);
     let weightedLateral = 0;
     let totalStrength = 0;
     for (const obstacle of obstacles) {
       const ox = finite(obstacle.pos && obstacle.pos.x) - px;
       const oz = finite(obstacle.pos && obstacle.pos.z) - pz;
       const projection = ox * baseX + oz * baseZ;
-      if (projection <= 0 || projection > maxProjection) continue;
       const lateral = ox * perpX + oz * perpZ;
-      const clearance = positive(player.radius, 0) + positive(obstacle.radius, 0) + 58 + Math.min(70, speed * 0.22);
-      const absLateral = Math.abs(lateral);
-      if (absLateral >= clearance) continue;
-      const depth = 1 - projection / Math.max(1, maxProjection);
-      const strength = (1 - absLateral / Math.max(1, clearance)) * (0.7 + depth * 0.8);
+      const contactReach = hullRadius + positive(obstacle.radius, 0);
+      const strength = autopilotObstacleStrength(projection, lateral, maxProjection, contactReach, contactReach + clearanceSlack);
       weightedLateral += lateral * strength;
       totalStrength += strength;
     }
@@ -1909,21 +2052,47 @@ export function computeAutopilotGuidance(state, player, target, distance, arriva
         if (autopilot) autopilot._avoidanceSide = side;
       }
 
+      // The sidestep is as large as the nearest body on the far side of the line actually needs,
+      // and no larger. A body 3 wu off the line 70 wu ahead demands a few degrees, not a hard
+      // turn: a fixed full-strength sum made the computer fly a permanent 45 degree offset that
+      // carried it past the corridor mouth and around the station again (DEMO-BERTH-1). Once the
+      // body passes, the demand falls to zero and the course closes on the aim by itself.
+      let deflect = 0;
       for (const obstacle of obstacles) {
         const ox = finite(obstacle.pos && obstacle.pos.x) - px;
         const oz = finite(obstacle.pos && obstacle.pos.z) - pz;
         const projection = ox * baseX + oz * baseZ;
-        if (projection <= 0 || projection > maxProjection) continue;
         const lateral = ox * perpX + oz * perpZ;
-        const clearance = positive(player.radius, 0) + positive(obstacle.radius, 0) + 58 + Math.min(70, speed * 0.22);
-        const absLateral = Math.abs(lateral);
-        if (absLateral >= clearance) continue;
-        const depth = 1 - projection / Math.max(1, maxProjection);
-        const strength = (1 - absLateral / Math.max(1, clearance)) * (0.7 + depth * 0.8);
-        steerX += perpX * side * strength * 1.65;
-        steerZ += perpZ * side * strength * 1.65;
+        const contactReach = hullRadius + positive(obstacle.radius, 0) + AUTOPILOT_PASS_MARGIN;
+        // Distance from the body's centre to the course ray. A centre astern still matters when
+        // its physical reach crosses the line ahead of the hull — a truss tip over the nose —
+        // so the aft case measures from the hull itself rather than discarding the body.
+        const distanceToLine = projection > 0 ? Math.abs(lateral) : Math.hypot(projection, lateral);
+        const needed = contactReach - distanceToLine;
+        if (needed <= 0) continue;
+        // Steering to `side` only clears a body on the far side of the line. A second body on
+        // the dodge side is what the side choice above already weighed; adding more angle here
+        // would drive the hull into it. "On the line" counts as far side — a body dead ahead is
+        // the one case that must always be dodged, and a few wu of float noise either way must
+        // not decide it.
+        if (projection > 0 && lateral * side > AUTOPILOT_PASS_MARGIN) continue;
+        // Turning the course by theta swings the line sideways by (distance to the body) x sin
+        // theta at that body. Solving that for the missing clearance is what keeps the sidestep
+        // proportionate: a body 285 wu ahead needs ~8 degrees, while one already against the
+        // hull needs most of a right angle because there is no room left to walk it off.
+        const radius = Math.max(Math.hypot(projection, lateral), contactReach, 1);
+        const angle = Math.asin(clamp(needed / radius, 0, 1));
+        if (angle > deflect) deflect = angle;
       }
-      avoiding = true;
+      deflect = Math.min(deflect, AUTOPILOT_MAX_DEFLECT);
+      if (deflect > 1e-4) {
+        const push = Math.tan(deflect);
+        steerX += perpX * side * push;
+        steerZ += perpZ * side * push;
+        avoiding = true;
+      } else {
+        clearAutopilotAvoidance(autopilot, false);
+      }
     } else {
       clearAutopilotAvoidance(autopilot, false);
     }
@@ -1990,12 +2159,8 @@ const AUTOPILOT_OBSTACLE_QUERY_SCRATCH = [];
 const AUTOPILOT_OBSTACLE_QUERY_POS = { x: 0, z: 0 };
 const AUTOPILOT_DRESSING_BOUNDS = [];
 
-// An obstacle only matters when its center sits inside the lookahead capsule: projection within
-// (0, maxProjection] of the player along the steer direction and |lateral| below its clearance
-// (player radius + obstacle radius + ≤128 WU slack). One circle covering that capsule returns
-// every possible contributor — the hash buckets entities by their full radius coverage, so even
-// a huge-radius station whose center lies off-axis is captured. The unchanged per-entity
-// predicate keeps semantics exact on the returned superset.
+// One circle covers the lookahead segment and the widest lateral steering clearance.
+// The obstacle query also accounts for physical reach, including bodies near the segment ends.
 function autopilotObstacles(state, player, target, baseX, baseZ, maxProjection) {
   const out = AUTOPILOT_OBSTACLE_SCRATCH;
   out.length = 0;
@@ -2327,12 +2492,72 @@ function emitThrustCue(bus, state, entity, input, frame) {
   P.strafe = strafe;
   P.boost = !!(entity.flags && entity.flags.boosting);
   thrustNozzles(throttle, strafe, brake, P.nozzles, _thrustNozzlePool);
+  // Re-arm per emit like physics:impact's: a bus.clear() wipes payloadSnapshots where this
+  // module cannot observe it, and the bus's own contract is that pool owners re-arm cheaply.
+  if (bus.setPayloadSnapshot) bus.setPayloadSnapshot('ship:thrust', snapshotThrustPayload);
   bus.emit('ship:thrust', P);
 }
 
 // Retained emit payload — all ship:thrust subscribers read synchronously during emit.
 const _thrustPayload = { id: null, shipId: null, throttle: 0, reverse: 0, strafe: 0, boost: false, nozzles: [] };
 const _thrustNozzlePool = Array.from({ length: 4 }, () => ({ role: '', strength: 0, angle: 0 }));
+
+// A deferred presentation tail queues past the emit — clone the record AND each pooled
+// nozzle entry so the tail reads this emit's values, not the next refill's.
+function snapshotThrustPayload(p) {
+  const nozzles = Array.isArray(p.nozzles) ? p.nozzles.map((n) => (n ? { ...n } : n)) : p.nozzles;
+  return { ...p, nozzles };
+}
+
+// ship:boostStart/ship:boostStop pooled toggle receipts — every subscriber reads shipId
+// synchronously inside the emit (vfx _onBoost, telemetry verbs, cruise cancel, eventTrace
+// sanitize, the worker bridge's emit-time flatten); nothing retains the record. One record
+// per dispatch depth, the combat:damage precedent: a boost listener that drives a boost
+// transition mid-dispatch takes the next slot rather than rewriting the outer receipt.
+// Deferred presentation tails get the scalar clone below; re-armed per emit because a
+// bus.clear() wipes the snapshot map where this module cannot observe it.
+function snapshotBoostTogglePayload(p) { return { ...p }; }
+function createBoostTogglePayload() { return { shipId: null }; }
+const _boostToggleEmitPool = [createBoostTogglePayload()];
+let _boostToggleEmitDepth = 0;
+function acquireBoostTogglePayload() {
+  if (_boostToggleEmitDepth >= _boostToggleEmitPool.length) _boostToggleEmitPool.push(createBoostTogglePayload());
+  const p = _boostToggleEmitPool[_boostToggleEmitDepth];
+  _boostToggleEmitDepth += 1;
+  return p;
+}
+function emitBoostToggle(bus, event, shipId) {
+  if (!bus || typeof bus.emit !== 'function') return;
+  if (bus.setPayloadSnapshot) bus.setPayloadSnapshot(event, snapshotBoostTogglePayload);
+  const p = acquireBoostTogglePayload();
+  p.shipId = shipId;
+  try {
+    bus.emit(event, p);
+  } finally {
+    _boostToggleEmitDepth -= 1;
+  }
+}
+
+// ship:boostPreKick carries windowS on top of shipId, so it gets its own depth pool
+// rather than a ghost field on the start/stop record (physics:impact's optional-field
+// rule: no stale keys on the receipt).
+function createBoostPreKickPayload() { return { shipId: null, windowS: 0 }; }
+const _boostPreKickEmitPool = [createBoostPreKickPayload()];
+let _boostPreKickEmitDepth = 0;
+function emitBoostPreKick(bus, shipId, windowS) {
+  if (!bus || typeof bus.emit !== 'function') return;
+  if (bus.setPayloadSnapshot) bus.setPayloadSnapshot('ship:boostPreKick', snapshotBoostTogglePayload);
+  if (_boostPreKickEmitDepth >= _boostPreKickEmitPool.length) _boostPreKickEmitPool.push(createBoostPreKickPayload());
+  const p = _boostPreKickEmitPool[_boostPreKickEmitDepth];
+  _boostPreKickEmitDepth += 1;
+  p.shipId = shipId;
+  p.windowS = windowS;
+  try {
+    bus.emit('ship:boostPreKick', p);
+  } finally {
+    _boostPreKickEmitDepth -= 1;
+  }
+}
 
 function thrustNozzles(throttle, strafe, brake, out, pool) {
   let n = 0;

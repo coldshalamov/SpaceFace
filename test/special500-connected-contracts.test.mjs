@@ -15,6 +15,7 @@ function fixture() {
   const state = createGameState(4242), bus = createBus();
   state.simTime = 20;
   state.player.credits = 100;
+  state.world.currentSectorId = 'sector_vesta_forge';
   state.story = { flags: {} };
   rememberMoralDebt(state, { id: 'incoming-test-debt', cause: 'moral_trap:test', partyId: 'test-party' });
   const owner = Object.create(economy);
@@ -42,7 +43,7 @@ test('confessional public choice is in the main-to-simulation bridge', () => {
 
 test('offered confession pays exactly once through real economy exact-charge contract', () => {
   const f = fixture();
-  f.bus.emit('dock:docked', { stationId: 'station_forge' });
+  f.bus.emit('dock:committed', { stationId: 'station_depot3' });
   assert.equal(f.offers.length, 1, 'real moral ledger produces an offer');
   const choice = { ...f.offers[0], choice: 'file' };
   f.bus.emit('ui:confessionalChoose', choice);

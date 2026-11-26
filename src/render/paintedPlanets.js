@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { acquireSharedKtx2Loader, releaseSharedKtx2Loader } from './assetLoader.js';
 
 // Root-relative URL survives esbuild chunk relocation and uses the same browser/Electron route.
 export const PAINTED_PLANET_URL = '/assets/background/quiet-planets.png';
@@ -27,12 +28,29 @@ const EXTRA_CELLS = Object.freeze({ gas: [1], ice: [2], rocky: [0, 3] });
  * every sector's sky is no longer the same four planets. No per-planet bake or animation.
  */
 export class PaintedPlanets {
-  constructor(loader = new THREE.TextureLoader()) {
+  /**
+   * @param {object} [loader]        a THREE.TextureLoader (or anything with .load); the default
+   *                                 also races each atlas through its sibling `url.ktx2`.
+   * @param {object} [options]
+   * @param {object} [options.renderer]  WebGLRenderer, used to arm the shared KTX2 transcoder.
+   */
+  constructor(loader = null, options = {}) {
     this.failed = false;
     this.disposed = false;
     this.ready = false;
     this.views = [];
     this.extraViews = [];
+    this.texture = null;
+    this.extraTexture = null;
+    this.ringTexture = null;
+    this.ringTexture2 = null;
+    const rasterLoader = loader || new THREE.TextureLoader();
+    // KTX2-first applies only on the default load path: injected loaders (tests) keep their
+    // synchronous TextureLoader-shaped contract untouched.
+    this._ktx2 = null;
+    const ktx2Ready = loader
+      ? Promise.resolve(null)
+      : acquireSharedKtx2Loader(options.renderer || null).then((l) => { this._ktx2 = l; return l; });
     let remaining = 2;
     const onLoad = (atlas) => {
       if (this.disposed) return;
@@ -44,14 +62,17 @@ export class PaintedPlanets {
       this.failed = true;
       console.error('[background] Painted planet atlas failed; using baked planets.', error);
     };
-    this.texture = loader.load(PAINTED_PLANET_URL, () => onLoad(true), undefined, onError);
-    this.texture.colorSpace = THREE.SRGBColorSpace;
     const makeViews = (atlas, into, name) => {
+      const ViewType = atlas.isCompressedTexture ? THREE.CompressedTexture : THREE.Texture;
       for (let i = 0; i < 4; i++) {
         // Texture.clone() marks an empty source for GPU upload before decode. Build the UV view
         // without that side effect so opening resource admission sees only ready image data.
-        const view = new THREE.Texture();
+        const view = new ViewType();
         view.source = atlas.source;
+        // Compressed textures carry pixels in `mipmaps`, not `source.data` — share both so a
+        // KTX2 atlas view uploads real levels instead of an empty, incomplete texture.
+        if (atlas.isCompressedTexture) view.mipmaps = atlas.mipmaps;
+        view.format = atlas.format;
         view.colorSpace = THREE.SRGBColorSpace;
         view.name = `${name}_${i}`;
         view.repeat.set(0.5, 0.5);
@@ -61,26 +82,60 @@ export class PaintedPlanets {
         into.push(view);
       }
     };
-    makeViews(this.texture, this.views, 'QuietSky_Planet');
-    this.ringTexture = loader.load(PAINTED_RING_URL, () => onLoad(false), undefined, onError);
-    this.ringTexture.colorSpace = THREE.SRGBColorSpace;
-    this.ringTexture.userData.paintedPlanet = true;
-    this.ringTexture.userData.paintedPlanetDiameter = 0.445;
-    this.ringTexture.userData.paintedBodyDiameter = PAINTED_RING_BODY_DIAMETER;
+    // Fetch one atlas KTX2-first, raster fallback; `adopt` runs as soon as the texture object
+    // exists, `done` once its pixels are decoded (or immediately for an already-full KTX2).
+    const loadAtlas = (url, adopt, done) => {
+      const adoptRaster = () => {
+        if (this.disposed) return;
+        adopt(rasterLoader.load(url, () => { if (!this.disposed) done(); }, undefined, onError));
+      };
+      // An injected loader keeps the constructor's original synchronous adopt so callers and
+      // tests that read the atlas right after `new` see the same object graph as before.
+      if (loader) { adoptRaster(); return; }
+      ktx2Ready.then((ktx2) => {
+        if (this.disposed) return;
+        if (!ktx2) { adoptRaster(); return; }
+        try {
+          ktx2.load(`${url}.ktx2`, (texture) => {
+            if (this.disposed) { texture?.dispose?.(); return; }
+            adopt(texture);
+            done();
+          }, undefined, adoptRaster);
+        } catch {
+          adoptRaster();
+        }
+      }, adoptRaster);
+    };
+    loadAtlas(PAINTED_PLANET_URL, (atlas) => {
+      this.texture = atlas;
+      atlas.colorSpace = THREE.SRGBColorSpace;
+      makeViews(atlas, this.views, 'QuietSky_Planet');
+      if (atlas.isCompressedTexture) for (const view of this.views) view.needsUpdate = true;
+    }, () => onLoad(true));
+    loadAtlas(PAINTED_RING_URL, (atlas) => {
+      this.ringTexture = atlas;
+      atlas.colorSpace = THREE.SRGBColorSpace;
+      atlas.userData.paintedPlanet = true;
+      atlas.userData.paintedPlanetDiameter = 0.445;
+      atlas.userData.paintedBodyDiameter = PAINTED_RING_BODY_DIAMETER;
+    }, () => onLoad(false));
     // The second atlas loads after the first pair and is not part of `ready`: the first four looks are a
     // complete sky on their own. A load failure uses the same reported bake fallback as the first atlas, so
     // a planet that picked a second-atlas cell can never be left blank.
-    this.extraTexture = loader.load(PAINTED_PLANET_URL_2, () => {
-      if (this.disposed) return;
+    loadAtlas(PAINTED_PLANET_URL_2, (atlas) => {
+      this.extraTexture = atlas;
+      atlas.colorSpace = THREE.SRGBColorSpace;
+      makeViews(atlas, this.extraViews, 'QuietSky_PlanetB');
+    }, () => {
       for (const view of this.extraViews) view.needsUpdate = true;
-    }, undefined, onError);
-    this.extraTexture.colorSpace = THREE.SRGBColorSpace;
-    makeViews(this.extraTexture, this.extraViews, 'QuietSky_PlanetB');
-    this.ringTexture2 = loader.load(PAINTED_RING_URL_2, () => {}, undefined, onError);
-    this.ringTexture2.colorSpace = THREE.SRGBColorSpace;
-    this.ringTexture2.userData.paintedPlanet = true;
-    this.ringTexture2.userData.paintedPlanetDiameter = 0.474;
-    this.ringTexture2.userData.paintedBodyDiameter = PAINTED_RING_BODY_DIAMETER_2;
+    });
+    loadAtlas(PAINTED_RING_URL_2, (atlas) => {
+      this.ringTexture2 = atlas;
+      atlas.colorSpace = THREE.SRGBColorSpace;
+      atlas.userData.paintedPlanet = true;
+      atlas.userData.paintedPlanetDiameter = 0.474;
+      atlas.userData.paintedBodyDiameter = PAINTED_RING_BODY_DIAMETER_2;
+    }, () => {});
   }
 
   get(spec) {
@@ -112,9 +167,11 @@ export class PaintedPlanets {
     this.disposed = true;
     for (const view of this.views) view.dispose();
     for (const view of this.extraViews) view.dispose();
-    this.texture.dispose();
-    this.extraTexture.dispose();
-    this.ringTexture.dispose();
-    this.ringTexture2.dispose();
+    this.texture?.dispose();
+    this.extraTexture?.dispose();
+    this.ringTexture?.dispose();
+    this.ringTexture2?.dispose();
+    if (this._ktx2) releaseSharedKtx2Loader(this._ktx2);
+    this._ktx2 = null;
   }
 }

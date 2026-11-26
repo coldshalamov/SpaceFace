@@ -7,7 +7,7 @@ specialisation, Zombies' floor, replay value from builds.*
 
 ## 1. What a run is
 
-You walk into a lit industrial room with one ship and its stock gun. Things come through the gates.
+You fly into a lit industrial room with the hull and starting equipment you selected. Things come through the gates.
 Every kill pays Scrap (to spend on the floor) and experience (to level your pilot). Every level gives
 you a pick from three cards out of the Pilot Tree, and by round ten your build has a name. Every fifth
 round a boss; every tenth the room changes and you may refit. Win at thirty, or keep going. Die, press
@@ -19,12 +19,12 @@ A first win should take several tries (doc 10 §5.8). A good run lasts 20–25 m
 
 | When | What the player sees and does | Notes |
 |---|---|---|
-| Title → SWARM → **PLAY** | One button over the key art. Arena, Kiln's mood and hull sit under it as three small choices that remember the last run. | §7 |
+| Title → SWARM → **Launch** | Choose the arena and difficulty, pick a hull, then see and choose its equipment. Launch shows the actual fit and starting balance. | §7 |
 | ≤ 5 s later (warm) | Round 1 *Doors Open*: ten Wasps from one gate, rocks within reach. | Load is `10_ENGINE.md`. |
 | First 15 s | The first throw. | FINISH-LINE row met at 8.95 s headed (BOT-02). Keep it. |
 | Every kill | Scrap pops out as physical chips you fly through; XP ticks the bar. Kills by the room pay 2.5× both. | Chips exist (PERF-HOT-03); make them readable (they are 5–8 px today). |
 | Level up | A chime, the bar flashes, "LEVEL 4" rides the bar. **No pause.** A pick is banked. | |
-| Mid-round | Fly to a lit pad to buy: wall guns, the Crate, Taps, doors, traps, the Forge. | Doc 12 floor, unchanged. |
+| Mid-round | Fly to a lit pad, read the offer, then select it and cross the pad to buy. | Wall guns, the Crate, Taps, doors, traps and the Forge use the room rather than a shop screen. |
 | The breath (4 s) | Banked picks are offered: three cards over the dimmed room. Press 1/2/3 or click. The breath stretches up to 10 s while picks wait. Re-roll costs Scrap. | Ruling R3. A setting lets players pick at once in 15 %-speed slow motion instead. |
 | Round 5, 15, 25 | A boss with a trick (doc 12). | |
 | Round 10, 20 | The room changes; **the Bench**: refit, change ship, cash out. The only menu in a run. | |
@@ -72,9 +72,10 @@ second copy in the left panel). Keep the mechanic; fix how it speaks:
 
 **Scrap** is the only money in a run. Doc 17 §3's numbers are the starting scale (gun kill 10, room kill
 25, round 50 × n, boss 1,000; wall gun 500, Crate 950, Taps 1,500–3,000, doors 750–2,000, trap 400,
-Forge 5,000). **Every run starts at zero Scrap** with the hull's stock gun. Difficulty is **Kiln's
-mood** (Generous / Fair / Cruel): it changes how many come and how hard they press, never the player's
-physics or purse (doc 19).
+Forge 5,000). **Every run starts at zero Scrap.** Equipment offers a free compatible opening gun
+after hull selection, shows its slot and permits an empty launch if the pilot chooses it. Difficulty
+(Generous / Fair / Cruel) changes the enemy count and pressure while keeping the pilot's flight
+physics and opening purse consistent (doc 19).
 
 Code read at 301d3fb074 (`02` B14–B15). What happens to each system:
 
@@ -130,6 +131,9 @@ Helios traffic 16 k u away (`02` B18). Whack-a-mole gating (SWARM-LEAK-01, FIX-0
 - **Gates.** Each gate is a lit frame with a door that opens a second before arrivals.
 - **The floor is legible from across the room.** Pads sit under their own lamps with a price sign
   readable at the default zoom; the freight lane has amber lane lights and a horn (A01-02).
+- **Paid pads wait for a choice.** The nearest reachable offer shows its price and any equipment
+  it will replace. Use Interact to select that offer and fly across its pad while selected. Ordinary
+  transit leaves the loadout and purse alone. Scrap still collects on contact.
 - **One sun** for the room (a high shop lamp) casting the shadows of bodies onto the deck (`07` §2).
 - **Then the other arenas**, one at a time (doc 15), each with its own set and its own hazard light.
 
@@ -142,8 +146,9 @@ Helios traffic 16 k u away (`02` B18). Whack-a-mole gating (SWARM-LEAK-01, FIX-0
 
 ## 7. The front door
 
-- **Title → SWARM → PLAY.** The PLAY screen keeps the Foundry key art (`02` A4, the best image in
-  the game). Under PLAY: *Ricochet Foundry · Fair · Hornet* as three small selectors.
+- **Title → SWARM → Ship → Equipment → Launch.** Keep the Foundry key art (`02` A4).
+  Players choose the arena and difficulty, see the selected hull and its slots, then select a
+  starting fit. Show the full fit before flight and explain any replacement where it happens.
 - **Gone from the front:** the match-setup page's four modes, four purses, nine arenas, zone, weekly
   challenges and "seed, perks, hangar & records" (`02` A5). Gauntlet, Foundry Block, Daily, Practice
   and records live behind one **More** button.

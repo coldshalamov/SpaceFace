@@ -30,11 +30,13 @@ for (const route of ['mining', 'physics-receipt']) test(`${route} refusal preser
         payload.acceptedAmount = 0; payload.rejectedAmount = payload.amount;
       }
     });
-    const collect = () => route === 'mining' || state.player.cargo.capVolume > 0
+    const collect = () => route === 'mining' || state.player.cargo.slotCount > 0
       ? mining._collectPickupViaEvent(h.pod, h.worker)
       : h.facade._applyPickupCollection(h.pod, h.worker, h.sim.bus, state);
-    const cap = state.player.cargo.capVolume;
-    state.player.cargo.capVolume = 0;
+    // Slot law (CARGO-BUILD-1): a full bag — one slot holding a full foreign stack — refuses.
+    const priorSlots = state.player.cargo.slots, priorSlotCount = state.player.cargo.slotCount;
+    state.player.cargo.slotCount = 1;
+    state.player.cargo.slots = [{ commodityId: 'cmdty_ore_iron', qty: 20 }];
     collect();
     assert.equal(attempts, 1);
     assert.equal(blocks(h), true);
@@ -43,7 +45,8 @@ for (const route of ['mining', 'physics-receipt']) test(`${route} refusal preser
     collect(); state.simTime = 0.74; collect(); assert.equal(attempts, 1);
     state.simTime = 0.75; collect(); assert.equal(attempts, 2);
     assert.equal(h.owner.readOrchardPodReady(h.pod, state), receipt);
-    state.player.cargo.capVolume = cap;
+    state.player.cargo.slots = priorSlots;
+    state.player.cargo.slotCount = priorSlotCount;
     state.simTime = 1.49; collect(); assert.equal(attempts, 2);
     state.simTime = 1.5; collect(); assert.equal(attempts, 3);
     assert.equal(h.pod.alive, false); assert.equal(blocks(h), false);
@@ -57,7 +60,8 @@ for (const route of ['mining', 'physics-receipt']) test(`${route} refusal preser
 test('mining update eligibility shares the protected refusal throttle', async () => {
   const h = await released();
   try {
-    h.sim.state.player.cargo.capVolume = 0;
+    h.sim.state.player.cargo.slotCount = 1;
+    h.sim.state.player.cargo.slots = [{ commodityId: 'cmdty_ore_iron', qty: 20 }];
     h.worker.pos = {...h.pod.pos};
     let attempts = 0; h.sim.bus.on('pickup:collected', () => attempts++);
     mining.update(1/60, h.sim.state); assert.equal(attempts, 1);

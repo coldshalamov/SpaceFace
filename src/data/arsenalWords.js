@@ -11,7 +11,6 @@ import { MASS_SEED_DEF } from './massSeed.js';
 import { GYRE_SNARE } from './gyreSnare.js';
 import { BOMB_DEFS, BOMB_DRIFT } from './bombs.js';
 import { IMPULSE_CHARGES } from './impulseCharges.js';
-import { PLANET_REGION_RANK } from './planets.js';
 import { swarmCallinById } from './swarmDraft.js';
 import { pluralWord } from '../core/numberFormat.js';
 
@@ -19,7 +18,7 @@ export const finite = (v, d = 0) => (Number.isFinite(Number(v)) ? Number(v) : d)
 export const sec = (n) => `${Math.round(n * 10) / 10}s`;
 // Distances read as bare numbers with a plain word ("520 units out"), never the internal "wu"
 // shorthand — a new player cannot read it (owner 2026-10-27).
-export const wu = (n) => `${Math.round(n)} units`;
+export const wu = (n) => `${Math.round(n)} m`;
 export { pluralWord as plural };
 
 /** A payload's short label: the catalogue's `shortName`, except two retired payloads whose short name is a power's name. */
@@ -46,7 +45,7 @@ export function pullWords() {
     target: 'aim point',
     range: { shape: 'ring', radiusWu: well.radius, reachWu: well.deployRange },
     cost: null, cooldownS: well.cooldownS,
-    combos: ['Pull piles loose rocks together, then Gyre scoops the pile into one ball you can throw.'],
+    combos: ['Pull piles loose rocks together, then Gather scoops the pile into one ball you can throw.'],
     sources: { range: 'data/fields.FIELD_DEFS.well', cooldown: 'data/fields.FIELD_DEFS.well.cooldownS',
       grip: 'data/combatDefs.GRAVITY_MARK_FIELD_COUPLING', sentence: 'data/fields.FIELD_DEFS.well' },
   };
@@ -82,37 +81,22 @@ export function pinWords() {
   };
 }
 
+// R17 (2026-11-20): resolveRigTarget is 'cone' always — the Plow key never flips to the planet-band
+// ore scoop (the scoop is a labelled context-wheel slice with its own owner), so these words only
+// ever describe the clearing wedge.
 export function rigWords(target, on) {
   const cone = FIELD_DEFS.cone;
-  const skim = FIELD_DEFS.skim;
-  if (target === 'skim') {
-    return {
-      name: 'Rig', verb: on ? 'Harvesting ore' : 'Harvest ore', role: 'Harvest', glyph: 'field_skim_standard',
-      sentence: on
-        ? 'The skim scoop is open. Press to close it.'
-        : `You are in a planet band, so Rig opens the skim scoop (${wu(skim.radius)} sheet) and harvests by grazing. Open space has nothing to collect.`,
-      limits: ['Outside a planet band this same key opens the clearing cone instead. Hitch heavy mass and the scoop shrugs.'],
-      target: 'along your flight line',
-      range: { shape: 'sheet', radiusWu: skim.radius, reachWu: skim.originGap },
-      cost: null, cooldownS: 0,
-      combos: [],
-      sources: { range: 'data/fields.FIELD_DEFS.skim', target: 'systems/powerVerbs.resolveRigTarget',
-        band: `data/planets.PLANET_REGION_RANK.skim=${PLANET_REGION_RANK.skim}` },
-      other: 'cone',
-    };
-  }
   return {
-    name: 'Rig', verb: on ? 'Clearing a path' : 'Clear a path', role: 'Clear', glyph: 'field_cone_standard',
+    name: 'Plow', verb: `Wedge ${on ? 'ON' : 'OFF'}`, role: 'Clear', glyph: 'field_cone_standard',
     sentence: on
-      ? 'The clearing cone is open. Press to fold it.'
-      : `Open a forward plow (${wu(cone.radius)}, ${Math.round(cone.halfAngleRad * 2 * 180 / Math.PI)} degree wedge) that sweeps loose bodies into each other. Press again to fold it.`,
-    limits: ['In a planet band this same key opens the skim scoop instead. Strafe out of the wedge to escape it.'],
+      ? 'The clearing wedge stays on while you fly. Tap Plow again to turn it off.'
+      : 'Tap Plow once to turn on the forward wedge. It pushes loose debris out of your path.',
+    limits: [`Reaches ${wu(cone.radius)} ahead in a ${Math.round(cone.halfAngleRad * 2 * 180 / Math.PI)} degree wedge.`],
     target: 'ahead of your nose',
     range: { shape: 'wedge', radiusWu: cone.radius, reachWu: cone.originGap },
     cost: null, cooldownS: 0,
-    combos: ['Sweep a lane with the cone so loose rocks bunch up, then Pull or Gyre collects them.'],
+    combos: ['Sweep a lane with the wedge so loose rocks bunch up, then Pull or Gather collects them.'],
     sources: { range: 'data/fields.FIELD_DEFS.cone', target: 'systems/powerVerbs.resolveRigTarget' },
-    other: 'skim',
   };
 }
 
@@ -186,14 +170,14 @@ export function travelWords() {
 export function gyreWords() {
   const g = GYRE_SNARE;
   return {
-    name: 'Gyre', verb: 'Gathers rocks', role: 'Gather', glyph: 'power_gyre',
-    sentence: `Hold to gather loose rocks and wrecks (${wu(g.basinRadius)} basin, ${wu(g.mawDist)} ahead) into one growing ball. Release to throw it ahead at up to ${Math.round(g.launchSpeed)} u/s; a full-size ball leaves ${Math.round(g.launchMassPenalty * 100)}% slower.`,
+    name: 'Gather', verb: 'Gathers rocks', role: 'Gather', glyph: 'power_gyre',
+    sentence: `Hold to gather loose rocks and wrecks (${wu(g.basinRadius)} basin, ${wu(g.mawDist)} ahead) into one growing ball. Release to throw it ahead at up to ${Math.round(g.launchSpeed)} m/s; a full-size ball leaves ${Math.round(g.launchMassPenalty * 100)}% slower.`,
     limits: [`Needs ${g.capActivateMin} charge to start and drains it while held. Cargo, quest wrecks and anchored scenery are towed or skipped, never swallowed; bodies wider than ${wu(g.maxClumpRadius)} do not fit.`],
     target: 'ahead of your nose',
     range: { shape: 'basin', radiusWu: g.basinRadius, reachWu: g.mawDist },
     cost: { kind: 'energy', activate: g.capActivateMin, perSecond: g.capDrainPerS },
     cooldownS: 0,
-    combos: ['Pull piles rocks together, Gyre scoops the pile into a ball, release to throw it through the pack.'],
+    combos: ['Pull piles rocks together, Gather scoops the pile into a ball, release to throw it through the pack.'],
     sources: { range: 'data/gyreSnare.GYRE_SNARE', cost: 'data/gyreSnare.GYRE_SNARE.capActivateMin/capDrainPerS',
       sentence: 'data/gyreSnare.GYRE_SNARE' },
   };
@@ -217,8 +201,8 @@ export function cloakWords(read) {
 
 // Baselines for the verbs whose meaning depends on state (the live projection says which variant is
 // effective; a surface with no state says both).
-const BOMB_BASELINE = 'Throws a sticky charge that Shove sets off. With none aboard it uses a swarm call-in or the drift bomb the cycle chose.';
-const RIG_BASELINE = 'Opens the clearing cone in open space and the skim scoop inside a planet band. The socket names which one before you press.';
+const BOMB_BASELINE = 'Throws a sticky charge that Shove sets off. With none aboard it drops the drift bomb the cycle chose.';
+const RIG_BASELINE = 'Opens the forward clearing wedge: it pushes loose debris out of your path. The socket names the state before you press.';
 
 /**
  * One sentence for a verb with no live state — the DOM rail's bank, the Help sheet, the phone deck.

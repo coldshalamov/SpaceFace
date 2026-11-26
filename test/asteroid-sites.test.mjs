@@ -23,6 +23,8 @@ import {
 } from '../src/systems/asteroidSites.js';
 import { SITE_MACHINE_BY_ID, SITE_BALANCE, CONTACT_YIELD } from '../src/data/sites.js';
 import { COMMODITIES } from '../src/data/commodities.js';
+import { findStarterBay, miningNextStep } from '../src/ui/asteroid/progressionGuide.js';
+import { findFactoryRoute } from '../src/ui/asteroid/networkRoute.js';
 
 const { COLS, ROWS } = DRILL_CONST;
 
@@ -312,6 +314,80 @@ function openSession(h, asteroidId, cells) {
 
 const POCKET = [[14, 2], [14, 0], [14, 1], [13, 2], [15, 2], [13, 1], [15, 1], [13, 3], [14, 3]];
 
+test('factory routes connect working power and send a refinery the feedstock it is missing', () => {
+  const h = makeHarness();
+  addAsteroid(h);
+  const field = openSession(h, 42, [
+    [14, 0], [15, 0], [16, 0], [17, 0], [18, 0], [14, 1], [15, 1], [16, 1], [17, 1], [18, 1],
+  ]);
+  field[16][2] = { ...field[16][2], type: 'vein', ore: 'cmdty_ore_iron', yieldU: 8 };
+  const install = (defId, col) => {
+    const result = h.sys.installMachine({ asteroidId: 42, defId, col, row: 1 });
+    assert.ok(result.ok, result.reason);
+    return result;
+  };
+  const { siteId } = install('sm_massline_core', 14);
+  const { machineId: extractor } = install('sm_extractor', 16);
+  const { machineId: refinery } = install('sm_refinery', 18);
+  const site = h.sys.getSite(siteId);
+  const tick = () => h.sys._tickSite(site, 1, h.state, { workbench: true });
+  const trace = (id, expected) => {
+    const projection = h.sys.projection(siteId);
+    const step = miningNextStep({ drill: h.state.drill, site, projection });
+    assert.equal(step.id, id);
+    const cells = findFactoryRoute(field, projection, step.route);
+    assert.deepEqual(cells, expected);
+    for (const { col, row } of cells) assert.ok(h.sys.setOverlay(siteId, step.route.kind, col, row, true).ok);
+    tick();
+  };
+  tick();
+  trace('power', [{ col: 15, row: 1 }]);
+  trace('power', [{ col: 17, row: 1 }]);
+  const rt = h.sys._runtime(site);
+  const refineryStore = rt.stores[rt.laneCompByMachine[refinery]];
+  refineryStore.cmdty_silicate = 4;
+  const alternate = miningNextStep({ drill: h.state.drill, site, projection: h.sys.projection(siteId) });
+  assert.equal(alternate.id, 'recipe');
+  assert.match(alternate.detail, /Fuse Silica/);
+  delete refineryStore.cmdty_silicate;
+  rt.stores[rt.laneCompByMachine[extractor]].cmdty_ore_iron = 8;
+  trace('feed', [{ col: 17, row: 1 }]);
+  const ref = h.sys.projection(siteId).machines.find(m => m.id === refinery);
+  assert.ok(ref.status.ratePerMin.cmdty_refined_metals > 0, 'traced feed becomes real refinery output');
+});
+
+test('starter bays keep the shaft open and let an extractor use the Core directly', () => {
+  const h = makeHarness();
+  addAsteroid(h);
+  const cells = [[14, 2], [14, 1], [14, 0], [15, 2], [15, 1], [15, 0]];
+  openSession(h, 42, cells);
+  const drill = h.state.drill;
+  drill.field = makeField();
+  const bypassWall = drill.field[15][1];
+  for (const [col, row] of cells) drill.field[col][row] = EMPTY();
+  const canInstall = request => canInstallAsteroidSiteFromState(h.state, request);
+  const core = { asteroidId: 42, defId: 'sm_massline_core', col: 14, row: 1, preview: true };
+  assert.equal(canInstall(core).sealsReturn, false, 'the two-wide chamber has a bypass');
+  drill.field[15][1] = bypassWall;
+  assert.equal(canInstall(core).sealsReturn, true, 'a machine in the single-file shaft would trap the rover');
+  assert.equal(h.sys.canInstall(core).sealsReturn, true, 'the owner and mirror agree');
+  assert.deepEqual(findStarterBay({ drill, defId: core.defId, canInstall }), { col: 15, row: 2 });
+  const stake = h.sys.installMachine({ ...core, col: 15, row: 2 });
+  assert.ok(stake.ok);
+  const site = h.sys.getSite(stake.siteId);
+
+  // The rover stands in the shaft, and has excavated a new bay next to the Core since staking.
+  drill.field[15][1] = EMPTY();
+  h.sys._markDirty(site.id, { field: true });
+  const defId = 'sm_extractor';
+  const bay = findStarterBay({ drill, site, defId, canInstall });
+  assert.deepEqual(bay, { col: 15, row: 1 });
+  const producer = h.sys.installMachine({ asteroidId: 42, defId, ...bay });
+  assert.ok(producer.ok);
+  const machine = h.sys.projection(site.id).machines.find(row => row.defId === defId);
+  assert.ok(machine.powerRatio > 0 && machine.laneKey != null);
+});
+
 test('install law: hollow + rover adjacency + materials; core anchors and freezes the seed', () => {
   const h = makeHarness();
   addAsteroid(h);
@@ -462,16 +538,15 @@ test('§9 milestone: extract → refine → fabricate → launch → deliver thr
   assert.ok(site.fleet.podsReady + site.fleet.inFlight.length + site.fleet.delivered + site.fleet.lost >= 1, 'fabricator built pods');
   const delivered = h.bus.events.filter((e) => e.name === 'site:courierDelivered');
   const lost = h.bus.events.filter((e) => e.name === 'site:courierLost');
+  assert.ok(delivered.length > 0, 'the working starter chain pays out on delivery');
   assert.equal(site.fleet.delivered, delivered.length);
   assert.equal(site.fleet.lost, lost.length);
-  if (delivered.length) {
-    assert.ok(h.passiveCalls.length >= delivered.length, 'every delivery routed through creditPassive');
-    assert.ok(h.passiveCalls.every((c) => c.source === 'site:courier'));
-    assert.equal(site.stats.creditedCr,
-      h.passiveCalls.reduce((sum, call) => sum + call.credited, 0),
-      'site receipts must record the numeric amount actually credited by automation');
-    assert.ok(site.stats.creditedCr <= site.stats.grossCr, 'cap can only shrink gross');
-  }
+  assert.ok(h.passiveCalls.length >= delivered.length, 'every delivery routed through creditPassive');
+  assert.ok(h.passiveCalls.every((c) => c.source === 'site:courier'));
+  assert.equal(site.stats.creditedCr,
+    h.passiveCalls.reduce((sum, call) => sum + call.credited, 0),
+    'site receipts must record the numeric amount actually credited by automation');
+  assert.ok(site.stats.creditedCr > 0 && site.stats.creditedCr <= site.stats.grossCr, 'delivery earns credits within the cap');
   // Courier visuals spawned for in-sector launches.
   assert.ok(h.spawned.some((e) => e.data && e.data.kind === 'site_courier'));
 });
@@ -614,7 +689,7 @@ test('paused workbench runs only the active factory and preserves cadence/jobs t
   Object.assign(rt.stores[rt.laneCompByMachine[fab.id]], {
     cmdty_refined_metals: 20, cmdty_purified_silica: 20, cmdty_electronics: 20,
   });
-  site.exportBuffer.cmdty_silicate = 12;
+  site.exportBuffer.cmdty_silicate = SITE_BALANCE.podCapacity - 1e-10;
   h.state.timeScale = 1;
   assert.equal(h.sys.tickWorkbench(0.25, siteId), false, 'global sim owns unpaused time');
   h.state.timeScale = 0;
@@ -622,6 +697,10 @@ test('paused workbench runs only the active factory and preserves cadence/jobs t
   assert.equal(site.productionStep, 1);
   assert.equal(site.workbenchRemainderS, 0.5);
   assert.equal(site.fleet.launches, 0, 'workbench never launches a world courier');
+  const projection = h.sys.projection(siteId);
+  const guide = miningNextStep({ drill: h.state.drill, site, projection });
+  assert.equal(guide.id, 'launch-pod');
+  assert.equal(projection.courier.readyUnits, SITE_BALANCE.podCapacity);
   assert.equal(h.state.simTime, 0);
   const saved = h.sys.serialize();
   h.sys.deserialize(JSON.parse(JSON.stringify(saved)));
@@ -629,7 +708,10 @@ test('paused workbench runs only the active factory and preserves cadence/jobs t
   assert.deepEqual(restored.machines.find((m) => m.id === ids.fab).job,
     saved.byId[siteId].machines.find((m) => m.id === ids.fab).job);
   assert.equal(h.sys.tickWorkbench(0.25, siteId), false);
-  assert.equal(h.sys.tickWorkbench(0.25, siteId), true);
+  const receipt = h.sys.tickWorkbench(0.25, siteId, true);
+  assert.equal(receipt.productionStep, 2);
+  assert.ok(receipt.byMachine[ids.extractor]);
+  assert.deepEqual(receipt.byMachine[ids.fab], h.sys.projection(siteId).machines.find(m => m.id === ids.fab).status);
   assert.equal(restored.productionStep, 2);
   assert.equal(restored.fleet.launches, 0);
   h.sys.update(1, h.state);
@@ -641,4 +723,5 @@ test('paused workbench runs only the active factory and preserves cadence/jobs t
   h.sys.update(1, h.state);
   assert.equal(restored.productionStep, 3);
   assert.ok(restored.fleet.launches > 0, 'normal simulation resumes courier routes');
+  assert.equal(restored.fleet.inFlight[0]?.cargo.cmdty_silicate, SITE_BALANCE.podCapacity);
 });

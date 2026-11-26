@@ -218,6 +218,49 @@ test('worker load keeps only validated supplied fallback keys beside the local s
   assert.doesNotMatch(wire, /must-not-forward/);
 });
 
+test('worker Circuits storage keeps a prior best at boot and the newer result across Adventure saves', async (t) => {
+  const storage = memoryStorage();
+  const recordsKey = 'spaceface.raceRecords.v2';
+  const ghostsKey = 'spaceface.racingGhosts.v1';
+  const course = 'course_orchard@1:practice_level_textile_outbound:1L:fit5-abc';
+  const priorBest = JSON.stringify({ [course]: 51.25 });
+  const betterFinish = JSON.stringify({ [course]: 42.75 });
+  const ghosts = JSON.stringify({ version: 1, tapes: [] });
+  storage.setItem(recordsKey, priorBest);
+  storage.setItem(ghostsKey, ghosts);
+  storage.setItem('spaceface.unrelated-test', 'do not send');
+  t.after(installStorage(storage));
+
+  const state = { entities: new Map(), entityList: [], settings: {}, meta: { seed: 4242 },
+    tick: 0, simTime: 0, accumulator: 0, timeScale: 0, ui: { screenStack: [] } };
+  const bus = createBus(), posts = [];
+  let receive;
+  const lane = createSimLaneRuntime({ state, helpers: {}, registry: {}, bus,
+    flags: { lane: 'worker', sab: false, warnings: [] }, clockMode: 'worker-local',
+    channelFactory: () => ({ post: message => posts.push(message),
+      onMessage: handler => { receive = handler; }, terminate() {} }),
+  });
+  t.after(() => lane.close());
+  const init = posts[0];
+  receive({ kind: 'ready', seq: init.seq, stateTick: 0, domainUpdates: [] });
+  await lane.readyPromise;
+  assert.deepEqual(init.initialRacingStorage, { [recordsKey]: priorBest, [ghostsKey]: ghosts });
+  assert.equal(init.initialSharedStoreKeys[recordsKey], undefined, 'racing stays local to the browser');
+
+  receive({ kind: 'clockTick', stateTick: 1, simTime: 1 / 60, domainUpdates: [],
+    storageOps: [{ op: 'set', key: recordsKey, value: betterFinish }] });
+  for (const [i, event] of ['game:load', 'game:save'].entries()) {
+    bus.emit(event, { slot: 'quick' });
+    const post = posts.findLast(message => message.kind === 'clockCommand');
+    const snapshot = post?.commands.find(command => command.p?.emit === event)?.p?.payload?.__laneStorage;
+    assert.equal(snapshot?.[recordsKey], betterFinish, `${event} stages the better finish`);
+    assert.equal(snapshot?.[ghostsKey], ghosts, `${event} stages the ghost store`);
+    assert.equal(snapshot['spaceface.unrelated-test'], undefined);
+    receive({ kind: 'clockTick', commandSequence: post.commandSequence, clockSequence: i + 2,
+      stateTick: i + 2, simTime: (i + 2) / 60, domainUpdates: [] });
+  }
+});
+
 test('newer local or authoritative shared bytes retire a stale failed worker relay', async () => {
   const captureLoad = async ({ localValue = null, authoritativeValue = null }) => {
     const storage = memoryStorage();
@@ -505,6 +548,12 @@ test('presentation registry facades guard generations and unwrap native asteroid
   const commands = [];
   const restoreSink = installSimCommandSink((descriptor) => {
     commands.push(descriptor);
+    if (descriptor.args?.method === 'tickWorkbench') {
+      return Promise.resolve({ ok: true, result: { ok: true, result: {
+        productionStep: site.productionStep,
+        byMachine: { bridge_extractor: { state: 'running', limit: null, ratePerMin: { cmdty_silicate: 2 } } },
+      } } });
+    }
     if (descriptor.args && descriptor.args.method === 'setExportFlag') {
       const native = descriptor.args.args[2] === false
         ? { ok: true, result: { ok: true, reason: null } }
@@ -522,6 +571,15 @@ test('presentation registry facades guard generations and unwrap native asteroid
     });
     const denied = await sites.setExportFlag(site.id, 'cmdty_regocrete', true);
     assert.deepEqual(denied, { ok: false, reason: 'insufficient-stock' }, 'native denial survives the bridge');
+    state.drill = { active: true, asteroidId: 17, requestId: 'workbench-1' };
+    site.machines.push({ id: 'bridge_extractor', defId: 'sm_extractor', col: 14, row: 1 });
+    site.productionStep = 3;
+    assert.equal(await sites.tickWorkbench(0.25, site.id), true);
+    assert.deepEqual(commands.at(-1).args.args, [0.25, site.id, true]);
+    const readStatus = () => registry.get('asteroidSites').projection(site.id).machines[0].status;
+    assert.equal(readStatus().ratePerMin.cmdty_silicate, 2, 'the UI reads the worker’s settled production');
+    state.drill.requestId = 'workbench-2';
+    assert.equal(readStatus().state, 'idle', 'a new drill session drops the previous report');
   } finally {
     restoreSink();
   }

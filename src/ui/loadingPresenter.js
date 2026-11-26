@@ -5,18 +5,26 @@ import { observeBootWork, createBootWorkAccumulator } from '../core/bootWork.js'
 import { dataState } from './uiPrimitives.js';
 import { NEW_GAME } from '../data/newGameDefaults.js';
 import { SWARM_RULESET } from '../data/swarmMode.js';
+import { COMBAT_LAB_ARENAS } from '../data/combatLabSetups.js';
+import { MOVE_CARD_ACTIONS, compactKeys } from '../data/inputContexts.js';
+import { resolveActionLabel } from '../systems/input.js';
+import { getPromptDevice, getGamepadGlyphSet } from './bindings.js';
+import { GAMEPAD_VERB_ALIASES, gamepadButtonLabels, resolveGamepadBindings } from '../systems/gamepad.js';
 
 const DEFAULT_STAGE = Object.freeze({ id: 'restoring-save', progress: .05,
   label: 'Restoring flight state', detail: 'Rebuilding the current sector and critical visuals' });
 const NO_ART = { updateProgress() {}, start() {}, stop() {}, destroy() {} };
-const NOOP = { show() {}, hide() {}, destroy() {} };
-// Row 473 — the loading shell names where the player is going. Boot stages are not a destination;
-// they are the command deck coming up.
-const BOOT_DESTINATION = 'Command deck';
+const NOOP = { show() {}, hide() {}, reviewOpeningArmory: () => Promise.resolve(false), destroy() {} };
+// Row 473 — the loading shell names where the player is going. Boot stages are not a destination:
+// the cold boot is headed for the title, which the wordmark already names, so it prints nothing
+// ("Command deck" sat jammed under the wordmark on the desktop build and meant nothing to a stranger).
+const BOOT_DESTINATION = '';
 // A sector we cannot name still gets friendly words rather than a raw id.
 const UNKNOWN_DESTINATION = 'Uncharted destination';
 // The ordinary Adventure route before its sector is named: the route is known, the place is not yet.
 const ADVENTURE_DESTINATION = 'Adventure';
+// A Continue before its save names the sector: the verb the player pressed, never 'Restoring destination'.
+const RESTORE_DESTINATION = 'Continue';
 // An Adventure embark carries the pilot's picks (name / hull / starter / difficulty). A bare
 // payload is a toy or sandbox launch with no named route, so it gets the generic slate instead of
 // borrowing the Adventure opening's sector name.
@@ -36,6 +44,67 @@ const ROUTE_DISPLAY_NAMES = Object.freeze({ Crucible: 'Swarm' });
 // two different runs, so the slate names the one launching. 'scored' is the Gauntlet's internal id
 // and stays internal exactly the way "Crucible" does.
 const CRUCIBLE_RULESET_DISPLAY_NAMES = Object.freeze({ [SWARM_RULESET]: 'Swarm', scored: 'Gauntlet' });
+// LOADING-02 (design/overhaul/08_INTERFACE.md §3, ledger A6): a launch shows a real picture of where
+// the player is going, a progress line and one controls card — never the boot film's wireframe sweep.
+// The cold boot keeps its authored film; every New Game / Continue / Swarm launch gets its place.
+const assetUrl = (rel) => {
+  try { return new URL('../../' + rel, import.meta.url).href; } catch { return rel; }
+};
+export const LOADING_SCENE_ART = Object.freeze({
+  swarm: 'assets/ui/kit/assets/tiles/tile.arena.ricochet-foundry@2x.png',
+  adventure: 'assets/ui/generated/stations/station_helios.webp',
+  space: 'assets/ui/backdrops/backdrop-space.jpg',
+});
+// Each Swarm room's own picture (the same renders the Swarm setup screen shows).
+const SWARM_ARENA_ART = Object.freeze({
+  helios_core: 'assets/ui/kit/assets/tiles/tile.arena.ricochet-foundry@2x.png',
+  lagrange_crucible: 'assets/ui/kit/assets/tiles/tile.arena.lagrange-crucible@2x.png',
+  cinder_sluice: 'assets/ui/kit/assets/tiles/tile.arena.cinder-sluice@2x.png',
+  cryo_drift: 'assets/ui/kit/assets/tiles/tile.arena.cryo-drift@2x.png',
+  storm_lattice: 'assets/ui/kit/assets/tiles/tile.arena.storm-lattice@2x.png',
+});
+export const LOADING_SCENE_LINE = Object.freeze({
+  // The launch's own words (setScene) win over these kind defaults; the swarm entry is the
+  // fallback for a launch that names no room (the picture falls back to the Foundry with it).
+  swarm: 'Round 1 · Madame Kiln’s Foundry',
+  adventure: 'The Helios harbour',
+  restore: 'Back where you left off',
+  space: '',
+});
+/** The caption follows the launch, the way the picture already does: a Swarm run names the room it
+ *  is entering, and a Gauntlet names itself — never a Foundry round. The default room keeps its
+ *  authored fiction name (the title's Swarm door already says it); every other room says the arena
+ *  row's own display name. An unknown room falls back to the Foundry pair with the picture. */
+const SWARM_ARENA_LINE_NAMES = Object.freeze({ helios_core: 'Madame Kiln’s Foundry' });
+export function swarmSceneLine(ruleset, arenaId) {
+  if (ruleset === 'scored') return CRUCIBLE_RULESET_DISPLAY_NAMES.scored;
+  const named = SWARM_ARENA_LINE_NAMES[arenaId] || (COMBAT_LAB_ARENAS.find((entry) => entry.id === arenaId) || {}).label;
+  return `Round 1 · ${named || SWARM_ARENA_LINE_NAMES.helios_core}`;
+}
+/** The one controls card: the five verbs a first minute needs. The keys column is the shipped
+ *  default; the painted card resolves every row through the live binding map (Help's own rule), so
+ *  a rebind never reads a key the player no longer has, and a pad player reads their own buttons. */
+export const LOADING_CONTROLS = Object.freeze([
+  Object.freeze(['W A S D', 'Fly', 'move']),
+  Object.freeze(['Mouse', 'Aim', null]),
+  Object.freeze(['LMB', 'Fire', 'fire']),
+  Object.freeze(['F / RMB', 'Line: hook, swing, throw', 'tether']),
+  Object.freeze(['Shift', 'Boost', 'boost']),
+]);
+/** Split a row's keys so a spaced slash is a separator, never a chip: 'F / RMB' paints two keys
+ *  with a plain '/' between them, matching Help's card. 'W A S D' still paints four chips, and a
+ *  key's own glyph pair from the live Fly row ('W/↑ A/← S/↓ D/→') stays one chip per direction. */
+export function loadingKeyCapTokens(keys) {
+  const out = [];
+  const chunks = String(keys || '').split(/\s+\/\s+/);
+  for (let i = 0; i < chunks.length; i++) {
+    if (i) out.push({ kind: 'sep', text: '/' });
+    for (const cap of chunks[i].trim().split(/\s+/).filter(Boolean)) {
+      out.push({ kind: 'kbd', text: cap });
+    }
+  }
+  return out;
+}
 // Longest the flight reveal waits on the opening first draw before lifting the veil anyway.
 export const FIRST_DRAW_REVEAL_CAP_MS = 20000;
 export const FIRST_DRAW_STAGE_LABEL_MS = 3000;
@@ -72,6 +141,30 @@ export function plainStageLabel(stage) {
   if (PLAIN_STAGE_LABELS[id]) return PLAIN_STAGE_LABELS[id];
   return id.startsWith('boot-') ? 'Getting ready' : 'Getting the ship ready';
 }
+// Counted sub-work in player words: the detail line names the pass running and how much of it is
+// done, so a long gate reads as progress rather than a hang (packet DEMO-LOAD-1). cook-step
+// receipts carry no total — they arrive as warm-up milestones instead.
+const WORK_KIND_WORDS = Object.freeze({
+  geometry: 'Placing the scenery',
+  textures: 'Uploading the textures',
+  programs: 'Compiling the shaders',
+  'first-draws': 'Warming the first look',
+  meshes: 'Building the arena',
+});
+export function plainWorkDetail(receipt, work) {
+  if (!receipt) return '';
+  if (receipt.kind === 'cook-step') {
+    const steps = Math.max(0, Number(work && work.milestones) || 0);
+    return steps > 0 ? `Warming up — step ${steps} done` : '';
+  }
+  const words = WORK_KIND_WORDS[receipt.kind] || 'Preparing';
+  const done = Number(receipt.completed);
+  const total = Number(receipt.total);
+  if (Number.isFinite(done) && Number.isFinite(total) && total > 0) {
+    return `${words} — ${done} of ${total}`;
+  }
+  return words;
+}
 
 export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600 } = {}) {
   if (!document || !bus || typeof bus.on !== 'function') return NOOP;
@@ -95,9 +188,10 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
   let terminalArt = null, retainWorkerArt = false, retainedCanvas = null;
   let retainedPointerMove = null, needsPointerBridge = false;
   let hideTimer = null, activeStage = null, revealRaf = null, revealPollTimer = null, revealDeadlineTimer = null, revealCapTimer = null, revealStageTimer = null;
-  let workTimer = null, pendingWork = null, accumulator = null, disposed = false;
+  let workTimer = null, pendingWork = null, pendingWorkReceipt = null, accumulator = null, disposed = false;
   let startupFailure = null, failurePane = null;
   let newGamePending = false;
+  let openingArmoryReview = null;
   const lockup = overlay.querySelector?.('.boot-lockup') || null;
   const priorLockupDisplay = lockup?.style?.display || '';
   let session = 0;
@@ -113,7 +207,152 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
   let loadPending = false;
   let restoredNamed = false;
   let loadingSlot = null;
+  // LOADING-02: the place this launch is going ('swarm' | 'adventure' | 'restore' | 'space'), its
+  // picture, the launch's own caption, and the nodes that show them. null = the cold boot (the
+  // authored film plays).
+  let scene = null;
+  let sceneArt = '';
+  let sceneLine = '';
+  let sceneNodes = null;
   const visible = () => overlay.style.display !== 'none' && !overlay.classList.contains('hidden');
+
+  /** The picture, its shade and the controls card, built once behind the lockup. */
+  function ensureSceneNodes() {
+    if (sceneNodes) return sceneNodes;
+    if (!document || typeof document.createElement !== 'function') return null;
+    // Decoration: a shim document without full DOM methods simply gets no picture.
+    try { return buildSceneNodes(); } catch (_) { return null; }
+  }
+  const make = (tag, cls, text) => {
+    const node = document.createElement(tag);
+    if (cls) node.className = cls;
+    if (text != null) node.textContent = text;
+    return node;
+  };
+  const add = (parent, ...kids) => { for (const kid of kids) parent.appendChild(kid); return parent; };
+  function buildSceneNodes() {
+    const root = make('div', 'boot-dest');
+    root.setAttribute('aria-hidden', 'true');
+    const art = make('img', 'boot-dest__art');
+    art.alt = '';
+    art.decoding = 'async';
+    const shade = make('div', 'boot-dest__shade');
+    const keys = make('aside', 'boot-dest__keys');
+    keys.appendChild(make('p', 'boot-dest__keys-title', 'Controls'));
+    const list = make('ul', 'boot-dest__keys-list');
+    keys.appendChild(list);
+    add(root, art, shade, keys);
+    if (typeof overlay.insertBefore === 'function') overlay.insertBefore(root, overlay.firstChild || null);
+    else overlay.appendChild?.(root);
+    const line = make('span', 'boot-dest__line');
+    line.setAttribute('data-loading-scene-line', '');
+    const host = lockup || overlay;
+    const dest = destinationNode();
+    if (dest && dest.parentNode === host && typeof host.insertBefore === 'function') host.insertBefore(line, dest.nextSibling);
+    else host?.appendChild?.(line);
+    sceneNodes = { root, art, line, keys, keysList: list, keysPainted: null };
+    return sceneNodes;
+  }
+  /** The five rows with the player's live keys — Help's own rules, one owner per label: the Fly row
+   *  is the resolved move set (single glyphs run together, exactly the Help card's Move row), Fire
+   *  and Boost are the live labels, and the Line prints its rebound key beside the permanent RMB
+   *  seat. A pad player reads the pad's own buttons (sticks fly and aim), falling back to the live
+   *  keyboard label when their map leaves a verb without one; a row nothing can express is dropped
+   *  rather than taught with a phantom key — the same rule as the Help card. */
+  function loadingControlRows() {
+    if (!state) return LOADING_CONTROLS.map(([keys, verb]) => [keys, verb]);
+    const padMap = getPromptDevice() === 'gamepad' ? resolveGamepadBindings(state.settings) : null;
+    const rows = [];
+    for (const [stock, verb, action] of LOADING_CONTROLS) {
+      let keys = '';
+      // The labels resolve straight from the binding map (input.js keeps them context-ungated:
+      // "labels stay honest in every context"), so the card shows the keys the player actually
+      // has whatever place they are restoring into.
+      if (action === 'move') {
+        keys = compactKeys(MOVE_CARD_ACTIONS.map((a) => resolveActionLabel(state, a)));
+      } else if (action === 'tether') {
+        const key = resolveActionLabel(state, 'tether');
+        keys = key && key !== 'RMB' ? `${key} / RMB` : key || stock;
+      } else if (action != null) {
+        keys = resolveActionLabel(state, action) || stock;
+      } else {
+        keys = stock;
+      }
+      // When the pad is the live device, the same rows name the pad's own grammar — sticks fly and
+      // aim, and a verb with a button prints it. A verb the player's map left without one keeps
+      // the keyboard label rather than print a pad lie (bindings.js's own fallback rule).
+      if (padMap) {
+        if (action === 'move') keys = 'L-stick';
+        else if (action == null) keys = 'R-stick';
+        else {
+          const pad = gamepadButtonLabels(GAMEPAD_VERB_ALIASES[action] || action, padMap, { glyphSet: getGamepadGlyphSet() });
+          if (pad.length) keys = pad.join(' / ');
+        }
+      }
+      if (keys) rows.push([keys, verb]);
+    }
+    return rows;
+  }
+  /** Repaint the controls card's rows when the live labels move (a rebind between runs, a pad
+   *  taking over). Same signature, same rows: no work on the no-op pass. */
+  function paintControlsCard() {
+    const nodes = ensureSceneNodes();
+    if (!nodes || !nodes.keysList) return;
+    const rows = loadingControlRows();
+    const painted = rows.map(([keys]) => keys).join('|');
+    if (nodes.keysPainted === painted) return;
+    nodes.keysPainted = painted;
+    const list = nodes.keysList;
+    while (list.firstChild) list.removeChild(list.firstChild);
+    for (const [key, verb] of rows) {
+      const row = make('li', 'boot-dest__key');
+      const caps = make('span', 'boot-dest__caps');
+      for (const token of loadingKeyCapTokens(key)) {
+        if (token.kind === 'sep') caps.appendChild(make('span', 'boot-dest__caps-sep', token.text));
+        else caps.appendChild(make('kbd', '', token.text));
+      }
+      add(row, caps, make('span', 'boot-dest__verb', verb));
+      list.appendChild(row);
+    }
+  }
+  /** Latch where this launch is going. The picture starts decoding at once, before the veil needs it;
+   *  `line` is this launch's own caption and overrides the kind's default words. */
+  function setScene(kind, artRel, line) {
+    scene = kind || null;
+    sceneArt = scene ? assetUrl(artRel || LOADING_SCENE_ART[scene === 'restore' ? 'adventure' : scene] || LOADING_SCENE_ART.space) : '';
+    sceneLine = scene && typeof line === 'string' && line ? line : '';
+    if (scene) paintScene();
+  }
+  function paintScene() {
+    const nodes = ensureSceneNodes();
+    if (!nodes) return;
+    if (sceneArt && nodes.art.getAttribute?.('src') !== sceneArt) {
+      nodes.art.classList?.remove('is-ready');
+      nodes.art.src = sceneArt;
+      const ready = () => nodes.art.classList?.add('is-ready');
+      if (typeof nodes.art.decode === 'function') nodes.art.decode().then(ready, ready);
+      else ready();
+    }
+    const words = sceneLine || LOADING_SCENE_LINE[scene] || '';
+    if (nodes.line.textContent !== words) nodes.line.textContent = words;
+    if (scene) paintControlsCard();
+  }
+  /** Show the place (a launch) or give the overlay back to the boot film (null). */
+  function applyScene(on) {
+    if (on && scene) {
+      paintScene();
+      if (overlay.dataset.loadingScene !== scene) overlay.dataset.loadingScene = scene;
+    } else if (overlay.dataset && overlay.dataset.loadingScene != null) {
+      delete overlay.dataset.loadingScene;
+    }
+  }
+  // Both pictures are warm in the cache well before a door is pressed.
+  host.setTimeout?.(() => {
+    if (disposed || typeof host.Image !== 'function') return;
+    for (const rel of [LOADING_SCENE_ART.swarm, LOADING_SCENE_ART.adventure]) {
+      try { const warm = new host.Image(); warm.decoding = 'async'; warm.src = assetUrl(rel); } catch (_) { /* decoration */ }
+    }
+  }, 3000);
 
   /** The one destination span, found in the authored lockup or created beside its label. Reuses the
    *  shell's own type (`.boot-detail`); no inline layout and no new stylesheet. */
@@ -186,6 +425,8 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
     restoredNamed = false;
     loadingSlot = null;
     paintDestination();
+    scene = null; sceneArt = ''; sceneLine = '';
+    applyScene(false);
   }
   /** An Adventure embark names the pilot's picks; a bare payload is a toy/sandbox launch. */
   function looksLikeAdventureEmbark(opts) {
@@ -209,20 +450,30 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
       const rulesetName = mark === 'crucibleLaunch' && setup
         ? CRUCIBLE_RULESET_DISPLAY_NAMES[setup.survivalRuleset] || null : null;
       setDestination(routeName, rulesetName || routeName);
+      if (mark === 'crucibleLaunch') {
+        const arenaId = setup && setup.survivalSetup && setup.survivalSetup.arenaId;
+        // The caption follows the launch exactly like the picture: a Swarm run names the room it
+        // is entering, a Gauntlet names itself — the slate must never promise a Foundry round to a
+        // run that happens somewhere (or as something) else.
+        setScene('swarm', SWARM_ARENA_ART[arenaId] || LOADING_SCENE_ART.swarm,
+          swarmSceneLine(setup && setup.survivalRuleset, arenaId));
+      } else setScene('space');
       return;
     }
     // A plain Sandbox/toy launch (pendingConfig without a route mark) rides game:new with no
     // embark picks: it is not the Adventure opening and not one of the named modes, so it reads
     // the friendly generic slate.
-    if (!looksLikeAdventureEmbark(opts)) { setDestination(null, UNKNOWN_DESTINATION); return; }
+    if (!looksLikeAdventureEmbark(opts)) { setDestination(null, UNKNOWN_DESTINATION); setScene('space'); return; }
     refreshOrdinaryDestination();
+    setScene('adventure');
   }
   function beginRestore(payload = {}) {
     ordinarySectorName = '';
     ordinarySectorUnnamed = false;
     loadPending = true;
     loadingSlot = payload && payload.slot != null ? String(payload.slot) : null;
-    setDestination('restore', 'Restoring destination');
+    setDestination('restore', RESTORE_DESTINATION);
+    setScene('restore');
   }
   function nameRestore(payload = {}) {
     // Correlate to the most recent game:load: the receipt carries no generation, so the slot is the
@@ -232,7 +483,7 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
     if (loadingSlot != null && slot != null && slot !== loadingSlot) return;
     loadPending = false;
     const name = sectorNameFromEnvelope(payload);
-    setDestination('restore', name ? `Continue · ${name}` : 'Restoring destination');
+    setDestination('restore', name ? `Continue · ${name}` : RESTORE_DESTINATION);
     restoredNamed = true;
   }
   /** game:scenePrepared and loading-time sector:enter refresh ONLY the ordinary Adventure slate. */
@@ -289,7 +540,7 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
   }
   function clearWork() {
     if (workTimer !== null) clearTimeout(workTimer);
-    workTimer = null; pendingWork = null;
+    workTimer = null; pendingWork = null; pendingWorkReceipt = null;
   }
   function cancelRevealWait() {
     if (revealRaf !== null) cancelRaf?.(revealRaf);
@@ -317,6 +568,7 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
     const work = accumulator.accept(receipt);
     if (!work) return;
     pendingWork = work;
+    pendingWorkReceipt = receipt;
     if (workTimer !== null) return;
     const ownerSession = session;
     // Coalesce receipts, not progress animation: 100 texture completions do not post 100 UI writes.
@@ -324,9 +576,11 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
       workTimer = null;
       if (ownerSession !== session || !visible() || !pendingWork || disposed) return;
       const current = pendingWork; pendingWork = null;
+      const latest = pendingWorkReceipt; pendingWorkReceipt = null;
       ring?.report({ ...activeStage, progress: current.progress });
-      if (detail && current.total > 0) {
-        detail.textContent = ''; // no resource counts on screen (doc 20)
+      if (detail && (current.total > 0 || current.milestones > 0)) {
+        const words = plainWorkDetail(latest, current);
+        if (words && detail.textContent !== words) detail.textContent = words;
       }
     }, 80);
   });
@@ -348,18 +602,30 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
     overlay.style.display = 'flex'; overlay.classList.remove('hidden');
     overlay.setAttribute('aria-busy', 'true'); overlay.dataset.loadingStage = String(stage.id || 'loading');
     if (label) label.textContent = plainStageLabel(stage);
-    if (detail) detail.textContent = '';
+    // Stage detail is authored plain language ('3 still staging'); show it — the gate pulse's
+    // heartbeat re-emits the same stage with new words while a long gate runs.
+    if (detail) detail.textContent = typeof stage.detail === 'string' ? stage.detail : '';
     // Row 473: the initial boot stages are the command deck coming up, not a place in the world.
     // The discriminator is the same one the mode:changed handler uses for boot stages.
-    if (String(stage.id || '').startsWith('boot-')) {
+    const bootStage = String(stage.id || '').startsWith('boot-');
+    if (bootStage) {
       ordinarySectorName = '';
       ordinarySectorUnnamed = false;
       setDestination(null, BOOT_DESTINATION);
+      scene = null; sceneArt = ''; sceneLine = '';
     }
+    // LOADING-02: a launch with a known place shows it; the boot film never plays under it.
+    const placeShown = !bootStage && !!scene;
+    applyScene(placeShown);
     ring?.report(stage, { reset: fresh }); ring?.start();
     if (!ring || !raf) {
       const amount = Math.max(0, Math.min(.997, Number(stage.progress) || 0));
-      paint(amount, `${(Math.floor(amount * 1000) / 10).toFixed(1)}%`);
+      paint(amount, `${Math.min(99, Math.floor(amount * 100))}%`);
+    }
+    if (placeShown) {
+      // The film stays paused under a place; its owner is kept for the next cold boot.
+      if (terminalArt) { terminalArt.stop(); detachPointer(); }
+      return;
     }
     const needsStart = wasHidden || !terminalArt;
     const art = artwork(); if (needsStart) art.start(); attachPointer();
@@ -431,6 +697,54 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
     const count = state?.render?.renderer?.info?.render?.frame;
     return Number.isFinite(count) ? count : null;
   };
+
+  function openingArmoryPresented() {
+    const run = state?.run;
+    if (destinationRoute !== 'Crucible' || run?.kind !== 'survival'
+        || run.ruleset !== SWARM_RULESET || run.phase !== 'draft') return false;
+    const startWave = Number.isInteger(run.telemetry?.startWave) ? run.telemetry.startWave : 1;
+    if (run.wave !== startWave - 1) return false;
+    const dialog = document.querySelector?.(
+      '#screens > [data-screen="crucibleDraft"][aria-modal="true"][data-k-ready="1"].sf-crucible-armory',
+    );
+    return !!dialog?.getClientRects?.().length;
+  }
+
+  function finishOpeningArmoryReview(value) {
+    const review = openingArmoryReview;
+    if (!review) return;
+    openingArmoryReview = null;
+    clearTimeout(review.mountTimer);
+    review.resolve(value);
+  }
+
+  function reviewOpeningArmory({ wave, isCurrent }) {
+    if (disposed || !isCurrent() || state?.mode !== 'loading') return Promise.resolve(false);
+    finishOpeningArmoryReview(false);
+    return new Promise((resolve) => {
+      const review = { wave, isCurrent, resolve, mounted: false, mountTimer: null };
+      openingArmoryReview = review;
+      const deadline = now() + FIRST_DRAW_REVEAL_CAP_MS;
+      const checkMount = () => {
+        if (openingArmoryReview !== review) return;
+        if (!isCurrent() || state?.mode !== 'loading') { finishOpeningArmoryReview(false); return; }
+        if (openingArmoryPresented()) {
+          review.mounted = true;
+          if (state.render) state.render.veilLiftReason = 'opening-armory';
+          hide({ completed: false });
+        } else if (now() >= deadline) {
+          finishOpeningArmoryReview(false);
+        } else {
+          review.mountTimer = setTimeout(checkMount, 50);
+        }
+      };
+      // The boot reply settles the shelf before this call. Re-mount its existing real screen
+      // after the worker's New Game UI reset, and keep the loading clock held during fitting.
+      bus.emit('ui:pushScreen', { id: 'crucibleDraft', source: 'opening-armory' });
+      checkMount();
+    });
+  }
+
   function hideAfterFirstFlightFrame() {
     if (startupFailure || pendingRelease) return;
     cancelRevealWait(); clearWork(); accumulator = null;
@@ -494,13 +808,15 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
     const poll = (source) => {
       if (source === 'timer') revealPollTimer = null; else if (source === 'raf') revealRaf = null;
       if (disposed) return;
-      if (frameNow() > baseline && (capped || (firstDrawSubmitted() && admissionsSettled()))) {
+      const armoryPresented = (state?.mode === 'flight' || state?.mode === 'paused') && openingArmoryPresented();
+      if (armoryPresented || (frameNow() > baseline && (capped || (firstDrawSubmitted() && admissionsSettled())))) {
         // Debug flag: tells a capped lift apart from a first-draw lift.
-        if (render) render.veilLiftReason = firstDrawSubmitted() ? 'first-draw' : 'cap';
+        if (render) render.veilLiftReason = armoryPresented ? 'opening-armory' : firstDrawSubmitted() ? 'first-draw' : 'cap';
         cancelRevealWait(); ring?.finish();
         // A small, bounded finish interval lets the needle settle before removing the shell.
-        if (ring?.mounted) revealDeadlineTimer = setTimeout(() => hide({ releaseAfterReveal: true }), REVEAL_FINISH_MS);
-        else hide({ releaseAfterReveal: true }); // no decorative instrument to finish on minimal shells
+        const reveal = () => hide({ releaseAfterReveal: !armoryPresented });
+        if (ring?.mounted) revealDeadlineTimer = setTimeout(reveal, REVEAL_FINISH_MS);
+        else reveal(); // no decorative instrument to finish on minimal shells
         return;
       }
       if (raf && revealRaf === null) revealRaf = raf(() => poll('raf'));
@@ -553,6 +869,7 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
   }
   function showStartupFailure(payload = {}) {
     if (disposed || startupFailure || !eventMatchesCurrentGeneration(payload)) return false;
+    finishOpeningArmoryReview(false);
     releaseHoldNow();
     cancelRevealWait(); clearWork(); accumulator = null; pendingWork = null; session++;
     if (hideTimer !== null) clearTimeout(hideTimer);
@@ -566,10 +883,9 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
     detachPointer();
     if (lockup?.style) lockup.style.display = 'none';
     const pane = dataState('error', {
-      code: startupFailure.code,
+      code: 'LOADING_INTERRUPTED',
       headline: 'Startup could not finish',
-      fills: `The launch stopped during ${startupFailure.stage}.`,
-      detail: startupFailure.message,
+      fills: 'Retry to load this flight again, or return to the menu.',
       verb: { label: 'Retry', onActivate: () => bus.emit('game:retryStart', { source: 'startup-failure-overlay' }) },
     });
     pane.setAttribute('data-startup-failure', 'true');
@@ -580,6 +896,8 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
     pane.style.overflowY = 'auto';
     pane.style.overflowWrap = 'anywhere';
     pane.setAttribute('data-startup-stage', startupFailure.stage);
+    pane.setAttribute('data-startup-code', startupFailure.code);
+    pane.setAttribute('data-startup-diagnostic', startupFailure.message);
     const body = pane.querySelector?.('.sf-state__body');
     const back = document.createElement('button');
     back.type = 'button';
@@ -601,6 +919,7 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
     return true;
   }
   function resetForNewSession() {
+    finishOpeningArmoryReview(false);
     if (!clearStartupFailure()) return;
     hide({ completed: false });
   }
@@ -609,12 +928,32 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
       // Progress owns the loading shell only until the committed flight handoff. A queued or
       // generation-less receipt landing afterward must not re-show the veil and cancel the
       // bounded first-flight reveal (which also owns the worker sim hold).
-      if (state?.mode === 'flight') return;
-      if (!startupFailure && eventMatchesCurrentGeneration(stage)) show(stage);
+      if (state?.mode === 'flight' || openingArmoryReview?.mounted) return;
+      if (!startupFailure && eventMatchesCurrentGeneration(stage)) {
+        if (stage?.destination === 'Crucible') {
+          newGamePending = true;
+          // The ruleset name latched at game:new owns the slate; this later receipt must not
+          // flatten a Gauntlet launch back to the route default.
+          if (destinationRoute === null) setDestination('Crucible', 'Crucible');
+          if (scene !== 'swarm') setScene('swarm');
+        }
+        show(stage);
+      }
     }),
+    bus.on('run:draftResolved', ({ wave, reason } = {}) => {
+      const review = openingArmoryReview;
+      if (!review?.mounted || !review.isCurrent() || state?.mode !== 'loading'
+          || wave !== review.wave || (reason !== 'skipped' && reason !== 'circuit_overtime')) return;
+      // Re-cover the room in the same reply that closed the Armory. Main can now
+      // run the full opening picture gate for the equipment actually installed.
+      show({ id: 'authored-library', progress: .25 });
+      finishOpeningArmoryReview(true);
+    }),
+    bus.on('run:ended', () => finishOpeningArmoryReview(false)),
     bus.on('mode:changed', ({ mode } = {}) => {
       if (state?.mode != null && state.mode !== mode) return;
       if (mode === 'loading') {
+        if (openingArmoryReview?.mounted) return;
         clearStartupFailure();
         show(activeStage || DEFAULT_STAGE);
       }
@@ -624,6 +963,7 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
         if (!startupFailure) { activeStage = null; hideAfterFirstFlightFrame(); }
       }
       else if (mode === 'menu') {
+        finishOpeningArmoryReview(false);
         newGamePending = false;
         if (startupFailure) return;
         if (activeStage?.id?.startsWith('boot-')) return; // initial menu is revealed by main after init
@@ -636,6 +976,7 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
     bus.on('game:new', resetForNewSession),
     bus.on('game:load', resetForNewSession),
     bus.on('game:exitToMenu', () => {
+      finishOpeningArmoryReview(false);
       newGamePending = false;
       if (clearStartupFailure()) hide({ completed: false });
       resetDestination();
@@ -672,7 +1013,7 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
     // session latched while mode:changed re-showed the overlay. Re-arm the generic words at
     // restore start and, once the world has applied, name the sector it actually resumed at.
     bus.on('save:restoring', () => {
-      if (!restoredNamed) setDestination('restore', 'Restoring destination');
+      if (!restoredNamed) setDestination('restore', RESTORE_DESTINATION);
     }),
     bus.on('save:loaded', () => {
       if (destinationRoute === 'restore' && !restoredNamed) {
@@ -689,7 +1030,8 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
     ring?.start(); const art = artwork(); art.start();
     art.updateProgress({ id: 'boot-state', progress: ring?.snapshot().shown || .14 });
   }
-  return { show, hide, destroy() {
+  return { show, hide, reviewOpeningArmory, destroy() {
+    finishOpeningArmoryReview(false);
     releaseHoldNow();
     if (disposed) return;
     for (const unsub of unsubs) if (typeof unsub === 'function') unsub();

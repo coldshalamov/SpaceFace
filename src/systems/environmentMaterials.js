@@ -4,6 +4,7 @@ import { resolveSectorVisualProfile } from '../data/sectorVisualProfiles.js';
 import { ceresWorkfleetRoleForEntity } from '../data/ceresWorkfleetIdentity.js';
 import { queryPhysicalBodies, deliverPhysicalImpulse } from '../combat/physicalEffects.js';
 import { queryAsteroidField } from '../world/asteroidField.js';
+import { findClearSpawnPoint, markFieldRockAtRest } from './spawnClearance.js';
 import { asteroidColliderRadius } from '../data/asteroidColliders.js';
 import { isAnchoredPhysicalBody } from '../core/physicalResponse.js';
 import { resolvePhysicsBodySpec } from '../core/physicsAuthority.js';
@@ -11,6 +12,26 @@ import { readRecentImpulseProvenance } from '../combat/impulseKernel.js';
 import { resolveCollisionProxyManifest, proxyOuterRadiusWu, proxyScaleFor } from '../data/collisionProxyManifests.js';
 import { articulatedColliderRadius } from '../core/articulatedColliderBounds.js';
 import { restoreLifetime } from '../matter/aggregateLifetime.js';
+import { trainingWheelsOn } from '../onboarding/trainingWheels.js';
+import { simCoreFlag } from '../core/simCoreFlags.js';
+import { simGlassHalfExtentsFromState } from '../world/activityRuntime.js';
+
+// Broken rock is debris with a budget, the way current destruction games treat it (FREEZE lane,
+// 2026-11-23). Every fracture made four pieces that lived 90 s and could break again, down to
+// pebbles of radius 1 splitting into four more pebbles of radius 1: a live Swarm run went from
+// 22 to 83 rocks by round 5, and every one of them is a full rigid body the simulation pays for
+// every step. Now:
+//   - a rock whose pieces would fall under ROCK_FRAGMENT_MIN_RADIUS crumbles to grit (the break
+//     still reads: same shatter cue, no pieces);
+//   - past ROCK_FRAGMENT_BUDGET live fragments, the oldest pieces the player cannot see (outside
+//     the glass, not on a rope, not flying) crumble away a few at a time. What the player is
+//     looking at, holding or throwing is never touched.
+export const ROCK_FRAGMENT_MIN_RADIUS = 3;
+export const ROCK_FRAGMENT_BUDGET = 24;
+const FRAGMENT_BUDGET_PERIOD_TICKS = 30;
+const FRAGMENT_RETIRE_PER_PASS = 4;
+const FRAGMENT_RETIRE_MAX_SPEED = 40;
+const FRAGMENT_SIGHT_MARGIN_WU = 120;
 
 // A child may acquire a measured convex skin instead of its fallback ball. Bound both;
 // clearance against existing bodies below uses their actual native compound shapes.
@@ -185,6 +206,8 @@ export function queueEnvironmentImpact(state, entity, closingSpeed, origin = {})
   // A collector's knot is bound the same way while its emitter holds it (impact cohesion, not immunity).
   const knotHeld = !!entity?.data?.collectorCore;
   if (held || flight || knotHeld) return false;
+  // The learner still feels the contact. Keep that rock intact until the first taught throw.
+  if (trainingWheelsOn(state, entity)) return false;
   if (isAnchoredPhysicalBody(entity)) return false;
   if (entity?.data?.worldSiteStructural === true || ceresWorkfleetRoleForEntity(entity)) return false;
   const material = environmentMaterialOf(entity);
@@ -260,6 +283,15 @@ export const environmentMaterials = {
     const radius = Math.max(1, num(body.radius));
     const remaining = Math.max(0, num(d.yieldRemainingU ?? d.yieldU) * (1 - Math.min(1, num(d.pctEjected))));
     const count = 4;
+    if (radius / Math.cbrt(count) < ROCK_FRAGMENT_MIN_RADIUS && simCoreFlag('fragmentBudget')) {
+      // Too small to split into throwable pieces: the rock crumbles to grit.
+      d.materialCondition.pending = false; d.materialCondition.reacted = true;
+      d.fractured = true; d.destroyed = true; d.oreHP = 0; d.yieldRemainingU = 0;
+      body.hull = 0; body.alive = false;
+      this._persist(body);
+      this._cue(body, 'fractured', 0);
+      return true;
+    }
     const childRadius = Math.max(1, radius / Math.cbrt(count));
     const material = environmentMaterialOf(body);
     const parentBody = resolvePhysicsBodySpec(body);
@@ -339,6 +371,51 @@ export const environmentMaterials = {
     this._cue(body, 'fractured', ids.length);
     return true;
   },
+  // Debris budget: retire the oldest fragments the player cannot see. A fragment's despawnAt is
+  // its birth + 90 s (or earlier), so the lowest despawnAt is the oldest piece; ties break on id.
+  // Retiring is the ordinary despawn path (core's lifetime sweep), so nothing new owns removal.
+  _enforceFragmentBudget(state) {
+    const list = state.entityList || [];
+    const fragments = this._fragmentScratch || (this._fragmentScratch = []);
+    fragments.length = 0;
+    for (let i = 0; i < list.length; i++) {
+      const e = list[i];
+      if (e && e.alive !== false && e.type === 'asteroid' && e.data && e.data.materialFragment === true) fragments.push(e);
+    }
+    if (fragments.length <= ROCK_FRAGMENT_BUDGET) return 0;
+    const player = state.playerId != null && state.entities ? state.entities.get(state.playerId) : null;
+    if (!player || !player.pos) return 0;
+    const glass = simGlassHalfExtentsFromState(state);
+    const roped = this._ropedScratch || (this._ropedScratch = new Set());
+    roped.clear();
+    const byId = state.combat && state.combat.attachments && state.combat.attachments.byId;
+    if (byId) for (const key in byId) {
+      const a = byId[key];
+      if (!a) continue;
+      if (a.ownerId != null) roped.add(a.ownerId);
+      if (a.targetId != null) roped.add(a.targetId);
+    }
+    const now = num(state.simTime);
+    const candidates = this._retireScratch || (this._retireScratch = []);
+    candidates.length = 0;
+    for (let i = 0; i < fragments.length; i++) {
+      const e = fragments[i];
+      const d = e.data;
+      if (roped.has(e.id) || d.gyreCore || d.gyreLaunched || d.collectorCore) continue;
+      if (Number.isFinite(d.despawnAt) && d.despawnAt <= now) continue;
+      const vx = num(e.vel && e.vel.x), vz = num(e.vel && e.vel.z);
+      if (vx * vx + vz * vz > FRAGMENT_RETIRE_MAX_SPEED * FRAGMENT_RETIRE_MAX_SPEED) continue;
+      const r = num(e.radius) + FRAGMENT_SIGHT_MARGIN_WU;
+      if (Math.abs(num(e.pos.x) - num(player.pos.x)) <= glass.halfX + r
+        && Math.abs(num(e.pos.z) - num(player.pos.z)) <= glass.halfZ + r) continue;
+      candidates.push(e);
+    }
+    if (!candidates.length) return 0;
+    candidates.sort((x, y) => (num(x.data.despawnAt) - num(y.data.despawnAt)) || (num(x.id) - num(y.id)));
+    const retire = Math.min(candidates.length, fragments.length - ROCK_FRAGMENT_BUDGET, FRAGMENT_RETIRE_PER_PASS);
+    for (let i = 0; i < retire; i++) candidates[i].data.despawnAt = now;
+    return retire;
+  },
   _detonate(body, origin) {
     const state = this.state;
     const radius = Math.max(90, num(body.radius) * 3 + 60);
@@ -386,6 +463,7 @@ export const environmentMaterials = {
     // Rows 509/510: substance behaviours tick on a slow cadence — sunlight melts ice mass and a
     // survival arena restocks ammunition instead of running dry. 90 ticks ≈ 1.5 s at 60 Hz.
     if (((this._substanceTick = (this._substanceTick || 0) + 1) % 90) === 0) this._tickRockSubstance(state);
+    if ((num(state.tick) % FRAGMENT_BUDGET_PERIOD_TICKS) === 0 && simCoreFlag('fragmentBudget')) this._enforceFragmentBudget(state);
     this._drainBlasts();
     // Scratch `waiting` + in-place drain: the old shape allocated a fresh live queue and a
     // spill array every flight tick. Reactions queued mid-drain (queueMaterialReaction inside
@@ -490,10 +568,18 @@ export const environmentMaterials = {
         data.placeId = restockPlaceId;
         data.placeTargetRadius = radius;
       }
-      this.helpers.spawnEntity({
+      // R11: restock ammunition rests — born at zero linear velocity, asleep, and never
+      // seated under a live body. A null seat skips this unit; the floor re-offers next tick.
+      const seat = findClearSpawnPoint(state, {
+        x: player.pos.x + Math.cos(bearing) * dist,
+        z: player.pos.z + Math.sin(bearing) * dist,
+        radius,
+      });
+      if (!seat) continue;
+      markFieldRockAtRest(this.helpers.spawnEntity({
         type: 'asteroid',
         homeSectorId: player.homeSectorId || (player.data && player.data.homeSectorId) || null,
-        pos: { x: player.pos.x + Math.cos(bearing) * dist, z: player.pos.z + Math.sin(bearing) * dist },
+        pos: { x: seat.x, z: seat.z },
         vel: { x: 0, z: 0 },
         radius,
         mass: Math.round(radius * radius * 40 * density),
@@ -502,7 +588,7 @@ export const environmentMaterials = {
         collides: true,
         physicsBody: { radius: asteroidColliderRadius('ast_common_rock', radius) },
         data,
-      });
+      }), { simTime: now });
     }
   },
   serialize() {

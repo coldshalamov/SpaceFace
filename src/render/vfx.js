@@ -79,15 +79,20 @@ import {
 import { createToolConduitGeometry, installToolConduitShader } from './toolConduit.js';
 import { FieldForcePresentation } from './forceLanguage/fieldForcePresentation.js';
 import { GyreSnarePresentation } from './forceLanguage/gyreSnarePresentation.js';
+import { createSwitchbackView } from '../features/convoyRaid/view.js';
+import { createStormChasePresentation, readStormChaseView } from '../features/stormChase/index.js';
+import { createCatalystPresentationAdapter } from '../features/kineticCatalysts/presentation.js'; // PORT-PRO-FIVE KINETIC CATALYSTS
+import { getPromptDeck } from '../ui/promptDeck.js';
 import { createEmergentPrimitivePools } from './forceLanguage/emergentPrimitivePools.js';
 import { EmergentPayloadPresentation } from './forceLanguage/emergentPayloadPresentation.js';
 import { fieldSignature } from './forceLanguage/catalog.js';
-import { createForceSurfacePrecompileMesh } from './forceLanguage/sweptSurfaceBatch.js';
+import { createForceSurfacePrecompileMesh, SweptSurfaceBatch } from './forceLanguage/sweptSurfaceBatch.js';
 import { createEnergyVolume, createMasslineRibbonMaterial, createPlumeMaterial, createPlumeVolume, updateEnergyMaterial } from './energy/energyMaterials.js';
 import {
   commitTrailStreakInstances,
   createPrecompileTrailSurfaces,
   createRibbonTrail,
+  createRibbonTrailBatch,
   initTrailStreakPool,
   updateTrailStreakInstance,
 } from './engineTrailSurfaces.js';
@@ -101,6 +106,7 @@ import { indexedShipLikeScan, indexedTypeScan, entityIndexLaneVersion, entityInd
 import { resolveFractureProgress, resolveVeinFracturePattern } from './asteroidMotionPresentation.js';
 import { resolveFunnelMoteStream, spiralMoteWithinDraw } from './pickupMotionPresentation.js';
 import { notePresentationFrame } from './presentationSimClock.js';
+import { frameCostFixOn } from './frameCostSwitches.js';
 import { MOMENTUM_SINK_FRAME_KIND } from '../combat/momentumSink.js';
 import { MOMENTUM_SINK_STATUS_ID } from '../data/combatDefs.js';
 import {
@@ -265,7 +271,7 @@ import {
   collectThrusterTextureIds,
   listThrusterRecipePacks,
 } from './thruster/recipes/registry.js';
-import { PersistentCombatBeamPool, beamViewDistance } from './combat/persistentBeams.js';
+import { PersistentCombatBeamPool, beamViewDistance, createPersistentBeamPrecompileMeshes } from './combat/persistentBeams.js';
 import { isComposedMiningCue, isComposedTravelCue } from './vfx/worldCueRecipes.js';
 import {
   BOLT_VARIANT,
@@ -300,6 +306,7 @@ import {
 import { markKindForMaterial } from './weapons/contactMarks.js';
 import { ArcadeStructuralFx } from './combat/arcadeStructuralFx.js';
 import { createGasSystem } from './combat/gas/gasVolumeField.js';
+import { isVfxBudgetActive } from './vfx/vfxBudget.js';
 import { GAS_VOLUME_PAYLOAD_READY } from './combat/gas/gasVolumeData.js';
 import { DENSITY_VOLUME_PAYLOAD_READY } from './combat/densityVolumeData.js';
 import { ExplosionRupture, explosionSourceMaterial } from './combat/explosionRupture.js';
@@ -361,6 +368,8 @@ import {
   updateMasslineLatchRim,
 } from './masslineLatchRim.js';
 import { createPowerPreview } from './powerPreview.js';
+import { PowerFx, createPowerFxPrecompileGroup } from './vfx/kit/powerFx.js';
+import { ShipMarkers } from './vfx/kit/shipMarkers.js';
 import { powerHeld, powerPreviewPlan } from '../data/powerPreview.js';
 import {
   createMasslineChainReadout,
@@ -417,9 +426,11 @@ import {
   writeStormZoneGeometry,
 } from './stormZoneField.js';
 import {
+  APRON_FLOOD_INDICES_PER_QUAD,
   APRON_FLOOD_MAX_RANGE_WU,
   APRON_FLOOD_STATION_CAP,
   buildApronFloodLayout,
+  APRON_FLOOD_VERTICES_PER_QUAD,
   createApronFloodGeometry,
   resolveApronFloodPlan,
   writeApronFloodGeometry,
@@ -433,7 +444,6 @@ import {
   shouldEmitEngineWash,
 } from './engineWash.js';
 import { pitchPresentationEpoch, shipPitchCandidates } from './shipPitchPresentation.js';
-import { SelectionSigil, resolveSelectionSigil } from './selectionSigil.js';
 import {
   MOMENTUM_SINK_VFX_COLORS,
   MOMENTUM_SINK_VFX_HZ,
@@ -460,6 +470,14 @@ import { attachPreliftSceneWarm } from './preliftSceneWarm.js';
 import { StationNightLightLayer } from './vfx/stationNightLights.js';
 import { collectHullWounds, resolveWoundBeat, resolveWoundMetalHeat, woundWorldPoint } from './vfx/woundSmoke.js';
 import { WOUND_METAL_HEAT_S } from './vfx/woundSmoke.js';
+import { bodyHitEnabled, bodyDamageTier as bodyDamageTierRaw, tierEmitRates, seed01, seedSigned, reflectAxis, corkscrewOffset, BODY_TIER_SPARKS, BODY_TIER_FIRE } from './vfx/bodyHitRead.js';
+import { hullHitFlashBook } from './hullHitFlash.js';
+const _bodyReflectOut = { x: 0, z: 0 };
+// With the A/B switch off the ladder is the old one: smoke from 40 % hull, nothing above it.
+function bodyDamageTier(hull, hullMax) {
+  if (bodyHitEnabled()) return bodyDamageTierRaw(hull, hullMax);
+  return hullMax > 0 && hull > 0 && hull / hullMax < 0.4 ? 1 : 0;
+}
 import { resolveLineShieldSustain, shieldBiteDir } from './vfx/lineShieldBite.js';
 import { BeaconLampLayer } from './beaconLampLife.js';
 import {
@@ -1088,7 +1106,8 @@ const LOOT_TRAIL_SWARM_REPAIR = '#84ffd2';
 const VFX_RIBBON_TRAILS_HZ = 30;
 // Owner call 2026-08-11: half the long "tube" wake. History still trails past positions, but the
 // retained path is roughly ~half the prior 72×2.4 WU arc so the jet reads as exhaust, not a cable.
-const PLAYER_RIBBON_SEGMENTS = 34;
+// (Player ribbons were retired: the player wake is the unified plasma stream, so only the NPC
+// budget below still feeds live mints — including the shared batch's per-lane history depth.)
 const NPC_RIBBON_SEGMENTS = 24;
 const RIBBON_MIN_SAMPLE_SPACING_WU = 2.0;
 const RIBBON_DISCONTINUITY_FLOOR_WU = 160;
@@ -1438,6 +1457,10 @@ export const vfx = {
     this._socketLocalForward = new THREE.Vector3();
     this._socketForwardQuat = new THREE.Quaternion();
     this._socketReferenceForward = new THREE.Vector3(-1, 0, 0);
+    // rfx socketPoseCache: retained out-struct for _socketWorldPoseCached and the per-update tick
+    // that lets sibling sockets on one view share a single ancestor walk.
+    this._socketPoseOut = { x: 0, y: 0, z: 0, qx: 0, qy: 0, qz: 0, qw: 1 };
+    this._vfxFrameSeq = 0;
     this._driveScratch = {
       drive: 0, throttle: 0, speed: 0, speedDrive: 0, boost: 0,
       cruise: 0, reverse: 0, retroOnly: false, brake: 0, dashFired: false,
@@ -2046,6 +2069,12 @@ export const vfx = {
     // return permanently muting gyre VFX after a scene rebuild.
     invokeVfxDisposer(this._gyreSnareFx, 'gyre snare');
     this._gyreSnareFx = null;
+    invokeVfxDisposer(this._switchback, 'Switchback convoy');
+    this._switchback = null;
+    invokeVfxDisposer(this._stormChaseFx, 'GLASSWAKE');
+    this._stormChaseFx = null;
+    invokeVfxDisposer(this._kineticCatalystsFx, 'KINETIC CATALYSTS');
+    this._kineticCatalystsFx = null;
 
     invokeVfxDisposer(this._overflowJets, 'overflow jets');
     this._overflowJets = null;
@@ -2074,6 +2103,10 @@ export const vfx = {
     disposeVfxRoot(this._monofilamentBlade && this._monofilamentBlade.mesh, disposeState);
     invokeVfxDisposer(this._selectionSigil, 'selection sigil');
     this._selectionSigil = null;
+    invokeVfxDisposer(this._powerFx, 'power vfx kit');
+    this._powerFx = null;
+    invokeVfxDisposer(this._shipMarkers, 'ship markers');
+    this._shipMarkers = null;
     invokeVfxDisposer(this._powerPreview, 'power preview');
     this._powerPreview = null;
     this._powerPreviewPlan = null;
@@ -2096,6 +2129,7 @@ export const vfx = {
     for (const trail of this._ribbonTrails && this._ribbonTrails.values() || []) {
       invokeVfxDisposer(trail, 'ribbon trail');
     }
+    invokeVfxDisposer(this._ribbonBatch, 'ribbon trail batch');
 
     // Release CPU-side pools and back-references as well as scene/GPU roots. The destroyed guard
     // makes late render/update callbacks harmless even though the object retains its methods.
@@ -2145,6 +2179,7 @@ export const vfx = {
     this._momentumSinkCandidateStatuses = null;
     this._momentumSinkCandidatePriorities = null;
     this._ribbonTrails = null;
+    this._ribbonBatch = null;
     this._beamDamageCueNext = null;
     this._collisionContactTicks = null;
     this._collisionMediumTicks = null;
@@ -2257,6 +2292,9 @@ export const vfx = {
       roots.push(object);
     };
     add(this._shardMesh);
+    add(this._powerFx && this._powerFx.sparks.mesh);
+    add(this._powerFx && this._powerFx.shells.mesh);
+    add(this._shipMarkers && this._shipMarkers.mesh);
     add(this._trailStreakPool && this._trailStreakPool.mesh);
     add(this._spriteBatches && this._spriteBatches.glow.mesh);
     add(this._spriteBatches && this._spriteBatches.ring.mesh);
@@ -2325,6 +2363,9 @@ export const vfx = {
         add(family && family.rcs && family.rcs.group);
       }
     }
+    // Batched NPC ribbon pool owns ONE mesh for every batched lane; each lane's getMesh() returns
+    // the same object, so `seen` dedupes it either way — add it explicitly for the empty-map case.
+    add(this._ribbonBatch && this._ribbonBatch.mesh);
     for (const trail of this._ribbonTrails?.values?.() || []) add(trail.getMesh?.());
     for (const root of roots) {
       if (!root.userData?.openingSubmissionPackage) this._publishOpeningVfxPackage(root);
@@ -2558,12 +2599,17 @@ export const vfx = {
     this._initEventLights();
     this._initRibbonTrails();
     this._initMiningBeam();
+    // The VFX kit draws once, hidden, as soon as the scene exists: its programs link and its
+    // instanced buffers upload behind the menu / armory, never inside the first fight frame.
+    if (this._ensurePowerFx()) this._powerFx.warm();
+    if (this._scene && typeof this._scene.add === 'function' && !this._shipMarkers) { this._shipMarkers = new ShipMarkers(this._scene); this._shipMarkers.warm(); }
     this._initTetherCable();
     this._npcCableFx = new NpcCableFx(this._scene, this._combatBeamLocalizer, resolveMasslineAccessibilityPolicy);
     this._initArcPreview();
-    this._initMasslineReleaseArc();
+    // No ring rides the Line's bodies (owner, 2026-11-23): the release annulus round the aimed or
+    // held body and the cyan rim on the latched body are not built. The cable shows what is bound,
+    // the release path and the 'RMB · THROW' tag show the throw, the verdict pill grades it.
     this._initMasslineSwingTrace();
-    this._initMasslineLatchRim();
     this._initPowerPreview();
     this._initMasslineChainReadout();
     this._initMonofilamentBlade();
@@ -2572,7 +2618,6 @@ export const vfx = {
     this._initFreightLane();
     this._initStormZones();
     this._initApexFlare();
-    this._initSelectionSigil();
     this._initSeamMarkers();
     this._initBroodPresentation();
     this._initCombatBeams();
@@ -2875,7 +2920,12 @@ export const vfx = {
   _subscribe() {
     const bus = this.bus;
     const add = (name, fn, opts) => this._subs.push(bus.on(name, fn, opts));
-    for (const name of ACTION_VFX_EVENTS) add(name, (p) => this._onActionVfx(name, p));
+    for (const name of ACTION_VFX_EVENTS) {
+      // Enemy wind-ups are drawn by the VFX kit as job tells (dive line, charge line, cable, swell).
+      if (name === 'ai:telegraph') continue;
+      add(name, (p) => this._onActionVfx(name, p));
+    }
+    add('ai:telegraph', (p) => this._ensurePowerFx()?.telegraph(p, this.state));
     // FB-073 — undock also plays the docking cradle backwards (brackets release, chevrons run
     // outbound over the same 0.28 s fade). The ACTION_VFX_EVENTS row above owns the vent
     // primitive; this subscription is the cradle hologram's half of the same departure.
@@ -2885,6 +2935,16 @@ export const vfx = {
         this._ironKrakenDeathEpoch = (this._ironKrakenDeathEpoch || 0) + 1;
         this._ironKrakenDebris?.clear();
       });
+      add(name, () => {
+        invokeVfxDisposer(this._switchback, 'Switchback boundary');
+        this._switchback = null;
+      });
+      // GLASSWAKE's pooled geometry survives sector/run boundaries as stale
+      // coordinates otherwise; clear() keeps the adapter for the next view.
+      add(name, () => { this._stormChaseFx?.clear(); });
+      // KINETIC CATALYSTS: captured orbits/links die with the sector or run;
+      // clear() empties the batch without throwing the adapter away.
+      add(name, () => { this._kineticCatalystsFx?.clear(); });
       add(name, () => { this._actionVfx?.clear(); this._stationOperationVfx?.clear(); this._bombDetonationVfx?.clear(); this._statusMatterVfx?.clear(); this._combatContactVfx?.clear(); this._emergentPayloads?.clear(); this._retireEventLightSlot(this._findSustainedEventLight('gyre-payload')); this._releaseTransientEventLights(); });
       add(name, () => this._clearWorldTransientMatter());
       add(name, () => { this._freightLaneState = null; });
@@ -3061,6 +3121,18 @@ export const vfx = {
     add('cruise:engaged', (p) => this._onCruiseEngaged(p));
     add('cruise:dropped', (p) => this._onCruiseDropped(p));
     add('charge:detonated', (p) => this._onChargeDetonated(p));
+    // The powers drawn with the VFX kit (vfx/kit/powerFx.js): light fronts, sparks, true edges.
+    add('fields:deployed', (p) => this._ensurePowerFx()?.onFieldDeployed(p, this.state));
+    add('massSeed:deployed', (p) => this._ensurePowerFx()?.pinFired(p));
+    add('massSeed:stakeCast', (p) => this._ensurePowerFx()?.stakeCast(p, this.state));
+    add('pilot:levelUp', (p) => this._ensurePowerFx()?.levelUp(p, this.state));
+    add('pilot:nodeTaken', (p) => this._ensurePowerFx()?.nodeTaken(p, this.state));
+    add('fields:plowLaunched', (p) => this._ensurePowerFx()?.plowLaunched(p, this.state));
+    add('massSeed:staked', (p) => this._ensurePowerFx()?.staked(p, this.state));
+    add('massSeed:stakeReleased', (p) => this._powerFx?.stakeReleased(p, this.state));
+    add('massSeed:locking', (p) => this._ensurePowerFx()?.pinLanding(p, false));
+    add('massSeed:locked', (p) => this._ensurePowerFx()?.pinLanding(p, true));
+    for (const ev of ['massSeed:cleared', 'massSeed:collapsed', 'massSeed:destroyed']) add(ev, () => this._powerFx?.pinEnded());
     // Drift-bomb bay (design/ORDNANCE_BOMBS_SPEC.md): per-payload reads, never one generic ball.
     add('bombs:detonated', (p) => this._onBombDetonated(p));
     add('bombs:fieldEnded', (p) => this._onBombFieldEnded(p));
@@ -3230,6 +3302,7 @@ export const vfx = {
       this._energy?.plasmaStream?.reproject?.(ox, oz);
       this._arcadeStructural?.reproject(dx, dz);
       this._fieldGeom?.reproject(ox, oz);
+      this._powerFx?.reproject(ox, oz);
       this._actionVfx?.reproject(ox, oz);
       this._stationOperationVfx?.reproject(ox, oz);
       this._bombDetonationVfx?.reproject(ox, oz);
@@ -3835,6 +3908,7 @@ export const vfx = {
           delete e.view.__vfxTrailSocket;
           delete e.view.__vfxTrailSockets;
           delete e.view.__vfxRcsSockets;
+          delete e.view.__vfxSocketPose;
         }
       }
       return;
@@ -3844,7 +3918,74 @@ export const vfx = {
       delete e.view.__vfxTrailSocket;
       delete e.view.__vfxTrailSockets;
       delete e.view.__vfxRcsSockets;
+      delete e.view.__vfxSocketPose;
     }
+  },
+
+  // Per-view socket world-pose memo (rfx socketPoseCache). A cached entry stays valid while the
+  // renderer's pose-write stamp (root.userData.sfPoseWriteSeq — the same signal
+  // _applyPresentationPose sets on every applied pose) and the socket's composed matrixWorld both
+  // hold — so a parked emitter pays zero matrix walks while a reposed hull recomputes that frame.
+  // Sibling sockets on the same view share one ancestor walk per vfx pass via ancestorsTick.
+  _socketPoseCacheFor(view) {
+    if (!view) return null;
+    const root = view.root || null;
+    const poseSeq = (root && root.userData && root.userData.sfPoseWriteSeq) | 0;
+    let cache = view.__vfxSocketPose;
+    if (!cache || cache.root !== root) {
+      cache = view.__vfxSocketPose = { root, poseSeq, ancestorsTick: -1, poses: new Map() };
+    } else {
+      cache.poseSeq = poseSeq;
+    }
+    return cache;
+  },
+
+  // Decomposed world pose for `socket`, memoized per view. Returns the retained _socketPoseOut
+  // record { x, y, z, qx, qy, qz, qw } — copy fields out before the next call on this instance.
+  _socketWorldPoseCached(socket, view) {
+    if (!socket) return null;
+    const out = this._socketPoseOut
+      || (this._socketPoseOut = { x: 0, y: 0, z: 0, qx: 0, qy: 0, qz: 0, qw: 1 });
+    const cache = (view && frameCostFixOn('socketPoseCache')) ? this._socketPoseCacheFor(view) : null;
+    const elements = socket.matrixWorld && socket.matrixWorld.elements;
+    let entry = cache && cache.poses.get(socket);
+    if (entry && entry.poseSeq === cache.poseSeq && elements) {
+      const m = entry.m;
+      if (m[0] === elements[0] && m[1] === elements[1] && m[2] === elements[2]
+        && m[3] === elements[3] && m[4] === elements[4] && m[5] === elements[5]
+        && m[6] === elements[6] && m[7] === elements[7] && m[8] === elements[8]
+        && m[9] === elements[9] && m[10] === elements[10] && m[11] === elements[11]
+        && m[12] === elements[12] && m[13] === elements[13] && m[14] === elements[14]
+        && m[15] === elements[15]) {
+        out.x = entry.x; out.y = entry.y; out.z = entry.z;
+        out.qx = entry.qx; out.qy = entry.qy; out.qz = entry.qz; out.qw = entry.qw;
+        this._socketWorldPos.set(out.x, out.y, out.z);
+        this._socketWorldQuat.set(out.qx, out.qy, out.qz, out.qw);
+        return out;
+      }
+    }
+    // Ancestors were already refreshed for this view this pass → leaf-only compose is enough.
+    if (cache && cache.ancestorsTick === this._vfxFrameSeq) {
+      socket.updateWorldMatrix(false, false);
+    } else {
+      socket.updateWorldMatrix(true, false);
+      if (cache) cache.ancestorsTick = this._vfxFrameSeq;
+    }
+    socket.matrixWorld.decompose(this._socketWorldPos, this._socketWorldQuat, this._socketWorldScale);
+    out.x = this._socketWorldPos.x; out.y = this._socketWorldPos.y; out.z = this._socketWorldPos.z;
+    out.qx = this._socketWorldQuat.x; out.qy = this._socketWorldQuat.y;
+    out.qz = this._socketWorldQuat.z; out.qw = this._socketWorldQuat.w;
+    if (cache) {
+      if (!entry) {
+        entry = { poseSeq: 0, m: new Float64Array(16), x: 0, y: 0, z: 0, qx: 0, qy: 0, qz: 0, qw: 1 };
+        cache.poses.set(socket, entry);
+      }
+      entry.poseSeq = cache.poseSeq;
+      entry.m.set(socket.matrixWorld.elements);
+      entry.x = out.x; entry.y = out.y; entry.z = out.z;
+      entry.qx = out.qx; entry.qy = out.qy; entry.qz = out.qz; entry.qw = out.qw;
+    }
+    return out;
   },
 
   _writeTrailSocketPose(x, y, z, forwardX, forwardY, forwardZ) {
@@ -3864,9 +4005,14 @@ export const vfx = {
     return scratch;
   },
 
-  _trailSocketPoseFromObject(socket) {
-    socket.updateWorldMatrix(true, false);
-    socket.matrixWorld.decompose(this._socketWorldPos, this._socketWorldQuat, this._socketWorldScale);
+  _trailSocketPoseFromObject(socket, view) {
+    if (typeof this._socketWorldPoseCached === 'function') {
+      if (!this._socketWorldPoseCached(socket, view)) return null;
+    } else if (socket) {
+      // Probe seam: stub hosts that carry only the decompose scratch keep the pre-cache walk.
+      socket.updateWorldMatrix(true, false);
+      socket.matrixWorld.decompose(this._socketWorldPos, this._socketWorldQuat, this._socketWorldScale);
+    }
     const f = socket.userData && socket.userData.forward || [-1, 0, 0];
     const fx = Array.isArray(f) ? f[0] : f.x;
     const fy = Array.isArray(f) ? f[1] : f.y;
@@ -3895,7 +4041,7 @@ export const vfx = {
 
   _trailSocketWorldPose(e) {
     const sockets = this._trailSocketObjects(e);
-    if (sockets.length) return this._trailSocketPoseFromObject(sockets[0]);
+    if (sockets.length) return this._trailSocketPoseFromObject(sockets[0], e && e.view);
     return namedTrailSocketPose(this, e, modelTruthPlumeSocketName(e));
   },
 
@@ -3908,7 +4054,7 @@ export const vfx = {
     this._trailSocketObjects(e);
     const cache = e && e.view && e.view.__vfxTrailSockets;
     if (cache && Array.isArray(cache.wake) && cache.wake.length) {
-      return this._trailSocketPoseFromObject(cache.wake[0]);
+      return this._trailSocketPoseFromObject(cache.wake[0], e && e.view);
     }
     return namedTrailSocketPose(this, e, modelTruthTrailSocketName(e));
   },
@@ -3976,10 +4122,14 @@ export const vfx = {
     return cache;
   },
 
-  _writeRetroSocketPose(socket, sock) {
+  _writeRetroSocketPose(socket, sock, view) {
     if (!socket || !sock) return false;
-    socket.updateWorldMatrix(true, false);
-    socket.matrixWorld.decompose(this._socketWorldPos, this._socketWorldQuat, this._socketWorldScale);
+    if (typeof this._socketWorldPoseCached === 'function') {
+      if (!this._socketWorldPoseCached(socket, view)) return false;
+    } else {
+      socket.updateWorldMatrix(true, false);
+      socket.matrixWorld.decompose(this._socketWorldPos, this._socketWorldQuat, this._socketWorldScale);
+    }
     const f = socket.userData && socket.userData.forward;
     const arrayForward = Array.isArray(f);
     const fx = arrayForward ? f[0] : (f && f.x);
@@ -4008,10 +4158,14 @@ export const vfx = {
     return true;
   },
 
-  _writeRcsSocketPose(socket, origin, axis) {
+  _writeRcsSocketPose(socket, origin, axis, view) {
     if (!socket || !origin || !axis) return false;
-    socket.updateWorldMatrix(true, false);
-    socket.matrixWorld.decompose(this._socketWorldPos, this._socketWorldQuat, this._socketWorldScale);
+    if (typeof this._socketWorldPoseCached === 'function') {
+      if (!this._socketWorldPoseCached(socket, view)) return false;
+    } else {
+      socket.updateWorldMatrix(true, false);
+      socket.matrixWorld.decompose(this._socketWorldPos, this._socketWorldQuat, this._socketWorldScale);
+    }
     const f = socket.userData && socket.userData.forward;
     const arrayForward = Array.isArray(f);
     const fx = arrayForward ? f[0] : (f && f.x);
@@ -4139,6 +4293,13 @@ export const vfx = {
     const pos = this._posFrom(p, p.targetId);
     if (!pos) return;
     const tgt = this._ent(p.targetId);
+    // OVH-06b: the struck hull flashes for two frames (a hit on bare hull or armor; a held shield
+    // answers with its own ripple instead). One slot write, no allocation.
+    if (tgt && (p.hullHit || p.armorHit) && bodyHitEnabled()) {
+      const maxHull = Number(tgt.hullMax) || 0;
+      const power = maxHull > 0 ? Math.min(1, 0.45 + ((Number(p.amount) || 0) / maxHull) * 4) : 0.7;
+      hullHitFlashBook.noteHit(tgt.id, Number(this.state && this.state.simTime) || 0, power);
+    }
     const fid = (tgt && tgt.factionId) || p.factionId || null;
     const impactProfile = resolveImpactPresentationProfile(p && p.weaponId, p);
     let nx = p && p.normal && Number(p.normal.x);
@@ -4166,6 +4327,25 @@ export const vfx = {
     const normalAngle = Math.atan2(nz, nx);
     const hitRead = impactRead(p);
     const impulseAngle = impactAxisAngle(hitRead);
+    // OVH-06b: a spark spray leaves the hit point along the shot's REFLECTION off the plate, three
+    // seeded streaks fanned a little either side. Bare hull and armor only; a held shield has its own read.
+    if ((p.hullHit || p.armorHit) && bodyHitEnabled() && normalSigned && p.approach
+      && (Number(p.approach.x) || Number(p.approach.z))) {
+      reflectAxis(Number(p.approach.x) || 0, Number(p.approach.z) || 0, nx, nz, _bodyReflectOut);
+      const sprayKey = (this.state && this.state.tick | 0) + (tgt && Number(tgt.id) | 0) * 31;
+      const sprayReduced = this._isReduced();
+      for (let k = 0; k < 3; k++) {
+        const fan = seedSigned(p.attackerId, sprayKey, 101 + k) * 0.5;
+        const c = Math.cos(fan); const sn = Math.sin(fan);
+        const rx = _bodyReflectOut.x * c - _bodyReflectOut.z * sn;
+        const rz = _bodyReflectOut.x * sn + _bodyReflectOut.z * c;
+        const speed = 26 + seed01(p.attackerId, sprayKey, 111 + k) * 30;
+        this._spawnProjectileTrailStreak(pos.x + nx * 0.4, 0.3, pos.z + nz * 0.4,
+          0.2 + seed01(p.attackerId, sprayKey, 121 + k) * 0.1, 0.1, 2.2 + k * 0.6,
+          sprayReduced ? 0.45 : 0.9, p.armorHit ? '#ffe9c4' : '#ffb870',
+          rx * speed, rz * speed, rx, rz);
+      }
+    }
     if (impactProfile.family === 'beam') {
       if (this._combatBeams) this._combatBeams.retarget(p, this._t);
       const cueKey = `${String(p.attackerId)}:${String(p.targetId)}:${String(p.weaponId)}`;
@@ -4447,31 +4627,29 @@ export const vfx = {
     };
   },
 
-  // A body the field does not catch still touches the face. The read is the
-  // ring growing and a small puff at the slip. Bloom and hue are not consulted:
-  // both sprites write opacity into the color buffer, and no event light is lit.
+  // A body the field does not catch still touches the face. No ring around the body
+  // (owner 2026-11-23): a compact cool glint + slip puff carry the read.
   _drawInertFieldPass(p) {
     const pos = (p && (p.position || p.pos)) || null;
     if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return;
     const radius = Math.max(1.5, Math.min(24, Number(p.radius) || 4));
     const ink = '#c5ccd4';
-    const ring = this._spawnSprite(
-      SPR_RING, pos.x, 0.16, pos.z, 0.42, radius * 0.28, radius * 1.45, 0.86, 0.0, ink, 0, 0, 1, 0,
+    const glint = this._spawnSprite(
+      SPR_FLASH, pos.x, 0.16, pos.z, 0.24, radius * 0.24, radius * 0.85, 0.72, 0.0, ink, 0, 0, 2.2, 0,
     );
     const puff = this._spawnSprite(
       SPR_PUFF, pos.x, 0.08, pos.z, 0.32, radius * 0.18, radius * 0.62, 0.5, 0.0, ink, 0, 0, 1, 0,
     );
     this._lastInertFieldPass = {
-      shape: ring ? 'ring' : null,
+      shape: glint ? 'glint' : null,
       puff: !!puff,
       bloomIndependent: true,
       lights: 0,
-      opacity: ring ? ring.op0 : 0,
+      opacity: glint ? glint.op0 : 0,
     };
   },
 
-  // A burn or a coolant patch is a ring in that patch's colour. No particles, no light,
-  // and the ring does not outlive the field (the field itself never lasts past four seconds).
+  // A burn or coolant patch reads as a soft combustion/vapor patch in its hue (no ring).
   _drawThermalMark(p) {
     const pos = (p && (p.position || p.pos)) || null;
     if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return;
@@ -4480,14 +4658,14 @@ export const vfx = {
     const ink = typeof p.color === 'string' && p.color
       ? p.color
       : (p.thermalKind === 'coolant' ? '#7ec8e8' : '#e85a20');
-    const ring = this._spawnSprite(
-      SPR_RING, pos.x, 0.16, pos.z, life, radius * 0.35, radius, 0.72, 0.0, ink, 0, 0, 1, 0,
+    const patch = this._spawnSprite(
+      SPR_PUFF, pos.x, 0.16, pos.z, life, radius * 0.35, radius, 0.58, 0.0, ink, 0, 0, 1, 0,
     );
     this._lastThermalMark = {
       color: ink,
       life,
       radius,
-      shape: ring ? 'ring' : null,
+      shape: patch ? 'patch' : null,
       lights: 0,
     };
   },
@@ -4765,20 +4943,16 @@ export const vfx = {
 
   _spawnPresentationSprite(p, pos, style, radius, admissionPriority) {
     const reduced = !!(p && p.flashReduced);
-    const kind = reduced ? SPR_RING : style.spriteKind;
-    const opacity = reduced ? Math.min(style.spriteOpacity, 0.42) : style.spriteOpacity;
+    // No rings around things (owner 2026-11-23): downgrade any SPR_RING/SPR_FRESNEL presentation
+    // request to a compact flash or puff so impacts, shields, and breaks never paint circles.
+    const rawKind = reduced ? SPR_PUFF : style.spriteKind;
+    const kind = (rawKind === SPR_RING || rawKind === SPR_FRESNEL) ? SPR_FLASH : rawKind;
+    const opacity = reduced ? Math.min(style.spriteOpacity, 0.38) : style.spriteOpacity;
     this._spawnSprite(
-      kind, pos.x, 0, pos.z, style.spriteLife,
-      radius * style.spriteSize0, radius * style.spriteSize1,
-      opacity, 0.0, style.color0, 0, 0, 1, null, admissionPriority,
+      kind, pos.x, 0, pos.z, Math.min(style.spriteLife, kind === SPR_FLASH ? 0.24 : style.spriteLife),
+      radius * style.spriteSize0, radius * style.spriteSize1 * (kind === SPR_FLASH ? 0.75 : 1),
+      opacity, 0.0, style.color0, 0, 0, kind === SPR_FLASH ? 1.8 : 1, null, admissionPriority,
     );
-    if (!reduced && style.echoRing) {
-      this._spawnSprite(
-        SPR_RING, pos.x, 0, pos.z, style.spriteLife * 1.25,
-        radius * style.spriteSize0 * 0.7, radius * style.spriteSize1 * 1.35,
-        opacity * 0.55, 0.0, style.color1, 0, 0, 1, null, admissionPriority,
-      );
-    }
   },
 
   _spawnPresentationParticles(p, pos, style, requested, angle, radius, admissionPriority) {
@@ -5004,6 +5178,16 @@ export const vfx = {
     const key = this._collisionPairKey(p && p.aId, p && p.bId, p);
     const previous = this._collisionContactTicks.get(key);
     if (Number.isFinite(previous) && tick - previous < CONTACT_SPARK_COOLDOWN_TICKS) return false;
+    const playerId = this.state && this.state.playerId;
+    const isPlayerContact = playerId != null && (p?.aId === playerId || p?.bId === playerId);
+    if (!isPlayerContact) {
+      if (this._ambientCollisionTick !== tick) {
+        this._ambientCollisionTick = tick;
+        this._ambientCollisionCount = 0;
+      }
+      if (this._ambientCollisionCount >= 4) return false;
+      this._ambientCollisionCount += 1;
+    }
     this._boundedCollisionTickWrite(this._collisionContactTicks, key, tick);
     return true;
   },
@@ -5033,6 +5217,8 @@ export const vfx = {
     if (this._collisionMediumTicks) this._collisionMediumTicks.clear();
     if (this._contactReceipts) this._contactReceipts.clear();
     this._collisionPresentationTick = -1;
+    this._ambientCollisionTick = -1;
+    this._ambientCollisionCount = 0;
   },
 
   _collisionContactAxis(p) {
@@ -5253,6 +5439,16 @@ export const vfx = {
 
   _emitLowCollisionContact(p) {
     if (!this._scene || !p || !p.pos) return false;
+    const video = this.state && this.state.settings && this.state.settings.video;
+    const lowQuality = !!video && (
+      video.particleQuality === 'low'
+      || video.qualityPreset === 'low'
+      || video.qualityPreset === 'integrated'
+      || video.qualityPreset === 'igpu60'
+    );
+    const maxLowContacts = lowQuality ? 6 : 12;
+    if ((this._frameLowContactEmits | 0) >= maxLowContacts) return false;
+    this._frameLowContactEmits = (this._frameLowContactEmits | 0) + 1;
     // The contact seat can draw and still must not skip the slam class or the scar.
     const seated = this._emitCombatContact('contact', p) === true;
     const accessibility = resolveVfxAccessibilityProfile(this.state && this.state.settings);
@@ -5813,8 +6009,8 @@ export const vfx = {
     // saveSystem._clearEntities() emits reason:'save_restore' for every live entity before
     // rehydrate — silent despawn only (no explosion/particles/lights). Prevents F9 restore
     // from filling the particle cap and hitching 100–250ms. Real combat/mining/sector destroys
-    // omit this reason and still explode.
-    if (p && p.reason === 'save_restore') return;
+    // still explode. Intact Counterweight course bodies retire silently after scoring.
+    if (p?.reason === 'save_restore' || p?.reason === 'counterweight_retire') return;
     if (!this._scene) return;
     const t = p.type;
     if (t === 'projectile' || t === 'pickup' || t === 'fx') return;
@@ -5873,6 +6069,9 @@ export const vfx = {
       ? presentation.position
       : this._posFrom(p, p && p.id);
     if (!pos) return false;
+    // A ship's death also gets the kit's blast grammar (shock front, sparks, chips, soot); the phased
+    // explosion keeps its fireball and owns the light.
+    if (p && p.type === 'ship') this._ensurePowerFx()?.bomb(pos.x, pos.z, Number.isFinite(radiusOverride) ? radiusOverride : (p.radius || 12), p.id, { light: false, cast: false });
     const direction = presentation && Object.hasOwn(presentation, 'direction')
       ? presentation.direction
       : p && (p.direction || p.vel || p.approach) || null;
@@ -6922,6 +7121,7 @@ export const vfx = {
     beam.shaderShared.stop.value = -1;
     beam.release = 0;
     beam.active = true;
+    beam.cutContact = null;
     this._miningBeam.targetId = (p && p.targetId) || null;
     this._miningBeam.verb = (p && p.verb) || 'extract';
     beam.shaderShared.verb.value = beam.verb === 'cut' ? 1 : beam.verb === 'repair' ? 2 : beam.verb === 'transfer' ? 3 : 0;
@@ -6986,7 +7186,15 @@ export const vfx = {
     }
     const dx = sxG - destination.x, dz = szG - destination.z, dist = Math.hypot(dx, dz) || 1;
     const r = target.radius || 6;
-    const txG = destination.x + dx / dist * r, tzG = destination.z + dz / dist * r;
+    let txG = destination.x + dx / dist * r;
+    let tzG = destination.z + dz / dist * r;
+    if (beam.cutContact) {
+      const yaw = presentedAnchorRot(target, alpha);
+      const c = Math.cos(yaw), s = Math.sin(yaw);
+      const { x, z } = beam.cutContact;
+      txG = destination.x + x * c - z * s;
+      tzG = destination.z + x * s + z * c;
+    }
     const start = this._toLocalXZ(sxG, szG, this._spawnLocalXZ);
     const end = this._toLocalXZ(txG, tzG, this._entityLocalXZ);
     beam.shaderShared.start.value.set(start.x, sy, start.z);
@@ -6994,13 +7202,16 @@ export const vfx = {
     const verb = beam.verb || 'extract';
     // Substantial three-dimensional channels, independent of arrival/cutoff. The shader moves
     // material through them and articulates the receiving surface, including the cooling tail.
-    beam.shaderShared.coreRadius.value = verb === 'cut' ? 1.4 : verb === 'repair' ? 2.5 : 2.8;
-    beam.shaderShared.sheathRadius.value = verb === 'cut' ? 2.3 : verb === 'repair' ? 3.5 : 4.2;
+    // A tight beam, not a searchlight: a thin hot core in a narrow sheath; the CONTACT carries the
+    // energy (kit: hot point, chips and sparks at the rock), so the line itself stays slim.
+    beam.shaderShared.coreRadius.value = verb === 'cut' ? 0.7 : verb === 'repair' ? 0.9 : 0.8;
+    beam.shaderShared.sheathRadius.value = verb === 'cut' ? 1.2 : verb === 'repair' ? 1.5 : 1.4;
+    if (beam.active && !reduced) this._ensurePowerFx()?.miningContact(txG, tzG, dx / dist, dz / dist, verb, dt);
     beam.shaderShared.contactRadius.value = Math.max(3.6, Math.min(8, r * .65));
     beam.shaderShared.targetRadius.value = r;
     beam.mesh.visible = beam.glow.visible = true;
     beam.mesh.material.opacity = verb === 'cut' ? .82 : .72;
-    beam.glow.material.opacity = .24;
+    beam.glow.material.opacity = .14;
     if (verb === 'cut' && beam.active && !reduced) {
       // Fixed cadence and seeded direction avoid frame-rate dependent spark showers.
       beam.sparkAcc += dt;
@@ -7530,48 +7741,14 @@ export const vfx = {
     return !!(tether && tether.active && preview && preview.viable);
   },
 
-  // R3B release window: a preallocated, vertex-coloured annulus around the captured world target.
-  // The pure planner consumes only the transient releaseTarget + existing predictor/rating truth;
-  // this adapter owns Three.js buffers, frame-local projection, fade, and accessibility.
-  // The ORRERY selection sigil: one world-space ground-plane instrument on the locked/engaged
-  // target, drawn after the field force surfaces (renderOrder 18 > 16) with depth testing ON.
-  // Force surfaces never write depth, so the sigil reads through a Well; hulls and rock do,
-  // so real occluders still win. The subject rule lives in targetContour.js; only the art is here.
-  // It also advances the instrument's own clock from `dt`, so this is called every frame it lives.
   _selectionSigil: null,
-  _initSelectionSigil() {
-    if (!this._scene || this._selectionSigil) return;
-    this._selectionSigil = new SelectionSigil(this._scene);
-  },
-  _resetSelectionSigil() {
-    // Teardown is not a release: dispose outright so no half-folded instrument is left behind.
-    if (this._selectionSigil) this._selectionSigil.dispose();
-    this._selectionSigil = null;
-  },
   _resetBroodPresentation() {
     if (this._broodPresentation) this._broodPresentation.dispose();
     this._broodPresentation = null;
   },
-  _updateSelectionSigil(dt) {
-    const sigil = this._selectionSigil;
-    if (!sigil) return false;
-    const state = this.state;
-    const settings = (state && state.settings) || null;
-    if (!state || state.mode !== 'flight') {
-      sigil.clear(dt, settings);
-      return false;
-    }
-    const resolved = resolveSelectionSigil(state);
-    if (!resolved) {
-      sigil.clear(dt, settings);
-      return false;
-    }
-    // Active swarm fights never reach this: resolveSelectionSigil withholds them.
-    // Other survival runs pull the same figures onto the hull.
-    if (state.run && state.run.kind === 'survival') resolved.tight = true;
-    const local = this._toLocalXZ(resolved.x, resolved.z, this._spawnLocalXZ);
-    return sigil.setSubject(resolved, local.x, local.z, dt, settings);
-  },
+  // R3B release window: a preallocated, vertex-coloured annulus around the captured world target.
+  // The pure planner consumes only the transient releaseTarget + existing predictor/rating truth;
+  // this adapter owns Three.js buffers, frame-local projection, fade, and accessibility.
   _masslineReleaseArc: null,
   _initMasslineReleaseArc() {
     if (!this._scene) return;
@@ -7793,7 +7970,6 @@ export const vfx = {
   // and whip are the published presentation reads — no second strain law here.
   _updateMasslineLatchRim(dt) {
     const rim = this._masslineLatchRim;
-    if (!rim) return false;
     const state = this.state;
     const playerTether = state && state.player && state.player.tether;
     const remoteTether = state && state.player && state.player.remoteMassline;
@@ -7824,10 +8000,13 @@ export const vfx = {
         }
       }
     }
+    if (!rim) return false;
     const plan = resolveMasslineLatchRimPlan(tether, target, load, whip, rim.plan);
     return updateMasslineLatchRim(rim, plan, dt, (x, z) => this._toLocalXZ(x, z, this._spawnLocalXZ));
   },
 
+  _powerFx: null,
+  _shipMarkers: null,
   _powerPreview: null,
   _powerPreviewPlan: null,
   _powerPreviewLocalize: null,
@@ -8343,7 +8522,9 @@ export const vfx = {
     dc.mesh.geometry.setDrawRange(0, geometry.indexCount);
     dc.mesh.geometry.attributes.position.needsUpdate = true;
     dc.mesh.geometry.attributes.color.needsUpdate = true;
-    dc.mesh.material.opacity = Math.min(0.85, cradle.visible01 * 0.85);
+    // The pilot's near-field course and docking chip carry the call to action.
+    // Keep the projected hardware legible over the hull without washing out the berth.
+    dc.mesh.material.opacity = cradle.visible01 * 0.36;
     dc.mesh.visible = true;
     return true;
   },
@@ -8646,7 +8827,7 @@ export const vfx = {
         }
         if (!layout.data.live) continue;
         const plan = resolveDockApproachPlan(row, readout, now, reduced, da.plan);
-        writeDockApproachGeometry(scratch, layout.data, plan, { gain, base });
+        writeDockApproachGeometry(scratch, layout.data, plan, { gain: gain * .62, base });
         base = scratch.indexCount / 6;
         live += 1;
       }
@@ -8877,7 +9058,7 @@ export const vfx = {
         if (!layout.data.live) continue;
         const plan = resolveApronFloodPlan(row, readout, now, reduced, af.plan);
         writeApronFloodGeometry(scratch, layout.data, plan, { gain, base });
-        base = scratch.indexCount / 6;
+        base = scratch.indexCount / APRON_FLOOD_INDICES_PER_QUAD;
         live += 1;
       }
     }
@@ -8890,7 +9071,7 @@ export const vfx = {
       return false;
     }
     const positions = scratch.positions;
-    for (let vertex = 0; vertex < (scratch.indexCount / 6) * 4; vertex += 1) {
+    for (let vertex = 0; vertex < base * APRON_FLOOD_VERTICES_PER_QUAD; vertex += 1) {
       const offset = vertex * 3;
       const local = this._toLocalXZ(positions[offset], positions[offset + 2], this._spawnLocalXZ);
       positions[offset] = local.x;
@@ -9750,8 +9931,8 @@ export const vfx = {
     if (!player || !player.pos) return;
     const dx = Math.cos(player.rot || 0), dz = Math.sin(player.rot || 0);
     if (!this._isReduced()) this._spawnTravelVectorWake(player.pos, dx, dz, 8, '#d7e6ff', '#39d0ff', 22, 0.48);
-    this._spawnSprite(SPR_RING, player.pos.x - dx * 4, 0, player.pos.z - dz * 4,
-      0.62, 12, 5, this._isReduced() ? 0.24 : 0.5, 0, '#39d0ff', dx * 3, dz * 3);
+    this._spawnSprite(SPR_COMBUSTION, player.pos.x - dx * 4, 0, player.pos.z - dz * 4,
+      0.52, 10, 4, this._isReduced() ? 0.24 : 0.45, 0, '#39d0ff', dx * 3, dz * 3, 0.36, Math.atan2(dz, dx));
   },
 
   _onCruiseEngaged(p) {
@@ -9761,8 +9942,8 @@ export const vfx = {
     if (!player || !player.pos) return;
     const dx = Math.cos(player.rot || 0), dz = Math.sin(player.rot || 0);
     if (!this._isReduced()) this._spawnTravelVectorWake(player.pos, dx, dz, 20, '#d7e6ff', '#39d0ff', 62, 0.72);
-    this._spawnSprite(SPR_RING, player.pos.x + dx * 5, 0, player.pos.z + dz * 5,
-      0.72, 4, 22, this._isReduced() ? 0.28 : 0.62, 0, '#39d0ff', dx * 12, dz * 12);
+    this._spawnSprite(SPR_COMBUSTION, player.pos.x + dx * 5, 0, player.pos.z + dz * 5,
+      0.62, 4, 18, this._isReduced() ? 0.28 : 0.56, 0, '#39d0ff', dx * 12, dz * 12, 0.32, Math.atan2(dz, dx));
   },
 
   _onCruiseDropped(p) {
@@ -9776,44 +9957,19 @@ export const vfx = {
     if (!quiet && !this._isReduced()) {
       this._spawnTravelVectorWake(player.pos, -dx, -dz, 10, '#ffb35c', '#ff5c5c', 30, 0.48);
     }
-    this._spawnSprite(SPR_RING, player.pos.x, 0, player.pos.z,
-      quiet ? 0.35 : 0.55, quiet ? 8 : 18, quiet ? 12 : 5, this._isReduced() ? 0.24 : (quiet ? 0.34 : 0.62), 0, primary, 0, 0);
+    this._spawnSprite(SPR_COMBUSTION, player.pos.x, 0, player.pos.z,
+      quiet ? 0.35 : 0.55, quiet ? 8 : 16, quiet ? 11 : 4, this._isReduced() ? 0.24 : (quiet ? 0.34 : 0.56), 0, primary, 0, 0, 0.42, Math.atan2(dz, dx));
   },
 
   _onChargeDetonated(p) {
     this._emitJuiceCue('combat.damage.charge', p, 2);
     if (!this._scene || !p || !p.pos) return;
-    const pos = p.pos;
-    const r = Math.max(4, Number(p.radius) || 12);
-    const acc = resolveVfxAccessibilityProfile(this.state && this.state.settings);
-    const reduced = acc.flashOpacityScale < 1;
-    const neon = resolveForceNeonScale('impulse', this._forceNeonMetrics());
-    const profile = resolveImpactPresentationProfile('wpn_vector_mine_m');
-    const coreScale = Math.max(1.6, Math.min(4.5, r * 0.08)) * neon.energy * 0.55;
-    // Compact structural core: collapsing punch, never the retired spherical explosion/ring.
-    this._spawnSprite(SPR_FLASH, pos.x, 0.16, pos.z, 0.10,
-      2.4 * coreScale, 0.85 * coreScale, 0.92, 0, '#ffffff', 0, 0, 1.15, 0);
-    this._emitDirectionalShoveSheets(pos, p.shoves, profile, reduced, Math.max(0.85, coreScale));
-    // IMPACTS: a carried charge releases in STAGES -- contact, first internal release, ejecta,
-    // second internal release, separation, then the cooling settle -- rather than as one flat
-    // bloom. No shove receipt means no signed side, so the recipe stays symmetric.
-    _impactOpts.vx = 0; _impactOpts.vy = 0; _impactOpts.vz = 0;
-    _impactOpts.serial = hashVfxId('charge:' + String(p.id ?? p.ownerId));
-    _impactOpts.targetId = p.id ?? null;
-    _impactOpts.eventClass = 'detonation';
-    _impactOpts.priority = 0.7;
-    _impactOpts.hero = false;
-    this._composeImpact(pos.x, 0.2, pos.z, 0, 0, 1, false, 0.62, 'hull', r * 0.45, _impactOpts);
-    if (acc.eventLightPeakScale > 0) {
-      // _flashLight already applies eventLightPeakScale — the neon gain is the authored runtime
-      // multiplier the preset peak doesn't own.
-      this._eventLight({ x: pos.x, z: pos.z }, 'impact', {
-        severity: 'detonation',
-        color: profile.accentColor,
-        peakMul: neon.lightPeak,
-      });
-    }
+    // The blast is drawn by the VFX kit (vfx/kit/powerFx.js bomb): one-frame flash, a room-lighting
+    // light, a fireball that cools into soot, a shock front, sparks and chips. It replaces the
+    // compact flash card, the shove sheets and the staged structural impact that read as a puff.
+    this._ensurePowerFx()?.bomb(p.pos.x, p.pos.z, Math.max(4, Number(p.radius) || 12), p.id ?? p.ownerId, { shoves: p.shoves });
   },
+
 
   // Drift-bomb detonations (design/ORDNANCE_BOMBS_SPEC.md). One handler, eight payloads, one
   // law: the read is the CONSEQUENCE the payload authored (shove / pull / splat / pulse), never
@@ -9865,8 +10021,9 @@ export const vfx = {
     const dirX = Number(p.dirX) || 0;
     const dirZ = Number(p.dirZ) || 0;
     const size = Math.max(2.4, (Number(body.radius) || 6) * 2.1);
-    this._spawnSprite(SPR_RING, pos.x, 0.12, pos.z,
-      reduced ? 0.16 : 0.26, size * 0.35, size, tumble ? 0.4 : 0.26, 0, '#b8d8ff', dirX * 10, dirZ * 10, 1, null, 0.72);
+    const angle = (dirX || dirZ) ? Math.atan2(dirZ, dirX) : 0;
+    this._spawnSprite(SPR_FLASH, pos.x, 0.12, pos.z,
+      reduced ? 0.14 : 0.20, size * 0.28, size * 0.7, tumble ? 0.42 : 0.28, 0, '#b8d8ff', dirX * 12, dirZ * 12, 2.4, angle, 0.72);
     if (!reduced && (dirX || dirZ)) {
       this._spawnSprite(SPR_PUFF, pos.x + dirX * (Number(body.radius) || 6) * 0.5, 0.1,
         pos.z + dirZ * (Number(body.radius) || 6) * 0.5,
@@ -10205,6 +10362,11 @@ export const vfx = {
 
   _onMiningTick(p) {
     if (!this._scene) return;
+    const beam = this._miningBeam;
+    if (beam?.active && p?.sourceEntityId === this.state.playerId && p.targetId === beam.targetId
+      && Number.isFinite(p.contactLocal?.x) && Number.isFinite(p.contactLocal?.z)) {
+      beam.cutContact = p.contactLocal;
+    }
     const pos = this._posFrom(p, null);
     if (!pos) return;
     const col = oreColor(p.oreType);
@@ -10814,9 +10976,10 @@ export const vfx = {
     const bz = (socket ? socket.z : entity.pos.z - sf * (entity.radius + 2))
       + exhaustZ * BOOST_BURST_NOZZLE_CLEARANCE;
     const reduced = this._isReduced();
-    this._spawnSprite(SPR_RING, bx, 0, bz, 0.35, 2, 16,
-      reduced ? 0.3 : 0.55, 0.0, this._engineColor(entity),
-      exhaustX * 4, exhaustZ * 4);
+    // Aft-directed ignition flare along the exhaust axis instead of a boost ring (owner 2026-11-23).
+    this._spawnSprite(SPR_FLASH, bx, 0, bz, 0.22, 2.4, 12,
+      reduced ? 0.28 : 0.55, 0.0, this._engineColor(entity),
+      exhaustX * 12, exhaustZ * 12, 2.6, Math.atan2(exhaustZ, exhaustX));
     return presented;
   },
 
@@ -10866,11 +11029,9 @@ export const vfx = {
     const reduced = this._isReduced();
     const burst = this._burst || 1;
     const scale = Math.max(0.6, Math.min(2.0, r / 8)) * (reduced ? 0.7 : 1);
-    // Core detonation: collapsing white punch, expanding ring, hot debris fan, light.
+    // Core detonation: collapsing white punch, hot debris fan, light (no shock ring).
     this._spawnSprite(SPR_FLASH, p.x, 0.3, p.z, 0.14, 3.2 * scale, 0.9 * scale,
       reduced ? 0.75 : 1.0, 0, '#ffffff', 0, 0, 1.4, 0);
-    this._spawnSprite(SPR_RING, p.x, 0.28, p.z, 0.42, r * 0.1 * scale, r * 0.85 * scale,
-      reduced ? 0.3 : 0.55, 0, '#ffd9a8', 0, 0);
     this._c0.set('#ffe9c0'); this._c1.set('#4a1c08');
     const count = Math.max(6, Math.round(14 * burst * (reduced ? 0.5 : 1)));
     for (let k = 0; k < count; k++) {
@@ -11117,6 +11278,58 @@ export const vfx = {
     layer.noteSilhouette(mark, this._causeNow());
   },
 
+  _ensurePowerFx() {
+    if (this._powerFx || !this._scene || typeof this._scene.add !== 'function') return this._powerFx || null;
+    this._powerFx = new PowerFx(this._scene, {
+      toLocal: (x, z, out) => this._toLocalXZ(x, z, out),
+      // Through the light director like every other event light (kind 'impact', values authored here).
+      flashLight: (pos, color, peak, decay, dist, priority) => this._eventLight(pos, 'impact', { color, peak, decay, distance: dist, priority }),
+      distortion: (spec) => { const d = this._weaponPresenter && this._weaponPresenter.distortion; if (d) d.spawn(spec); },
+      // World units per screen pixel at a local point (hits keep a minimum on-screen size).
+      wuPerPx: (x, z) => { const w = this._weaponPresenter; return w && typeof w._pixelWorldAt === 'function' ? w._pixelWorldAt(x, 0, z) || 0 : 0; },
+    });
+    return this._powerFx;
+  },
+  // Ships pop from the floor: contact pool, team ring, the player's chevron (vfx/kit/shipMarkers.js).
+  _updateShipMarkers() {
+    if (!this._scene || !this.state || this.state.mode !== 'flight') {
+      if (this._shipMarkers) this._shipMarkers.mesh.visible = false;
+      return;
+    }
+    if (!this._shipMarkers) {
+      if (typeof this._scene.add !== 'function') return;
+      this._shipMarkers = new ShipMarkers(this._scene);
+    }
+    const time = Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
+    // The chevron points where the nose points: the front weapon socket relative to the hull.
+    let heading = null;
+    const me = this.state.entities && this.state.entities.get ? this.state.entities.get(this.state.playerId) : null;
+    const sock = me && this.helpers && typeof this.helpers.socketWorldPos === 'function'
+      ? this.helpers.socketWorldPos(me.id, 'SOCKET_Weapon_Front') : null;
+    if (sock && me.pos && Math.hypot(sock.x - me.pos.x, sock.z - me.pos.z) > 0.5) heading = Math.atan2(sock.z - me.pos.z, sock.x - me.pos.x);
+    if (!this._shipMarkerLocalize) this._shipMarkerLocalize = (x, z, out) => this._toLocalXZ(x, z, out);
+    // The HUD's attention state (src/ui/hud.js publishes data-hud-attention): calm flight fades
+    // the player's ring; fights and the teaching window keep it.
+    let attention = 'fight';
+    if (typeof document !== 'undefined') {
+      if ((!this._hudAttentionEl || !this._hudAttentionEl.isConnected) && !((this._hudAttentionLook = (this._hudAttentionLook || 0) + 1) % 30)) {
+        this._hudAttentionEl = document.querySelector('[data-hud-attention]');
+      }
+      const a = this._hudAttentionEl && this._hudAttentionEl.getAttribute('data-hud-attention');
+      if (a) attention = a;
+    }
+    this._shipMarkers.update(this.state, this._shipMarkerLocalize, time, this._isReduced(), heading, attention);
+  },
+  _updatePowerFx(dt) {
+    if (!this._powerFx) {
+      // Normally created and warmed at init; this covers a scene that arrived later.
+      if (!this.state || this.state.mode !== 'flight') return;
+      if (!this._ensurePowerFx()) return;
+      this._powerFx.warm();
+    }
+    this._powerFx.update(dt, this.state);
+  },
+
   _updateFieldGeometry(dt) {
     if (!this._fieldGeomInitialized) {
       if (!this._fieldFlowRelevant()) return;
@@ -11144,6 +11357,47 @@ export const vfx = {
     this._gyreSnareFx = new GyreSnarePresentation(this._scene, {
       toLocal: this._combatBeamLocalizer || ((x, z, out) => this._toLocalXZ(x, z, out)),
     });
+  },
+  // PORT-PRO-FIVE expedition presentations. Each adapter owns bounded geometry and
+  // reads the sim's public view/mirror; creation is lazy so an idle frame allocates nothing.
+  _updateProBuildPresentations() {
+    const state = this.state;
+    if (!state || !this._scene) return;
+    const localize = this._combatBeamLocalizer || ((x, z, out) => this._toLocalXZ(x, z, out));
+    if (!this._switchback) {
+      this._switchback = createSwitchbackView({ THREE, state, bus: this.bus,
+        getDeck: getPromptDeck, toLocalXZ: localize });
+    }
+    this._switchback?.update();
+    // GLASSWAKE: two folded front surfaces + two pooled line batches draw the
+    // storm's instruments. Lazily built when the bounded view appears; keeps
+    // updating on null so stale geometry clears through sector/game changes.
+    const stormView = readStormChaseView(state);
+    if (!this._stormChaseFx && stormView) {
+      this._stormChaseFx = createStormChasePresentation({
+        THREE, scene: this._scene,
+        toLocal: (x, z, out) => localize(x, z, out),
+        document: globalThis.document, container: globalThis.document?.getElementById?.('ui-root'),
+      });
+    }
+    if (this._stormChaseFx) this._stormChaseFx.update(stormView, state.settings);
+    // KINETIC CATALYSTS: capture orbits, echo charges and load-bridge links render
+    // as swept force surfaces on a dedicated bounded batch. Lazily built when the
+    // bounded view appears; keeps updating on null so stale geometry clears.
+    const catalystView = state.kineticCatalystsPublic || null;
+    if (!this._kineticCatalystsFx && catalystView) {
+      this._kineticCatalystsFx = createCatalystPresentationAdapter({
+        surfaceBatch: new SweptSurfaceBatch(this._scene, { capacity: 80, name: 'SF_KineticCatalysts', fieldVolume: true }),
+        toLocal: (x, z, out) => localize(x, z, out),
+      });
+    }
+    if (this._kineticCatalystsFx) {
+      this._kineticCatalystsFx.update(catalystView, {
+        simTime: state.simTime,
+        reducedMotion: state.settings?.reducedMotion === true,
+        reducedFlash: state.settings?.reducedFlash === true,
+      });
+    }
   },
   _updateGyreSnare(dt) {
     if (!this._gyreSnareFx && this._gyreRelevant()) this._initGyreSnare();
@@ -11278,6 +11532,8 @@ export const vfx = {
 
   update(frameDt) {
     if (this._destroyed === true) return;
+    this._frameLowContactEmits = 0;
+    this._vfxFrameSeq = (this._vfxFrameSeq || 0) + 1;
     notePresentationFrame(this.state);
     // Refresh the Tier-1 sink once per frame: spawn paths then pay a single null check.
     const tier1Perf = this.state && this.state.perfRuntime;
@@ -11426,8 +11682,10 @@ export const vfx = {
     this._updateTumbleBodyLanguageVfx(dt);
     this._updateEnvironmentMaterialVfx(dt);
     this._updateStatusAttachedVfx(dt);
-    // INF-045: the lock contour tracks the target every frame it exists.
-    sub.selectionSigil = this._updateSelectionSigil(dt) ? 1 : 0;
+    // The world selection sigil (the cyan astrolabe ring, ticks and hexagon round the selected
+    // body) is not drawn: owner, 2026-11-23, no rings round things. The target card and the DOM
+    // lock bracket say what is selected; the Line's aim tag and release path say where a throw goes.
+    sub.selectionSigil = 0;
     // M1 doctrine telegraphs — sustain FLYBY/TETHER/CHARGE cues across the pre-fire window.
     if (this._doctrineTellActive > 0) this._updateDoctrineTells(dt);
     if (this._arcPreviewActive()) {
@@ -11528,7 +11786,10 @@ export const vfx = {
       sub.fieldFlow = fields ? fields.surfaces : 0;
     } else sub.fieldFlow = 0;
     this._syncFieldPowerLights();
+    this._updatePowerFx(dt);
+    this._updateShipMarkers();
     if (this._gyreRelevant() || this._gyreSnareFx) this._updateGyreSnare(dt);
+    this._updateProBuildPresentations();
     if (this._actionVfx) this._actionVfx.update(this.state);
     if (this._bombDetonationVfx) this._bombDetonationVfx.update(this.state);
     if (this._statusMatterVfx) this._statusMatterVfx.update(this.state);
@@ -11601,7 +11862,10 @@ export const vfx = {
     } else {
       sub.combatBeams = 0;
     }
+    const vfxBudgetOn = isVfxBudgetActive(this.state);
+    if (this._spriteBatches) this._spriteBatches.budgetActive = vfxBudgetOn;
     if (this._gas) {
+      this._gas.setBudgetActive(vfxBudgetOn);
       // Quiet settled flight: empty gas still paid a11y resolve + setAccessibility +
       // empty update every tick. Latch after first empty observe; wake on liveCount
       // (emit). Soft-GPU fps not claimed. Different angle from held profile-id retain.
@@ -12800,6 +13064,10 @@ export const vfx = {
         this._combatBeamLocalizer || ((x, z, out) => this._toLocalXZ(x, z, out)));
     }
     if (!this._energy) this._initEnergy();
+    // The cause-marks layer mints lazily on the first wound/scar event; ensure it now so its
+    // sf-cause-marks material joins the first-flight cohort instead of linking on the first
+    // scar inside a presented frame.
+    this._ensureCauseMarks();
     const energy = this._energy;
     if (!energy) return { skipped: true, reason: 'no-energy' };
     const player = this.state.entities && this.state.entities.get(this.state.playerId);
@@ -12904,18 +13172,30 @@ export const vfx = {
           continue;
         }
         const width = Math.max(1.45, (entity.radius || 14) * 0.095);
-        const trail = createRibbonTrail(this._scene, this._engineColor(entity), NPC_RIBBON_SEGMENTS, width);
+        const trail = this._mintNpcRibbonTrail(entity, width, { compile: true });
+        if (!trail) continue;
         this._ribbonTrails.set(entity.id, trail);
-        // A lazily-created trail carries a never-compiled material and a never-uploaded geometry;
-        // without the pending latch its first thrust frame pays both inside the presented pass
-        // (diag20 GPU brick: unstamped SF_RibbonTrail + a physical,STANDARD link).
-        const trailRender = this.state && this.state.render;
-        const trailMesh = trail && typeof trail.getMesh === 'function' ? trail.getMesh() : null;
-        if (trailMesh && trailRender && typeof trailRender.compileObjectPipelines === 'function') {
-          Promise.resolve(trailRender.compileObjectPipelines(trailMesh)).catch(() => null);
-        }
         ribbons += 1;
       }
+    }
+    // Warm-minted trails still retire behind the shell: their material dispose releases the
+    // shared ribbon program's last reference, so the first live mint relinks it inside a
+    // presented frame either way (PERF-04 late key 86,87). Mount the same hidden exemplar the
+    // software-route subset uses even when live trails exist — its parked material pins the
+    // program across every live trail's lifetime, and restLiveFlightEffectsAfterCook detaches
+    // it without disposing.
+    if (!this._openingRibbonExemplar) {
+      this._openingRibbonExemplar = createRibbonTrail(this._scene,
+        (player && this._engineColor(player)) || '#88AAFF', NPC_RIBBON_SEGMENTS, 1.45);
+    }
+    const exemplarMesh = this._openingRibbonExemplar
+      && typeof this._openingRibbonExemplar.getMesh === 'function'
+      ? this._openingRibbonExemplar.getMesh() : null;
+    if (exemplarMesh) {
+      if (!exemplarMesh.parent) this._scene.add(exemplarMesh);
+      // Non-empty range for the cohort touch draw (zeroed positions: nothing visible).
+      exemplarMesh.geometry.setDrawRange(0, 6);
+      ribbons += 1;
     }
     const plumeOpts = { boost: 0.4, a11y };
     const fleetPlumes = new Set();
@@ -13152,6 +13432,16 @@ export const vfx = {
     // re-lights whatever the ship actually commands.
     if (this._energy) this._hideEnergyPlumes();
     if (this._overflowJets) this._overflowJets.reset();
+    // Park the cohort ribbon exemplar the same way releaseOpeningEffectSubset does: detach, do
+    // not dispose — releasing its material frees the linked program the first live NPC trail
+    // would otherwise relink inside a presented frame.
+    const exemplar = this._openingRibbonExemplar;
+    const exemplarMesh = exemplar && typeof exemplar.getMesh === 'function' ? exemplar.getMesh() : null;
+    if (exemplarMesh) {
+      exemplarMesh.geometry.setDrawRange(0, 0);
+      exemplarMesh.visible = false;
+      if (exemplarMesh.parent) exemplarMesh.parent.remove(exemplarMesh);
+    }
     return { skipped: false };
   },
 
@@ -13630,7 +13920,7 @@ export const vfx = {
       const out = this._productionPlumeSockets[i];
       this._productionPlumeSocketView[i] = out;
       let pose = null;
-      if (authored[i]) pose = this._trailSocketPoseFromObject(authored[i]);
+      if (authored[i]) pose = this._trailSocketPoseFromObject(authored[i], player && player.view);
       else if (i === 0) pose = this._trailSocketWorldPose(player);
       if (pose) {
         const local = this._toLocalXZ(pose.x, pose.z, this._spawnLocalXZ);
@@ -13721,7 +14011,7 @@ export const vfx = {
           }
           if (earlierTie) continue;
         }
-        if (!this._writeRcsSocketPose(authoredSocket, origin, axis)) {
+        if (!this._writeRcsSocketPose(authoredSocket, origin, axis, player && player.view)) {
           const local = this._toLocalXZ(jet.x, jet.z, this._spawnLocalXZ);
           origin[0] = local.x; origin[1] = 0; origin[2] = local.z;
           axis[0] = jet.dirX; axis[1] = 0; axis[2] = jet.dirZ;
@@ -13786,7 +14076,7 @@ export const vfx = {
           : (authoredSockets && authoredSockets.retroStarboard);
         let usedAuthored = false;
         if (authoredSocket) {
-          usedAuthored = this._writeRetroSocketPose(authoredSocket, sock);
+          usedAuthored = this._writeRetroSocketPose(authoredSocket, sock, player && player.view);
         }
         if (!usedAuthored) {
           const local = this._toLocalXZ(jet.x, jet.z, this._spawnLocalXZ);
@@ -13820,7 +14110,7 @@ export const vfx = {
           const mounted = held.role === 'reverse-left'
             ? authoredSockets && authoredSockets.retroPort
             : authoredSockets && authoredSockets.retroStarboard;
-          if (!this._writeRetroSocketPose(mounted, sock)) {
+          if (!this._writeRetroSocketPose(mounted, sock, player && player.view)) {
             sock.x = shipLocal.x + held.lx * cf - held.lz * sf;
             sock.y = held.ly || 0;
             sock.z = shipLocal.z + held.lx * sf + held.lz * cf;
@@ -13872,7 +14162,7 @@ export const vfx = {
     if (deliberateBrake && !this._retroBrakeEngaged && !(a11y && a11y.reducedMotion)) {
       const ctrl = this.state.render && this.state.render.cameraCtrl;
       if (ctrl && typeof ctrl.pushZoom === 'function') ctrl.pushZoom(-0.014, 0.32);
-      if (ctrl && typeof ctrl.impactKick === 'function') ctrl.impactKick(-vx, -vz, 0.34);
+      if (ctrl && typeof ctrl.impactKick === 'function') ctrl.impactKick(-vx, -vz, 0.34, 'boost');
     }
     this._retroBrakeEngaged = deliberateBrake;
 
@@ -14409,6 +14699,25 @@ export const vfx = {
           -sx * (4 + smear * 10),
           -sz * (4 + smear * 10),
         );
+      }
+      // OVH-06b (§7): a body that lost its helm trails a smoke-and-spark corkscrew, the trail
+      // swinging across its travel axis as it rolls. Seeded from the body id and sim clock.
+      if (emitAngular && !recovering && bodyHitEnabled() && e.vel) {
+        const tvx = e.vel.x || 0; const tvz = e.vel.z || 0;
+        const tsp = Math.hypot(tvx, tvz);
+        if (tsp > 6) {
+          const simT = Number(this.state && this.state.simTime) || 0;
+          const off = corkscrewOffset(e.id, simT, tumble && tumble.spin, r);
+          const px = -tvz / tsp; const pz = tvx / tsp;
+          const cx = e.pos.x + px * off; const cz = e.pos.z + pz * off;
+          this._c0.set('#b9b2aa'); this._c1.set('#2a2622');
+          this._spawnParticle(cx, cz, -tvx * 0.12, -tvz * 0.12, 0.7, 1.6, 4.2, this._c0, this._c1, 0.7, 0.8, 2.0);
+          if (seed01(e.id, (simT * 60) | 0, 131) < 0.5) {
+            const sa = seedSigned(e.id, (simT * 60) | 0, 141) * Math.PI;
+            this._spawnProjectileTrailStreak(cx, 0.3, cz, 0.2, 0.1, 2.4, reduced ? 0.45 : 0.9, '#ffc873',
+              Math.cos(sa) * 18 - tvx * 0.1, Math.sin(sa) * 18 - tvz * 0.1, Math.cos(sa), Math.sin(sa));
+          }
+        }
       }
       // Recover settle flash once when recovering starts (very light).
       if (recovering && thrash < 0.05 && ribbon < 0.25 && angularAge < angularPeriod * 1.5) {
@@ -15434,7 +15743,15 @@ export const vfx = {
 
       const driveInfo = this._engineDriveFor(e);
       const braking = !!(driveInfo.retroOnly || (driveInfo.reverse > 0.05));
-      if (driveInfo.drive < 0.055 && !braking) continue; // idle ships emit nothing
+      if (driveInfo.drive < 0.055 && !braking) {
+        // OVH-06b: a wounded body smokes even at rest (the ladder is hull truth, not throttle).
+        if (bodyHitEnabled() && e.hullMax && e.hull < e.hullMax && bodyDamageTier(e.hull, e.hullMax) > 0
+          && this._resolveTrailTier(e, ctx, screenChecks) !== TRAIL_TIER.SKIP) {
+          this._emitDamageSmoke(e, e.hull / e.hullMax, step);
+          anyBusy = true;
+        }
+        continue; // idle ships emit no engine trail
+      }
       const tier = this._resolveTrailTier(e, ctx, screenChecks);
       if (tier === TRAIL_TIER.SKIP) {
         this._trailBudgetDiag.trailEmittersSkipped++;
@@ -15472,7 +15789,7 @@ export const vfx = {
       // smokes, so you can spot a limping enemy without HUD readouts.
       if (tier !== TRAIL_TIER.SKIP && e.hullMax && e.hull < e.hullMax) {
         const frac = e.hull / e.hullMax;
-        if (frac < 0.40) {
+        if (bodyDamageTier(e.hull, e.hullMax) > 0) {
           this._emitDamageSmoke(e, frac, step);
           anyBusy = true;
         }
@@ -15568,7 +15885,49 @@ export const vfx = {
   _EMBER_DIM: '#7a2a10',
   // Ribbon trails for medium-large ships: maintained per entity, updated each trail tick
   _ribbonTrails: null,
+  // NPC wake fleet batch — one BufferGeometry + one program for every batched ribbon lane
+  // (rfx `ribbonBatch`, default ON). Lanes are checked out per entity id in _ribbonTrails;
+  // the map's dispose() calls are slot checkouts, so joins/leaves never allocate.
+  _ribbonBatch: null,
   _initRibbonTrails() { this._ribbonTrails = new Map(); },
+
+  _ensureRibbonBatch(compile = false) {
+    if (this._ribbonBatch || !this._scene) return this._ribbonBatch;
+    const batch = createRibbonTrailBatch(this._scene, {
+      capacity: RIBBON_NPC_OWNER_CAP,
+      nSeg: NPC_RIBBON_SEGMENTS,
+    });
+    this._ribbonBatch = batch;
+    // Compile once at mint: every lane shares this mesh, so one compileObjectPipelines call
+    // covers the whole cohort (the solo path pays it per mesh).
+    if (compile) {
+      const trailRender = this.state && this.state.render;
+      if (trailRender && typeof trailRender.compileObjectPipelines === 'function') {
+        Promise.resolve(trailRender.compileObjectPipelines(batch.mesh)).catch(() => null);
+      }
+    }
+    return batch;
+  },
+
+  _mintNpcRibbonTrail(entity, width, { compile = false } = {}) {
+    if (frameCostFixOn('ribbonBatch')) {
+      const batch = this._ensureRibbonBatch(compile);
+      // Full batch → null; the caller's update walk treats it like a skipped mint.
+      return batch ? batch.acquire(this._engineColor(entity), width) : null;
+    }
+    const trail = createRibbonTrail(this._scene, this._engineColor(entity), NPC_RIBBON_SEGMENTS, width);
+    if (trail && compile) {
+      // A lazily-created trail carries a never-compiled material and a never-uploaded geometry;
+      // without the pending latch its first thrust frame pays both inside the presented pass
+      // (diag20 GPU brick: unstamped SF_RibbonTrail + a physical,STANDARD link).
+      const trailRender = this.state && this.state.render;
+      const trailMesh = typeof trail.getMesh === 'function' ? trail.getMesh() : null;
+      if (trailMesh && trailRender && typeof trailRender.compileObjectPipelines === 'function') {
+        Promise.resolve(trailRender.compileObjectPipelines(trailMesh)).catch(() => null);
+      }
+    }
+    return trail;
+  },
 
   _retireRibbonTrail(entityId, dispose = false) {
     if (!this._ribbonTrails) return;
@@ -15675,12 +16034,10 @@ export const vfx = {
       let trail = this._ribbonTrails.get(e.id);
       if (!trail) {
         const w = Math.max(1.45, (e.radius || 14) * 0.095);
-        trail = createRibbonTrail(
-          this._scene,
-          this._engineColor(e),
-          isPlayer ? PLAYER_RIBBON_SEGMENTS : NPC_RIBBON_SEGMENTS,
-          w,
-        );
+        // Player ribbons were retired above; every live mint here is an NPC wake. The batched
+        // lane shares the fleet geometry; the solo trail mints its own (rfx `ribbonBatch`).
+        trail = this._mintNpcRibbonTrail(e, w);
+        if (!trail) continue;
         this._ribbonTrails.set(e.id, trail);
       }
       // sample from engine nozzle (rear of ship); socket/entity XZ are galactic-global → frame-local.
@@ -15750,8 +16107,10 @@ export const vfx = {
 
   _emitDamageSmoke(e, frac, dt) {
     if (!this._scene) return;
-    // severity 0..1: 0 at the wound threshold (40%), 1 at death's door (0%)
-    const severe = Math.max(0, Math.min(1, (0.40 - frac) / 0.40));
+    // severity 0..1: 0 at the first damage state (60%, OVH-06b), 1 at death's door (0%)
+    const severe = bodyHitEnabled() ? Math.max(0, Math.min(1, (0.60 - frac) / 0.60))
+      : Math.max(0, Math.min(1, (0.40 - frac) / 0.40));
+    const bodyTier = bodyDamageTier(e.hull, e.hullMax);
     // Wound-local smoke (inf-wound-smoke): the scar book already knows where this hull was
     // opened — hull-local wound seats with a severity, an age, and the striking weapon's own
     // color. Smoke rises from those wounds, so the flank that took the fire smokes hardest and
@@ -15769,10 +16128,13 @@ export const vfx = {
     }
     // emit rate scales with severity; cap so a swarm of wounded ships can't drown the pool.
     // throttle the smoke to ~every other trail tick to stay cheap, harder when critical.
-    this._smokeAcc = (this._smokeAcc || 0) + dt * (0.6 + severe * 1.4);
-    if (this._smokeAcc < 0.032) return;
-    const n = this._smokeAcc >= 0.064 ? 2 : 1;
-    this._smokeAcc = 0;
+    // Per-body cadence: one global accumulator let a single wounded ship starve every other.
+    const smokeAcc = this._smokeAccById || (this._smokeAccById = new Map());
+    if (smokeAcc.size > 256) smokeAcc.clear();
+    const acc = (smokeAcc.get(e.id) || 0) + dt * (0.6 + severe * 1.4);
+    if (acc < 0.032) { smokeAcc.set(e.id, acc); return; }
+    const n = acc >= 0.064 ? 2 : 1;
+    smokeAcc.set(e.id, 0);
 
     const r = e.radius || 4;
     // emit from a few offsets around the hull center (a burning ship doesn't smoke from one point)
@@ -15852,6 +16214,32 @@ export const vfx = {
           this._c0, this._c1,
           2.5, 1.0 + Math.random() * 1.5, 6.0 + Math.random() * 4.0,
         );
+      }
+
+      // OVH-06b damage ladder. <=60%: the smoke above. <=30%: sparks off the wound seat.
+      // <=10%: flame at the seat. Seeded from the body id and the trail frame, so the same
+      // moment draws the same picture and nothing here touches state.rng or Math.random.
+      if (bodyTier >= BODY_TIER_SPARKS) {
+        const rates = tierEmitRates(bodyTier);
+        const frameKey = this._trailFrameIndex | 0;
+        const flashReduced = this._isReduced();
+        if (seed01(e.id, frameKey, 41 + k) < rates.spark / 24 * (flashReduced ? 0.5 : 1)) {
+          const a = seedSigned(e.id, frameKey, 51 + k) * Math.PI;
+          const sp = 14 + seed01(e.id, frameKey, 61 + k) * 22;
+          this._spawnProjectileTrailStreak(sx, 0.3, sz, 0.22, 0.11, 2.6 + severe * 1.6,
+            flashReduced ? 0.5 : 0.9, '#ffc873',
+            Math.cos(a) * sp + vx, Math.sin(a) * sp + vz, Math.cos(a), Math.sin(a));
+        }
+        if (bodyTier >= BODY_TIER_FIRE && seed01(e.id, frameKey, 71 + k) < rates.fire / 24) {
+          this._c0.set('#ff9a3a'); this._c1.set('#4a1a0a');
+          const fa = seedSigned(e.id, frameKey, 81 + k) * 0.6;
+          this._spawnParticle(
+            sx, sz,
+            vx + Math.cos(fa) * 3, vz + Math.sin(fa) * 3,
+            0.34, 2.4, 0.6, this._c0, this._c1,
+            1.6, 0.8, 7.0 + seed01(e.id, frameKey, 91 + k) * 3.0,
+          );
+        }
       }
     }
   },
@@ -16195,7 +16583,10 @@ function _makeProjectileTrailSelfCheckHarness(projectiles, video = {}) {
     content: {},
   };
   const system = Object.create(vfx);
-  system.init({ state, bus: { on() {} }, helpers: {} });
+  // The minimal bus the presentation lane really touches: subscriptions for init and
+  // emit for prompt-deck adapters (SWITCHBACK interactions fail fast without an
+  // emitting bus), so a full update pass runs headless without owning the UI deck.
+  system.init({ state, bus: { on() {}, emit() {} }, helpers: {} });
   return system;
 }
 
@@ -16389,6 +16780,7 @@ export function createVfxPrecompileSalvo() {
   const group = new THREE.Group();
   group.name = 'SF_Precompile_VFX_Salvo';
   group.add(createForceSurfacePrecompileMesh());
+  group.add(createPowerFxPrecompileGroup());
 
   const shardPrecompile = createShardStreakCloud(group, 12);
   const points = shardPrecompile.mesh;
@@ -16416,6 +16808,13 @@ export function createVfxPrecompileSalvo() {
   precompileTrail.streak.scale.set(0.8, 1, 4);
   group.add(precompileTrail.ribbon);
   group.add(precompileTrail.streak);
+  // Batched fleet-ribbon program (per-vertex tint/shade attributes — a distinct program key
+  // from the solo ribbon). Without a staged exemplar the first live NPC cohort mint links
+  // inside the bloom pass.
+  if (precompileTrail.ribbonBatch) {
+    precompileTrail.ribbonBatch.position.set(16, 1, -4);
+    group.add(precompileTrail.ribbonBatch);
+  }
 
   // Seam markers are instanced, vertex-coloured, additive, double-sided circles. None of the
   // generic sprite or trail probes has that exact program key, so an inactive seam pool can leave
@@ -16464,13 +16863,39 @@ export function createVfxPrecompileSalvo() {
   gasWarm.update(0.016, null);
 
   // Admit the same program key during startup, so the first real rupture does not compile it
-  // inside a combat frame. All four material constructions share this single instanced shader.
-  const ruptureWarm = new ExplosionRupture(group, { capacity: 8 });
-  ruptureWarm.emitPhase('rupture', {
-    sourceType: 'ship', cause: 'generic', serial: 7, classId: 'ordinary',
-    x: 0, z: -8, radius: 3, dirX: 1, dirZ: 0,
-  });
+  // inside a combat frame. All four material constructions share this single instanced shader —
+  // family is attribute-encoded (aShape.x), so one emit already links the program — but the
+  // combat variant matrix is enumerated anyway: it proves each family's admission path in the
+  // warm and stays correct if a family ever splits into its own material or define.
+  const ruptureWarm = new ExplosionRupture(group, { capacity: 32 });
+  const ruptureFamilyEntries = [
+    { materialId: 'fuel' },                                       // fuel
+    { sourceType: 'asteroid' },                                   // mineral
+    { sourceType: 'ship', cause: 'ship_collision' },              // armor
+    { sourceType: 'ship', cause: 'generic' },                     // reactor
+  ];
+  for (const probe of ruptureFamilyEntries) {
+    ruptureWarm.emitPhase('rupture', {
+      serial: 7, classId: 'ordinary', x: 0, z: -8, radius: 3, dirX: 1, dirZ: 0,
+      ...probe,
+    });
+  }
   ruptureWarm.update(0.16);
+
+  // Combat-only pools mint lazily on their first event — the snarl cable's lit flat-shading
+  // instanced program, the NPC service-cable massline ribbon program, and the sustained-beam
+  // core/sheath onBeforeCompile variants all used to link inside a presented combat frame.
+  // A specimen in the salvo resolves each exact program key; the pool itself stays lazy.
+  const tetherWarm = new TetherWebFx(group, (x, z, out) => { out.x = x; out.z = z; return out; });
+  tetherWarm.mesh.setMatrixAt(0, new THREE.Matrix4());
+  tetherWarm.mesh.count = 1;
+  tetherWarm.mesh.instanceMatrix.needsUpdate = true;
+  tetherWarm.mesh.visible = true;
+  const npcCableWarm = new NpcCableFx(group, (x, z, out) => { out.x = x; out.z = z; return out; }, null);
+  if (npcCableWarm.cables && npcCableWarm.cables[0] && npcCableWarm.cables[0].group) {
+    npcCableWarm.cables[0].group.visible = true;
+  }
+  group.add(createPersistentBeamPrecompileMeshes(THREE));
 
   const weaponBolts = createEnergyBoltPrecompileMesh();
   weaponBolts.name = 'SF_Precompile_WeaponEnergyBolts';
@@ -16547,15 +16972,6 @@ export function createVfxPrecompileSalvo() {
       * PLAYER_PLASMA_STREAM_RECIPE.volume.tailFlare,
   });
   stagingVolume.group.userData.precompileStaging = true;
-
-  // The selection sigil is a bespoke ShaderMaterial nothing else can pin: a specimen here warms
-  // its exact program key so the first target select does not link inside the presented frame.
-  // The live instance starts visible=false and is skipped by the residency-leaf census, so this
-  // specimen is the only staged draw the program ever gets.
-  const sigilSpecimen = new SelectionSigil();
-  sigilSpecimen.mesh.visible = true;
-  sigilSpecimen.mesh.name = 'SF_Precompile_SelectionSigil';
-  group.add(sigilSpecimen.mesh);
 
   // Emergent combat structures (energy arcs, pressure rings, deposits, splinters) live in a
   // lazily-created pool — the first real event used to link 4 bespoke programs plus the

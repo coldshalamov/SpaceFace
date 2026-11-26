@@ -51,7 +51,7 @@ export const WRECK_COURT_CASES = [
     access: 'anthology',
     playerStart: { x: -36, z: -220 },
     briefing: 'Two hulls drift as a pair. The insurer has a mutual-impact claim. The smaller hull\'s owner says they never met. File what the bodies support.',
-    uncertainty: 'Crew intent is not a measurement. A coat of polymer can be seen; why it was sprayed cannot. Parallel drifts have a miss distance with a few WU of sample noise.',
+    uncertainty: 'Crew intent is not a measurement. A coat of polymer can be seen; why it was sprayed cannot. Parallel drifts have a miss distance with a few u of sample noise.',
     build(ctx) {
       const j = ctx.j;
       return {
@@ -916,7 +916,7 @@ export const WRECK_COURT_CASES = [
     access: 'anthology',
     playerStart: { x: 420, z: 300 },
     briefing: 'A ship is clear of a station pylon. Both are damaged. The station says the pilot rammed the clamp. File what the bodies support.',
-    uncertainty: 'Which face is torn decides the direction of the force. A coarse look only says "damaged." The station is too heavy for this tow.',
+    uncertainty: 'Which face is torn decides the direction of the force. A coarse look only says "damaged." The station is beyond towing.',
     build(ctx) {
       const j = ctx.j;
       return {

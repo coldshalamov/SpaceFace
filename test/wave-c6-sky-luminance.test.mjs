@@ -1,13 +1,16 @@
-// §22 C6 — seven skies. Plate luminance stays under the starter muzzle and the engine core.
+// §22 C6 — nine skies. Plate luminance stays under the starter muzzle and the engine core.
 // Exactly one profile is the galaxy. The authored set is the seven palette-family skies plus
-// the per-sector rigs that inherit a family's sky (they share the plate, not an eighth sky).
-// The seventh family is the Bolus throat's own dark sky (5ef2693e9dd0, SEED-SC-22).
+// the per-sector rigs that inherit a family's sky (they share the plate, not a new sky) — and,
+// since PLACES-1 (INV-25 items 1+2), the two locally-baked backdrops: the icy fringe's
+// pale-ice shelf family and Ashfall Reach's burn front. The seventh family is the Bolus
+// throat's own dark sky (5ef2693e9dd0, SEED-SC-22).
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
   SECTOR_VISUAL_PROFILES,
   resolveBackgroundPaintedSky,
+  resolveBackgroundSky,
   resolveBackgroundStructure,
   resolveSectorVisualProfile,
   skyPlateLuminance,
@@ -27,15 +30,19 @@ test('the authored skies sit under the muzzle and the engine, and only Tethys is
   const engine = engineCoreIntensity(KESTREL_MAIN_PLUME_RECIPE);
   // The row's sky count is distinct resolved skies, not profiles — a sector rig
   // shares its family's plate/structure by frozen reference. A new rig grows the profile
-  // count; only a real eighth sky fails this.
+  // count; only a real new sky fails this. Since the §22.5 C6 base backdrops, a sky's
+  // identity is its baked base plate first (what the composite actually substitutes),
+  // then its accent plate, then its structure recipe.
   const skyIdentities = new Set(profiles.map((profile) => {
+    const base = resolveBackgroundSky(profile);
+    if (base && base.plate) return `sky:${base.plate}`;
     const paint = resolveBackgroundPaintedSky(profile);
     if (paint && paint.plate) return `plate:${paint.plate}`;
     const structure = resolveBackgroundStructure(profile);
     return `structure:${resolveDeepFieldStructureRecipe(structure).id}`;
   }));
-  assert.equal(skyIdentities.size, 7,
-    'seven distinct skies — the palette families; sector rigs inherit, they do not add a sky');
+  assert.equal(skyIdentities.size, 9,
+    'nine distinct skies — the seven palette families plus the pale-ice shelf and Ashfall\'s burn front');
   assert.ok(muzzle > 1 && engine > muzzle, 'the engine core outshines the starter muzzle');
   const galaxies = profiles.filter((profile) => profile.galaxyPlate === true);
   assert.deepEqual(galaxies.map((profile) => profile.id), ['tethys']);

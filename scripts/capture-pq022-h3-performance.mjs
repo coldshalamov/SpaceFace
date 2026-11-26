@@ -847,7 +847,6 @@ async function runWindow({ cycle, sectorId, kind, identity = null, subjectId = n
   activePhase = windowId;
   // The relay id watch samples in the page; it never runs inside a timing window.
   if (identity?.subject?.kind === 'relay-fixture') await stopRelayWatch('window-start');
-  await page.bringToFront().catch(() => {});
   const settle = await page.evaluate((opts) => window.__PQ022_H3__.pipelineSettle(opts), { stableMs: 1_500, timeoutMs: 90_000 });
   const releaseFile = identity?.releaseFile || null;
   const start = await page.evaluate(({ id, file }) => window.__PQ022_H3__.census(id, file), { id: subjectId, file: releaseFile });

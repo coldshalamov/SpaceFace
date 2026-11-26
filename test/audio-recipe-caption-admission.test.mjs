@@ -71,11 +71,11 @@ test('rejected real plays never generate a caption', () => {
 
 test('real admitted named mission, payoff and sale voices do not stack generated captions', () => {
   const cases = [
-    ['mission:accepted', {}, 'Mission accepted.'],
+    ['mission:accepted', {}, 'The job is yours.'],
     ['mission:completed', {}, 'Mission complete.'],
     ['tech:researched', {}, 'Research complete.'],
     ['ship:purchased', { name: 'Hitch' }, 'Ship purchased: Hitch.'],
-    ['achievement:unlocked', { name: 'First Blood' }, 'Achievement: First Blood.'],
+    ['achievement:unlocked', { name: 'First Blood' }, 'On your record: First Blood.'],
     ['career:ladder:completed', {}, 'Rank attained.'],
     ['economy:tradeCompleted', { side: 'sell', profit: 40 }, 'Credits received.'],
   ];
@@ -178,7 +178,7 @@ test('named event text survives rejected audio', () => {
     h.host.rt.ctx.state = 'suspended';
     h.bus.emit('mission:accepted', {}); h.bus.flush();
     assert.equal(h.host.rt.voices.length, 0);
-    assert.deepEqual(h.captions.map(p => p.text), ['Mission accepted.']);
+    assert.deepEqual(h.captions.map(p => p.text), ['The job is yours.'], 'Adventure words demo pass');
   } finally { h.host.destroy(); }
 });
 

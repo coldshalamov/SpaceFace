@@ -27,8 +27,8 @@ export const ACHIEVEMENT_DESCRIPTION_MAX = 120;
 
 export const ACHIEVEMENT_CATEGORIES = Object.freeze([
   Object.freeze({ id: 'adventure', label: 'Adventure' }),
-  Object.freeze({ id: 'massline', label: 'Massline' }),
-  Object.freeze({ id: 'crucible', label: 'Crucible' }),
+  Object.freeze({ id: 'massline', label: 'Line' }),
+  Object.freeze({ id: 'crucible', label: 'Swarm' }),
   Object.freeze({ id: 'career', label: 'Career' }),
 ]);
 
@@ -127,12 +127,12 @@ export const ACHIEVEMENTS = Object.freeze([
     rule: { source: 'counter', key: 'jumps', target: 1 },
   }),
 
-  // Massline — the signature verbs.
+  // Line — the signature verbs.
   achievement({
     id: 'made_contact',
     category: 'massline',
     name: 'Made Contact',
-    description: 'Latch the Massline onto another body.',
+    description: 'Latch the Line onto another body.',
     icon: 'icon-line',
     rule: { source: 'counter', key: 'latches', target: 1 },
   }),
@@ -140,7 +140,7 @@ export const ACHIEVEMENTS = Object.freeze([
     id: 'light_ships_are_ammunition',
     category: 'massline',
     name: 'Light Ships Are Ammunition',
-    description: 'Throw a body with the Massline.',
+    description: 'Throw a body with the Line.',
     icon: 'icon-fighter',
     rule: { source: 'counter', key: 'throws', target: 1 },
   }),
@@ -161,12 +161,12 @@ export const ACHIEVEMENTS = Object.freeze([
     rule: { source: 'counter', key: 'crushingImpacts', target: 1 },
   }),
 
-  // Crucible — read from the settled local records.
+  // Swarm — read from the settled local records.
   achievement({
     id: 'into_the_crucible',
     category: 'crucible',
-    name: 'Into the Crucible',
-    description: 'Finish a Crucible run, however it ends.',
+    name: 'Into the Swarm',
+    description: 'Finish a Swarm run, however it ends.',
     icon: 'icon-danger',
     rule: { source: 'crucible', key: 'runs', target: 1 },
   }),
@@ -174,7 +174,7 @@ export const ACHIEVEMENTS = Object.freeze([
     id: 'tenth_wave',
     category: 'crucible',
     name: 'Tenth Wave',
-    description: 'Reach wave 10 in the Crucible.',
+    description: 'Reach wave 10 in the Swarm.',
     icon: 'icon-scan',
     rule: { source: 'crucible', key: 'deepestWave', target: 10 },
   }),
@@ -182,7 +182,7 @@ export const ACHIEVEMENTS = Object.freeze([
     id: 'better_than_last_time',
     category: 'crucible',
     name: 'Better Than Last Time',
-    description: 'Beat your own best score in a Crucible challenge.',
+    description: 'Beat your own best score in a Swarm challenge.',
     icon: 'icon-record',
     rule: { source: 'counter', key: 'crucibleBests', target: 1 },
   }),
@@ -190,7 +190,7 @@ export const ACHIEVEMENTS = Object.freeze([
     id: 'same_seed_same_day',
     category: 'crucible',
     name: 'Same Seed, Same Day',
-    description: 'Finish a Crucible daily run.',
+    description: 'Finish a Swarm daily run.',
     icon: 'icon-clock',
     rule: { source: 'crucible', key: 'dailyDays', target: 1 },
   }),
@@ -198,7 +198,7 @@ export const ACHIEVEMENTS = Object.freeze([
     id: 'walked_out',
     category: 'crucible',
     name: 'Walked Out',
-    description: 'Extract from a Crucible swarm at the refit bench instead of dying in it.',
+    description: 'Extract from a Swarm run at the refit bench instead of dying in it.',
     icon: 'icon-undock',
     rule: { source: 'counter', key: 'crucibleExtractions', target: 1 },
   }),
@@ -270,7 +270,7 @@ export const ACHIEVEMENTS = Object.freeze([
     id: 'salvage_crew',
     category: 'massline',
     name: 'Salvage Crew',
-    description: 'Throw fifty bodies with the Massline.',
+    description: 'Throw fifty bodies with the Line.',
     icon: 'icon-tow',
     rule: { source: 'counter', key: 'throws', target: 50 },
   }),

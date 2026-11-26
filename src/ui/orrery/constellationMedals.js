@@ -64,10 +64,11 @@ const CSS = `
 .orr-svg .con-morr__track { fill:none; stroke:rgb(${BONE} / .58); stroke-width:1.6; }
 /* the orbit's body: a band of light the core rides on */
 .orr-svg .con-morr__trackbloom { fill:none; stroke:rgb(${BONE} / .31); stroke-width:7; }
-.orr-svg .con-morr__ticks { fill:none; stroke:rgb(${BONE} / .34); stroke-width:1.2; }
+/* tick voices follow the grammar's hierarchy (tokens.js .orr-tick .42 / .orr-tick--major .72) */
+.orr-svg .con-morr__ticks { fill:none; stroke:rgb(${BONE} / .42); stroke-width:1.2; }
 .orr-svg .con-morr__ring.is-front .con-morr__track { stroke:rgb(${WARM} / .95); stroke-width:2.2; }
 .orr-svg .con-morr__ring.is-front .con-morr__trackbloom { stroke:rgb(${WARM} / .5); stroke-width:8; }
-.orr-svg .con-morr__ring.is-front .con-morr__ticks { stroke:rgb(${WARM} / .55); }
+.orr-svg .con-morr__ring.is-front .con-morr__ticks { stroke:rgb(${WARM} / .72); }
 .orr-svg .con-morr__ring.is-dim .con-morr__track { stroke:rgb(${BONE} / .42); }
 .orr-svg .con-morr__ring.is-dim .con-morr__ticks { stroke:rgb(${BONE} / .2); }
 .orr-svg .con-morr__ring.is-dim text.con-morr__ringname { fill:rgb(${BONE} / .62); }
@@ -85,7 +86,7 @@ const CSS = `
 .orr-svg .con-morr__gtrack { fill:none; stroke:rgb(${BONE} / .31); stroke-width:6; }
 .orr-svg .con-morr__gfill { fill:none; stroke:rgb(${WARM}); stroke-width:6; stroke-linecap:butt; }
 .orr-svg .con-morr__gbloom { fill:none; stroke:rgb(${WARM}); stroke-width:16; opacity:.16; stroke-linecap:butt; }
-.orr-svg .con-morr__gtick { stroke:rgb(${BONE} / .3); stroke-width:1.6; }
+.orr-svg .con-morr__gtick { stroke:rgb(${BONE} / .42); stroke-width:1.6; }
 .orr-svg .con-morr__gtick.is-on { stroke:rgb(${WARM}); }
 .orr-svg .con-morr__gscale { fill:none; stroke:rgb(${BONE} / .26); stroke-width:1; }
 .con-morr__count { position:absolute; z-index:2; left:var(--mo-cx, 50%); top:var(--mo-cy, 50%); transform:translate(-50%, -52%); display:flex; flex-direction:column; align-items:center;

@@ -40,8 +40,7 @@ Never infer validity from filename, family, age, size, triangle count, or an old
 ## Promotion and coordination
 
 Do not impose global triangle/texture/technique quotas. Optimize mesh roles, batching, LOD,
-compression, culling, and residency — not by replacing authored quality with primitives. Coordinate
-with a current lock/build/Blender process on the same output; a historical lane is not ownership.
+compression, culling, and residency — not by replacing authored quality with primitives.
 Never hand-edit generated release metadata. A visible entity does not prove the authored asset
 loaded — inspect diagnostics.
 

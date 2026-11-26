@@ -240,13 +240,14 @@ function installHarness({ state = makeState(), storage = createStorage() } = {})
 test('large player collections are captured and posted in bounded autosave slices', async () => {
   // D48 retry-to-clean: a host preemption/GC pause inside one measured task may spike a single
   // sample. The raw 12ms bound is unchanged — an attempt passes only when every sample honours it.
-  await retryToClean(() => {
+  await retryToClean(async () => {
     const state = makeState();
     state.player.moduleInventory = Array.from({ length: 5000 }, (_, index) => costlyModule(index));
     const harness = installHarness({ state });
     try {
       assert.equal(save.requestAutosave('player_budget_regression', { force: true }), true);
       harness.drain();
+      await save._lastSaveDurability; // 0ac8af7b63: save:completed rides the durability promise
       const completed = harness.bus.events.find((entry) => entry.name === 'save:completed');
       assert.ok(completed, 'the rich autosave must complete');
       const playerSlices = completed.payload.blockingSamples.filter(({ phase }) => (
@@ -267,7 +268,7 @@ test('large player collections are captured and posted in bounded autosave slice
   }, { label: 'large player collection capture/dispatch slices' });
 });
 
-test('a collection mutation between player batches restarts to one coherent latest snapshot', () => {
+test('a collection mutation between player batches restarts to one coherent latest snapshot', async () => {
   const state = makeState();
   state.player.moduleInventory = Array.from({ length: 1000 }, (_, index) => costlyModule(index));
   const harness = installHarness({ state });
@@ -279,6 +280,7 @@ test('a collection mutation between player batches restarts to one coherent late
     state.player.moduleInventory.push(granted);
     harness.bus.emit('module:granted', { defId: granted.defId, instanceId: granted.instanceId });
     harness.drain();
+    await save._lastSaveDurability; // 0ac8af7b63: save:completed rides the durability promise
     const completed = harness.bus.events.find((entry) => entry.name === 'save:completed');
     assert.ok(completed, 'a revised player capture must still complete');
     const stored = JSON.parse(harness.storage.getItem('sf.save.auto'));

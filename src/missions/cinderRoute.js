@@ -45,6 +45,22 @@ function validEvidence(m) {
       || (Array.isArray(p.cinderEscapedSlots) && p.cinderEscapedSlots.every(slotOk)));
 }
 
+/** Read the active assignment from the bounded browser mirror. Aftermath authors the
+ *  marked-hull callsign only after validating the wreck's canonical mission evidence. */
+export function isCinderObjectiveContact(m, body) {
+  if (!authoredCinderRoute(m) || m.status !== 'active' || !body?.alive
+    || body.occupantGeneration == null) return false;
+  if (body.type === 'ship') {
+    return m.targetEntityIds?.includes(body.id) === true && targetSlot(m, body) !== null;
+  }
+  const d = body.data;
+  if (body.type !== 'wreck' || m.params.cinderEvidenceInvalid || m.params.cinderDeliveredMarkerId
+    || d?.persistenceOwner !== 'aftermathWrecks' || !d.markerId || d.provenance?.markerId !== d.markerId
+    || !(body.hull > 0) || !rookBoothEligible(body)) return false;
+  return marks(m).some(ref => !ref.disposition && ref.markerId === d.markerId && slotOk(ref.slot)
+    && d.callsign === `${CINDER_WASPS[ref.slot]} · marked hull`);
+}
+
 export function initializeCinderRoute(owner, m) {
   if (!authoredCinderRoute(m)) return false;
   const retry = owner.state.missions.cinderRetry;

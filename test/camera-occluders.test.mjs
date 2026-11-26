@@ -130,7 +130,9 @@ test('sinkByOwner maps owner roots to depths for the authored-instance path', ()
 });
 
 test('renderer wiring: duck runs after cam.follow and reaches both instanced paths', () => {
-  const followIdx = RENDERER_SRC.indexOf('this.cam.follow(frameDt, alpha, presented');
+  // The camera gate (R23) hands follow its own cameraFrameDt and the presented player pose;
+  // the occluder must still read the settled camera, so it runs directly after that call.
+  const followIdx = RENDERER_SRC.indexOf('this.cam.follow(cameraFrameDt, alpha, presented');
   const occluderIdx = RENDERER_SRC.indexOf('this._updateCameraOccluders(frameDt)');
   const authoredIdx = RENDERER_SRC.indexOf('this._syncAuthoredInstanceSubmission(shadowRadius)');
   const asteroidIdx = RENDERER_SRC.lastIndexOf('this._syncAsteroidInstanceSubmission(shadowCamera)');

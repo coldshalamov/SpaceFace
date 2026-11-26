@@ -30,7 +30,7 @@ export const FACTION_BERTHS = Object.freeze([
     sectorId: 'sector_vesta_forge',
     stationId: 'station_forge',
     anchor: Object.freeze({ type: 'station', id: 'station_forge' }),
-    // station_forge (-480, 720) + this = (-60, 380): the breaking-apron south-east of the
+    // station_forge (-480, 720) + this = (-60, 380): the breaking-apron south-west of the
     // foundry, off the Helios-gate inbound leg where towed hulks arrive. Verified clearances
     // (sector-local WU, apron centre unless noted): 540 off the foundry berth, 767 off the
     // outlying yard, ~1348 off the Runaway Ladle (-1200, 1100), ~1414 off the shear jaws at

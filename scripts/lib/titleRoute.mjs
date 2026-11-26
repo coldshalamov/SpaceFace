@@ -1,26 +1,26 @@
-// The title's route into a new Adventure (TITLE-01, design/game/20_THE_FIRST_HOUR.md): two doors,
-// ADVENTURE and SWARM. The ADVENTURE door is the same button the title always had (data-action="newGame",
-// accessible name and text "New Game"); pressing it opens the New Game screen. With a save present the door
-// itself becomes Continue and New Game stands on it as a visible secondary key, so the same button is
-// pressed in both states. Scripts press New Game
-// through here so the route is written once.
+// The title's route into a new Adventure (TITLE-02, design/overhaul/08_INTERFACE.md §2): two doors,
+// SWARM and ADVENTURE. The ADVENTURE door is the same button the title always had (data-action="newGame",
+// accessible name "New Game"); pressing it opens the New Game screen. With a save present the door itself
+// becomes Continue and New Game stands in the small row under the doors, so the same button is pressed in
+// both states. Scripts press New Game through here so the route is written once.
 //
 //   await pressNewGame(page);                      // Playwright page
-//   await pressTitleAction(page, 'circuits');      // anything behind the title's "More" (load, circuits, sandbox, ...)
+//   await pressTitleAction(page, 'circuits');      // a lab verb (hidden on a player's title)
 
-const MORE_ACTIONS = new Set(['load', 'crucible', 'archive', 'circuits', 'sandbox', 'physics']);
+/** Practice and test modes: kept off a player's title (dev switch `?titleLab=1` shows them), still in the
+ *  DOM with their own click handlers, so tooling reaches them through the same button. */
+const LAB_ACTIONS = new Set(['swarmSetup', 'crucible', 'archive', 'circuits', 'sandbox', 'physics']);
 
-/** Press a title action by its data-action hook, opening "More" first when the action lives behind it. */
+/** Press a title action by its data-action hook. A hidden lab verb is pressed through its own handler. */
 export async function pressTitleAction(page, action, { timeout = 60000 } = {}) {
   const sel = `[data-screen="mainMenu"] [data-action="${action}"]`;
-  if (MORE_ACTIONS.has(action)) {
-    const visible = await page.locator(sel).first().isVisible().catch(() => false);
-    if (!visible) {
-      const more = page.locator('[data-screen="mainMenu"] [data-title-more]').first();
-      if (await more.isVisible().catch(() => false)) await more.click({ timeout });
-    }
+  const button = page.locator(sel).first();
+  if (LAB_ACTIONS.has(action) && !(await button.isVisible().catch(() => false))) {
+    await page.waitForSelector(sel, { state: 'attached', timeout });
+    await button.evaluate((b) => b.click());
+    return;
   }
-  await page.locator(sel).first().click({ timeout });
+  await button.click({ timeout });
 }
 
 /**

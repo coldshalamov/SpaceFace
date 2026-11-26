@@ -1,6 +1,15 @@
 // Field-name-agnostic cross-reference integrity check: every string value anywhere in the data
-// that looks like a namespaced ID (ship_/wpn_/mod_/tech_/cmdty_/beam_/faction_/sector_) must
-// resolve to a real entry in the matching registry. Catches dangling refs the export check can't.
+// that looks like a namespaced ID (ship_/wpn_/mod_/tech_/cmdty_/beam_/faction_/sector_/recipe_)
+// must resolve to a real entry in the matching registry. Catches dangling refs the export check can't.
+//
+// Intentionally NOT blanket-checked: prefixes that span more than one namespace or that name
+// kinds/statuses rather than catalog entries — a wrong registry produces false dangling reports.
+// Verified boundaries (2026-11): station_/poi_ mix catalog ids with station *kinds* and logical
+// POI constants declared as fields (e.g. baseStationKind, terminalPoiId); ast_ refs are mostly
+// dynamic field-instance ids; drone_/trader_/outpost_ also appear as requirement/encounter
+// enum strings ('drone_count', 'trader_run', 'outpost_base'); mission_/story_/enemy_/contact_/
+// fence_/captain_ mix ids with status/verb/beat strings. Extending coverage for one of these
+// needs a curated registry union or a per-field check like the tech-gate block below.
 //
 // `--user-content-dir=<dir>` (PQ-172.00): installs the scanned mod payload BEFORE the data
 // modules import, so user content is held to the same cross-reference contract — a mod record
@@ -65,6 +74,7 @@ const reg = {
   mod_: new Set([...ids(MODULES), ...ids(BODY_MODULES)]),
   tech_: ids(TECH_NODES),
   cmdty_: ids(COMMODITIES), beam_: ids(BEAMS), faction_: ids(FACTION_META), sector_: ids(SECTORS),
+  recipe_: ids(RECIPES),
 };
 const prefixes = Object.keys(reg);
 const problems = [];

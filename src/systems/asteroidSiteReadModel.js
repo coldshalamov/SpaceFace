@@ -2,16 +2,29 @@
 // No init/update/production/materialization authority is reachable through this module.
 // Runtime reconciliation operates only on caller-owned records: the native owner supplies its
 // durable record; the public mirror boundary below first clones that one site's save-safe data.
-import { COLS, ROWS, generateDrillField, applyClearedTiles, applyFlaggedTiles, applyRubbleTiles, tileIndex } from './drillFieldModel.js';
+import { COLS, ROWS, generateDrillField, resolveBoreFamily, applyClearedTiles, applyFlaggedTiles, applyRubbleTiles, applyFillMarks, FILL_TILE, tileIndex, entryShaftIndex } from './drillFieldModel.js';
 import { applySealedDeadDropCap, sealedDeadDropCapMissing } from './boreDeadDrop.js';
-import { SITE_MACHINE_BY_ID, SITE_RECIPE_BY_ID, SITE_BALANCE } from '../data/sites.js';
+import { PACKED_FILL, SITE_MACHINE_BY_ID, SITE_RECIPE_BY_ID, SITE_BALANCE, classifySiteSpecialization } from '../data/sites.js';
+import { siteSeating, neighbourLift, buildRockReport } from './siteReport.js';
 import { contactProfile, machineCapability, clamp01, round3 } from './siteProduction.js';
-import { buildComponents, laneCapacity, laneThroughput, storeTotal, reconcileStores, previewStoreReconciliation, wouldOwnComponent } from './siteLogistics.js';
+import { buildComponents, buildPowerComponents, laneCapacity, laneThroughput, storeTotal, reconcileStores, previewStoreReconciliation, wouldOwnComponent, stagedCourierLoad } from './siteLogistics.js';
 import { paintStructuralFalls } from './siteStructuralModel.js';
 import { validateSurveyTarget } from './siteSurvey.js';
 import { solveRadiatorThermal, radiatorSignature } from './siteRadiatorReadModel.js';
 import { sellableCargoQuantity } from './cargoReservations.js';
 import { SECTORS } from '../data/sectors.js';
+import {
+  evaluateSubterraneanSynergies,
+  generateInteriorCutawaySchematic,
+  findBestBlueprintSeats,
+} from './asteroidInteriorPuzzle.js';
+import {
+  ensureEmpireState,
+  getEmpireModifiers,
+  getActiveWeather,
+  getSiteDroneCapacity,
+  computeSectorSupplyMatrix,
+} from './beltEmpireSystem.js';
 const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
 
 export function getAsteroidSiteFromState(state, siteId) {
@@ -67,6 +80,15 @@ export function projectAsteroidSiteFromState(state, siteId) {
   return view ? asteroidSiteReadMethods.projection.call(view, siteId) : null;
 }
 
+/** Pure packed-fill preflight for a mirrored state. It never spends a block or changes a cell. */
+export function canPackFillAsteroidSiteFromState(state, request) {
+  const site = findAsteroidSiteFromState(state, request && request.asteroidId);
+  const view = site ? isolatedAsteroidSitesView(state, site.id) : null;
+  if (!view) return { ok: false, reason: 'fill-no-claim', missing: {} };
+  view.siteForAsteroid = (asteroidId) => findAsteroidSiteFromState(view.state, asteroidId);
+  return asteroidSiteReadMethods.canPackFill.call(view, request || {});
+}
+
 /** Pure placement preflight for a mirrored state.  It never commits materials or a machine. */
 export function canInstallAsteroidSiteFromState(state, request) {
   const siteId = request && request.siteId;
@@ -113,10 +135,10 @@ export function createAsteroidSiteMirrorReadView(state, siteId, cloneReadValue) 
   return view;
 }
 
-function constructionAccess(field, machines, start) {
+function constructionAccess(field, machines, start, excluded = -1) {
   const occupied = new Set((machines || []).map((m) => tileIndex(m.col, m.row)));
   const open = (c, r) => c >= 0 && c < COLS && r >= 0 && r < ROWS
-    && !occupied.has(tileIndex(c, r))
+    && tileIndex(c, r) !== excluded && !occupied.has(tileIndex(c, r))
     && field[c]?.[r]?.type === 'empty' && !field[c][r].structure;
   const reachable = new Uint8Array(COLS * ROWS);
   if (!start || !open(start.col, start.row)) return reachable;
@@ -134,7 +156,84 @@ function constructionAccess(field, machines, start) {
   return reachable;
 }
 
+const NEIGHBOUR_SEAT_CACHE = new Map();
+const listLen = (list) => (Array.isArray(list) ? list.length : 0);
+function seatingStamp(site) {
+  const falls = site.structure && Array.isArray(site.structure.falls) ? site.structure.falls.length : 0;
+  return [
+    site.boreSeed, site.asteroidId, listLen(site.cleared), listLen(site.drillRubble), listLen(site.drillFill),
+    listLen(site.drillVented), falls,
+    (Array.isArray(site.machines) ? site.machines : []).map((m) => `${m.defId}@${m.col},${m.row}:${m.mode || ''}`).join('|'),
+  ].join('#');
+}
+
 export const asteroidSiteReadMethods = {
+  /** How well this rock was dug: the share of useful rock its machines touch. Pure read. */
+  siteSeating(site) {
+    if (!site) return siteSeating(null);
+    return siteSeating(site, this._runtime(site).geo);
+  },
+
+  /** What this rock's linked neighbours of other trades add to it. Pure read. */
+  neighbourLift(site) {
+    const byId = this.state && this.state.sites && this.state.sites.byId;
+    if (!site || !byId) return neighbourLift(null);
+    // The common case, a rock with no line in or out, costs one pass over the claims.
+    return neighbourLift(site, byId, (other) => this._seatingShareOf(other));
+  },
+
+  /**
+   * A NEIGHBOUR's seating, read without touching its record. A read view clones only the rock it
+   * was asked about, and `_runtime` re-homes lane stock on the record it is given, so a neighbour
+   * is measured straight off its rock here. (The sim's owner overrides this with its own cached
+   * runtime, which it is allowed to keep.)
+   */
+  _seatingShareOf(other) {
+    const rt = this._rt && this._rt.get(other.id);
+    if (rt && rt.field && !rt.fieldDirty && !rt.geoDirty) return siteSeating(other, rt.geo).share;
+    // Rebuilding a rock costs about 2 ms and the rover board re-reads its claim on every change,
+    // so a neighbour's answer is kept until that neighbour's digging or machines change. This is
+    // the display side only: the sim's owner never comes through here.
+    const stamp = seatingStamp(other);
+    const kept = NEIGHBOUR_SEAT_CACHE.get(other.id);
+    if (kept && kept.stamp === stamp) return kept.share;
+    const field = this._rockField(other);
+    const geo = {};
+    for (const m of Array.isArray(other.machines) ? other.machines : []) {
+      geo[m.id] = contactProfile(field, m.col, m.row, COLS, ROWS);
+    }
+    const share = siteSeating(other, geo).share;
+    if (NEIGHBOUR_SEAT_CACHE.size >= 128) NEIGHBOUR_SEAT_CACHE.delete(NEIGHBOUR_SEAT_CACHE.keys().next().value);
+    NEIGHBOUR_SEAT_CACHE.set(other.id, { stamp, share });
+    return share;
+  },
+
+  /** The rock as this claim knows it: generated from the seed, then every saved list applied. */
+  _rockField(site) {
+    const seed = Number.isFinite(site.boreSeed) ? site.boreSeed : site.asteroidId;
+    const field = generateDrillField((seed >>> 0) || 1, resolveBoreFamily(site));
+    applyClearedTiles(field, site.cleared);
+    // A fallen slab is rock again, painted after the cleared list reopens the cell.
+    paintStructuralFalls(field, site.structure);
+    // The sealed mouth is a cap even when an older cleared list still names it.
+    applySealedDeadDropCap(site, field);
+    // Vented seams and seismic faults live on the asteroid record, outside site.cleared.
+    // Paint them so contact reads (gas taps, fracture scars) stay truthful off-session.
+    // A resident rock's data is the freshest copy; an off-sector claim reads its own
+    // mirrors (kept by copyDrillSessionAccounting and re-stamped on rematerialize).
+    const ent = this.state.entities && this.state.entities.get ? this.state.entities.get(site.asteroidId) : null;
+    const dd = ent && ent.data;
+    const flagList = (key) => (dd && Array.isArray(dd[key]) ? dd[key] : site[key]);
+    applyFlaggedTiles(field, flagList('drillVented'), (t) => { if (t.type === 'empty') t.vented = true; });
+    applyFlaggedTiles(field, flagList('drillScars'), (t) => { if (t.type === 'empty') t.scar = true; });
+    // Live order (drill.js begin): rubble first, faults last, so a seismic shot that softened
+    // standing fill keeps the mark on the rebuilt field.
+    applyRubbleTiles(field, flagList('drillRubble'));
+    applyFillMarks(field, flagList('drillFill'));
+    applyFlaggedTiles(field, flagList('drillFaults'), (t) => { if (t.type !== 'empty') t.fault = true; });
+    return field;
+  },
+
   siteForAsteroid(asteroidId) {
     if (asteroidId == null) return null;
     const ent = this.state.entities && this.state.entities.get ? this.state.entities.get(asteroidId) : null;
@@ -168,33 +267,18 @@ export const asteroidSiteReadMethods = {
     }
     if (rt.field && sealedDeadDropCapMissing(rt.field, site)) rt.fieldDirty = true;
     if (rt.fieldDirty || !rt.field) {
-      const seed = Number.isFinite(site.boreSeed) ? site.boreSeed : site.asteroidId;
-      rt.field = generateDrillField((seed >>> 0) || 1);
-      applyClearedTiles(rt.field, site.cleared);
-      // A fallen slab is rock again, painted after the cleared list reopens the cell.
-      paintStructuralFalls(rt.field, site.structure);
-      // The sealed mouth is a cap even when an older cleared list still names it.
-      applySealedDeadDropCap(site, rt.field);
-      // Vented seams and seismic faults live on the asteroid record, outside site.cleared —
-      // paint them so contact reads (gas taps, fracture scars) stay truthful off-session.
-      // A resident rock's data is the freshest copy; an off-sector claim reads its own
-      // mirrors (kept by copyDrillSessionAccounting and re-stamped on rematerialize).
-      const ent = this.state.entities && this.state.entities.get ? this.state.entities.get(site.asteroidId) : null;
-      const dd = ent && ent.data;
-      const flagList = (key) => (dd && Array.isArray(dd[key]) ? dd[key] : site[key]);
-      applyFlaggedTiles(rt.field, flagList('drillVented'), (t) => { if (t.type === 'empty') t.vented = true; });
-      applyFlaggedTiles(rt.field, flagList('drillScars'), (t) => { if (t.type === 'empty') t.scar = true; });
-      // Live order (drill.js begin): rubble first, faults last — a seismic shot that softened
-      // standing fill keeps the mark on the rebuilt field.
-      applyRubbleTiles(rt.field, flagList('drillRubble'));
-      applyFlaggedTiles(rt.field, flagList('drillFaults'), (t) => { if (t.type !== 'empty') t.fault = true; });
+      rt.field = this._rockField(site);
       rt.fieldDirty = false;
       rt.geoDirty = true;
+      // Power runs through crystal and copper left in the rock, so a changed field can join or
+      // split the power networks.
+      rt.netDirty = true;
     }
     if (rt.netDirty) {
       const machineCells = new Map();
       for (const m of site.machines) machineCells.set(tileIndex(m.col, m.row), m.id);
-      rt.powerComps = buildComponents(new Set(site.overlays.power), machineCells, COLS);
+      // Veins conduct: crystal and copper left in the rock carry power like a laid cable.
+      rt.powerComps = buildPowerComponents(rt.field, site.overlays.power, machineCells, COLS, ROWS);
       rt.laneComps = buildComponents(new Set(site.overlays.lane), machineCells, COLS);
       // Re-home persisted lane stock onto the new topology, then persist the mapping back.
       const merged = reconcileStores(site.laneStores, rt.laneComps);
@@ -234,7 +318,7 @@ export const asteroidSiteReadMethods = {
     return rt;
   },
 
-  canInstall({ asteroidId, defId, col, row }) {
+  canInstall({ asteroidId, defId, col, row, preview = false }) {
     const def = SITE_MACHINE_BY_ID.get(defId);
     if (!def) return { ok: false, reason: 'unknown-machine', missing: {}, profile: null };
     if (!Number.isInteger(col) || !Number.isInteger(row) || col < 0 || col >= COLS || row < 0 || row >= ROWS) {
@@ -306,18 +390,69 @@ export const asteroidSiteReadMethods = {
 
     const missing = this._missingMaterials(site, def.cost, this._fundingStoresFor(site, col, row));
     if (Object.keys(missing).length) return { ok: false, reason: 'materials', missing, profile };
-    return { ok: true, reason: null, missing: {}, profile };
+    const check = { ok: true, reason: null, missing: {}, profile };
+    if (preview && sessionHere) {
+      const shaft = entryShaftIndex();
+      check.sealsReturn = this._accessCache.cells[shaft] === 1
+        && constructionAccess(field, site?.machines, accessFrom, tileIndex(col, row))[shaft] === 0;
+    }
+    return check;
   },
 
-  previewBreak(siteId, col, row) {
-    const site = this.getSite(siteId);
-    if (!site) return null;
-    const c = col | 0;
-    const r = row | 0;
-    const rt = this._runtime(site);
-    const field = rt && rt.field;
-    const tile = field && field[c] && field[c][r];
-    if (!tile || tile.type === 'empty') return null;
+  /**
+   * Can this hollow cell be packed solid again (sites.js PACKED_FILL)? Pure read.
+   * Fill is rover work inside a staked claim: the rig must be in the rock and able to reach the
+   * cell. It never goes where something else lives: a machine, the rover, the entrance, a cable or
+   * lane, a planted charge, a vented seam a gas tap may still be sipping.
+   * With `preview`, also says what the block gives the machines beside it (`gain`) and whether it
+   * cuts the rover's way back to the entrance (`sealsReturn`, a warning: fill can be bored again).
+   * @returns {{ ok:boolean, reason:string|null, missing:Object, gain?:Object, sealsReturn?:boolean }}
+   */
+  canPackFill({ asteroidId, col, row, preview = false }) {
+    const no = (reason, missing = {}) => ({ ok: false, reason, missing });
+    if (!Number.isInteger(col) || !Number.isInteger(row) || col < 0 || col >= COLS || row < 0 || row >= ROWS) {
+      return no('out-of-bounds');
+    }
+    const site = this.siteForAsteroid(asteroidId);
+    if (!site || !site.anchored) return no('fill-no-claim');
+    const d = this.state.drill;
+    if (!(d && d.active && d.asteroidId === asteroidId && d.field)) return no('no-session');
+    const field = d.field;
+    const tile = field[col] && field[col][row];
+    if (!tile) return no('out-of-bounds');
+    if (tile.type !== 'empty') return no('fill-solid');
+    if (tile.structure || this.machineAt(site, col, row)) return no('occupied');
+    const idx = tileIndex(col, row);
+    if (idx === entryShaftIndex()) return no('entry-reserved');
+    if (d.avatar && d.avatar.col === col && d.avatar.row === row) return no('rover-here');
+    if (tile.vented) return no('fill-vented');
+    if (site.overlays && (site.overlays.power.includes(idx) || site.overlays.lane.includes(idx))) return no('fill-line');
+    if (d.charge && d.charge.col === col && d.charge.row === row) return no('fill-charge');
+    const mouth = site.deadDrop && site.deadDrop.mouth;
+    if (mouth && Math.trunc(Number(mouth.col)) === col && Math.trunc(Number(mouth.row)) === row) return no('occupied');
+
+    const reach = constructionAccess(field, site.machines, d.avatar);
+    if (!reach[idx]) return no('no-access-route');
+
+    const missing = this._missingMaterials(site, PACKED_FILL.cost, this._fundingStoresFor(site, col, row));
+    if (Object.keys(missing).length) return no('materials', missing);
+
+    const check = { ok: true, reason: null, missing: {} };
+    if (preview) {
+      const shaft = entryShaftIndex();
+      check.sealsReturn = reach[shaft] === 1
+        && constructionAccess(field, site.machines, d.avatar, idx)[shaft] === 0;
+      const swap = this._previewCellSwap(site, field, col, row, FILL_TILE());
+      check.gain = swap ? { ...swap.gained, machineCount: swap.machineCount } : null;
+    }
+    return check;
+  },
+
+  /**
+   * What the machines around one cell gain or lose if that cell became `nextTile`. Pure read over
+   * the given field. Null when no machine beside the cell reads the rock.
+   */
+  _previewCellSwap(site, field, c, r, nextTile) {
     const neighbors = [];
     for (const machine of site.machines) {
       const def = SITE_MACHINE_BY_ID.get(machine.defId);
@@ -329,21 +464,25 @@ export const asteroidSiteReadMethods = {
     }
     if (!neighbors.length) return null;
     const afterField = field.map((column) => column.map((cell) => ({ ...cell })));
-    afterField[c][r] = {
-      type: 'empty', hp: 0, maxHp: 0, ore: null, hazard: false, tierReq: 1, hardness: 0,
-    };
-    let contactsLost = 0;
-    let powerLost = 0;
-    let processBonusLost = 0;
+    afterField[c][r] = nextTile;
+    // Gains and losses are kept apart per machine, so one machine's gain never hides another's loss.
+    const gained = { contacts: 0, power: 0, processBonus: 0, rate: 0 };
+    const lost = { contacts: 0, power: 0, processBonus: 0, rate: 0 };
     const rateDelta = {};
     for (const { machine, def } of neighbors) {
       const geoBefore = contactProfile(field, machine.col, machine.row, COLS, ROWS);
       const geoAfter = contactProfile(afterField, machine.col, machine.row, COLS, ROWS);
-      contactsLost += Math.max(0, (geoBefore.solid | 0) - (geoAfter.solid | 0));
       const capBefore = machineCapability(def, geoBefore, machine.mode);
       const capAfter = machineCapability(def, geoAfter, machine.mode);
-      powerLost += Math.max(0, capBefore.powerGen - capAfter.powerGen);
-      processBonusLost += Math.max(0, capBefore.processMultiplier - capAfter.processMultiplier);
+      const moves = {
+        contacts: (geoAfter.solid | 0) - (geoBefore.solid | 0),
+        power: capAfter.powerGen - capBefore.powerGen,
+        processBonus: capAfter.processMultiplier - capBefore.processMultiplier,
+      };
+      for (const key of Object.keys(moves)) {
+        if (moves[key] > 0) gained[key] += moves[key];
+        else lost[key] -= moves[key];
+      }
       const goods = new Set([
         ...Object.keys(capBefore.outputsPerMin || {}),
         ...Object.keys(capAfter.outputsPerMin || {}),
@@ -354,17 +493,38 @@ export const asteroidSiteReadMethods = {
         if (Math.abs(delta) > 1e-9) rateDelta[goodId] = (rateDelta[goodId] || 0) + delta;
       }
     }
-    let rateLost = 0;
     for (const delta of Object.values(rateDelta)) {
-      if (delta < 0) rateLost += -delta;
+      if (delta > 0) gained.rate += delta;
+      else lost.rate -= delta;
     }
+    for (const side of [gained, lost]) {
+      side.power = round3(side.power);
+      side.processBonus = round3(side.processBonus);
+      side.rate = Math.round(side.rate * 1000) / 1000;
+    }
+    return { gained, lost, rateDelta, machineCount: neighbors.length };
+  },
+
+  previewBreak(siteId, col, row) {
+    const site = this.getSite(siteId);
+    if (!site) return null;
+    const c = col | 0;
+    const r = row | 0;
+    const rt = this._runtime(site);
+    const field = rt && rt.field;
+    const tile = field && field[c] && field[c][r];
+    if (!tile || tile.type === 'empty') return null;
+    const swap = this._previewCellSwap(site, field, c, r, {
+      type: 'empty', hp: 0, maxHp: 0, ore: null, hazard: false, tierReq: 1, hardness: 0,
+    });
+    if (!swap) return null;
     return {
-      contactsLost,
-      powerLost: round3(powerLost),
-      processBonusLost: round3(processBonusLost),
-      rateLost: Math.round(rateLost * 1000) / 1000,
-      rateDelta,
-      machineCount: neighbors.length,
+      contactsLost: swap.lost.contacts,
+      powerLost: swap.lost.power,
+      processBonusLost: swap.lost.processBonus,
+      rateLost: swap.lost.rate,
+      rateDelta: swap.rateDelta,
+      machineCount: swap.machineCount,
     };
   },
 
@@ -484,6 +644,7 @@ export const asteroidSiteReadMethods = {
     const rt = this._runtime(site);
 
     const power = [];
+    let sharedLeft = Number(site.sharedPowerInMw) || 0;
     for (const comp of rt.powerComps) {
       let gen = 0;
       let draw = 0;
@@ -495,10 +656,20 @@ export const asteroidSiteReadMethods = {
         gen += cap.powerGen;
         draw += cap.powerDraw;
       }
+      if (sharedLeft > 0 && draw > gen) {
+        const boost = Math.min(sharedLeft, draw - gen);
+        gen += boost;
+        sharedLeft -= boost;
+      } else if (sharedLeft > 0 && draw > 0) {
+        gen += sharedLeft;
+        sharedLeft = 0;
+      }
       power.push({
         key: comp.key,
         cells: comp.cells,
         overlayCells: comp.overlayCells,
+        // crystal and copper left in the rock that this network runs through, no cable laid
+        conductorCells: comp.conductorCells || [],
         machineIds: comp.machineIds,
         gen: round3(gen),
         draw: round3(draw),
@@ -506,9 +677,22 @@ export const asteroidSiteReadMethods = {
       });
     }
 
+    const empire = ensureEmpireState(this.state?.sites, this.state?.simTime || 0);
+    const empMods = getEmpireModifiers(empire);
+    const weather = getActiveWeather(empire, this.state);
+    const synergies = evaluateSubterraneanSynergies({
+      site,
+      field: rt.field,
+      geoByMachine: rt.geo,
+      compRatio: Object.fromEntries(power.map((row) => [row.key, row.ratio])),
+      powerCompByMachine: rt.powerCompByMachine,
+      empireDoctrines: empire.doctrines,
+      weather,
+    });
+    const bonusCap = (synergies.summary.orbitalStorageBonus || 0) + (empMods.laneCapacityBonus || 0);
     const lanes = rt.laneComps.map((comp) => {
       const stored = storeTotal(rt.stores[comp.key]);
-      const capacity = rt.capacity[comp.key];
+      const capacity = (rt.capacity[comp.key] || 0) + bonusCap;
       return {
         key: comp.key,
         cells: comp.cells,
@@ -559,6 +743,7 @@ export const asteroidSiteReadMethods = {
     }
 
     const podRecipe = SITE_RECIPE_BY_ID.get('sr_fab_courier');
+    const load = stagedCourierLoad(site.exportBuffer);
     // Pod destination + options resolved HERE so the screen never imports sector data itself.
     const destSector = SECTOR_BY_ID.get(site.sectorId);
     // The screen/worker read view has no cadence cache. Use its freshly projected
@@ -568,8 +753,40 @@ export const asteroidSiteReadMethods = {
       compRatio: Object.fromEntries(power.map((row) => [row.key, row.ratio])),
       compPower: Object.fromEntries(power.map((row) => [row.key, row])),
     };
+    const incomingLinks = [];
+    const allSites = (this.state && this.state.sites && this.state.sites.byId) || {};
+    for (const other of Object.values(allSites)) {
+      if (!other || other.id === site.id || other.sectorId !== site.sectorId) continue;
+      for (const link of Array.isArray(other.links) ? other.links : []) {
+        if (!link || link.targetSiteId !== site.id || link.active === false) continue;
+        incomingLinks.push({
+          id: link.id || `${other.id}->${site.id}:${link.kind}`,
+          fromSiteId: other.id,
+          fromAsteroidId: other.asteroidId ?? null,
+          kind: link.kind === 'power' ? 'power' : 'material',
+          goodId: link.goodId || null,
+          ratePerMin: Number(link.ratePerMin) || 0,
+          transferredU: Number(link.transferredU) || 0,
+        });
+      }
+    }
+
+    const totalPowerGenMw = round3(power.reduce((s, c) => s + (Number(c.gen) || 0), 0)
+      + Math.max(0, sharedLeft)
+      + Math.max(0, Number(synergies.summary.orbitalPowerNetMw) || 0));
+    const totalPowerDrawMw = round3(power.reduce((s, c) => s + (Number(c.draw) || 0), 0)
+      + Math.max(0, -(Number(synergies.summary.orbitalPowerNetMw) || 0)));
+    const specialization = classifySiteSpecialization({
+      ...site,
+      powerGenMw: totalPowerGenMw,
+      powerDrawMw: totalPowerDrawMw,
+    });
+    const thermalSolved = solveRadiatorThermal(site, radiatorRuntime, 0);
+    const cutawaySchematic = generateInteriorCutawaySchematic(site, rt.field, machines, site.overlays, thermalSolved);
+    const blueprintSuggestions = findBestBlueprintSeats(rt.field, site, 'bp_smelter_crucible', 3);
+
     return {
-      thermal: solveRadiatorThermal(site, radiatorRuntime, 0),
+      thermal: thermalSolved,
       signature: radiatorSignature(site, radiatorRuntime),
       site,
       hasCore: this.hasCore(site),
@@ -577,9 +794,30 @@ export const asteroidSiteReadMethods = {
       power,
       lanes,
       machines,
+      specialization,
+      directive: synergies.directive,
+      synergies,
+      anomalies: synergies.anomalies,
+      drones: (Array.isArray(site.drones) ? site.drones : []).map((d) => ({ ...d })),
+      maxDrones: getSiteDroneCapacity(site, empire),
+      capacitorMwS: round3(Number(site.capacitorMwS) || 0),
+      cutawaySchematic,
+      blueprintSuggestions,
+      reserves: { ...(site.reserves || {}) },
+      links: (Array.isArray(site.links) ? site.links : []).map((l) => ({ ...l })),
+      incomingLinks,
+      defenses: (Array.isArray(site.defenses) ? site.defenses : []).map((d) => ({ ...d })),
+      sharedPowerInMw: Number(site.sharedPowerInMw) || 0,
+      sharedPowerOutMw: Number(site.sharedPowerOutMw) || 0,
+      totalPowerGenMw,
+      totalPowerDrawMw,
       exportRatePerMin: round3(exportRatePerMin),
       courier: {
         destinationId: site.podDestinationId || null,
+        stagedUnits: load.stagedUnits,
+        readyUnits: site.fleet.podsReady > 0 && machines.some(m => (
+          m.defId === 'sm_cargo_port' && m.powerRatio > 0 && m.laneKey != null
+        )) ? load.units : 0,
         stations: (destSector && Array.isArray(destSector.stations) ? destSector.stations : [])
           .map((st) => ({ id: st.id, name: st.name })),
       },
@@ -592,6 +830,126 @@ export const asteroidSiteReadMethods = {
       exportBuffer: site.exportBuffer,
       exportOff: site.exportOff,
       field: rt.field,
+      seating: siteSeating(site, rt.geo),
+      neighbours: this.neighbourLift(site),
+    };
+  },
+
+  sectorNetworkProjection(sectorId = null) {
+    const activeSectorId = sectorId || (this.state && this.state.world && this.state.world.currentSectorId) || null;
+    const allSites = (this.state && this.state.sites && this.state.sites.byId) || {};
+    const order = (this.state && this.state.sites && Array.isArray(this.state.sites.order))
+      ? this.state.sites.order : Object.keys(allSites);
+    const nodes = [];
+    const links = [];
+    let totalPowerGenMw = 0;
+    let totalPowerDrawMw = 0;
+    let totalStoredU = 0;
+    let defenseCount = 0;
+    const roleCounts = {};
+
+    for (const siteId of order) {
+      const site = allSites[siteId];
+      if (!site || (activeSectorId && site.sectorId !== activeSectorId)) continue;
+      const proj = this.projection(siteId);
+      if (!proj) continue;
+      const ent = this.state.entities && this.state.entities.get ? this.state.entities.get(site.asteroidId) : null;
+      const pos = ent && ent.pos ? { x: ent.pos.x, z: ent.pos.z } : (site.anchor ? { x: site.anchor.x, z: site.anchor.z } : null);
+      const storedU = round3(proj.lanes.reduce((s, l) => s + (Number(l.stored) || 0), 0));
+      totalPowerGenMw += proj.totalPowerGenMw;
+      totalPowerDrawMw += proj.totalPowerDrawMw;
+      totalStoredU += storedU;
+      defenseCount += proj.defenses.length;
+      const specId = proj.specialization?.id || 'outpost';
+      roleCounts[specId] = (roleCounts[specId] || 0) + 1;
+      nodes.push({
+        siteId: site.id,
+        asteroidId: site.asteroidId,
+        sectorId: site.sectorId,
+        anchored: !!site.anchored,
+        pos,
+        specialization: proj.specialization,
+        totalPowerGenMw: proj.totalPowerGenMw,
+        totalPowerDrawMw: proj.totalPowerDrawMw,
+        storedU,
+        machines: proj.machines,
+        lanes: proj.lanes,
+        reserves: proj.reserves,
+        links: proj.links,
+        incomingLinks: proj.incomingLinks,
+        defenses: proj.defenses,
+        directive: proj.directive,
+        synergies: proj.synergies,
+        anomalies: proj.anomalies,
+        drones: proj.drones,
+        maxDrones: proj.maxDrones,
+        capacitorMwS: proj.capacitorMwS,
+        cutawaySchematic: proj.cutawaySchematic,
+        fleet: proj.fleet,
+        courier: proj.courier,
+        exportOff: proj.exportOff,
+        exportBuffer: proj.exportBuffer,
+        exportRatePerMin: proj.exportRatePerMin,
+        signature: proj.signature,
+        thermal: proj.thermal,
+        seating: proj.seating,
+        neighbours: proj.neighbours,
+      });
+    }
+
+    const nodeBySite = new Map(nodes.map((n) => [n.siteId, n]));
+    for (const node of nodes) {
+      for (const link of node.links) {
+        if (!link || link.active === false) continue;
+        const target = nodeBySite.get(link.targetSiteId);
+        links.push({
+          ...link,
+          fromSiteId: node.siteId,
+          fromAsteroidId: node.asteroidId,
+          toSiteId: link.targetSiteId,
+          toAsteroidId: target ? target.asteroidId : null,
+          fromPos: node.pos,
+          toPos: target ? target.pos : null,
+        });
+      }
+    }
+
+    const empire = ensureEmpireState(this.state?.sites, this.state?.simTime || 0);
+    const empireModifiers = getEmpireModifiers(empire);
+    const weather = getActiveWeather(empire, this.state);
+    const supplyMatrix = computeSectorSupplyMatrix(this, activeSectorId);
+    // The one summary of each rock, built from the flow ledger above (never a second count).
+    const matrixRowBySite = new Map((supplyMatrix.sites || []).map((row) => [row.siteId, row]));
+    for (const node of nodes) {
+      node.report = buildRockReport({
+        specialization: node.specialization,
+        seating: node.seating,
+        lift: node.neighbours,
+        matrixRow: matrixRowBySite.get(node.siteId) || null,
+        machines: node.machines,
+        defenses: node.defenses,
+      });
+    }
+
+    return {
+      sectorId: activeSectorId,
+      sites: nodes,
+      links,
+      empire,
+      empireModifiers,
+      weather,
+      supplyMatrix,
+      totals: {
+        siteCount: nodes.length,
+        totalPowerGenMw: round3(totalPowerGenMw),
+        totalPowerDrawMw: round3(totalPowerDrawMw),
+        totalStoredU: round3(totalStoredU),
+        activeLinkCount: links.length,
+        defenseCount,
+        droneCount: supplyMatrix.totalDrones,
+        totalDefenseRating: supplyMatrix.totalDefenseRating,
+        roleCounts,
+      },
     };
   },
 };

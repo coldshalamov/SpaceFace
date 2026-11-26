@@ -2,7 +2,15 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { createBus } from '../src/core/eventBus.js';
+import { createSimulation } from '../src/core/sim.js';
+import {
+  buildFirstTradeOffer, FIRST_TRADE_CONTRACT_DEST_SECTOR_ID, FIRST_TRADE_CONTRACT_DEST_STATION_ID,
+} from '../src/data/economyContractTemplates.js';
+import { save } from '../src/save/saveSystem.js';
+import { cargo } from '../src/systems/cargo.js';
 import { economy } from '../src/systems/economy.js';
+import { missions } from '../src/systems/missions.js';
+import { makeShipEntitySpec, ships } from '../src/systems/ships.js';
 import {
   stationServices,
   planYardClients,
@@ -388,6 +396,85 @@ test('a mid-job save keeps the delivered-fuel counter for honest settle after re
   assert.equal(restored.deliveredFuel, job.deliveredFuel,
     'restore keeps delivered-unit accounting rather than re-deriving from the meter');
   h.yard.destroy();
+});
+
+function firstTradeAtHelios(t) {
+  const sim = createSimulation({ seed: 4242, systems: [ships, cargo, economy, stationServices, missions, save], updateOrder: [] });
+  t.after(() => sim.dispose());
+  const { state, bus, registry } = sim;
+  const dockAt = (stationId, sectorId) => {
+    state.world.currentSectorId = sectorId;
+    Object.assign(state.ui, { docked: true, dockedStationId: stationId });
+    bus.emit('dock:docked', { stationId });
+  };
+  state.mode = 'flight';
+  registry.get('ships').newGame();
+  const hullId = state.player.ownedShips[0].defId;
+  state.playerId = sim.spawn(makeShipEntitySpec(hullId, { isPlayer: true, player: state.player, pos: { x: 0, z: 0 } })).id;
+  state.player.credits = 5000;
+  state.fuel = { current: 20, max: 100 };
+  dockAt(STATION, SECTOR);
+  const offer = buildFirstTradeOffer(4242);
+  state.missions.boards[STATION] = { slots: [offer] };
+  bus.emit('ui:acceptMission', { missionId: offer.id });
+  const contract = state.missions.active.find(row => row.sourceOfferId === offer.id);
+  assert.ok(contract);
+  const aborts = [];
+  bus.on('service:aborted', event => aborts.push(event));
+  return { state, bus, dockAt, contract, aborts, saveOwner: registry.get('save') };
+}
+
+test('loading an earlier save replaces an outgoing paid pump without crediting its refund', t => {
+  const { state, bus, dockAt, contract, aborts, saveOwner } = firstTradeAtHelios(t);
+  const savedCredits = state.player.credits;
+  const beforeBooking = structuredClone(saveOwner.serialize('before-booking'));
+  bus.emit('ui:service', { type: 'refuel' });
+  const [job] = state.stationServices.player.jobs;
+  assert.ok(job.meta.cost > 0);
+  assert.equal(state.player.credits, savedCredits - job.meta.cost);
+
+  assert.equal(saveOwner.loadEnvelope(beforeBooking, 'before-booking'), true);
+  assert.equal(state.player.credits, savedCredits);
+  assert.equal(state.stationServices.player.jobs.length, 0);
+  assert.deepEqual(aborts, []);
+  assert.equal(state.missions.active.find(row => row.id === contract.id)?.params.sealedRemaining, 8);
+
+  dockAt(FIRST_TRADE_CONTRACT_DEST_STATION_ID, FIRST_TRADE_CONTRACT_DEST_SECTOR_ID);
+  assert.equal(state.player.credits, savedCredits + contract.reward_cr);
+  assert.equal(state.player.cargo.items.cmdty_fuel_cells || 0, 0);
+  assert.equal(state.missions.receipts.filter(row => row.missionId === contract.id).length, 1);
+});
+
+test('a late load failure rolls back the paid pump, which refunds once on a live hull switch', t => {
+  const { state, bus, dockAt, contract, aborts, saveOwner } = firstTradeAtHelios(t);
+  state.player.ownedShips.push(structuredClone(state.player.ownedShips[0]));
+  const savedCredits = state.player.credits;
+  const beforeBooking = structuredClone(saveOwner.serialize('before-booking'));
+  bus.emit('ui:service', { type: 'refuel' });
+  const [job] = state.stationServices.player.jobs;
+  assert.ok(job.meta.cost > 0);
+  const errors = [];
+  bus.on('save:error', event => errors.push(event));
+  const applySavedVitals = saveOwner._applySavedVitals;
+  saveOwner._applySavedVitals = function (...args) {
+    this._applySavedVitals = applySavedVitals;
+    throw new Error('fixture failure after restored hull stats');
+  };
+
+  assert.equal(saveOwner.loadEnvelope(beforeBooking, 'before-booking'), false);
+  assert.equal(errors.at(-1)?.rollback, 'restored');
+  assert.equal(state.player.credits, savedCredits - job.meta.cost);
+  assert.equal(state.stationServices.player.jobs[0]?.id, job.id);
+  assert.deepEqual(aborts, []);
+
+  dockAt(STATION, SECTOR);
+  bus.emit('ui:setActiveShip', { index: 1 });
+  assert.equal(state.player.activeShipIndex, 1);
+  assert.equal(state.player.credits, savedCredits);
+  assert.equal(state.stationServices.player.jobs.length, 0);
+  assert.deepEqual(aborts.map(event => [event.jobId, event.reason]), [[job.id, 'ship_changed']]);
+  assert.equal(state.missions.active.find(row => row.id === contract.id)?.params.sealedRemaining, 8);
+  assert.equal(state.player.cargo.items.cmdty_fuel_cells, 8);
 });
 
 // ── the undock-commit gap ────────────────────────────────────────────────────────────────────

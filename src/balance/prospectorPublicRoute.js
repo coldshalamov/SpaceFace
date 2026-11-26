@@ -27,7 +27,7 @@ import {
 import { PROSPECTOR_REWARD } from '../careers/origins/prospectorOriginDefs.js';
 import { PROSPECTOR_ROLE_HULL_DEF_ID } from '../careers/ladders/prospectorLadderDefs.js';
 import { careerOrigins as careerOriginsSystem } from '../careers/origins/careerOrigins.js';
-import { cargo as cargoSystem } from '../systems/cargo.js';
+import { cargo as cargoSystem, slotFitFor } from '../systems/cargo.js';
 import { combat as combatSystem } from '../systems/combat.js';
 import { economy as economySystem, SERVICE_PRICES } from '../systems/economy.js';
 import {
@@ -503,8 +503,7 @@ function mineOneRock(ctx, {
     }
   }
 
-  const free = (ctx.state.player.cargo.capVolume || 0) - (ctx.state.player.cargo.usedVolume || 0);
-  const want = Math.min(yieldU, Math.max(0, Math.floor(free)));
+  const want = Math.min(yieldU, Math.max(0, slotFitFor(ctx.state, oreId)));
   if (want <= 0) return { ok: false, reason: 'hold_full', yieldU: 0, cycleS, oreId };
 
   const depBefore = fieldMemoryReadout(ctx.state, fieldId);
@@ -1327,9 +1326,11 @@ export function runProspectorPublicRoute(options = {}) {
       continue;
     }
 
-    const free = ctx.state.player.cargo.capVolume - ctx.state.player.cargo.usedVolume;
-    const timeToSell = free < 1
-      || ctx.state.player.cargo.usedVolume >= ship.cargo * 0.85
+    // Slot law: sell when the bag cannot stack the rock ore or is ~85% claimed.
+    const held = ctx.state.player.cargo;
+    const slotsUsed = Array.isArray(held.slots) ? Math.min(held.slots.length, held.slotCount || 0) : 0;
+    const timeToSell = slotFitFor(ctx.state, oreId) < 1
+      || (held.slotCount > 0 && slotsUsed >= Math.ceil(held.slotCount * 0.85))
       || rock.reason === 'hold_full';
     if (!timeToSell) continue;
 

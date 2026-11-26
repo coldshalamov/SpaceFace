@@ -1,4 +1,5 @@
 // The instrument and native media own the first frame BEFORE the game graph.
+import { bootMark } from '../core/bootTimeline.js';
 import { mountBootRing } from './orrery/bootRing.js';
 import { yieldForBootPaint } from '../core/bootScheduler.js';
 import { getBootVisualizer } from './bootVisualizer.js';
@@ -6,6 +7,8 @@ import {
   annotateStartupFailure, clearStartupRetry,
   findBrokenModules, presentStartupFailure, startupProbeHrefs, summarizeStartupError,
 } from './bootStartupFailure.js';
+
+bootMark('boot-entry-evaluated');
 
 function sessionStore() {
   try { return window.sessionStorage; } catch { return null; }
@@ -27,6 +30,35 @@ function watchBootVeil(overlay) {
   sync();
 }
 
+// The boot film is decoration: any key or click dismisses it from its first
+// frame, and it never blocks the game graph. The listener is armed before the
+// movie can paint and detaches when the loading veil first lifts — loading
+// transitions after the title keep their own movies.
+function armBootFilmSkip(overlay, artwork) {
+  if (!artwork || typeof artwork.skipFilm !== 'function' || typeof window === 'undefined') return;
+  const skip = () => { try { artwork.skipFilm(); } catch (_) { /* decoration */ } };
+  // index.html's parse-time catch held the seconds before this module evaluated: take over from
+  // it, and honour a key or click that already landed there.
+  try { window.__SF_BOOT_FILM_EARLY_SKIP__?.detach?.(); } catch (_) { /* decoration */ }
+  if (window.__SF_BOOT_FILM_SKIPPED__ === true) { skip(); return; }
+  const detach = () => {
+    window.removeEventListener('keydown', skip, true);
+    window.removeEventListener('pointerdown', skip, true);
+  };
+  window.addEventListener('keydown', skip, true);
+  window.addEventListener('pointerdown', skip, true);
+  if (overlay && typeof MutationObserver === 'function') {
+    const observer = new MutationObserver(() => {
+      if (!overlay.classList.contains('hidden')) return;
+      detach();
+      observer.disconnect();
+    });
+    observer.observe(overlay, { attributes: true, attributeFilter: ['class'] });
+  } else {
+    setTimeout(detach, 600000); // observers missing: bound the listener's life
+  }
+}
+
 async function start() {
   const overlay = document.getElementById('boot-overlay');
   watchBootVeil(overlay);
@@ -35,22 +67,29 @@ async function start() {
     ring = mountBootRing(document, overlay);
     ring.report({ id: 'boot-modules', progress: .01, ceiling: .14, label: 'Loading flight systems' });
     ring.start();
+    bootMark('boot-instrument-mounted');
   } catch (error) { console.warn('[boot] progress instrument unavailable', error); }
   try {
     artwork = getBootVisualizer(document);
     artwork.start();
+    armBootFilmSkip(overlay, artwork);
+    bootMark('boot-media-requested');
   } catch (error) { console.warn('[boot] artwork unavailable', error); }
-  // PR #188's index modulepreloads warm transfers in parallel. Do not start
-  // main's EVALUATION here until the movie is actually playing: that eager
-  // import is precisely the startup race this media-first handoff eliminates,
-  // and its fetch/eval churn is what a slow host makes the intro pay for.
-  // `ready` alone can be the poster deadline; `playbackReady` demands a real
-  // playback proof, releases for an invisible window, and is bounded by the
-  // controller's generous hold — the intro outranks every asset behind it.
-  await Promise.all([ring?.ready, artwork?.playbackReady ?? artwork?.ready]);
+  // The game graph evaluates while the movie proves itself — native playback is
+  // compositor-driven, so the eval burst cannot freeze the film. The old
+  // media-first handoff serialized the whole module graph behind the playback
+  // proof: up to 9 s of dead time before main.js even began.
+  bootMark('main-import-start');
+  const mainModule = import('../main.js');
+  void Promise.all([ring?.ready, artwork?.playbackReady ?? artwork?.ready])
+    .then((proofs) => {
+      bootMark('boot-media-proof', proofs?.[1]?.reason || proofs?.[1]?.status || 'settled');
+    })
+    .catch(() => {});
   await yieldForBootPaint();
   try {
-    await import('../main.js');
+    await mainModule;
+    bootMark('main-module-evaluated');
     clearStartupRetry(sessionStore());
     // Boot's rich optics are baked into its clip. The live remix remains on the
     // title route, but cannot put a frozen opaque GL canvas over native boot media.

@@ -2480,3 +2480,399 @@ html body #screens #sf-ship .sx-sw.is-choosing .sx-hardpoint:not(.is-selected) .
 /* SH9: the proposed-fit line reads bone with +/- glyphs — ice is motion-only. */
 html body #screens #sf-ship .sx-sw__delta :is(.k-good, .is-gain) { color: rgb(236 230 216 / .92); }
 html body #screens #sf-ship .sx-sw__delta :is(.k-bad, .is-loss) { color: rgb(236 230 216 / .92); }
+
+/* ============================================================================================
+   DEMO-STATION-LOOK-1: station screens finished for a first-time player (desktop + phone).
+   Beats injected stationStandard / marketLayouts / shipworksLayouts / stationTabsLayouts /
+   mobileScreenLayouts rules without editing out-of-scope orrery files.
+   ============================================================================================ */
+
+/* ---- Market: remove stray ORRERY Hand bar slicing active thumbnail, style first-dock brief,
+        shrink idle empty box, and fix 390px negative text-indent left-clipping. -------------- */
+html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-mkt .sx-mkt-row .sx-mkt-row__name::before,
+html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-mkt .sx-mkt-row .sx-mkt-row__name::after {
+  content: none !important;
+  display: none !important;
+}
+html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-mkt .sx-mkt-row.is-active td {
+  background: linear-gradient(90deg, rgb(224 181 94 / .16) 0%, rgb(224 181 94 / .04) 100%) !important;
+}
+html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-mkt .sx-mkt-row.is-active td:first-child {
+  box-shadow: inset 3px 0 0 #e6ca8f !important;
+}
+@media (min-width: 601px) {
+  html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-mkt__stage {
+    height: auto !important;
+    max-height: 100% !important;
+    align-self: start !important;
+    align-items: start !important;
+  }
+}
+html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-mkt-brief {
+  grid-column: 1 / -1 !important;
+  margin: 14px 0 0 !important;
+  padding: 12px 14px !important;
+  border: 1px solid rgb(154 198 218 / .24) !important;
+  border-radius: 2px !important;
+  background: linear-gradient(160deg, rgb(14 29 42 / .74), rgb(8 18 27 / .86)) !important;
+  box-shadow: inset 0 1px 0 rgb(208 238 250 / .10) !important;
+}
+html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-mkt-brief__grid {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 8px 6px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-mkt-brief__cell {
+  min-width: 0 !important;
+  padding: 6px 7px !important;
+  border: 1px solid rgb(154 198 218 / .16) !important;
+  border-radius: 2px !important;
+  background: rgb(7 16 24 / .62) !important;
+}
+html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-mkt-brief__cell dt {
+  margin: 0 !important;
+  font-family: var(--dp-face-read, "Instrument Sans", system-ui, sans-serif) !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  letter-spacing: .02em !important;
+  text-transform: uppercase !important;
+  white-space: nowrap !important;
+  color: #9edce9 !important;
+}
+html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-mkt-brief__cell dd {
+  margin: 3px 0 0 !important;
+  font-family: var(--dp-face-read, "Instrument Sans", system-ui, sans-serif) !important;
+  font-size: 15px !important;
+  font-weight: 600 !important;
+  font-variant-numeric: tabular-nums !important;
+  color: #f4f7f5 !important;
+  white-space: nowrap !important;
+}
+html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-mkt-brief__lines {
+  display: grid !important;
+  gap: 6px !important;
+  margin: 10px 0 0 !important;
+  padding: 10px 0 0 !important;
+  border-top: 1px solid rgb(154 198 218 / .18) !important;
+}
+html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-mkt-brief__row {
+  display: grid !important;
+  grid-template-columns: 102px minmax(0, 1fr) !important;
+  gap: 10px !important;
+  align-items: baseline !important;
+}
+html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-mkt-brief__row dt {
+  margin: 0 !important;
+  font-family: var(--dp-face-read, "Instrument Sans", system-ui, sans-serif) !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  letter-spacing: .04em !important;
+  text-transform: uppercase !important;
+  color: rgb(158 220 233 / .82) !important;
+}
+html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-mkt-brief__row dd {
+  margin: 0 !important;
+  font-family: var(--dp-face-read, "Instrument Sans", system-ui, sans-serif) !important;
+  font-size: 13px !important;
+  line-height: 1.38 !important;
+  color: rgb(236 230 216 / .90) !important;
+}
+@media (max-width: 600px) {
+  html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-mkt .sx-mkt-table .sx-mkt-row > .sx-mkt-row__name:first-child {
+    text-indent: 0 !important;
+    padding-left: 8px !important;
+  }
+  html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-mkt .sx-mkt-brief {
+    display: none !important;
+  }
+}
+
+/* ---- Shipyard: no ring around the ship, plain hull/role subline, clean DETAILS seating,
+        and no ghost MORE badge behind Tessera on narrow screens. ----------------------------- */
+html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-sw .orr-hull__dial,
+html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-sw .orr-hull__fitted {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-sw .sx-sw__model {
+  margin: 2px 0 0 !important;
+  font-family: var(--dp-face-read, "Instrument Sans", system-ui, sans-serif) !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  letter-spacing: .07em !important;
+  text-transform: uppercase !important;
+  color: #9edce9 !important;
+}
+@media (min-width: 1101px) and (min-height: 641px) and (max-height: 800px) {
+  html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-sw:not(.sx-sw--buying) .sx-sw__rail {
+    max-height: 102px !important;
+    padding: 5px 10px 6px !important;
+  }
+  html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-sw:not(.sx-sw--buying) .sx-sw__rail .orr-extent--foot {
+    display: none !important;
+  }
+  html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-sw:not(.sx-sw--buying) .sx-sw__rail .sx-seg {
+    margin: 0 0 4px !important;
+  }
+  html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-sw:not(.sx-sw--buying) .sx-sw__rail .sx-sw-row {
+    padding: 4px 8px !important;
+  }
+  html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-sw:not(.sx-sw--buying) .sx-sw__rail .sx-sw__carousel {
+    margin-top: 2px !important;
+  }
+  html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-sw.orr-sw--jig:not(.sx-sw--buying) .sx-sw__stats:not(.sx-sw__stats--unseated) {
+    top: 108px !important;
+    bottom: 0 !important;
+    max-height: none !important;
+    height: auto !important;
+    padding: 8px 12px 10px !important;
+  }
+  html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-sw .sx-sw__stats .sfs__head {
+    margin: 0 0 3px !important;
+    padding-bottom: 3px !important;
+  }
+  html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-sw .sx-sw__stats .sfs__blurb,
+  html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-sw .sx-sw__stats .sfs__line {
+    margin-top: 2px !important;
+    line-height: 1.24 !important;
+  }
+  html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-sw .sx-sw__stats .sfs__stat {
+    padding: 1px 0 2px !important;
+  }
+  html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-sw .sx-sw__stats .sfs__num {
+    font-size: 14px !important;
+    line-height: 1.1 !important;
+  }
+  html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-sw .sx-sw__stats .sfs__pips {
+    height: 6px !important;
+    margin-top: 1px !important;
+  }
+  html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-sw .sx-sw__stats .sfs__pip {
+    height: 5px !important;
+  }
+  html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-sw .sx-sw__stats .sfs__meaning,
+  html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-sw .sx-sw__stats .sfs__note {
+    margin-top: 3px !important;
+    font-size: 12px !important;
+    line-height: 1.26 !important;
+  }
+  html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-sw .sx-sw__stats .sfs__details {
+    margin-top: 4px !important;
+  }
+  html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-sw .sx-sw__stats .sx-sw-band--capability {
+    margin-top: 3px !important;
+    padding-bottom: 4px !important;
+  }
+  html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-sw .sx-sw__stats .sx-sw-band--presets {
+    margin-top: 6px !important;
+  }
+  html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-sw.orr-sw--jig:not(.sx-sw--buying) .sx-sw__stats + .orr-extent--foot,
+  html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-sw.orr-sw--jig:not(.sx-sw--buying) .sx-sw__main > .orr-extent--foot {
+    display: none !important;
+  }
+}
+@media (max-width: 600px) {
+  html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-sw {
+    overflow-y: auto !important;
+  }
+  html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-sw .sx-sw__rail {
+    flex: 0 0 auto !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    padding: 8px 10px !important;
+  }
+  html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-sw .sx-sw__rail .sx-sw__carousel {
+    margin-top: 4px !important;
+  }
+  html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-sw .sx-sw__rail .sx-sw__list {
+    max-height: 150px !important;
+    overflow-y: auto !important;
+  }
+  html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-sw .sx-sw__rail .orr-extent--foot,
+  html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-sw > .orr-extent--foot {
+    display: none !important;
+  }
+}
+
+/* ---- People: keep portrait clear of title card & reply buttons, keep LEADS footer clean
+        and inside the panel without MORE collision. ------------------------------------------ */
+@media (min-width: 901px) {
+  html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-bar .sx-bar__hang {
+    display: flex !important;
+    flex-direction: column !important;
+    padding: 10px 12px 10px !important;
+  }
+  html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-bar .sx-bar__rows {
+    gap: 3px !important;
+  }
+  html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-bar .sx-bar-row {
+    padding: 5px 10px !important;
+    font-size: 13.5px !important;
+  }
+  html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-bar .sx-bar-row__role {
+    font-size: 12px !important;
+    margin-top: 1px !important;
+  }
+  html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-bar .sx-bar__leads > .k-caps {
+    margin: 8px 0 4px !important;
+  }
+  html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-bar .sx-lead {
+    padding: 4px 8px !important;
+    margin-bottom: 3px !important;
+  }
+  html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-bar .sx-bar__foot {
+    margin: 8px 0 0 !important;
+    padding: 8px 0 2px !important;
+    border-top: 1px solid rgb(158 220 233 / .18) !important;
+    flex: none !important;
+  }
+  html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-bar .sx-bar__stage .sx-talk {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1.05fr) minmax(240px, 0.95fr) !important;
+    grid-template-rows: auto auto auto auto 1fr !important;
+    column-gap: 20px !important;
+    row-gap: 10px !important;
+    align-content: start !important;
+    align-items: start !important;
+    min-height: 100% !important;
+  }
+  html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-bar .sx-talk > .sx-talk__head {
+    display: contents !important;
+  }
+  html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-bar .sx-talk > .sx-talk__head > .sx-talk__id,
+  html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-bar .sx-talk > .sx-talk__reply,
+  html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-bar .sx-talk > .sx-talk__choices,
+  html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-bar .sx-talk > .sx-talk__keys,
+  html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-bar .sx-talk > .sx-bar-offer,
+  html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-bar .sx-talk > .sx-muted {
+    grid-column: 1 !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    margin-top: 0 !important;
+    z-index: 2 !important;
+  }
+  html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-bar .sx-talk > .sx-talk__head > .sx-talk__avatar {
+    grid-column: 2 !important;
+    grid-row: 1 / -1 !important;
+    position: relative !important;
+    inset: auto !important;
+    right: auto !important;
+    top: auto !important;
+    width: 100% !important;
+    max-width: 340px !important;
+    height: auto !important;
+    aspect-ratio: 1 !important;
+    justify-self: center !important;
+    align-self: center !important;
+    margin: 0 !important;
+    pointer-events: none !important;
+    z-index: 1 !important;
+  }
+  html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-bar .sx-talk__avatar :is(img, canvas, .sx-portrait) {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    -webkit-mask-image: radial-gradient(ellipse 68% 72% at 50% 44%, #000 54%, transparent 96%) !important;
+    mask-image: radial-gradient(ellipse 68% 72% at 50% 44%, #000 54%, transparent 96%) !important;
+  }
+}
+@media (max-width: 650px) {
+  html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-bar .orr-extent--foot,
+  html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-bar .sx-bar__hang + .orr-extent--foot {
+    display: none !important;
+  }
+  html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-bar .sx-bar__hang {
+    -webkit-mask-image: none !important;
+    mask-image: none !important;
+    padding-bottom: 12px !important;
+  }
+}
+
+/* ---- Hub (390px phone): fit all 4 doors + Service Ship + Undock cleanly above the fold. ---- */
+@media (max-width: 600px) {
+  html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-concourse {
+    gap: 8px !important;
+    padding: 2px 0 !important;
+  }
+  html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-cc__hero {
+    padding: 10px 12px !important;
+    gap: 8px !important;
+  }
+  html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-cc__name {
+    font-size: 24px !important;
+  }
+  html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-cc__note {
+    font-size: 12.5px !important;
+    line-height: 1.3 !important;
+    margin-top: 4px !important;
+  }
+  html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-cc__purse {
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    align-items: baseline !important;
+    justify-content: space-between !important;
+    gap: 4px 12px !important;
+    padding: 6px 10px !important;
+  }
+  html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-cc__credits-v {
+    font-size: 20px !important;
+  }
+  html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-cc__news {
+    padding: 6px 10px !important;
+    min-height: 0 !important;
+  }
+  html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-cc__spacer {
+    flex: 1 1 16px !important;
+    min-height: 12px !important;
+  }
+  html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-cc__lower {
+    gap: 8px !important;
+  }
+  html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-cc__service {
+    padding: 8px 10px !important;
+    gap: 6px !important;
+  }
+  html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-cc-svc__primary {
+    min-height: 36px !important;
+    padding: 6px 14px !important;
+    font-size: 13.5px !important;
+  }
+  html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-cc-svc__items {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 6px !important;
+  }
+  html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-cc-svc__item {
+    flex: none !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    justify-content: center !important;
+    gap: 2px !important;
+    min-height: 44px !important;
+    padding: 5px 8px !important;
+    font-size: 12px !important;
+  }
+  html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-cc__doors,
+  html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-cc__doors[data-count="5"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+  html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-cc-door {
+    min-height: 76px !important;
+    padding: 10px 10px !important;
+    gap: 4px !important;
+  }
+  html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-cc-door__key {
+    display: none !important;
+  }
+  html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-cc-door__title {
+    font-size: 15px !important;
+  }
+  html:root:root:root:root body #screens#screens#screens#screens#screens > .sx-berth.orr-station.orr-station .sx-cc-door__summary {
+    font-size: 12px !important;
+    line-height: 1.3 !important;
+  }
+}

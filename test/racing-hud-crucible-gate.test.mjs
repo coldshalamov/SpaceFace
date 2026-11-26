@@ -114,7 +114,7 @@ function sealedSurvival(ruleset = 'swarm') {
   return run;
 }
 
-test('adventure free flight still shows the compact race-tape (Circuits available)', () => {
+test('adventure free flight shows the compact camera view control and removes Circuits from the flight HUD', () => {
   const dom = installDom();
   try {
     const root = document.createElement('div');
@@ -130,12 +130,8 @@ test('adventure free flight still shows the compact race-tape (Circuits availabl
     const panel = root.children.find((c) => c.id === 'race-tape');
     assert.ok(panel, 'race-tape mounted');
     hud.frame(state);
-    assert.equal(panel.hidden, false, 'adventure flight keeps the tape');
+    assert.equal(panel.hidden, false, 'adventure flight keeps the camera view tape');
     assert.equal(panel.dataset.compact, 'true');
-    const circuits = panel.children
-      .flatMap?.(function walk(el) { return [el, ...(el.children || []).flatMap(walk)]; })
-      || [];
-    // Walk children manually — FakeElement has .children
     const buttons = [];
     const stack = [...panel.children];
     while (stack.length) {
@@ -144,13 +140,14 @@ test('adventure free flight still shows the compact race-tape (Circuits availabl
       stack.push(...(el.children || []));
     }
     const board = buttons.find((b) => b.textContent === 'Circuits');
-    assert.ok(board, 'Circuits button present');
-    board.click();
-    assert.deepEqual(pushed, ['raceBoard']);
-    assert.equal(board._blurred, true, 'Circuits blurs after a pointer click so Space cannot re-fire');
-    board._blurred = false;
-    board.click({ detail: 0 });
-    assert.equal(board._blurred, false, 'keyboard activation keeps focus on the button');
+    assert.equal(board, undefined, 'Circuits lives in Pause and Title, not on the flight HUD');
+    const viewBtn = buttons.find((b) => /Overhead|Chase/i.test(b.textContent));
+    assert.ok(viewBtn, 'Overhead / Chase camera toggle remains available');
+    viewBtn.click();
+    assert.equal(viewBtn._blurred, true, 'pointer click blurs so Space cannot re-fire');
+    viewBtn._blurred = false;
+    viewBtn.click({ detail: 0 });
+    assert.equal(viewBtn._blurred, false, 'keyboard activation keeps focus on the button');
     hud.dispose();
   } finally {
     dom.restore();
@@ -510,7 +507,7 @@ test('adventure combat: weapons hot takes the HUD row out of the click path', ()
 });
 
 
-test('mobile flight options preserve view and Circuits actions, focus and combat lock', () => {
+test('mobile flight options preserve view actions, omit Circuits, and honor focus and combat lock', () => {
   const dom = installDom();
   let hud;
   try {
@@ -522,6 +519,7 @@ test('mobile flight options preserve view and Circuits actions, focus and combat
     const trigger = panel.children.find(node => node.className.includes('race-tape-options-trigger'));
     const row = actionRow(panel), view = row.children[0], circuits = row.children.find(node => node.textContent === 'Circuits');
     const close = row.children.find(node => node.textContent === 'Close');
+    assert.equal(circuits, undefined, 'Circuits is removed from the flight HUD');
     assert.equal(trigger.getAttribute('aria-controls'), row.id);
     assert.equal(trigger.getAttribute('aria-expanded'), 'false');
     assert.equal(view.textContent, 'View: Overhead');
@@ -541,9 +539,6 @@ test('mobile flight options preserve view and Circuits actions, focus and combat
     assert.equal(view.textContent, 'View: Chase');
     trigger.click(); close.click({ detail: 0 });
     assert.equal(document.activeElement, trigger);
-    trigger.click(); circuits.click({ detail: 0 });
-    assert.deepEqual(opened, ['raceBoard']);
-    assert.equal(trigger.getAttribute('aria-expanded'), 'false');
     trigger.click(); bus.emit('combat:fire', { ownerId: state.playerId }); hud.frame(state);
     assert.equal(trigger.disabled, true);
     assert.equal(row.inert, true);

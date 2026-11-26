@@ -680,7 +680,7 @@ await check('high-speed flyby enters Focus and permits expanded tether latch', (
   assert.equal(state.player.flybyFocus.targetId, foe.id, 'Focus must lock the flyby threat');
   assert.equal(state.player.targetId, selectedRock.id,
     'Focus must preserve the explicit persistent gun/UI selection');
-  assert.ok(state.timeScale <= 0.5 + 1e-9, 'Focus must request slow-time (≤50%)');
+  assert.equal(state.timeScale, 1, 'HARMONY-FIX 4: Focus never slows time (the player keeps normal time)');
 
   const latch = tetherGameplay._acquireTarget.call(
     { _targetScratch: [], helpers: {} },

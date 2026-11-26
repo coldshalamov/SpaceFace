@@ -40,6 +40,7 @@ import { isRetiredRigidOpaqueBatch } from './rigidOpaqueBatch.js';
 import { postTaskAtBackgroundPriorityBounded, revealSubjectWithAncestors } from './compilePresentSlice.js';
 import { makeGpuQueuePacer } from './gpuQueuePace.js';
 import { CAS_FRAG, CAS_SHARPNESS, applyCasSetup, casSupportsScaling, createCasUniforms, resolveCasSharpenActive } from './cas.js';
+import { frameCostFixOn } from './frameCostSwitches.js';
 import { LOOK_POST_UNIFORMS } from './look.js';
 import {
   createAtmosphereCompositeUniforms,
@@ -271,18 +272,20 @@ export const SPACE_POST_PRESENTATION_GLSL = /* glsl */`
   // the fixed neighbourhood range, where the old fwidth(y) term re-derived gradient energy per
   // pixel per frame and pooled/unpooled under any subpixel drift (the "congealing clumps" the
   // owner reported 2026-09-21). Bright cores stay unfiltered.
-  vec3 sampleSpaceIllustratedScene(sampler2D sceneTexture, vec2 uv) {
+  vec3 sampleSpaceIllustratedSceneBounded(sampler2D sceneTexture, vec2 uv, vec2 uvMax, out float outEdgeDetail) {
     vec2 texel = 1.0 / vec2(textureSize(sceneTexture, 0));
-    vec3 c = texture2D(sceneTexture, uv).rgb;
-    vec3 rgbNW = texture2D(sceneTexture, uv + texel * vec2(-1.0, 1.0)).rgb;
-    vec3 rgbNE = texture2D(sceneTexture, uv + texel).rgb;
-    vec3 rgbSW = texture2D(sceneTexture, uv - texel).rgb;
-    vec3 rgbSE = texture2D(sceneTexture, uv + texel * vec2(1.0, -1.0)).rgb;
+    vec2 hi = max(uvMax - texel * 0.5, vec2(0.0));
+    vec3 c = texture2D(sceneTexture, clamp(uv, vec2(0.0), hi)).rgb;
+    vec3 rgbNW = texture2D(sceneTexture, clamp(uv + texel * vec2(-1.0, 1.0), vec2(0.0), hi)).rgb;
+    vec3 rgbNE = texture2D(sceneTexture, clamp(uv + texel, vec2(0.0), hi)).rgb;
+    vec3 rgbSW = texture2D(sceneTexture, clamp(uv - texel, vec2(0.0), hi)).rgb;
+    vec3 rgbSE = texture2D(sceneTexture, clamp(uv + texel * vec2(1.0, -1.0), vec2(0.0), hi)).rgb;
     float lumaNW = dot(rgbNW, vec3(0.2126, 0.7152, 0.0722));
     float lumaNE = dot(rgbNE, vec3(0.2126, 0.7152, 0.0722));
     float lumaSW = dot(rgbSW, vec3(0.2126, 0.7152, 0.0722));
     float lumaSE = dot(rgbSE, vec3(0.2126, 0.7152, 0.0722));
     float lumaM = dot(c, vec3(0.2126, 0.7152, 0.0722));
+    outEdgeDetail = clamp(lumaM - 0.25 * (lumaNW + lumaNE + lumaSW + lumaSE), -0.35, 0.35);
     float lumaMin = min(lumaM, min(min(lumaNW, lumaNE), min(lumaSW, lumaSE)));
     float lumaMax = max(lumaM, max(max(lumaNW, lumaNE), max(lumaSW, lumaSE)));
     float contrast = lumaMax - lumaMin;
@@ -300,11 +303,11 @@ export const SPACE_POST_PRESENTATION_GLSL = /* glsl */`
       float rcpDirMin = 1.0 / (min(abs(dir.x), abs(dir.y)) + dirReduce);
       dir = clamp(dir * rcpDirMin, -6.0, 6.0) * texel;
       vec3 rgbA = 0.5 * (
-        texture2D(sceneTexture, uv + dir * (1.0 / 3.0 - 0.5)).rgb +
-        texture2D(sceneTexture, uv + dir * (2.0 / 3.0 - 0.5)).rgb);
+        texture2D(sceneTexture, clamp(uv + dir * (1.0 / 3.0 - 0.5), vec2(0.0), hi)).rgb +
+        texture2D(sceneTexture, clamp(uv + dir * (2.0 / 3.0 - 0.5), vec2(0.0), hi)).rgb);
       vec3 rgbB = rgbA * 0.5 + 0.25 * (
-        texture2D(sceneTexture, uv + dir * -0.5).rgb +
-        texture2D(sceneTexture, uv + dir * 0.5).rgb);
+        texture2D(sceneTexture, clamp(uv + dir * -0.5, vec2(0.0), hi)).rgb +
+        texture2D(sceneTexture, clamp(uv + dir * 0.5, vec2(0.0), hi)).rgb);
       float lumaB = dot(rgbB, vec3(0.2126, 0.7152, 0.0722));
       resolved = (lumaB < lumaMin || lumaB > lumaMax) ? rgbA : rgbB;
     }
@@ -319,6 +322,11 @@ export const SPACE_POST_PRESENTATION_GLSL = /* glsl */`
     // hard edge, just no longer as deep a seam over already-soft bloom spill.
     float deposit = uLookInk * solid * clamp(ink * 0.15 + pool * 0.40, 0.0, 0.46);
     return resolved * mix(vec3(1.0), vec3(0.40, 0.34, 0.62), deposit);
+  }
+
+  vec3 sampleSpaceIllustratedScene(sampler2D sceneTexture, vec2 uv) {
+    float unusedDetail = 0.0;
+    return sampleSpaceIllustratedSceneBounded(sceneTexture, uv, vec2(1.0), unusedDetail);
   }
 
   vec3 spaceAcesFilmic(vec3 x) {
@@ -627,7 +635,7 @@ export async function compileScenePipelinesForRenderTarget(
     );
     // Owned compile() performs its complete GL issue synchronously; keep unsupported
     // compileAsync implementations on the original serialized lifetime.
-    if ((options?.restoreTargetAfterIssue === true || typeof options?.onIssueComplete === 'function') && typeof renderer.compile === 'function'
+    if (typeof renderer.compile === 'function'
         && renderer.properties?.get && renderer.extensions?.get
         && renderer.domElement?.addEventListener && renderer.domElement?.removeEventListener
         && renderer.getContext && renderer.extensions.get('KHR_parallel_shader_compile')) {
@@ -790,6 +798,48 @@ function programReadiness(program) {
   const ready = program.isReady();
   if (ready === null) return 'invalid';
   return ready ? 'ready' : 'pending';
+}
+
+const shaderPollsByContext = new WeakMap();
+const shaderPollNow = () => globalThis.performance?.now?.() ?? Date.now();
+
+function shaderPollBudgetSpent(poll) {
+  return poll.queries >= 8 || (poll.queries > 0 && shaderPollNow() - poll.started >= 2);
+}
+
+function armShaderPoll(queue) {
+  if (queue.running || queue.timer !== null || queue.checks.size === 0) return;
+  queue.timer = setTimeout(() => {
+    queue.timer = null;
+    queue.running = true;
+    const poll = { started: shaderPollNow(), queries: 0, results: new Map() };
+    let remaining = queue.checks.size;
+    for (const check of queue.checks) {
+      if (--remaining < 0 || shaderPollBudgetSpent(poll)) break;
+      queue.checks.delete(check);
+      // Unfinished checks rejoin at the back to share the next budget fairly.
+      check(poll);
+    }
+    queue.running = false;
+    armShaderPoll(queue);
+  }, 10);
+}
+
+function scheduleShaderPoll(context, check) {
+  let queue = shaderPollsByContext.get(context);
+  if (!queue) {
+    queue = { timer: null, running: false, checks: new Set() };
+    shaderPollsByContext.set(context, queue);
+  }
+  queue.checks.add(check);
+  armShaderPoll(queue);
+  return () => {
+    queue.checks.delete(check);
+    if (queue.checks.size === 0 && queue.timer !== null) {
+      clearTimeout(queue.timer);
+      queue.timer = null;
+    }
+  };
 }
 
 export function beginScenePipelineReadinessBatch(renderer = null, options = {}) {
@@ -973,12 +1023,12 @@ export function compilePipelinesContextSafe(renderer, subject, camera, lightingS
 
   return new Promise((resolve, reject) => {
     const gl = renderer.getContext();
-    let timer = null;
+    let cancelPoll = null;
     let settled = false;
 
     const cleanup = () => {
-      if (timer != null) clearTimeout(timer);
-      timer = null;
+      cancelPoll?.();
+      cancelPoll = null;
       canvas.removeEventListener('webglcontextlost', onContextLost, false);
     };
     const finish = (result) => {
@@ -1045,20 +1095,16 @@ export function compilePipelinesContextSafe(renderer, subject, camera, lightingS
     // would hold the compile tail (and every admission serialized behind it)
     // indefinitely. Past the bound the wait resolves — the driver still finishes
     // the link on first use, so the worst case is one slow draw, not a dead lane.
-    const readinessDeadline = (typeof performance !== 'undefined' && performance
-        && typeof performance.now === 'function' ? performance.now() : Date.now())
+    const readinessDeadline = shaderPollNow()
       + (Number.isFinite(options.readinessTimeoutMs) ? options.readinessTimeoutMs : 20000);
     let programCursor = null;
-    const pollNow = () => globalThis.performance?.now?.() ?? Date.now();
-    const checkProgramsReady = () => {
+    const checkProgramsReady = (poll) => {
       if (settled) return;
       try {
         if ((typeof gl.isContextLost === 'function' && gl.isContextLost())) {
           onContextLost();
           return;
         }
-        const pollStarted = pollNow();
-        let queried = 0;
         programCursor ??= programs.values();
         for (;;) {
           const step = programCursor.next();
@@ -1073,7 +1119,12 @@ export function compilePipelinesContextSafe(renderer, subject, camera, lightingS
             });
             return;
           }
-          const readiness = programReadiness(program);
+          let readiness = poll.results.get(program);
+          if (readiness === undefined) {
+            readiness = programReadiness(program);
+            poll.results.set(program, readiness);
+            poll.queries++;
+          }
           if (readiness === 'invalid') {
             finish({
               contextLost: true,
@@ -1082,25 +1133,25 @@ export function compilePipelinesContextSafe(renderer, subject, camera, lightingS
             return;
           }
           if (readiness === 'ready') programs.delete(program);
-          if (++queried >= 8 || pollNow() - pollStarted >= 2) break;
+          if (shaderPollBudgetSpent(poll)) break;
         }
         if (programs.size === 0) {
           finish({ contextLost: false });
           return;
         }
-        if ((typeof performance !== 'undefined' && performance
-            && typeof performance.now === 'function' ? performance.now() : Date.now())
-            >= readinessDeadline) {
+        if (shaderPollNow() >= readinessDeadline) {
           finish({ contextLost: false, readinessTimedOut: true });
           return;
         }
-        timer = setTimeout(checkProgramsReady, 10);
+        cancelPoll = scheduleShaderPoll(gl || canvas, checkProgramsReady);
       } catch (error) {
         fail(error);
       }
     };
 
-    checkProgramsReady();
+    // Compiles for the same context share one poll budget and one result per
+    // program. The compile issue phase does not wait synchronously for a link.
+    cancelPoll = scheduleShaderPoll(gl || canvas, checkProgramsReady);
   });
 }
 
@@ -1378,6 +1429,7 @@ const COMPOSITE_FRAG = /* glsl */`
   uniform float uToe;       // lifted black floor 0..0.06 (0 = true blacks, the default)
   uniform float uGrainFrame;
   uniform float uSharpen; // 0 = off (default picture); >0 = cheap unsharp after compose
+  uniform float uAutoSharpen; // >0 = zero-extra-fetch diagonal unsharp for single-pass dyn-res upscale
   uniform vec2 uSceneTexel; // 1/allocated scene size (WebGL1-safe; no textureSize)
 
   ${SPACE_POST_PRESENTATION_GLSL}
@@ -1400,7 +1452,8 @@ const COMPOSITE_FRAG = /* glsl */`
       sceneUv = clamp(sceneUv + (distortion.xy * 2.0 - 1.0)
         * step(1e-5, distortion.z) * uUvScale, vec2(0.0), vec2(1.0));
     }
-    vec3 scene = sampleSpaceIllustratedScene(tScene, sceneUv);
+    float edgeDetail = 0.0;
+    vec3 scene = sampleSpaceIllustratedSceneBounded(tScene, sceneUv, uUvScale, edgeDetail);
     // Participating media transports linear HDR radiance before the one exposure/tone-map/encode.
     // Vacuum is an exact uniform-disabled path; bloom never stands in for surface illumination.
     scene = composeNocturneAtmosphere(scene, (sceneUv - uUvOffset) / uUvScale, sceneUv);
@@ -1435,10 +1488,37 @@ const COMPOSITE_FRAG = /* glsl */`
       float sharpLuma = dot(scene, vec3(0.2126, 0.7152, 0.0722));
       float blurLuma = dot(blur, vec3(0.2126, 0.7152, 0.0722));
       color = clamp(color + (sharpLuma - blurLuma) * uSharpen, 0.0, 1.0);
+    } else if (uAutoSharpen > 0.001) {
+      color = clamp(color + edgeDetail * uAutoSharpen, 0.0, 1.0);
     }
     gl_FragColor = vec4(color, 1.0);
   }
 `;
+
+// Programs created inside a presented scene pass (see renderScenePass): the proof instrument for
+// 'no shader compiles while the world is live'.
+const ON_GLASS_PROGRAM_LOG_N = 64;
+const onGlassPrograms = { rows: new Array(ON_GLASS_PROGRAM_LOG_N), head: 0, programs: 0, passes: 0 };
+function noteProgramsCreatedOnGlass(keys, wrappers, passMs, at) {
+  onGlassPrograms.passes++;
+  onGlassPrograms.programs += wrappers.length;
+  const names = [];
+  for (let i = 0; i < wrappers.length && names.length < 6; i++) {
+    const w = wrappers[i];
+    names.push(String((w && w.name) || '') + ':' + String(keys[i] || '').slice(0, 48));
+  }
+  onGlassPrograms.rows[onGlassPrograms.head] = { at: Math.round(at), passMs: +Number(passMs).toFixed(1), count: wrappers.length, names };
+  onGlassPrograms.head = (onGlassPrograms.head + 1) % ON_GLASS_PROGRAM_LOG_N;
+}
+export function readProgramsCreatedOnGlass() {
+  const rows = [];
+  for (let i = 0; i < ON_GLASS_PROGRAM_LOG_N; i++) {
+    const row = onGlassPrograms.rows[(onGlassPrograms.head + i) % ON_GLASS_PROGRAM_LOG_N];
+    if (row) rows.push(row);
+  }
+  return { programs: onGlassPrograms.programs, passes: onGlassPrograms.passes, rows };
+}
+if (typeof globalThis !== 'undefined' && !globalThis.__SF_LIVE_PROGRAMS__) globalThis.__SF_LIVE_PROGRAMS__ = readProgramsCreatedOnGlass;
 
 // Programs already counted in renderer.info can still be linking. Three's draw path
 // never polls isReady() — gl.useProgram waits out the driver, which is the leftover
@@ -1592,6 +1672,7 @@ function installUnreadyDrawGuard(renderer) {
   renderer.__sfUnreadyDrawGuardDepth = 0;
   const inner = renderer.renderBufferDirect;
   const drawGuardGl = typeof renderer.getContext === 'function' ? renderer.getContext() : null;
+  const drawGuardCtxRecord = drawGuardGl && typeof drawGuardGl === 'object' ? programHandleContext(drawGuardGl) : null;
   const guardNow = typeof renderer.__sfDrawGuardNow === 'function'
     ? renderer.__sfDrawGuardNow : unreadyGuardNowMs;
   // Exact-target admission uses the same context-generation ownership as presented draws.
@@ -1683,14 +1764,59 @@ function installUnreadyDrawGuard(renderer) {
           const rec = props.get(material);
           const current = rec && rec.currentProgram;
           if (current) {
-            const variant = linkedDrawProgramVariant(renderer, rec, material, object);
-            // The current wrapper can still be linking when the scoped scene scan
-            // misses a live bind, just as a cached sibling can. Validate either
-            // selected wrapper before first-use discovery can block this draw.
-            // Three caches ready=true; warm draws issue no new GL readiness query.
-            compiled = !!variant && !programWrapperDead(drawGuardGl, variant);
-            if (compiled && typeof variant.isReady === 'function') {
-              try { compiled = variant.isReady() === true; } catch (_) { compiled = false; }
+            const drawMask = instancingFlags(object)
+              | (object && object.isBatchedMesh === true ? 8 : 0)
+              | (geometry && geometry.isInstancedBufferGeometry === true ? 16 : 0);
+            const target = typeof renderer.getRenderTarget === 'function' ? renderer.getRenderTarget() : null;
+            const toneMapping = Number(material.toneMapped === true
+              && (!target || target.isXRRenderTarget === true)
+              ? renderer.toneMapping
+              : THREE.NoToneMapping);
+            const cs = !target
+              ? renderer.outputColorSpace
+              : target.isXRRenderTarget === true
+                ? target.texture && target.texture.colorSpace
+                : THREE.ColorManagement.workingColorSpace;
+            const ctxGen = drawGuardCtxRecord ? drawGuardCtxRecord.generation : 0;
+            const cacheValid = rec.__sfWarmGl === drawGuardGl
+              && rec.__sfWarmCtxGen === ctxGen
+              && rec.__sfWarmProg === current
+              && rec.__sfWarmVer === material.version
+              && rec.__sfWarmTone === toneMapping
+              && rec.__sfWarmCs === cs;
+            const cachedVariant = cacheValid && rec.__sfWarmVariants ? rec.__sfWarmVariants[drawMask] : null;
+            if (cachedVariant && cachedVariant.program && !retiredProgramWrappers.has(cachedVariant)
+                && cachedVariant.program === (rec.__sfWarmHandles && rec.__sfWarmHandles[drawMask])) {
+              compiled = true;
+            } else {
+              const variant = linkedDrawProgramVariant(renderer, rec, material, object);
+              // The current wrapper can still be linking when the scoped scene scan
+              // misses a live bind, just as a cached sibling can. Validate either
+              // selected wrapper before first-use discovery can block this draw.
+              // Three caches ready=true; warm draws issue no new GL readiness query.
+              compiled = !!variant && !programWrapperDead(drawGuardGl, variant);
+              if (compiled && typeof variant.isReady === 'function') {
+                try { compiled = variant.isReady() === true; } catch (_) { compiled = false; }
+              }
+              if (compiled && variant) {
+                if (!cacheValid) {
+                  rec.__sfWarmGl = drawGuardGl;
+                  rec.__sfWarmCtxGen = ctxGen;
+                  rec.__sfWarmProg = current;
+                  rec.__sfWarmVer = material.version;
+                  rec.__sfWarmTone = toneMapping;
+                  rec.__sfWarmCs = cs;
+                  if (!rec.__sfWarmVariants) rec.__sfWarmVariants = [];
+                  else rec.__sfWarmVariants.length = 0;
+                  if (!rec.__sfWarmHandles) rec.__sfWarmHandles = [];
+                  else rec.__sfWarmHandles.length = 0;
+                }
+                rec.__sfWarmVariants[drawMask] = variant;
+                rec.__sfWarmHandles[drawMask] = variant.program;
+              } else if (rec.__sfWarmVariants) {
+                rec.__sfWarmVariants[drawMask] = null;
+                if (rec.__sfWarmHandles) rec.__sfWarmHandles[drawMask] = null;
+              }
             }
           } else {
             // No program at all: this draw would link it inside the presented frame.
@@ -1818,10 +1944,10 @@ export function createUnreadyDrawableGuard(renderer, options = {}) {
   const unreadySceneScratch = new Array(UNREADY_SCENE_CAP);
   const unreadySceneLayerMasks = new Array(UNREADY_SCENE_CAP);
   let unreadySceneCount = 0;
-  function hideDrawableForPass(object) {
+  function hideDrawableForPass(object, wholeBranch = false) {
     if (!object || object.visible !== true) return;
     const layers = object.layers;
-    if (layers && typeof layers.mask === 'number') {
+    if (!wholeBranch && layers && typeof layers.mask === 'number') {
       if (layers.mask === 0) return;
       unreadySceneScratch[unreadySceneCount] = object;
       unreadySceneLayerMasks[unreadySceneCount++] = layers.mask;
@@ -1961,7 +2087,10 @@ export function createUnreadyDrawableGuard(renderer, options = {}) {
       for (const subject of pendingSubjects) {
         if (subject && subject.visible === true
             && !(subject.userData && subject.userData.sfAdmittedOnce === true)) {
-          if (typeof subject.traverseVisible === 'function') subject.traverseVisible(hidePendingDrawable);
+          // A cold branch with no scene lights or LOD side effects can stand down as a unit.
+          // Leave its children untouched and let Three prune the hidden branch at projection.
+          if (subject.hasLightsOrLod?.() === false) hideDrawableForPass(subject, true);
+          else if (typeof subject.traverseVisible === 'function') subject.traverseVisible(hidePendingDrawable);
           else hidePendingDrawable(subject);
         }
       }
@@ -2251,6 +2380,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
   let enabled = true;
   let strength = DEFAULT_BLOOM_STRENGTH;
   let maxLevelsCap = BALANCED_BLOOM_MAX_LEVELS;
+  let compactBloom = false;
   let sharpenAmount = 0;
   let threshold = 1.0;
   // Owner 2026-10-27 bloom discipline: the knee is the emissive gate. A wide knee (the old 0.25)
@@ -2266,8 +2396,11 @@ export function createBloom(renderer, width, height, instrumentation = null) {
   let grade = defaultPresentation.grade;
   let toe = defaultPresentation.toe;
   // Requested mode survives context loss; packedHdrMode is the capability-gated mode actually
-  // allocated for the current GL context. The default deliberately stays HalfFloat/off.
-  let packedHdrRequestedMode = PACKED_HDR_MODE.OFF;
+  // allocated for the current GL context. The default deliberately stays HalfFloat/off unless
+  // explicitly requested in instrumentation.
+  let packedHdrRequestedMode = normalizePackedHdrMode(
+    instrumentation && (instrumentation.packedHdr !== undefined ? instrumentation.packedHdr : instrumentation.packedHdrMode),
+  );
   let packedHdrMode = PACKED_HDR_MODE.OFF;
   let packedHdrCapability = packedHdrProbeFailure('disabled');
   // The contrast LUT is a separate opt-in shader variant. Keeping the default material free of
@@ -2300,8 +2433,12 @@ export function createBloom(renderer, width, height, instrumentation = null) {
   };
   let rtPost = null;
   // A below-display-resolution frame runs CasFilter; a full-res frame skips it entirely.
+  // On integrated GPUs under drsSmooth, scaled frames composite directly to the display in one
+  // pass with zero-extra-fetch diagonal unsharp instead of paying rtPost + 12-tap fullscreen CAS.
+  let casEnabled = true;
   let casActive = false;
   let casScaling = false;
+  let singlePassUpscale = !!(instrumentation && instrumentation.singlePassUpscale === true);
   // The display footprint the CAS gate compares against is owned by the caller (renderer
   // passes it to setSize). Cache it so internal re-entry (a bloomLevels cap change from
   // setOptions re-running setSize at the same buffer size) keeps the same gate inputs.
@@ -2392,6 +2529,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     return packedHdrMode;
   }
 
+  selectPackedHdrMode();
   applyPackedHdrTargetOptions();
 
   function levelCountForSize(w, h) {
@@ -2634,6 +2772,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     uUvScale: { value: new THREE.Vector2(1, 1) },
     uUvOffset: { value: new THREE.Vector2(0, 0) },
     uSharpen:    { value: 0 },        // 0 = default picture; integrated preset opt-in
+    uAutoSharpen: { value: 0 },       // >0 = zero-extra-fetch unsharp on single-pass dyn-res upscale
     uPresentationScale: { value: new THREE.Vector2(1, 1) },
     uSceneTexel: { value: new THREE.Vector2(1 / W, 1 / H) },
     tLookContrastLut: { value: null },
@@ -3091,6 +3230,12 @@ export function createBloom(renderer, width, height, instrumentation = null) {
           ? performance.now()
           : 0) - startedAt;
         const geometriesAfter = Number.isFinite(info?.memory?.geometries) ? info.memory.geometries : null;
+        // Programs created inside this presented pass: each one is a compile the warm-up missed.
+        // Counted and named in a small ring (globalThis.__SF_LIVE_PROGRAMS__()) so a probe can
+        // prove 'no shader compiled while the world was live' or name the ones that did.
+        if (programsBefore != null && Array.isArray(info?.programs) && info.programs.length > programsBefore) {
+          noteProgramsCreatedOnGlass(exactNewProgramKeys(programsBefore), info.programs.slice(programsBefore), elapsedMs, startedAt);
+        }
         const warnMs = Number(renderer.userData && renderer.userData.spacefaceBrickWarnMs);
         const brick = elapsedMs > (Number.isFinite(warnMs) && warnMs > 0 ? warnMs : BRICK_WARN_MS);
         const grewGeometries = geometriesAfter != null && geometriesBefore != null
@@ -3172,6 +3317,23 @@ export function createBloom(renderer, width, height, instrumentation = null) {
   }
 
   function renderDownsamplePass(tier1) {
+    if (compactBloom) {
+      // Use the retained quarter-resolution level directly on budget-constrained sets.
+      // Two-source-texel spacing keeps the filter's footprint proportional to the target.
+      const target = down[1] || down[0];
+      const divisor = down[1] ? 4 : 2;
+      const width = Math.max(1, Math.floor(contentW / divisor));
+      const height = Math.max(1, Math.floor(contentH / divisor));
+      downsampleMat.uniforms.tDiffuse.value = rtScene.texture;
+      downsampleMat.uniforms.uTexel.value.set(divisor / (2 * W), divisor / (2 * H));
+      downsampleMat.uniforms.uUvScale.value.set(contentW / W, contentH / H);
+      downsampleMat.uniforms.uUvOffset.value.set(0, 0);
+      downsampleMat.uniforms.uThreshold.value = threshold;
+      downsampleMat.uniforms.uBright.value = 1;
+      blit(downsampleMat, target, width, height);
+      if (tier1) tier1.countRenderPassPixels(width * height, 'bloom-downsample');
+      return;
+    }
     let src = rtScene.texture;
     for (let i = 0; i < levels; i++) {
       // Allocated source size (max pool) vs active content size (dyn-res sub-rect).
@@ -3217,7 +3379,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     // Bind initialized scene color when bloom is inactive. Zero weights would normally be enough,
     // but sampling an uninitialized pyramid and multiplying by zero is not guaranteed to suppress a
     // driver NaN. The canonical presentation pass therefore remains deterministic at off/zero.
-    const fine = bloomActive ? down[0].texture : rtScene.texture;
+    const fine = bloomActive ? (compactBloom && down[1] ? down[1] : down[0]).texture : rtScene.texture;
     const mid = bloomActive && levels > 1 ? down[Math.min(2, levels - 1)].texture : fine;
     const wide = bloomActive && levels > 2 ? down[levels - 1].texture : fine;
     compositeMat.uniforms.tScene.value = rtScene.texture;
@@ -3234,7 +3396,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
       compositeMat.uniforms.tNocturneSceneDepth.value = rtScene.texture;
     }
     // The upsample chain folded every level into down[0]; one read, renormalized.
-    compositeMat.uniforms.uBloomW0.value = bloomActive ? bloomChainWeights(levels).composite : 0.0;
+    compositeMat.uniforms.uBloomW0.value = bloomActive ? bloomChainWeights(compactBloom ? 1 : levels).composite : 0.0;
     compositeMat.uniforms.uBloomW1.value = 0.0;
     compositeMat.uniforms.uBloomW2.value = 0.0;
     compositeMat.uniforms.uStrength.value = bloomActive ? strength : 0.0;
@@ -3252,13 +3414,39 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     // reconstruct those bytes instead of sharpening an already bilinearly enlarged image.
     // Ratios beyond the vendor's 4x-area limit keep the legacy linear + sharpen handoff.
     // Native/supersampled content presents directly, with no CAS draw.
-    const sharpen = casActive && rtPost;
-    const compositeW = sharpen && casScaling ? contentW : W;
-    const compositeH = sharpen && casScaling ? contentH : H;
+    const fastUpscale = singlePassUpscale && contentScale < 0.999 && frameCostFixOn('drsSmooth') && !!rtPost;
+    const sharpen = !fastUpscale && casActive && rtPost;
+    const useContentResComposite = (sharpen && casScaling) || fastUpscale;
+    const compositeW = useContentResComposite ? contentW : W;
+    const compositeH = useContentResComposite ? contentH : H;
+    compositeMat.uniforms.uAutoSharpen.value = fastUpscale ? 0.30 : 0.0;
     compositeMat.uniforms.uPresentationScale.value.set(W / compositeW, H / compositeH);
-    blit(compositeMat, sharpen ? rtPost : null, compositeW, compositeH);
+    blit(compositeMat, (sharpen || fastUpscale) ? rtPost : null, compositeW, compositeH);
     if (tier1) tier1.countRenderPassPixels(compositeW * compositeH, 'bloom-composite');
-    if (sharpen) {
+    if (fastUpscale) {
+      // Hardware WebGL2 bilinear upscale from rtPost (contentW x contentH) to default framebuffer
+      // (W x H): composite runs on contentW x contentH (64% fewer pixels at 0.6 scale) with
+      // zero-extra-fetch diagonal unsharp, and fixed-function ROP blit avoids a 1920x1080 CAS pass.
+      const gl = typeof renderer.getContext === 'function' ? renderer.getContext() : null;
+      const rtProps = renderer.properties && typeof renderer.properties.get === 'function'
+        ? renderer.properties.get(rtPost) : null;
+      const srcFbo = rtProps && rtProps.__webglFramebuffer;
+      if (gl && srcFbo && typeof gl.blitFramebuffer === 'function' && gl.READ_FRAMEBUFFER != null) {
+        renderer.setRenderTarget(null);
+        gl.bindFramebuffer(gl.READ_FRAMEBUFFER, srcFbo);
+        gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, null);
+        const hadScissor = gl.isEnabled(gl.SCISSOR_TEST);
+        if (hadScissor) gl.disable(gl.SCISSOR_TEST);
+        gl.blitFramebuffer(0, 0, contentW, contentH, 0, 0, W, H, gl.COLOR_BUFFER_BIT, gl.LINEAR);
+        if (hadScissor) gl.enable(gl.SCISSOR_TEST);
+        gl.bindFramebuffer(gl.READ_FRAMEBUFFER, null);
+      } else {
+        casMat.uniforms.tSrc.value = rtPost.texture;
+        blit(casMat, null);
+        casMat.uniforms.tSrc.value = null;
+      }
+      if (tier1) tier1.countRenderPassPixels(W * H, 'drs-upscale-blit');
+    } else if (sharpen) {
       casMat.uniforms.tSrc.value = rtPost.texture;
       blit(casMat, null);
       casMat.uniforms.tSrc.value = null;
@@ -3468,6 +3656,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
 
   function setPackedHdrMode(value) {
     const requested = normalizePackedHdrMode(value);
+    if (requested === packedHdrRequestedMode) return diagnostics();
     packedHdrRequestedMode = requested;
     rebuild();
     return diagnostics();
@@ -3541,7 +3730,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
   }
 
   function syncCasSetup() {
-    casActive = resolveCasSharpenActive(contentW, contentH, casDisplayW, casDisplayH);
+    casActive = casEnabled && resolveCasSharpenActive(contentW, contentH, casDisplayW, casDisplayH);
     casScaling = casActive && (contentW !== W || contentH !== H)
       && casSupportsScaling(contentW, contentH, W, H);
     applyCasSetup(casMat.uniforms, CAS_SHARPNESS,
@@ -3578,6 +3767,12 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     }
     if (typeof o.enabled === 'boolean') enabled = o.enabled;
     if (typeof o.bloom === 'boolean') enabled = o.bloom; // settings.video.bloom alias
+    if (typeof o.compactBloom === 'boolean') compactBloom = o.compactBloom;
+    if (typeof o.singlePassUpscale === 'boolean') singlePassUpscale = o.singlePassUpscale;
+    if (typeof o.casEnabled === 'boolean' && o.casEnabled !== casEnabled) {
+      casEnabled = o.casEnabled;
+      syncCasSetup();
+    }
     if (typeof o.strength === 'number') {
       strength = Math.max(0, o.strength);
       compositeMat.uniforms.uStrength.value = strength;
@@ -3655,6 +3850,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
       width: W,
       height: H,
       levels,
+      compactBloom,
       sceneSamples,
       maxLevels: BALANCED_BLOOM_MAX_LEVELS,
       halfWidth: halfW,

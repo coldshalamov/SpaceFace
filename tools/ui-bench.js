@@ -17,6 +17,8 @@ import { missions } from '../src/systems/missions.js';
 import { lawSecurity } from '../src/systems/lawSecurity.js';
 import { buildDefeatReceipt } from '../src/combat/playerDefeat.js';
 import { createRunState } from '../src/core/runState.js';
+import { createAdventurePilot } from '../src/data/pilotAdventure.js';
+import { getPilotCard, isPilotCardEligible } from '../src/data/pilotTree.js';
 import { runSession } from '../src/systems/runSession.js';
 import { TRAVEL_FLAGS, applyFeatureConfigToMaps, PRODUCTION_FEATURES } from '../src/data/featureFlags.js';
 import { TECH_NODES } from '../src/data/tech.js';
@@ -44,6 +46,7 @@ import { seedReceiptsShot, unseedReceiptsShot } from './ui-bench-receipts.js';
 import { seedImpoundShot } from './ui-bench-impound.js';
 import { MOBILE_CSS_PATH } from '../src/systems/mobile/styles.js';
 import { loadCssSidecar } from '../src/ui/orrery/cssSidecar.js';
+import { applyTextScaleFromSettings } from '../src/ui/accessibility.js';
 
 window.__BENCH_READY = false;
 // This tool bypasses main.boot(), so it owns the same data-ready boundary before fixture mounts.
@@ -72,6 +75,7 @@ const SCREENS = Object.freeze({
   statistics: () => import('../src/ui/screens/statistics.js').then((m) => m.statisticsScreen),
   gameOver: () => import('../src/ui/screens/gameOver.js').then((m) => m.gameOverScreen),
   techTree: () => import('../src/ui/screens/techTree.js').then((m) => m.techTreeScreen),
+  pilotTree: () => import('../src/ui/screens/pilotTree.js').then((m) => m.pilotTreeScreen),
   range: () => import('../src/ui/screens/range.js').then((m) => m.rangeScreen),
   footprint: () => import('../src/ui/screens/footprint.js').then((m) => m.footprintScreen),
   automation: () => import('../src/ui/screens/automationPanel.js').then((m) => m.automationScreen),
@@ -83,6 +87,7 @@ const SCREENS = Object.freeze({
   crucibleDraft: () => import('../src/ui/screens/crucibleDraft.js').then((m) => m.crucibleDraftScreen),
   crucibleRefit: () => import('../src/ui/screens/crucibleDraft.js').then((m) => m.crucibleRefitScreen),
   crucibleFortify: () => import('../src/ui/swarmFortifyPanel.js').then((m) => m.crucibleFortifyScreen),
+  pilotCards: () => import('../src/ui/pilotCards.js').then((m) => m.pilotCardsScreen),
   crucibleResults: () => import('../src/ui/screens/crucible.js').then((m) => m.crucibleResultsScreen),
   demoEnd: () => import('../src/ui/screens/demoEnd.js').then((m) => m.demoEndScreen),
   replay: () => import('../src/ui/screens/replay.js').then((m) => m.replayScreen),
@@ -219,7 +224,7 @@ function seededState() {
   // The board the docked station posts: the game's own offers, so the contracts tab is reviewed full.
   state.missions.boards = { station_helios: structuredClone(BENCH_HELIOS_BOARD) };
   state.nav.waypoint = {
-    label: 'Beacon 419 u', pos: { x: 420, z: -180 }, sectorId: 'sector_helios_prime', stationId: 'station_helios',
+    label: 'Beacon', pos: { x: 420, z: -180 }, sectorId: 'sector_helios_prime', stationId: 'station_helios',
   };
   // the real sector the bench's station stands in (a made-up id read as "Helios" beside saves filed in "Helios Prime")
   state.world.currentSectorId = 'sector_helios_prime';
@@ -367,7 +372,130 @@ function seedCrucibleRun(gameState, { ruleset, phase, wave, credits, score, fitt
   );
 }
 
+/**
+ * OVH-01b — the Pilot Tree cards over a Swarm run at the between-round draft. The run carries a
+ * dealt hand in run.pilot.offer exactly as the run owner leaves it; the bench stands in for the
+ * owner's two intents (take a card / re-roll) with plain state edits, so --walk answers honestly
+ * without the live node list (src/data/pilotLive.js is empty until effects ship). A second banked
+ * pick deals a second hand after the first choice, as the owner does.
+ *   pilot: 'full' (capstone + evolution + a tier card) | 'short' (purse under the re-roll price) |
+ *          'two' (a hand of two) | 'capstone' (the longest sentence in the tree)
+ */
+function seedPilotCardsShot(shot) {
+  const variant = shot.pilot || 'full';
+  seedCrucibleRun(state, { ruleset: 'swarm', phase: 'draft', wave: 3, credits: variant === 'short' ? 40 : 640, score: 1180 });
+  const run = state.run;
+  const hands = {
+    full: [['conjurer_quick_cast', 'bruiser_newtons_cradle', 'evolution_orbital_saw'],
+      ['gunner_hollow_point', 'rigger_sweet_spot', 'juggernaut_ballast']],
+    short: [['gunner_hollow_point', 'rigger_crane', 'bruiser_billiards'], ['gunner_drum', 'ghost_cloak']],
+    two: [['gunner_gold_thread', 'rigger_whip_snap'], ['ghost_cloak']],
+    capstone: [['rigger_hurricane', 'conjurer_implode', 'ghost_phantom'], ['gunner_drum']],
+  };
+  const sequence = (hands[variant] || hands.full).map((cards) => cards.slice());
+  run.level = 4;
+  run.pilot = {
+    nodes: ['gunner_steady_hands', 'bruiser_heavy_slugs'],
+    points: variant === 'two'
+      ? { gunner: 5, rigger: 3, bruiser: 1 }
+      : { gunner: 5, bruiser: 5, rigger: 5, conjurer: 1 },
+    banked: 2,
+    offer: { cards: sequence.shift(), rerolls: 0 },
+  };
+  state.run = run;
+  state.ui.pilotBreathHold = true;
+  const commit = (event, payload) => bus.emit(event, payload);
+  benchOwnerUnsubs.push(
+    () => { state.ui.pilotBreathHold = false; },
+    bus.on('run:pilotCardRequested', ({ index }) => {
+      const pilot = state.run.pilot;
+      const id = pilot.offer && pilot.offer.cards[index];
+      if (!id) return;
+      const branch = id.split('_')[0];
+      pilot.nodes.push(id);
+      if (id.startsWith('evolution')) { /* evolutions grant no branch point */ } else pilot.points[branch] = (pilot.points[branch] || 0) + 1;
+      pilot.banked = Math.max(0, pilot.banked - 1);
+      pilot.offer = pilot.banked > 0 && sequence.length ? { cards: sequence.shift(), rerolls: 0 } : null;
+      commit('run:pilotCardChosen', { nodeId: id, banked: pilot.banked });
+    }),
+    bus.on('run:pilotRerollRequested', () => {
+      const pilot = state.run.pilot;
+      if (!pilot.offer || state.run.credits < 150) return;
+      state.run.credits -= 150;
+      pilot.offer = { cards: ['bruiser_stagger', 'gunner_quick_vent', 'rigger_long_reel'], rerolls: pilot.offer.rerolls + 1 };
+      commit('run:pilotOfferRerolled', { cards: pilot.offer.cards });
+    }),
+  );
+}
+
+const PILOT_TREE_BENCH_NODES = Object.freeze({
+  adventure: ['gunner_steady_hands', 'gunner_hollow_point', 'gunner_drum', 'rigger_long_reel', 'rigger_quick_latch',
+    'rigger_crane', 'juggernaut_ballast', 'prospector_deep_bite', 'ghost_cloak'],
+  swarm: ['bruiser_heavy_slugs', 'bruiser_stagger', 'bruiser_billiards', 'conjurer_quick_cast'],
+  'run-over': ['gunner_steady_hands', 'gunner_hollow_point', 'gunner_drum', 'gunner_spin_up', 'gunner_execution',
+    'rigger_long_reel', 'rigger_quick_latch', 'rigger_sweet_spot', 'rigger_crane', 'evolution_orbital_saw', 'gunner_gold_thread'],
+});
+let pilotTreeRunSaved = null;
+let pilotTreeIntentBound = false;
+/** The bench has no run owner. Apply the same spend the Adventure screen asks for, so Take it changes the picture. */
+function bindPilotTreeBenchIntent() {
+  if (pilotTreeIntentBound) return;
+  pilotTreeIntentBound = true;
+  bus.on('pilot:nodeRequested', (payload) => {
+    const run = state.run;
+    if (run && run.kind && run.kind !== 'adventure') return;
+    const pilot = state.player && state.player.pilot;
+    if (!pilot || !(pilot.banked > 0)) return;
+    const card = getPilotCard(payload && payload.nodeId);
+    if (!card || !isPilotCardEligible(card, pilot, 'adventure')) return;
+    pilot.nodes = (pilot.nodes || []).concat(card.id);
+    pilot.points = { ...(pilot.points || {}) };
+    if (card.kind !== 'evolution') pilot.points[card.branch] = (pilot.points[card.branch] || 0) + 1;
+    pilot.banked -= 1;
+  });
+}
+function seedPilotTreeShot(shot) {
+  const kind = shot && shot.pilotTree;
+  if (!kind) {
+    delete state.player.pilot;
+    if (pilotTreeRunSaved) { Object.assign(state.run, pilotTreeRunSaved); delete state.run.pilot; pilotTreeRunSaved = null; }
+    return;
+  }
+  if (kind === 'fresh') {
+    if (!pilotTreeRunSaved) pilotTreeRunSaved = { kind: state.run.kind, phase: state.run.phase, level: state.run.level };
+    delete state.run.pilot;
+    state.run.kind = 'adventure';
+    state.run.phase = 'inactive';
+    state.player.pilot = createAdventurePilot();
+    bindPilotTreeBenchIntent();
+    return;
+  }
+  const nodes = PILOT_TREE_BENCH_NODES[kind] || [];
+  const points = {};
+  for (const id of nodes) if (!id.startsWith('evolution_')) { const b = id.split('_')[0]; points[b] = (points[b] || 0) + 1; }
+  if (kind === 'adventure') {
+    delete state.player.pilot;
+    state.player.pilot = { schema: 1, xp: 5200, level: 12, points, nodes: nodes.slice(), banked: 2, respecs: 0 };
+    bindPilotTreeBenchIntent();
+    return;
+  }
+  delete state.player.pilot;
+  if (!pilotTreeRunSaved) pilotTreeRunSaved = { kind: state.run.kind, phase: state.run.phase, level: state.run.level };
+  state.run.kind = 'survival';
+  state.run.phase = kind === 'run-over' ? 'ended' : 'active';
+  state.run.level = nodes.length + 1;
+  state.run.pilot = { points, nodes: nodes.slice(), banked: 0, offer: null };
+}
+
 function seedCrucibleShot(screenId, shot) {
+  if (screenId === 'pilotTree') {
+    seedPilotTreeShot(shot);
+    return;
+  }
+  if (screenId === 'pilotCards') {
+    seedPilotCardsShot(shot);
+    return;
+  }
   if (screenId === 'crucibleFortify') {
     benchOwnerUnsubs.push(seedFortifyBench(state, bus));
     return;
@@ -865,12 +993,6 @@ function ensureBenchLoadingDom() {
         <span class="boot-wordmark">SPACEFACE</span>
         <span class="boot-label" data-loading-label>Getting ready</span>
         <span class="boot-detail" data-loading-detail></span>
-        <div class="boot-keys" aria-hidden="true">
-          <div class="boot-key-card" style="--i:0"><span class="boot-keys__row"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span><span class="boot-keys__word">Fly</span></div>
-          <div class="boot-key-card" style="--i:1"><span class="boot-keys__row"><kbd>Mouse</kbd></span><span class="boot-keys__word">Aim</span></div>
-          <div class="boot-key-card" style="--i:2"><span class="boot-keys__row"><kbd>RMB</kbd></span><span class="boot-keys__word">Line: latch, swing, let go</span></div>
-          <div class="boot-key-card" style="--i:3"><span class="boot-keys__row"><kbd>Space</kbd></span><span class="boot-keys__word">Boost</span></div>
-        </div>
         <div class="boot-progress-row" aria-hidden="true">
           <span class="boot-progress"><span data-loading-progress></span></span>
           <span class="boot-progress-pct" data-loading-pct>0%</span>
@@ -890,7 +1012,7 @@ function hideBenchLoading() {
   }
 }
 
-async function mountLoadingShot() {
+async function mountLoadingShot(shot = {}) {
   const overlay = ensureBenchLoadingDom();
   overlay.classList.remove('hidden');
   overlay.style.display = 'flex';
@@ -915,6 +1037,14 @@ async function mountLoadingShot() {
   }
   try { benchLoadingPresenter?.destroy(); } catch { /* a re-mounted shot replaces the presenter */ }
   benchLoadingPresenter = createLoadingPresenter({ document, bus, state });
+  // LOADING-02: the launch names its place first, as the game's own game:new / game:load do.
+  const kind = (shot && shot.loading) || 'restore';
+  // The presenter follows the game's mode: a launch is 'loading' (the bench state otherwise flies).
+  const benchPriorMode = state.mode;
+  if (kind !== 'boot') state.mode = 'loading';
+  if (kind === 'swarm') bus.emit('game:new', { crucibleLaunch: true, crucibleSetup: { survivalRuleset: 'swarm', survivalSetup: { arenaId: 'helios_core' } } });
+  else if (kind === 'adventure') bus.emit('game:new', { name: 'Wren', shipId: 'starter_hitch' });
+  else if (kind === 'restore') bus.emit('game:load', { slot: 'quick' });
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   for (const stage of BENCH_LOADING_STAGES) {
     bus.emit('game:loadingProgress', { ...stage });
@@ -922,6 +1052,7 @@ async function mountLoadingShot() {
   }
   // The bar chases each stage through the presenter's easing; hold the shot until it has settled.
   await sleep(1500);
+  state.mode = benchPriorMode;
   note('— loading mounted (4 stages, ring at 62%)');
 }
 
@@ -1115,19 +1246,40 @@ async function finishShot(shot) {
   try {
     if (!document.getElementById('bench-broken')) {
       if (shot.tab) {
-        // A player's click moves focus to the tab it pressed; a synthetic .click() does not, so the
-        // shot kept the focus bracket on the Market tile while another tab was current.
-        const tabEl = document.querySelector(`#screens [data-nav="${shot.tab}"]`);
-        // Mark it quiet (as the station marks its arrival focus): a real click's focus is not
-        // :focus-visible, but this scripted one is, and would raise the wide-rail caption plate.
-        tabEl?.click();
-        if (tabEl) {
-          tabEl.setAttribute('data-sx-quiet-focus', '');
-          const clear = () => { tabEl.removeAttribute('data-sx-quiet-focus'); tabEl.removeEventListener('keydown', clear); tabEl.removeEventListener('blur', clear); };
-          tabEl.addEventListener('keydown', clear);
-          tabEl.addEventListener('blur', clear);
+        const tabId = String(shot.tab);
+        // Industry, Factions and Ledger left the rail: clicking `[data-nav=tab]` is a no-op.
+        // Move the way a player does — through the station app's own navigate.
+        const nav = currentScreen && typeof currentScreen.navigate === 'function'
+          ? currentScreen.navigate.bind(currentScreen)
+          : null;
+        if (!nav) {
+          showBroken(shot.screen || shot.id, `station tab "${tabId}" cannot be reached: the mounted screen has no navigate`);
+        } else {
+          nav(tabId);
+          const host = screensEl.querySelector('[data-operation]') || screensEl.querySelector('[data-view]');
+          const landedOp = host && (host.dataset.operation || '');
+          const landedView = host && (host.dataset.view || '');
+          const landed = !!(host && (
+            landedOp === tabId
+            || landedView === tabId
+            || (tabId === 'people' && landedOp === 'bar')
+            || (tabId === 'concourse' && (landedOp === 'concourse' || landedView === 'concourse'))
+          ));
+          if (!landed) {
+            showBroken(shot.screen || shot.id, `station tab "${tabId}" cannot be reached`);
+          } else {
+            const tabEl = document.querySelector(`#screens [data-nav="${tabId}"]`);
+            // Mark it quiet (as the station marks its arrival focus): a real click's focus is not
+            // :focus-visible, but this scripted one is, and would raise the wide-rail caption plate.
+            if (tabEl) {
+              tabEl.setAttribute('data-sx-quiet-focus', '');
+              const clear = () => { tabEl.removeAttribute('data-sx-quiet-focus'); tabEl.removeEventListener('keydown', clear); tabEl.removeEventListener('blur', clear); };
+              tabEl.addEventListener('keydown', clear);
+              tabEl.addEventListener('blur', clear);
+              tabEl.focus({ preventScroll: true });
+            }
+          }
         }
-        tabEl?.focus({ preventScroll: true });
       }
       if (shot.focus) {
         const want = String(shot.focus).toUpperCase();
@@ -1201,6 +1353,17 @@ async function goto(rawId) {
   // A shot with `research` mounts that career's researched nodes and a research-point balance.
   state.player.researchedNodes = Array.isArray(shot.research) ? shot.research.slice() : [];
   state.player.researchPoints = Array.isArray(shot.research) ? 30 : 0;
+  // A shot can ask for the accessibility text scale (`textScale:` in the catalog) so the
+  // handheld Large-text frame is photographed, not described.
+  if (Number.isFinite(shot.textScale)) {
+    state.settings.accessibility = state.settings.accessibility || {};
+    state.settings.accessibility.textScale = shot.textScale;
+    applyTextScaleFromSettings(state.settings);
+  }
+  // A shot with `pilotTree` mounts a pilot: 'fresh' (a new Adventure pilot), 'adventure'
+  // (some hours in, two points to spend), 'swarm' (a run in progress) or 'run-over'
+  // (the run's path, lit). Cleared on every other shot.
+  seedPilotTreeShot(shot);
   clearOverlayHost();
   if (id !== 'bootOverlay') hideBenchLoading();
   try {
@@ -1213,7 +1376,7 @@ async function goto(rawId) {
       screensEl.innerHTML = '';
       document.body.classList.add('k-screen-top');
       document.body.dataset.kScreen = id;
-      await mountLoadingShot();
+      await mountLoadingShot(shot);
       current = id;
       currentScreen = null;
     } else if (id === 'flight' || id === 'crucibleHud' || id === 'mobileFlight') {
@@ -1366,6 +1529,10 @@ async function openOverlay(kind) {
     if (!state.ui) state.ui = {};
     // Kessler's line lands at ~6:30, after the opening's one-instruction window has closed.
     state.simTime = 400;
+    // ...and ten seconds after the fight frame's FLYBY tell has burned out (a live tell outranks
+    // a speaker card on the one-voice seat, so a still holding both would photograph the tell).
+    state.tick = (Number.isInteger(state.tick) ? state.tick : 0) + 601;
+    bus.emit('voice:clear', { id: 'alert:shield-down' });
     if (state.onboarding) state.onboarding = { ...state.onboarding, active: false, finished: true };
     createComms(ctx);
     bus.emit('comms:popup', { sender: 'KESSLER', category: 'story', ttl: 8,
@@ -1481,7 +1648,11 @@ async function openOverlay(kind) {
     cargo.usedVolume = 6.4;
     bus.emit('ui:toggleCargo');
     releaseFlightPopup = () => { bus.emit('ui:closeCargo'); state.player.cargo = before; };
-    window.__BENCH_OVERLAY = document.querySelector('.sf-cargo-panel.open') ? 'cargo open' : 'cargo did not open';
+    // CARGO-BAG-UI: the cargo key opens the bag (hud.js createCargoBag) — the old full-screen
+    // manifest no longer opens from flight, so verify the surface a player actually gets.
+    const bag = document.querySelector('#hud .sf-bag.is-open');
+    window.__BENCH_OVERLAY = bag ? 'cargo bag open' : 'cargo bag did not open';
+    if (bag) window.__BENCH_OVERLAY_EL = bag;
     return;
   }
   if (kind === 'receipt') {
@@ -1697,7 +1868,445 @@ async function mountFlightHud(opts = {}) {
     const mount = shooter && shooter.data && shooter.data.weapons && shooter.data.weapons[0];
     if (mount && mount.projSpeed === 320) delete mount.projSpeed;
   }
+  // HUD-POWER-BAR & MAPS-1 bench state selector:
+  //   `?hudState=idle|cooldown|armed|plow|caption|calm|fight|teach|minimap-calm|minimap-fight|minimap-objective`
+  //   `?minimap=calm|fight|objective` (alias so both `flight` and `crucibleHud` can shoot each minimap state)
+  const hudState = params.get('hudState') || '';
+  const minimapPreset = params.get('minimap')
+    || (hudState.startsWith('minimap-') ? hudState.slice('minimap-'.length) : '');
+  const playerEnt = state.entities.get(state.playerId);
+  if (playerEnt) {
+    playerEnt.pos = playerEnt.pos || { x: 0, y: 0, z: 0 };
+    playerEnt.data = playerEnt.data || {};
+    playerEnt.data.weapons = playerEnt.data.weapons || [{ range: 640 }];
+    if (playerEnt.data.weapons[0] && !Number.isFinite(playerEnt.data.weapons[0].range)) {
+      playerEnt.data.weapons[0].range = 640;
+    }
+  }
+  state.player.cargo = state.player.cargo || { items: {} };
+  state.player.cargo.items = state.player.cargo.items || {};
+  if (!Number.isFinite(state.player.cargo.items.cmdty_impulse_charge)) {
+    state.player.cargo.items.cmdty_impulse_charge = 4;
+  }
+  state.fields = state.fields || { active: [], cooldowns: {}, snapshot: [] };
+  state.fields.active = Array.isArray(state.fields.active) ? state.fields.active : [];
+  state.fields.snapshot = Array.isArray(state.fields.snapshot) ? state.fields.snapshot : [];
+  state.fields.cooldowns = state.fields.cooldowns || {};
+  state.fields.coneActive = false;
+  delete state.fields.plowRockCount;
+  state.massSeed = { phase: 'idle' };
+  state.player.massSeed = { cooldownUntil: 0 };
+  delete state.player.armedChargeCount;
+  delete state._uiBenchPowerCaption;
+  delete state._uiBenchShipStatus;
+  delete state.ui.minimapBenchHit;
+
+  const seedMinimapScenario = (preset) => {
+    if (!preset) return;
+    const addEntity = (ent) => {
+      if (state.entities.has(ent.id)) {
+        const idx = state.entityList.findIndex((e) => e && e.id === ent.id);
+        if (idx >= 0) state.entityList.splice(idx, 1);
+      }
+      state.entities.set(ent.id, ent);
+      state.entityList.push(ent);
+    };
+    // Clear noisy default bench contacts so the scenario reads cleanly
+    for (const oldId of [11, 12, 13, 21, 22, 23, 24, 25, 26]) {
+      state.entities.delete(oldId);
+      const idx = state.entityList.findIndex((e) => e && e.id === oldId);
+      if (idx >= 0) state.entityList.splice(idx, 1);
+    }
+    state.player.targetId = null;
+    state.fields.snapshot = [];
+    state.world.activeSector = state.world.activeSector || { stations: [], fields: [], hazards: [], pois: [], gates: [] };
+    state.world.activeSector.hazards = [];
+    if (playerEnt) {
+      playerEnt.rot = Math.PI * 0.42;
+      playerEnt.vel = { x: -32, y: 0, z: 48 };
+      playerEnt.data.weapons = [{ id: 'bench-cannon', range: preset === 'fight' ? 420 : 720, _heat: 22, heatMax: 100 }];
+    }
+
+    // Rock field (cover monoliths + throwable boulders) — present in every minimap scenario
+    const rocks = [
+      { id: 301, x: 240, z: 160, r: 34, isMonolith: true },
+      { id: 302, x: 310, z: 120, r: 28, isMonolith: true },
+      { id: 303, x: 270, z: 220, r: 16 },
+      { id: 304, x: 205, z: 195, r: 14 },
+      { id: 305, x: 340, z: 185, r: 15 },
+      { id: 306, x: -260, z: -150, r: 32, isMonolith: true },
+      { id: 307, x: -320, z: -115, r: 18 },
+      { id: 308, x: -225, z: -210, r: 14 },
+      { id: 309, x: -190, z: 190, r: 26, isMonolith: true },
+      { id: 310, x: -140, z: 245, r: 13 },
+      { id: 311, x: 160, z: -230, r: 17 },
+      { id: 312, x: 220, z: -260, r: 29, isMonolith: true },
+      { id: 313, x: 95, z: 280, r: 15 },
+      { id: 314, x: -85, z: -290, r: 16 },
+    ];
+    const rockScale = preset === 'fight' ? 0.72 : 2.1;
+    if (preset !== 'fight') {
+      // Two dense belts (what a sector's field really looks like), deterministic.
+      let seed = 1337;
+      const rnd = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
+      const belts = [
+        { x: -620, z: -420, rx: 420, rz: 230, n: 46, id: 400 },
+        { x: 720, z: -760, rx: 260, rz: 300, n: 30, id: 460 },
+      ];
+      for (const b of belts) {
+        for (let i = 0; i < b.n; i += 1) {
+          const a = rnd() * Math.PI * 2;
+          const d = Math.sqrt(rnd());
+          rocks.push({ id: b.id + i, x: (b.x + Math.cos(a) * b.rx * d) / rockScale, z: (b.z + Math.sin(a) * b.rz * d) / rockScale, r: 9 + rnd() * 16, isMonolith: rnd() < 0.08 });
+        }
+      }
+    }
+    for (const rk of rocks) {
+      addEntity({
+        id: rk.id, type: 'asteroid', alive: true, team: 0, radius: rk.r,
+        pos: { x: rk.x * rockScale, y: 0, z: rk.z * rockScale }, vel: { x: 0, y: 0, z: 0 },
+        data: { isMonolith: !!rk.isMonolith },
+      });
+    }
+
+    if (preset === 'calm') {
+      state.simTime = 240;
+      state.nav.waypoint = {
+        label: 'Helios Trade Hub', pos: { x: 980, z: 540 }, sectorId: 'sector_helios_prime', stationId: 'station_helios',
+      };
+      addEntity({
+        id: 320, type: 'station', alive: true, team: 0, factionId: 'faction_scn', radius: 92,
+        pos: { x: 980, y: 0, z: 540 }, vel: { x: 0, y: 0, z: 0 }, rot: 0.3,
+        data: { stationId: 'station_helios', name: 'Helios Station', services: ['trade', 'repair'] },
+      });
+      addEntity({
+        id: 321, type: 'station', alive: true, team: 0, factionId: 'faction_scn', radius: 70,
+        pos: { x: -1450, y: 0, z: -680 }, vel: { x: 0, y: 0, z: 0 }, rot: 0,
+        data: { isGate: true, name: 'Ceres Jump Gate' },
+      });
+      addEntity({
+        id: 322, type: 'station', alive: true, team: 0, factionId: 'faction_mts', radius: 66,
+        pos: { x: 460, y: 0, z: -1020 }, vel: { x: 0, y: 0, z: 0 }, rot: 0,
+        data: { name: 'Depot Three', services: ['trade'] },
+      });
+      addEntity({
+        id: 323, type: 'ship', alive: true, team: 1, factionId: 'faction_scn', radius: 16,
+        pos: { x: 420, y: 0, z: 210 }, vel: { x: 52, y: 0, z: 26 }, rot: 0.45,
+        data: { defId: 'ship_hornet', trafficRole: 'patrol', callsign: 'Concord Escort', namedLaneContactId: 'lane-escort' },
+      });
+      addEntity({
+        id: 324, type: 'ship', alive: true, team: 0, factionId: 'faction_free', radius: 22,
+        pos: { x: -480, y: 0, z: 360 }, vel: { x: -38, y: 0, z: 18 }, rot: 2.7,
+        data: { defId: 'ship_mule', trafficRole: 'hauler', callsign: 'Ore Hauler', namedLaneContactId: 'lane-hauler' },
+      });
+      addEntity({
+        id: 325, type: 'wreck', alive: true, team: 0, radius: 18,
+        pos: { x: -640, y: 0, z: -260 }, vel: { x: 0, y: 0, z: 0 },
+        data: { name: 'Split Hull' },
+      });
+      addEntity({
+        id: 326, type: 'pickup', alive: true, team: 0, radius: 8,
+        pos: { x: -420, y: 0, z: -180 }, vel: { x: 0, y: 0, z: 0 },
+        data: { name: 'Salvage Crate' },
+      });
+      state.world.activeSector.hazards = [
+        { type: 'nebula', center: { x: -1100, z: 860 }, radius: 520, intensity: 0.4 },
+      ];
+      state.player.targetId = 320;
+    } else if (preset === 'fight') {
+      state.simTime = 242.4;
+      // 6 distinct enemy kinds so every role glyph reads at a glance:
+      // light_fighter, heavy, support, sniper, rammer, minelayer (+ boss!)
+      const enemies = [
+        { id: 330, x: 165, z: 120, vx: -58, vz: -32, rot: -2.6, enemyTypeId: 'wasp_swarmer', name: 'Wasp Swarmer' },
+        { id: 331, x: 205, z: 75, vx: -52, vz: -18, rot: -2.8, enemyTypeId: 'wasp_swarmer', name: 'Wasp Swarmer' },
+        { id: 332, x: -210, z: 140, vx: 38, vz: -35, rot: -0.7, enemyTypeId: 'bruiser_brawler', name: 'Bruiser Brawler' },
+        { id: 333, x: -135, z: 205, vx: 22, vz: -28, rot: -0.9, enemyTypeId: 'warden_escort', name: 'Warden Escort' },
+        { id: 334, x: 340, z: -195, vx: -18, vz: 30, rot: 2.1, enemyTypeId: 'lancer_sniper', name: 'Lancer Sniper' },
+        { id: 335, x: -95, z: -165, vx: 72, vz: 95, rot: 0.9, enemyTypeId: 'detonator_dart', name: 'Detonator Dart' },
+        { id: 336, x: 115, z: -225, vx: -42, vz: 14, rot: 2.8, enemyTypeId: 'mine_layer_jackal', name: 'Mine-Layer Jackal' },
+        { id: 337, x: -330, z: -90, vx: 20, vz: 14, rot: 0.6, enemyTypeId: 'mirrorjaw_foreman', name: 'Mirrorjaw Foreman', isBoss: true },
+        { id: 347, x: 250, z: 210, vx: -30, vz: -40, rot: -2.2, enemyTypeId: 'tether_control_raider', name: 'Tether Raider' },
+        { id: 348, x: -60, z: 300, vx: 6, vz: -10, rot: -1.6, enemyTypeId: 'nest_carrier', name: 'Nest Carrier' },
+        { id: 349, x: 380, z: -40, vx: -48, vz: 30, rot: 2.6, enemyTypeId: 'corsair_raider', name: 'Corsair Raider' },
+        // Off-edge reinforcements (proximity-sized rim pins)
+        { id: 338, x: 860, z: 240, vx: -40, vz: -10, rot: 3.0, enemyTypeId: 'wasp_swarmer', name: 'Flanker' },
+        { id: 339, x: -1450, z: 980, vx: 30, vz: -20, rot: -0.5, enemyTypeId: 'corsair_raider', name: 'Far Raider' },
+      ];
+      for (const en of enemies) {
+        addEntity({
+          id: en.id, type: 'ship', alive: true, team: 5, radius: en.isBoss ? 32 : 16,
+          pos: { x: en.x, y: 0, z: en.z }, vel: { x: en.vx, y: 0, z: en.vz }, rot: en.rot,
+          data: {
+            enemyTypeId: en.enemyTypeId,
+            callsign: en.name,
+            isBoss: !!en.isBoss,
+            ai: { huntPlayer: true, targetId: state.playerId, state: 'attack' },
+          },
+        });
+      }
+      // Friendly wingman & salvage in the arena
+      addEntity({
+        id: 340, type: 'ship', alive: true, team: 1, factionId: 'faction_scn', radius: 14,
+        pos: { x: 85, y: 0, z: -65 }, vel: { x: -32, y: 0, z: 42 }, rot: 2.2,
+        data: { defId: 'ship_hornet', trafficRole: 'escort', callsign: 'Wingman Alpha', ownerId: state.playerId },
+      });
+      addEntity({
+        id: 341, type: 'pickup', alive: true, team: 0, radius: 8,
+        pos: { x: -55, y: 0, z: 85 }, vel: { x: 0, y: 0, z: 0 }, data: { name: 'Scrap Core' },
+      });
+      // Solid arena bank plates + furnace + mines + active snare field (Room + Hazards!)
+      addEntity({
+        id: 342, type: 'station', alive: true, team: 0, radius: 48,
+        pos: { x: 295, y: 0, z: 45 }, vel: { x: 0, y: 0, z: 0 }, rot: 1.48,
+        data: { roomOwner: 'survival-arena', roomKind: 'plate', foundryPlate: { halfWidth: 68, halfDepth: 10 } },
+      });
+      addEntity({
+        id: 343, type: 'station', alive: true, team: 0, radius: 48,
+        pos: { x: -290, y: 0, z: 220 }, vel: { x: 0, y: 0, z: 0 }, rot: -0.65,
+        data: { roomOwner: 'survival-arena', roomKind: 'plate', foundryPlate: { halfWidth: 64, halfDepth: 10 } },
+      });
+      addEntity({
+        id: 344, type: 'station', alive: true, team: 0, radius: 42,
+        pos: { x: 35, y: 0, z: -265 }, vel: { x: 0, y: 0, z: 0 }, rot: 0,
+        data: { roomOwner: 'survival-arena', roomKind: 'furnace' },
+      });
+      addEntity({
+        id: 345, type: 'mine', alive: true, team: 5, radius: 10,
+        pos: { x: 145, y: 0, z: -155 }, vel: { x: 0, y: 0, z: 0 }, data: { triggerRadius: 52 },
+      });
+      addEntity({
+        id: 346, type: 'mine', alive: true, team: 5, radius: 10,
+        pos: { x: 205, y: 0, z: -195 }, vel: { x: 0, y: 0, z: 0 }, data: { triggerRadius: 52 },
+      });
+      state.fields.snapshot = [
+        { id: 'bench-snare', kind: 'snare', tag: 'hostile', center: { x: -160, z: 165 }, radius: 95 },
+      ];
+      state.player.targetId = 332;
+      // Directional hull-hit rim flash coming from the rammer's flank
+      state.ui.minimapBenchHit = { fromPos: { x: -180, z: -165 }, ageMs: 120, layer: 'hull' };
+      state.nav.waypoint = null;
+    } else if (preset === 'objective') {
+      state.simTime = 240;
+      // Off-screen / off-range objective at 4.6 km NE -> bright rim bearing notch + distance
+      state.nav.waypoint = {
+        label: 'Helios Relay', pos: { x: -3400, z: 3100 }, sectorId: 'sector_helios_prime',
+      };
+      addEntity({
+        id: 350, type: 'station', alive: true, team: 0, factionId: 'faction_scn', radius: 80,
+        pos: { x: 4200, y: 0, z: -1400 }, vel: { x: 0, y: 0, z: 0 }, rot: 0,
+        data: { name: 'Vesta Yard', services: ['trade'] },
+      });
+      addEntity({
+        id: 351, type: 'station', alive: true, team: 0, factionId: 'faction_scn', radius: 70,
+        pos: { x: -1200, y: 0, z: -3800 }, vel: { x: 0, y: 0, z: 0 }, rot: 0,
+        data: { isGate: true, name: 'Io Gate' },
+      });
+      addEntity({
+        id: 352, type: 'ship', alive: true, team: 5, radius: 16,
+        pos: { x: 3100, y: 0, z: 1400 }, vel: { x: -24, y: 0, z: -12 }, rot: 2.9,
+        data: { enemyTypeId: 'corsair_raider', callsign: 'Raider Patrol', ai: { state: 'patrol' } },
+      });
+      addEntity({
+        id: 353, type: 'ship', alive: true, team: 5, radius: 16,
+        pos: { x: 480, y: 0, z: 260 }, vel: { x: -22, y: 0, z: -16 }, rot: 2.6,
+        data: { enemyTypeId: 'lancer_sniper', callsign: 'Outpost Scout', ai: { state: 'patrol' } },
+      });
+      addEntity({
+        id: 354, type: 'wreck', alive: true, team: 0, radius: 16,
+        pos: { x: -540, y: 0, z: 420 }, vel: { x: 0, y: 0, z: 0 }, data: { name: 'Relay Wreck' },
+      });
+      state.player.targetId = 353;
+    }
+  };
+  if (minimapPreset) seedMinimapScenario(minimapPreset);
+
+  // By default in calm/idle/teach/cooldown/armed/plow/caption, move the bench hostile outside
+  // weapons range so Adventure isn't forced into `fight`; in `fight`, add live off-screen attackers.
+  const calmBenchMode = hudState === 'calm' || hudState === 'idle' || hudState === 'teach'
+    || hudState === 'cooldown' || hudState === 'armed' || hudState === 'plow' || hudState === 'caption'
+    || hudState === 'world-prompt' || hudState === 'news-long'
+    || hudState === 'berth-offer' || hudState === 'berth-offer-near' || hudState === 'berth-run'
+    || minimapPreset === 'calm' || minimapPreset === 'objective';
+  if (calmBenchMode) {
+    state.simTime = hudState === 'teach' ? 30 : 240;
+    const raider = state.entities.get(13);
+    if (raider) {
+      raider.pos = { x: 4200, y: 0, z: 4200 };
+      if (raider.data?.ai) { delete raider.data.ai.targetId; raider.data.ai.state = 'patrol'; }
+    }
+    const cradle = state.entities.get(12);
+    if (cradle) cradle.team = 0;
+    if (hudState === 'calm' || hudState === 'world-prompt') {
+      // Nearby claimable asteroid + cargo + hailable contact so calm controls prove zero overlap.
+      if (!state.entities.has(77)) {
+        const rock = { id: 77, type: 'asteroid', alive: true, team: 0, radius: 38, pos: { x: 260, y: 0, z: -180 }, vel: { x: 0, y: 0, z: 0 }, data: { claimable: true } };
+        state.entities.set(77, rock);
+        state.entityList.push(rock);
+      }
+      state.player.cargo.items.cmdty_iron_ore = 8;
+    }
+    if (hudState === 'berth-offer' || hudState === 'berth-offer-near' || hudState === 'berth-run') {
+      // HUD-2 item 12: a dockable station out of dock range. Near = on screen (the offer sits beside
+      // it); far = off screen (the offer rides the safe edge toward it); run = the berth autopilot
+      // is flying there (mode chip + approach lane).
+      const near = hudState === 'berth-offer-near';
+      const st = {
+        id: 78, type: 'station', alive: true, team: 0, factionId: 'faction_scn', radius: 64,
+        pos: near ? { x: 520, y: 0, z: -560 } : { x: 2600, y: 0, z: -1900 }, vel: { x: 0, y: 0, z: 0 },
+        name: 'Helios Station',
+        data: { stationId: 'station_helios', name: 'Helios Station', services: ['trade', 'repair'] },
+      };
+      state.entities.set(78, st);
+      if (!state.entityList.some((e) => e && e.id === 78)) state.entityList.push(st);
+      if (hudState === 'berth-run') {
+        st.pos = { x: 700, y: 0, z: -620 };
+        state.nav = state.nav || {};
+        state.nav.waypoint = { label: 'Helios Station', pos: { x: st.pos.x, z: st.pos.z }, targetEntityId: 78, waypointKind: 'local' };
+        state.nav.autopilot = { active: true, target: { x: st.pos.x, z: st.pos.z }, targetEntityId: 78, label: 'Helios Station', arrivalRadius: 36, status: 'armed' };
+        state.ui = state.ui || {};
+        state.ui.berthAutopilotStationId = 78;
+      }
+    }
+    if (hudState === 'world-prompt') {
+      // Station projected cleanly in open upper-right sky so the unified Dock prompt anchors to it.
+      const st = {
+        id: 78, type: 'station', alive: true, team: 0, factionId: 'faction_scn', radius: 64,
+        pos: { x: 320, y: 0, z: -320 }, vel: { x: 0, y: 0, z: 0 },
+        data: { stationId: 'station_helios', name: 'Helios Station', services: ['trade', 'repair'] },
+      };
+      state.entities.set(78, st);
+      if (!state.entityList.some((e) => e && e.id === 78)) state.entityList.push(st);
+    }
+  } else if (hudState === 'fight' || hudState === 'ship-status' || hudState === 'shield-collapse') {
+    state.simTime = 240;
+    const offscreenHostiles = [
+      { id: 81, x: 2400, z: -1600, callsign: 'FLANKER NORTH-EAST' },
+      { id: 82, x: -2200, z: 1700, callsign: 'FLANKER SOUTH-WEST' },
+    ];
+    for (const oh of offscreenHostiles) {
+      if (state.entities.has(oh.id)) continue;
+      const e = {
+        id: oh.id, type: 'ship', alive: true, team: 5, radius: 14,
+        pos: { x: oh.x, y: 0, z: oh.z }, vel: { x: -40, y: 0, z: 40 },
+        data: { defId: 'ship_kestrel', callsign: oh.callsign, ai: { huntPlayer: true, targetId: state.playerId }, weapons: ['wpn_pulse_s'], trafficRole: 'raider' },
+      };
+      state.entities.set(oh.id, e);
+      state.entityList.push(e);
+    }
+  }
+  if (hudState === 'ship-status') {
+    // HUD-2 Item 5: live ship-status bench state — bow/port hit flash, firing + hot weapon pips,
+    // and taut Line holding a throwable boulder ("Boulder · Light").
+    const rock = { id: 90, type: 'asteroid', alive: true, team: 0, radius: 16, mass: 18, pos: { x: -120, y: 0, z: -140 }, vel: { x: 0, y: 0, z: 0 }, data: { name: 'Iron Rock' } };
+    state.entities.set(90, rock);
+    if (!state.entityList.some((e) => e && e.id === 90)) state.entityList.push(rock);
+    state.player.tether = { active: true, targetId: 90, phase: 'taut', restLength: 140, strain: 0.42 };
+    state._uiBenchShipStatus = {
+      hits: { bow: 0.92, starboard: 0, port: 0.68, stern: 0 },
+      hardpoints: ['firing', 'hot', 'idle'],
+      lineActive: true,
+      lineStrain: 0.48,
+      lineTag: 'Iron Rock · Light',
+    };
+  } else if (hudState === 'shield-collapse') {
+    if (playerEnt) {
+      playerEnt.shield = 0;
+      playerEnt.hull = 74;
+    }
+  }
+  if (hudState === 'cooldown') {
+    state.fields.cooldowns = { well: state.simTime + 4.2, repulsor: state.simTime + 2.4 };
+    state.player.massSeed = { cooldownUntil: state.simTime + 7.1 };
+  } else if (hudState === 'armed') {
+    state.player.armedChargeCount = 1;
+    state.player.cargo.items.cmdty_impulse_charge = 4;
+  } else if (hudState === 'plow') {
+    state.fields.coneActive = true;
+    state.fields.plowRockCount = 3;
+    state.fields.active = [{ kind: 'well', tag: 'player', expireAt: state.simTime + 6 }];
+  } else if (hudState === 'caption') {
+    state._uiBenchPowerCaption = { name: 'Pull', text: 'Drags everything near the cursor together' };
+  }
+
+  // Override worldToScreen in fight mode so far off-screen attackers project off-screen for threatHalo.
+  if (hudState === 'fight' || hudState === 'ship-status' || hudState === 'shield-collapse' || hudState === 'world-prompt'
+    || hudState === 'berth-offer' || hudState === 'berth-offer-near' || hudState === 'berth-run') {
+    ctx.helpers.worldToScreen = (world, out = {}) => {
+      const x = window.innerWidth / 2 + ((world && world.x) || 0) * 0.4;
+      const y = window.innerHeight * 0.62 + ((world && world.z) || 0) * 0.4;
+      const onScreen = x >= 0 && x <= window.innerWidth && y >= 0 && y <= window.innerHeight;
+      out.x = x; out.y = y; out.onScreen = onScreen; out.behind = false;
+      return out;
+    };
+  }
+
+  // Mount calm-state secondary controls in the exact uiRoot.js order: comms (+ its own hail prompt)
+  // before createHud so hud.js adopts them into the top-right utility row, then bandHud, fieldBuild, and
+  // racingHud AFTER createHud (since createHud resets #hud.innerHTML).
+  let benchBand = null, benchFb = null, benchRace = null, benchComms = null;
+  const mountAuxCalm = hudState === 'calm' || hudState === 'teach' || hudState === 'fight' || hudState === 'news-long' || hudState === 'world-prompt';
+  let auxMods = null;
+  if (mountAuxCalm) {
+    auxMods = await Promise.all([
+      import('../src/ui/comms.js'),
+      import('../src/ui/bandHud.js'),
+      import('../src/ui/fieldBuild/fieldBuildMode.js'),
+      import('../src/ui/racingHud.js'),
+    ]);
+    document.getElementById('sf-comms')?.remove();
+    document.getElementById('sf-comm-backlog-btn')?.remove();
+    document.getElementById('sf-comm-backlog')?.remove();
+    document.getElementById('sf-band-hud')?.remove();
+    document.getElementById('sf-contact-hail')?.remove();
+    document.querySelector('.fb-pill-btn')?.remove();
+    document.getElementById('field-build-root')?.remove();
+    document.getElementById('race-tape')?.remove();
+    benchComms = auxMods[0].createComms(ctx);
+  }
   const hud = createHud(ctx, null);
+  // CARGO-BAG-UI: `?bag=empty|half|full|over|gear|salvage|picked|drag|split|sealed` opens the bag
+  // in flight over a seeded hold (the real module, the real intents).
+  const bagFixture = params.get('bag');
+  if (bagFixture && window.__sfCargoBag) {
+    const c = state.player.cargo;
+    c.slotCount = 16;
+    const S = (commodityId, qty) => ({ commodityId, qty });
+    c.slots = bagFixture === 'empty' ? []
+      : bagFixture === 'full' || bagFixture === 'over'
+        ? Array.from({ length: bagFixture === 'over' ? 18 : 16 }, (_, i) => S(['cmdty_ore_iron', 'cmdty_ore_copper', 'cmdty_ice_water', 'cmdty_refined_metals'][i % 4], i % 4 === 2 ? 10 : 20))
+        : [S('cmdty_ore_iron', 20), S('cmdty_ore_iron', 13), S('cmdty_ore_copper', 20), S('cmdty_ice_water', 7),
+          S('cmdty_refined_metals', 4), S('cmdty_filament_sample', 1), S('cmdty_gem_ruby', 3)];
+    c.items = {};
+    for (const s of c.slots) c.items[s.commodityId] = (c.items[s.commodityId] || 0) + s.qty;
+    c.usedMass = 41.6;
+    state.player.moduleInventory = bagFixture === 'gear'
+      ? [{ defId: 'mod_shield_booster_s', instanceId: 'g1' }, { defId: 'mod_shield_liner_s', instanceId: 'g2' }, { defId: 'mod_shield_capacitor_m', instanceId: 'g3' }]
+      : [];
+    state.player.marketMemory = { station_helios: { cmdty_ore_iron: { sell: 19, buy: 22, seenAt: 200 } } };
+    window.__sfCargoBag.open();
+    if (bagFixture === 'gear' || bagFixture === 'salvage') window.__sfCargoBag.setTab(bagFixture);
+    if (bagFixture === 'picked' || bagFixture === 'split') window.__sfCargoBag.pick(1);
+    if (bagFixture === 'sealed') bus.emit('cargo:jettisonSealed', { commodityId: 'cmdty_refined_metals', requested: 4, sellable: 0, reserved: 4, slotIndex: 4 });
+    if (bagFixture === 'drag') {
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      const slot = document.querySelector('#sf-bag .sf-bag__slot[data-slot="1"]');
+      const r = slot.getBoundingClientRect();
+      const opts = (x, y) => ({ bubbles: true, cancelable: true, clientX: x, clientY: y, button: 0, pointerId: 7, pointerType: 'mouse' });
+      slot.dispatchEvent(new PointerEvent('pointerdown', opts(r.x + 20, r.y + 20)));
+      document.dispatchEvent(new PointerEvent('pointermove', opts(r.x - 40, r.y + 30)));
+      document.dispatchEvent(new PointerEvent('pointermove', opts(window.innerWidth * 0.58, window.innerHeight * 0.36)));
+    }
+  }
+  if (mountAuxCalm && auxMods) {
+    benchBand = auxMods[1].createBandHud(ctx);
+    benchFb = auxMods[2].createFieldBuildMode({ state, bus, registry });
+    benchRace = auxMods[3].mountRacingHud({ root: hudRoot, bus, state, screens: manager });
+    if (hudState === 'calm') {
+      bus.emit('contactHail:availability', { enabled: true, targetId: 11, kind: 'trader', label: 'Hail Relief-Freighter' });
+    }
+    window.__benchAuxHud = { comms: benchComms, band: benchBand, fb: benchFb, race: benchRace };
+  }
   // index.html mounts #alerts as a #ui-root child beside #hud, where `#ui-root > div` makes it
   // absolute and the HUD sheet's `top` places the lane. Nested inside #hud it stayed static, every
   // `top` was inert, and the lane printed over the top-left waypoint card (D261). A fresh host per
@@ -1711,11 +2320,31 @@ async function mountFlightHud(opts = {}) {
   document.body.classList.remove('sf-swarm-flight');
   // One persistent affordance + one warning through the live event path, so the annunciator is
   // lit in the frame rather than judged empty. In-run swarm is never in a berth — skip the dock cue.
-  if (opts.dockCue !== false) bus.emit('dock:range', { inRange: true });
-  // Mirror alerts.js' real announce path for combat:damage: TAKING FIRE surfaces as a DANGER
-  // voice (kind 'danger', priority 110 — the amber warn dot the fixture used to emit made the
-  // threat line read as an advisory, craft critic 2026-10-26 finding R1).
-  bus.emit('voice:surface', { id: 'alert:incoming', channel: 'alert', priority: 110, kind: 'danger', text: 'TAKING FIRE', ttl: 30 });
+  if (opts.dockCue !== false && !String(hudState).startsWith('berth-')) {
+    bus.emit('dock:range', hudState === 'world-prompt'
+      ? { inRange: true, stationId: 'station_helios' }
+      : { inRange: true });
+  }
+  if (hudState === 'shield-collapse') {
+    // HUD-2 item 10: hold the 180 ms collapse beat on the glass (the class the live path sets),
+    // so the frame shows what the effect paints: the shield meter and a thin edge, nothing more.
+    setTimeout(() => {
+      hudRoot.classList.add('sf-hud--glitch');
+      const glitch = hudRoot.querySelector('.sf-hud-glitch-overlay');
+      if (glitch) { glitch.classList.add('active'); glitch.style.animation = 'none'; glitch.style.opacity = '1'; }
+    }, 400);
+    bus.emit('combat:damage', {
+      targetId: state.playerId, isPlayer: true, brokeShield: true,
+      shieldDamage: 48, hullDamage: 12, applied: 60,
+      attackerId: 13, fromPos: { x: 240, z: -120 },
+    });
+  }
+  // Mirror alerts.js' real announce path for a shield break: SHIELDS DOWN surfaces as a DANGER
+  // voice (kind 'danger', priority 110). An ordinary hit says nothing (the rim's hit arc does).
+  // Omit in calm/teach/idle bench modes so calm flight is genuinely calm.
+  if (!calmBenchMode) {
+    bus.emit('voice:surface', { id: 'alert:shield-down', channel: 'alert', priority: 110, kind: 'danger', text: 'SHIELDS DOWN', ttl: 30 });
+  }
   // One marketNews instance per page (a --walk remount would otherwise stack subscriptions and
   // double-commit each headline). In a live Survival run its gate keeps the ticker silent —
   // the crucibleHud shot proves that suppression too.
@@ -1725,13 +2354,34 @@ async function mountFlightHud(opts = {}) {
     kind: 'news', sourceRef: 'bench:helios-relief', stationId: 'station_helios',
   });
   // A live FLYBY telegraph aimed at the player, from the hostile projected over the command deck.
-  bus.emit('ai:telegraph', {
-    kind: 'engine_flare', entityId: 12, targetId: state.playerId, durationTicks: 600,
-  });
+  if (!calmBenchMode) {
+    bus.emit('ai:telegraph', {
+      kind: 'engine_flare', entityId: 12, targetId: state.playerId, durationTicks: 600,
+    });
+  }
+  // MAPS-1: `?minimapT=<seconds>` advances the clock so a short sequence of shots proves the
+  // minimap's sensor ping moves (and, with --reduced-motion=reduce, that it does not).
+  const minimapT = Number(params.get('minimapT'));
+  if (Number.isFinite(minimapT) && minimapT !== 0) state.simTime += minimapT;
+  // `?minimapCast=1`: a composed round announces its cast (the composer's event, through the bus).
+  // `?minimapBerth=1` (with minimap=calm): the fly-to-berth autopilot is taking the ship to Helios.
+  if (params.get('minimapBerth') && state.entities.has(320)) {
+    state.nav.autopilot = { ...(state.nav.autopilot || {}), active: true, targetEntityId: 320 };
+    state.ui.berthAutopilotStationId = 320;
+    state.nav.waypoint = null; // the lane alone, not the objective course on the same path
+  }
+  if (params.get('minimapCast')) {
+    bus.emit('encounter:castAnnounced', { wave: 4, recipeId: 'bench', line: 'A rushing pack, with a sniper on the rim', answer: 'Break its line with a rock', jobs: ['rush', 'reach', 'deny'], groups: [], tick: 0 });
+  }
   try {
     if (typeof hud.forceRefresh === 'function') hud.forceRefresh();
     if (typeof hud.frame === 'function') {
       for (let i = 0; i < 8; i++) hud.frame(1 / 60);
+    }
+    if (window.__benchAuxHud) {
+      window.__benchAuxHud.band?.update?.();
+      window.__benchAuxHud.fb?.frame?.(1 / 60, { hudVisible: true });
+      window.__benchAuxHud.race?.frame?.(state);
     }
     if (alerts && typeof alerts.tick === 'function') alerts.tick();
   } catch (error) {
@@ -1745,7 +2395,7 @@ async function mountFlightHud(opts = {}) {
     const pip = hudRoot.querySelector('.sf-leadpip');
     if (pip) pip.setAttribute('data-denial', 'blocked');
     const tagText = hudRoot.querySelector('.sf-aimtag__text');
-    if (tagText) tagText.textContent = 'LINE TARGET · BLOCKED';
+    if (tagText) tagText.textContent = 'GUNS BLOCKED';
   }
     // A single frame renders the "now"; the instruments' reactive writes (lamina fill, bar
     // segments, gauge fraction) settle on the driven frames the live route runs. A bench still
@@ -1776,10 +2426,135 @@ async function mountCrucibleHud() {
   survivalHud._chain = 18;
   survivalHud._chainBest = 24;
   survivalHud._objective = 'ELITE';
+  // OVH-01b: `?levelup=1` — a pick banked and the level-up beat on the glass (the bar's flash and "LEVEL n").
+  if (params.get('levelup')) {
+    run.level = 4;
+    run.pilot = { nodes: [], points: {}, banked: Number(params.get('levelup')) || 1, offer: null };
+    bus.emit('run:levelUp', { level: 4, previousLevel: 3, xp: run.xp, banked: run.pilot.banked });
+  }
+  // MAPS-1: when shooting Swarm with `?hudState=minimap-*` or `?minimap=*`, align Swarm-native
+  // objects cleanly (arena Bench/Station in calm, off-screen Extraction Gate in objective).
+  const hudStateParam = params.get('hudState') || '';
+  const minimapPreset = params.get('minimap')
+    || (hudStateParam.startsWith('minimap-') ? hudStateParam.slice('minimap-'.length) : '');
+  if (minimapPreset === 'calm') {
+    const hub = state.entities.get(320);
+    if (hub && hub.data) { hub.data.circuitMark = true; hub.data.name = 'Pit Bench'; hub.pos = { x: 260, y: 0, z: 160 }; }
+    const depot = state.entities.get(322);
+    if (depot && depot.data) { depot.data.circuitMark = true; depot.data.name = 'Supply Pad'; depot.pos = { x: -240, y: 0, z: -180 }; }
+    const gate = state.entities.get(321);
+    if (gate && gate.data) { gate.data.circuitMark = true; gate.data.name = 'Wave Gate'; gate.pos = { x: -340, y: 0, z: 220 }; }
+    for (let id = 301; id <= 314; id += 1) {
+      const rk = state.entities.get(id);
+      if (rk && rk.pos) { rk.pos.x *= 0.36; rk.pos.z *= 0.36; }
+    }
+    const escort = state.entities.get(323);
+    if (escort && escort.pos) { escort.pos.x = 140; escort.pos.z = -95; }
+    const hauler = state.entities.get(324);
+    if (hauler && hauler.pos) { hauler.pos.x = -140; hauler.pos.z = 110; }
+    const wreck = state.entities.get(325);
+    if (wreck && wreck.pos) { wreck.pos.x = 180; wreck.pos.z = -170; }
+    const loot = state.entities.get(326);
+    if (loot && loot.pos) { loot.pos.x = 95; loot.pos.z = -120; }
+    state.nav.waypoint = null;
+    state.player.targetId = 320;
+  } else if (minimapPreset === 'objective') {
+    state.nav.waypoint = {
+      label: 'Extraction Gate', pos: { x: -1350, z: 1080 }, sectorId: 'sector_helios_prime', swarmObjective: true,
+    };
+    const yard = state.entities.get(350);
+    if (yard && yard.data) { yard.data.circuitMark = true; yard.pos = { x: 960, y: 0, z: -320 }; }
+    const gate = state.entities.get(351);
+    if (gate && gate.data) { gate.data.circuitMark = true; gate.pos = { x: -340, y: 0, z: -980 }; }
+    const scout = state.entities.get(353);
+    if (scout && scout.pos) { scout.pos.x = 220; scout.pos.z = 140; }
+    const raider = state.entities.get(352);
+    if (raider && raider.pos) { raider.pos.x = 920; raider.pos.z = 420; }
+    for (let id = 301; id <= 314; id += 1) {
+      const rk = state.entities.get(id);
+      if (rk && rk.pos) { rk.pos.x *= 0.36; rk.pos.z *= 0.36; }
+    }
+    state.player.targetId = 353;
+  }
+  if (hudStateParam === 'cast' || params.get('minimapCast')) {
+    bus.emit('encounter:castAnnounced', {
+      wave: 4, recipeId: 'bench',
+      line: 'A rushing pack, with a sniper on the rim',
+      answer: 'Break its line with a rock',
+      jobs: ['rush', 'reach', 'deny'],
+      groups: [], tick: 0,
+    });
+  }
+  if (hudStateParam === 'headlines') {
+    const { swarmJuiceHud } = await import('../src/ui/swarmJuiceHud.js');
+    swarmJuiceHud.init({ state, bus, helpers: { worldToScreen: (w, o = {}) => { o.x = window.innerWidth / 2 + (w?.x || 0) * 0.4; o.y = window.innerHeight * 0.62 + (w?.z || 0) * 0.4; o.onScreen = true; return o; } } });
+    // The announcer seats its line in its own DOM, which the first update builds (live, the
+    // frame loop has long since run before any word is spoken).
+    swarmJuiceHud.update(1 / 60, state);
+    bus.emit('swarm:overdrive', { active: true });
+    bus.emit('swarm:announce', { kind: 'multikill', text: 'SWARM WIPE', count: 5 });
+    bus.emit('swarm:announce', { kind: 'collateral', text: 'COLLATERAL' });
+    bus.emit('ai:telegraph', { kind: 'engine_flare', entityId: 13, targetId: state.playerId, durationTicks: 600 });
+    swarmJuiceHud.update(1 / 60, state);
+    survivalHud._overdrive = true;
+  }
+  if (hudStateParam === 'floor-shop' || hudStateParam === 'floor-shop-fight') {
+    const playerNow = state.entities.get(state.playerId);
+    if (playerNow) playerNow.pos = { x: 0, y: 0, z: 0 };
+    const padNear = {
+      id: 910, type: 'pickup', alive: true, team: 0, radius: 18,
+      pos: { x: 65, y: 0, z: -48 }, vel: { x: 0, y: 0, z: 0 },
+      data: {
+        kind: 'swarm_floor_pad',
+        swarmFloorPad: {
+          padId: 'foundry-tap-west', kind: 'tap', modId: 'stripped',
+          price: 1500, label: 'LIGHT FRAME · 1,500',
+        },
+      },
+    };
+    const padFar = {
+      id: 911, type: 'pickup', alive: true, team: 0, radius: 18,
+      pos: { x: -340, y: 0, z: -180 }, vel: { x: 0, y: 0, z: 0 },
+      data: {
+        kind: 'swarm_floor_pad',
+        swarmFloorPad: {
+          padId: 'foundry-crate', kind: 'crate',
+          price: 950, label: 'THE CRATE · 950', fitPreview: 'Fits empty slot 2',
+        },
+      },
+    };
+    for (const ent of [padNear, padFar]) {
+      state.entities.set(ent.id, ent);
+      if (!state.entityList.some((e) => e && e.id === ent.id)) state.entityList.push(ent);
+    }
+    if (hudStateParam === 'floor-shop') {
+      // Calm between enemies: push hostiles far so the nearby pad opens cleanly right over itself.
+      for (const id of [11, 12, 13]) {
+        const e = state.entities.get(id);
+        if (e && e.pos) { e.pos.x = 4200; e.pos.z = 4200; }
+      }
+    } else {
+      // Under fire: nearby hostile shooting at the player suppresses the un-armed shop card.
+      const h = state.entities.get(13);
+      if (h && h.pos) { h.pos.x = 120; h.pos.z = -90; }
+      bus.emit('combat:damage', { targetId: state.playerId, isPlayer: true, applied: 8, hullDamage: 8, attackerId: 13 });
+    }
+  }
   survivalHud.update(1 / 60, state);
   const hudRoot = document.getElementById('hud');
   if (hudRoot) hudRoot.dataset.threat = 'near';
-  try { window.__benchHud?.frame?.(1 / 60); } catch { /* composition still; live route owns reactions */ }
+  try {
+    for (let i = 0; i < 8; i++) window.__benchHud?.frame?.(1 / 60);
+    if (window.__benchAuxHud) {
+      window.__benchAuxHud.band?.update?.();
+      window.__benchAuxHud.fb?.frame?.(1 / 60, { hudVisible: true });
+      window.__benchAuxHud.race?.frame?.(state);
+    }
+  } catch { /* composition still; live route owns reactions */ }
+  // Chips measured by ResizeObserver (threat tells) seat on the frame after their text lands, as
+  // they do live; one real animation frame later, re-run the HUD so the still shows the seat.
+  await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  try { for (let i = 0; i < 2; i++) window.__benchHud?.frame?.(1 / 60); } catch { /* still */ }
   const crun = document.querySelector('.sf-crun');
   note('— crucible HUD mounted (flight cluster + survival readout, swarm)'
     + ` · crun ${crun ? (crun.hidden ? 'hidden' : 'live') : 'missing'}`

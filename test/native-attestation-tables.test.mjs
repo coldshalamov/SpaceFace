@@ -24,6 +24,19 @@ test('real native compact adoption preserves exact bodies and refuses changed at
  const entities=[actor(1,0),actor(2,50)],source=await createSg02DynamicBodyOwner({publishTelemetry:false}),target=await createSg02DynamicBodyOwner({publishTelemetry:false});
  try{source.syncFromEntities(entities);const raw=source.exportWorldSnapshot(),packed=compact(raw);assert.ok(packed);assert.equal(raw.schema,3);assert.equal(JSON.stringify(expand(packed)),JSON.stringify(raw));assert.equal(target.adoptWorldSnapshot(packed,clone(entities)),true);for(const id of [1,2]){assert.equal(target.records.get(id).body.mass(),source.records.get(id).body.mass());assert.equal(target.records.get(id).colliders.length,source.records.get(id).colliders.length);}
  const before={world:target.world,records:target.records,attachments:target.attachments};for(const kind of ['geometry','mass','invalid-ref','expanded-budget']){const bad=clone(packed);if(kind==='geometry')bad.attestations.native[0].colliders[0].shape.radius+=1;if(kind==='mass')bad.attestations.contracts[0].spec.mass+=1;if(kind==='invalid-ref')bad.bodies[1].nativeRef=.5;if(kind==='expanded-budget')bad.attestations.contracts[0].manifest={huge:'x'.repeat(7*1024*1024)};assert.equal(target.adoptWorldSnapshot(bad,clone(entities)),false,kind);assert.equal(target.world,before.world);assert.equal(target.records,before.records);assert.equal(target.attachments,before.attachments);}
+ const reordered=clone(packed);
+ reordered.attestations.native[0]=Object.fromEntries(Object.entries(reordered.attestations.native[0]).reverse());
+ assert.equal(target.adoptWorldSnapshot(reordered,clone(entities)),true,'saved key order does not change native acceptance');
+ const owner=target.world, retainedRecords=target.records, retainedAttachments=target.attachments;
+ const collider=source.records.get(1).colliders[0];
+ collider.setContactSkin(collider.contactSkin()+0.1);
+ const drifted=compact(source.exportWorldSnapshot());
+ assert.ok(drifted,'the exported bytes and attestation now describe the same changed collider');
+ assert.equal(drifted.attestations.native[drifted.bodies[1].nativeRef].colliders[0].contactSkin,collider.contactSkin());
+ assert.equal(target.adoptWorldSnapshot(drifted,clone(entities)),false,'a matching native attestation cannot bypass the authored geometry check');
+ assert.equal(target.world,owner);
+ assert.equal(target.records,retainedRecords);
+ assert.equal(target.attachments,retainedAttachments);
  }finally{source.dispose();target.dispose();}
 });
 

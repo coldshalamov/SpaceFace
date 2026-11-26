@@ -9,7 +9,7 @@
 // (ESC always = back). Otherwise translate UI-owned keys into intent events / screen pushes.
 // The UI never mutates sim state; docking sets ui.docked + emits dock:docked + pushes 'station'.
 
-import { isConfirmOpen, confirmGamepadAccept, confirmGamepadCancel } from './confirm.js';
+import { isConfirmOpen, confirmGamepadAccept, confirmGamepadCancel, confirmGamepadNav } from './confirm.js';
 import { getPromptDeck } from './promptDeck.js';
 import {
   BINDINGS,
@@ -27,9 +27,12 @@ import { interactionProfileForEntity } from '../data/entityInteractionProfiles.j
 import { resolveDockDeny } from './dockDenyBanner.js';
 import { dedupError } from '../core/warnDedup.js';
 import { createDockIntent } from '../core/dockIntent.js';
+import { laneInputWrite } from '../core/simLaneCommands.js';
 import { activeAuthoredRace } from '../systems/racingSteer.js';
 import { isSwarmControls } from '../data/swarmControls.js';
-import { contextUiAllowed } from '../data/inputContexts.js';
+import { contextUiAllowed, inputContextFor } from '../data/inputContexts.js';
+import { nearestSwarmFloorPad, swarmFloorPadQuote, SWARM_FLOOR_ARM_REQUEST } from '../data/swarmFloor.js';
+import { berthOfferStation, isDockableStation, stationDisplayName } from './berthOffer.js';
 
 const DRILL_MASSLINE_DEF_IDS = new Set(['tether_standard', 'attachment_massline']);
 
@@ -380,6 +383,59 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
     bus.emit('audio:cue', { id: 'ui_dock' });
   }
 
+  function doFlightInteract() {
+    if (isUiInteractionFenced(state) || state.mode !== 'flight' || state.ui?.docked) return false;
+    if (dockInRange) { doDock(); return true; }
+    // Capture-bot finding (2026-11-20): a stranger could not dock by flying at the ring. Near a
+    // station, the interact key hands the approach to the autopilot, which flies the corridor
+    // mouth and then the berth (the same berth plan the dock prompt uses); any flight key takes
+    // the helm back. In range, the same key docks.
+    // Any distance in the sector: the selected or tracked station first, else the nearest one.
+    // The pick lives in berthOffer.js so the HUD's "[E] Fly to berth" names this same station.
+    const offer = berthOfferStation(state);
+    // Mid-run, the interact key does not hand the ship to the autopilot for a station nobody
+    // picked: the HUD does not offer it then either (flightHelm.resolveBerthOffer).
+    if (offer && (offer.chosen || !activeAuthoredRace(state))) return flyToBerth(offer.station);
+    const quote = swarmFloorPadQuote(nearestSwarmFloorPad(state));
+    if (!quote) return false;
+    const terms = document.querySelector(`#sf-floorpads [data-floor-quote="${quote.entityId}"]`);
+    if (!terms?.getClientRects().length || Number(getComputedStyle(terms).opacity) < 0.5) return false;
+    bus.emit(SWARM_FLOOR_ARM_REQUEST, quote);
+    return true;
+  }
+
+  // The berth autopilot (2026-11-20): from the station's marker at any distance in the sector.
+  // The flight computer cruises there (it owns the boost while it flies), slows for the corridor
+  // mouth, rides the lane and parks at the berth; any steering or the brake takes the helm back.
+  function flyToBerth(berth) {
+    if (!isDockableStation(berth) || state.mode !== 'flight' || state.ui?.docked) return false;
+    // DEMO-ADV-2: the course carries its own provenance. The opening rail retires only the berth
+    // run it laid (onboarding._retireArrivedBerthCourse), so the run is stamped where it is plotted:
+    // berthAutopilot marks the course as this key's, berthStationId is the stable station id that
+    // survives the autopilot dropping its live target bind on arrival. world carries both onto
+    // state.nav.waypoint; a course the pilot plots through the chart or the radar has neither.
+    bus.emit('ui:setCourse', { pos: { x: berth.pos.x, z: berth.pos.z }, targetEntityId: berth.id,
+      label: stationDisplayName(berth), waypointKind: 'local', autopilot: true,
+      berthAutopilot: true, berthStationId: (berth.data && (berth.data.stationId || berth.data.id)) || berth.id });
+    // No toast: the flight-mode chip by the speed dial names the autopilot for as long as it flies
+    // ("Autopilot · to <station> berth — steer to take over"), and the lane is drawn in the world.
+    bus.emit('audio:cue', { id: 'ui_confirm' });
+    state.ui = state.ui || {};
+    state.ui.berthAutopilotStationId = berth.id;
+    return true;
+  }
+  // The berth run's marker is retired when the autopilot lets go (steer, brake, arrival) or the
+  // ship docks, so nothing downstream can read a finished run as live.
+  const clearBerthRun = () => { if (state.ui && state.ui.berthAutopilotStationId != null) state.ui.berthAutopilotStationId = null; };
+  unsubscribers.push(bus.on('nav:autopilot', (ap) => { if (!ap || ap.active !== true) clearBerthRun(); }));
+  unsubscribers.push(bus.on('dock:docked', clearBerthRun));
+  // The chart's place card asks for the same thing by station id: bus 'nav:flyToBerth' { stationId }.
+  unsubscribers.push(bus.on('nav:flyToBerth', (p) => {
+    const id = p && p.stationId;
+    const station = id != null && state.entities && typeof state.entities.get === 'function' ? state.entities.get(id) : null;
+    if (!flyToBerth(station)) bus.emit('toast', { text: 'No berth to fly to from here', kind: 'warn', ttl: 2 });
+  }));
+
   function matchesBinding(ev, binding) {
     const k = ev && ev.key;
     const code = ev && ev.code;
@@ -462,6 +518,16 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
   function onFlightHudFocusKeyDown(ev) {
     if (state.mode !== 'flight' || screenManager.isOpen() || isConfirmOpen()
         || isUiInteractionFenced(state) || isTextEntryTarget(ev.target)) return;
+    if (ev.key === 'Escape') {
+      const details = document.getElementById('sf-objective-details');
+      const closeDetails = details && !details.hidden && details.querySelector('.sf-mt-details-close');
+      if (closeDetails) {
+        closeDetails.click();
+        ev.preventDefault();
+        ev.stopPropagation?.();
+        return;
+      }
+    }
     const control = flightHudControl(ev.target) || flightHudControl(document.activeElement);
     const shortcut = flightHudFocusShortcut(state);
     const focusShortcut = shortcut.available && (ev.key === shortcut.code || ev.code === shortcut.code)
@@ -538,6 +604,7 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
       bus.emit('ui:closeCargo');
       const def = screenManager.getActiveScreenDef();
       if (key === 'Escape') {
+        if (ev.repeat) return;
         ev.preventDefault();
         // A screen mid-gesture gets first refusal before the generic back/pop (J6): the chart's
         // laid line / filling hold cancels here, so the first Escape undoes the player's current
@@ -599,7 +666,7 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
       }
       // Repeat the open binding to close the same instrument (mission log already does this in
       // onKey; maps do it above). Without this, T/K/F1 open a screen they cannot close.
-      if (def && def.id === 'techTree' && matchesBinding(ev, BINDINGS.techTree)) {
+      if (def && (def.id === 'techTree' || def.id === 'pilotTree') && matchesBinding(ev, BINDINGS.techTree)) {
         ev.preventDefault();
         closeActiveModal(def);
         return;
@@ -629,8 +696,8 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
         return;
       }
       // global quick-save/load still work over a modal
-      if (key === 'F5') { ev.preventDefault(); bus.emit('game:save', { slot: 'quick' }); return; }
-      if (key === 'F9') { ev.preventDefault(); bus.emit('game:load', { slot: 'quick' }); return; }
+      if (key === 'F5') { ev.preventDefault(); if (ev.repeat) return; bus.emit('game:save', { slot: 'quick' }); return; }
+      if (key === 'F9') { ev.preventDefault(); if (ev.repeat) return; bus.emit('game:load', { slot: 'quick' }); return; }
       return;
     }
 
@@ -639,8 +706,15 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
     // A deliberately focused flight control owns its native Tab/Enter/Space and other keys.
     // Do not prevent their defaults; only keep document/window flight shortcuts from firing.
     if (state.mode === 'flight' && flightHudControl(t)) {
-      if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
-      return;
+      // Capture-bot finding (2026-11-20): a power tile or HUD button left focused by a click
+      // swallowed Esc and M, so pause and the map silently did nothing. Esc always pauses and M/N
+      // always open the map: they take focus back from the control and go on.
+      const always = key === 'Escape' || matchesBinding(ev, BINDINGS.localmap) || matchesBinding(ev, BINDINGS.starmap);
+      if (!always) {
+        if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
+        return;
+      }
+      if (t && typeof t.blur === 'function') t.blur();
     }
 
     // --- pure flight: UI-owned global keys only (mode must be flight) ---
@@ -651,6 +725,7 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
     // codex, find, fleet, photo, debug overlays) is inert while the run is live.
     if (isSwarmControls(state)) {
       if (key === 'Escape' || key === 'p' || key === 'P') {
+        if (ev.repeat) return;
         ev.preventDefault();
         screenManager.pushScreen('pause');
         bus.emit('audio:cue', { id: 'ui_open' });
@@ -667,10 +742,9 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
         bus.emit('swarm:scoreboardToggle', {});
         return;
       }
-      if (matchesBinding(ev, BINDINGS.dock) && !ev.repeat && dockInRange) {
+      if (matchesBinding(ev, BINDINGS.dock) && !ev.repeat && doFlightInteract()) {
         ev.preventDefault();
         if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
-        doDock();
       }
       return;
     }
@@ -688,6 +762,13 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
       ev.preventDefault();
       if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
       bus.emit('race:restart', { source: 'keyboard' });
+      return;
+    }
+    if (matchesBinding(ev, BINDINGS.fieldBuild)) {
+      if (!contextUiAllowed(state, 'fieldBuild')) return;
+      ev.preventDefault();
+      if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
+      bus.emit('ui:toggleFieldBuild', { source: 'keyboard' });
       return;
     }
     if (matchesBinding(ev, BINDINGS.band)) {
@@ -730,6 +811,13 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
 
     switch (key) {
       case 'Escape':
+        if (ev.repeat) return;
+        if (state.ui && state.ui.fieldBuildActive) {
+          ev.preventDefault();
+          if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
+          bus.emit('ui:closeFieldBuild');
+          return;
+        }
         if (shipScreenRequest.isShipScreenRequestPending?.()) {
           ev.preventDefault();
           if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
@@ -751,6 +839,7 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
         // fall through to Pause when no flight overlay owns Escape
       case 'p': case 'P':
         ev.preventDefault();
+        if (ev.repeat) return;
         screenManager.pushScreen('pause');
         bus.emit('audio:cue', { id: 'ui_open' });
         return;
@@ -771,7 +860,8 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
       case BINDINGS.techTree.key:
       case BINDINGS.techTree.label:
         if (!contextUiAllowed(state, 'techTree')) return;
-        ev.preventDefault(); screenManager.pushScreen('techTree'); return;
+        // T opens the Pilot Tree (progression lead 2026-11-20); Research opens from the station.
+        ev.preventDefault(); screenManager.pushScreen('pilotTree'); return;
       case BINDINGS.missionLog.key:
       case BINDINGS.missionLog.label:
         if (!contextUiAllowed(state, 'missionLog')) return;
@@ -818,6 +908,15 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
           // so ordinary strafing is unaffected.
           if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
           doDock();
+        } else if (matchesBinding(ev, BINDINGS.dock) && inputContextFor(state) !== 'combat') {
+          // The HUD offers "[E] Fly to berth" out of range, and the keyboard did nothing with it in
+          // Adventure: only touch, the pad and a Swarm run reached doFlightInteract. E is not a
+          // flight key in any scheme, so the press is free. In a fight the offer is not on screen
+          // (flightHelm.resolveBerthOffer) and the key stays out of it too.
+          if (doFlightInteract()) {
+            ev.preventDefault();
+            if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
+          }
         }
         return;
       case 'F2':
@@ -911,27 +1010,33 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
         return;
       case 'F5':
         if (!contextUiAllowed(state, 'save')) return;
+        if (ev.repeat) return;
         ev.preventDefault();
         if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
         bus.emit('game:save', { slot: 'quick' });
         return;
       case 'F9':
         if (!contextUiAllowed(state, 'load')) return;
+        if (ev.repeat) return;
         ev.preventDefault();
         if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
         bus.emit('game:load', { slot: 'quick' });
         return;
       default:
-        // '+'/'-' zoom shortcuts (camera passthrough). Once emitted the key is consumed like any
-        // other UI verb — a flight binding on it would otherwise keep double-firing.
+        // '+'/'-' zoom shortcuts (camera passthrough). Multiplicative like the wheel
+        // (~12% per press) so hold-to-repeat glides exponentially instead of stepping
+        // linearly. Once emitted the key is consumed like any other UI verb — a flight
+        // binding on it would otherwise keep double-firing.
         if (code === 'Equal' || code === 'NumpadAdd') {
           ev.preventDefault();
           if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
-          bus.emit('camera:zoom', { delta: -8 });
+          const keyZoomIn = (state.camera && state.camera.zoom) || 144;
+          bus.emit('camera:zoom', { delta: keyZoomIn * (1 / 1.12 - 1) });
         } else if (code === 'Minus' || code === 'NumpadSubtract') {
           ev.preventDefault();
           if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
-          bus.emit('camera:zoom', { delta: 8 });
+          const keyZoomOut = (state.camera && state.camera.zoom) || 144;
+          bus.emit('camera:zoom', { delta: keyZoomOut * (1.12 - 1) });
         }
         return;
     }
@@ -1002,7 +1107,17 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
       }
     }
     if (astId == null) {
-      bus.emit('toast', { text: 'No asteroid targeted — target a rock and press ' + BINDINGS.drill.label + ' to drill', kind: 'warn', ttl: 3 });
+      // Nothing selected: the rock you are parked beside is the one you mean.
+      const me = state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
+      let bestGap = 220;
+      for (const e of (me && me.pos ? state.entityList || [] : [])) {
+        if (!e || e.alive === false || e.type !== 'asteroid' || !e.pos) continue;
+        const gap = Math.hypot(e.pos.x - me.pos.x, e.pos.z - me.pos.z) - (e.radius || 0) - (me.radius || 0);
+        if (gap < bestGap) { bestGap = gap; astId = e.id; }
+      }
+    }
+    if (astId == null) {
+      bus.emit('toast', { text: 'No rock in reach. Fly up to an asteroid and press ' + BINDINGS.drill.label + ' to set the rover down.', kind: 'warn', ttl: 3.5 });
       return;
     }
 
@@ -1014,7 +1129,7 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
       const dist = Math.hypot(dx, dz);
       const surfaceDist = Math.max(0, dist - (ast.radius || 0) - (player.radius || 0));
       if (surfaceDist > 220) {
-        bus.emit('toast', { text: 'Too far to drill. Fly closer to the asteroid.', kind: 'warn', ttl: 3 });
+        bus.emit('toast', { text: 'Too far to set the rover down. Fly closer to the rock.', kind: 'warn', ttl: 3 });
         return;
       }
     }
@@ -1024,17 +1139,25 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
       (att) => att.state === 'active' && att.ownerId === state.playerId && att.targetId === astId && DRILL_MASSLINE_DEF_IDS.has(att.defId)
     );
     if (!activeTether) {
-      // Live tether binding label — never hard-code a latch key (rebinds / empty must not lie).
-      const tetherKey = resolveActionLabel(state, 'tether');
-      const latchHint = tetherKey
-        ? `Launch a tether (${tetherKey}) to lock onto the asteroid first.`
-        : 'Launch a tether to lock onto the asteroid first.';
-      bus.emit('toast', { text: `No Massline link. ${latchHint}`, kind: 'warn', ttl: 3.5 });
+      // One press sets the rover down. A line already on something else has to come off first;
+      // otherwise the line owner puts the Line on this rock and reels in from that latch.
+      const busy = Object.values(state.combat?.attachments?.byId || {}).some((att) => att
+        && att.state === 'active' && att.ownerId === state.playerId && DRILL_MASSLINE_DEF_IDS.has(att.defId));
+      if (busy) {
+        const tetherKey = resolveActionLabel(state, 'tether');
+        bus.emit('toast', {
+          text: `The Line is on something else. Let it go${tetherKey ? ` (${tetherKey})` : ''}, then press ${BINDINGS.drill.label} again.`,
+          kind: 'warn', ttl: 4,
+        });
+        return;
+      }
+      laneInputWrite(state, 'player.targetId', astId);
+      bus.emit('drill:approachRequested', { asteroidId: astId, attachmentId: null });
       return;
     }
     if (activeTether.defId !== 'tether_standard') {
       bus.emit('toast', {
-        text: 'This legacy Massline has no drill winch. Relatch with the standard Massline to drill.',
+        text: 'This legacy line has no drill winch. Relatch with the standard line to drill.',
         kind: 'warn',
         ttl: 4,
       });
@@ -1163,13 +1286,21 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
 
     let delta = 0;
     if (isPinch) {
-      // Proportional smooth zoom for trackpad pinch/expand gestures
-      delta = (Number(ev.deltaY) || 0) * 0.8;
+      // Proportional smooth zoom for trackpad pinch/expand gestures. Exponential in the
+      // wheel delta so the feel matches the per-notch multiplicative step below: equal
+      // finger travel always buys the same zoom ratio, and small deltas stay precise.
+      const rawY = Number(ev.deltaY) || 0;
+      const clampedY = Math.max(-100, Math.min(100, rawY));
+      const currentPinchZoom = (state.camera && state.camera.zoom) || 144;
+      delta = currentPinchZoom * (Math.exp(clampedY * 0.002) - 1);
     } else {
-      // Step zoom for mouse wheel notch / 2-finger scroll
+      // Multiplicative step zoom for mouse wheel notch / 2-finger scroll: each notch is
+      // the same zoom RATIO (~15%) anywhere in the band, the StarCraft contract. The old
+      // linear max(16, 8%) step felt stiff far out and jumpy close in, then spent ~1s
+      // easing through ZOOM_LERP — that double lag was the molasses.
       const currentZoom = (state.camera && state.camera.zoom) || 144;
-      const step = Math.max(16, Math.round(currentZoom * 0.08));
-      delta = Math.sign(ev.deltaY) * step;
+      const factor = ev.deltaY > 0 ? 1.15 : 1 / 1.15;
+      delta = currentZoom * (factor - 1);
     }
     if (delta !== 0) {
       bus.emit('camera:zoom', { delta });
@@ -1259,9 +1390,7 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
     return clickStationTab(tabs[next]);
   }
 
-  function moveFocus(dir) {
-    const root = activeScreenEl();
-    const items = focusableInside(root);
+  function moveFocus(dir, root = activeScreenEl(), items = focusableInside(root)) {
     if (!items.length) return;
     const active = document.activeElement;
     document.documentElement.classList.add('sf-gamepad-focus');
@@ -1279,6 +1408,17 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
         if (typeof nextTab.click === 'function') nextTab.click();
         return;
       }
+    }
+    // A roving group (a kit listbox, a vertical tablist) keeps its inactive rows at tabindex -1,
+    // which spatial targeting cannot see — a pad could enter such a ladder but never walk it.
+    // Hand the press to the group's own arrow handling, exactly as the keyboard gets it; if the
+    // group moved focus the press is spent, otherwise spatial targeting carries on below.
+    if (active && typeof KeyboardEvent === 'function' && active.closest('[role="listbox"], [role="radiogroup"], [role="tablist"]')) {
+      const arrow = dir === 'left' ? 'ArrowLeft' : dir === 'right' ? 'ArrowRight' : dir === 'up' ? 'ArrowUp' : 'ArrowDown';
+      const before = active;
+      active.dispatchEvent(new KeyboardEvent('keydown', { key: arrow, code: arrow, bubbles: true, cancelable: true }));
+      const landed = document.activeElement;
+      if (landed && landed !== before && (!root || root.contains(landed))) return;
     }
     if (!items.includes(active)) {
       try { items[0].focus(); } catch (e) {}
@@ -1307,14 +1447,18 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
     if (next) { try { next.focus(); } catch (e) {} }
   }
 
-  function activateFocused() {
-    const root = activeScreenEl();
+  function activateFocused(root = activeScreenEl()) {
     const active = document.activeElement;
-    if (!active || !root || !root.contains(active)) return;
+    // A declared primary (Run Over's Again / Keep going) still answers pad A when focus
+    // missed the plate — the same first-press race that swallowed Enter on the demo.
+    const target = (active && root && root.contains(active))
+      ? active
+      : (root && typeof root.querySelector === 'function' ? root.querySelector('[data-pad-primary="true"]') : null);
+    if (!target) return;
     document.documentElement.classList.add('sf-gamepad-focus');
-    if (typeof active.click === 'function') active.click();
+    if (typeof target.click === 'function') target.click();
     else {
-      active.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', bubbles: true }));
+      target.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', bubbles: true }));
     }
   }
 
@@ -1360,15 +1504,11 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
     }
     if (state.mode !== 'flight') return false;
     if (action === 'dock') {
-      if (dockInRange && !state.ui.docked) {
-        doDock();
-        return true;
-      }
+      if (doFlightInteract()) return true;
       bus.emit('toast', { text: 'No dock prompt active', kind: 'info', ttl: 2 });
       return false;
     }
-    // Every device path asks the SAME interface gate as the keyboard: a touch fight cannot
-    // open the chart or the codex through the overlay's own buttons.
+    // Touch shares the keyboard's interface gate, including navigation during combat.
     if (!contextUiAllowed(state, action)) return false;
     if (action === 'missionLog') { openScreenFromTouch('missionLog'); return true; }
     // Touch Local / Star keep product labels on the overlay but open the unified map with focus.
@@ -1405,12 +1545,6 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
       return;
     }
 
-    if (isConfirmOpen()) {
-      if (gp.actions.accept && gp.actions.accept.pressed) confirmGamepadAccept();
-      if (gp.actions.cancel && gp.actions.cancel.pressed) confirmGamepadCancel();
-      return;
-    }
-
     const modalOpen = screenManager.isOpen();
     const top = modalOpen && screenManager.top ? screenManager.top() : null;
 
@@ -1435,12 +1569,53 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
       if (rawPad.buttons[15] && rawPad.buttons[15].pressed) navNow.right = true;
     }
 
+    // A shared confirm owns the whole pad grammar while it is up: A clicks the focused
+    // key, B cancels, and D-pad/stick moves focus between Cancel and the verb — a danger
+    // dialog defaults to Cancel, so without nav a pad could never accept one.
+    if (isConfirmOpen()) {
+      if (gp.actions.accept && gp.actions.accept.pressed) confirmGamepadAccept();
+      if (gp.actions.cancel && gp.actions.cancel.pressed) confirmGamepadCancel();
+      for (const d of ['up', 'down', 'left', 'right']) {
+        if (navNow[d] && !_nav[d]) confirmGamepadNav(d);
+        _nav[d] = navNow[d];
+      }
+      return;
+    }
+
     // Flight decision deck (promptDeck) owns the pad while a decision is live — ONE gamepad
     // grammar consumed here, replacing the per-card polls that double-fired one press across two
     // cards and hijacked cycleTarget as a card verb. A/B choose; d-pad/stick up-down moves the
     // highlight. Nothing below (dock, map, cycleTarget) may fire through a live decision.
     // A modal screen above the deck keeps input (the decision is hidden under it anyway).
     const promptDeck = getPromptDeck();
+    const cargoPanel = !modalOpen && state.ui?.cargoPanelOpen
+      ? document.querySelector('#hud .sf-bag.is-open, #hud .sf-cargo-panel.open') : null;
+    if (cargoPanel) {
+      if (gp.actions.cancel?.pressed) {
+        bus.emit('ui:closeCargo');
+        return;
+      }
+      if (gp.actions.cargo?.pressed) {
+        bus.emit('ui:toggleCargo');
+        return;
+      }
+      const deck = promptDeck?.el && !promptDeck.el.hidden ? promptDeck.el : null;
+      const active = document.activeElement;
+      const root = deck?.contains(active) ? deck : cargoPanel;
+      if (gp.actions.accept?.pressed) {
+        activateFocused(root);
+        bus.emit('ui:confirm', {});
+      }
+      for (const dir of ['up', 'down', 'left', 'right']) {
+        if (navNow[dir] && !_nav[dir]) {
+          moveFocus(dir, root, [...focusableInside(cargoPanel), ...focusableInside(deck)]);
+          bus.emit('ui:navigate', {});
+          bus.emit('audio:cue', { id: 'hover' });
+        }
+        _nav[dir] = navNow[dir];
+      }
+      return;
+    }
     if (!modalOpen && promptDeck && promptDeck.size > 0 && promptDeck.gamepadCapture(gp.actions)) {
       let deckNav = false;
       for (const d of ['up', 'down', 'left', 'right']) {
@@ -1484,8 +1659,17 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
         bus.emit('ui:confirm', {});
       }
       if (gp.actions.cancel && gp.actions.cancel.pressed) {
+        // Same refusal as keyboard Escape: a screen mid-gesture (a station door, a chart line)
+        // backs out of that first. Station B on a door returns to the hub; B on the hub undocks.
+        const lockedNow = !!(
+          (screenManager.locked && screenManager.locked()) || (def && def.data && def.data.locked)
+        );
+        if (!lockedNow && def && typeof def.onEscape === 'function') {
+          try { if (def.onEscape(null, ctx) === true) return; }
+          catch (e) { dedupError('uiInput.screen-escape', '[uiInput] screen onEscape error:', e); }
+        }
         if (def && def.id === 'station') undock();
-        else if (!screenManager.locked || !screenManager.locked()) screenManager.popScreen();
+        else if (!lockedNow) screenManager.popScreen();
         bus.emit('ui:cancel', {});
         bus.emit('audio:cue', { id: 'ui_back' });
       }
@@ -1540,9 +1724,7 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
         && state.entities?.get?.(state.playerId)?.alive !== false) {
         bus.emit('race:toggleView', { source: 'gamepad' });
       }
-      if (gp.actions.dock && gp.actions.dock.pressed && dockInRange) {
-        doDock();
-      }
+      if (gp.actions.dock && gp.actions.dock.pressed) doFlightInteract();
       if (gp.actions.pause && gp.actions.pause.pressed) {
         screenManager.pushScreen('pause');
         bus.emit('audio:cue', { id: 'ui_open' });
@@ -1550,6 +1732,9 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
       if (gp.actions.map && gp.actions.map.pressed && contextUiAllowed(state, 'map')) {
         openGalaxyMap({ state, bus, screenManager }, { focus: MAP_FOCUS.GALAXY, source: 'gamepad' });
         bus.emit('audio:cue', { id: 'ui_open' });
+      }
+      if (gp.actions.cargo && gp.actions.cargo.pressed && contextUiAllowed(state, 'cargo')) {
+        bus.emit('ui:toggleCargo');
       }
       if (gp.actions.codex && gp.actions.codex.pressed && contextUiAllowed(state, 'codex')) {
         screenManager.pushScreen('codex');

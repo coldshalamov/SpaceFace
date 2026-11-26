@@ -16,15 +16,16 @@ import {
 import { canonicalizeObjectSurfaceProgramKeys } from '../src/render/illustratedSurface.js';
 import * as rockSubstances from '../src/data/rockSubstances.js';
 
-test('every authored place_rock substance resolves to a family, anything else to null', () => {
+test('every authored rock asset resolves to a triplanar family, non-rocks to null', () => {
   for (const [id, family] of [
     ['place_rock_silicate_boulder', 'silicate'], ['place_rock_slag_monolith', 'slag'],
     ['place_rock_metallic_ore_pebble', 'metal'], ['place_rock_reef_metal_boulder', 'metal'],
     ['place_rock_crystal_monolith', 'crystal'], ['place_rock_ice_pebble', 'ice'],
     ['place_rock_cooked_rock_boulder', 'cooked'], ['place_rock_junk_monolith', 'junk'],
+    ['place_asteroid_rock_a', 'silicate'], ['place_asteroid_seamed', 'silicate'],
   ]) assert.equal(rockTriplanarFamilyForAsset(id), family, id);
   assert.equal(rockTriplanarFamilyForAsset('SF_PLACE_ROCK_SILICATE_BOULDER'), 'silicate', 'the id the package metadata carries');
-  assert.equal(rockTriplanarFamilyForAsset('place_asteroid_rock_a'), null);
+  assert.equal(rockTriplanarFamilyForAsset('place_station_hub'), null);
   assert.equal(rockTriplanarFamilyForAsset('place_rock_unknown_boulder'), null);
 });
 
@@ -90,13 +91,52 @@ test('the shader is injected once per stage and every family shares one program'
   assert.match(shader.fragmentShader, /normal = normalize\(normalMatrix \* sfTpNormalOut\)/);
 });
 
-test('the library publishes only when every set decoded, and a failure leaves the rocks on their authored look', async () => {
-  const failing = await preloadRockTriplanarLibrary(null, { loadTexture: async () => { throw new Error('boom'); } });
-  assert.equal(failing, false);
-  assert.equal(rockTriplanarReady(), false);
+test('the same rock shader keeps its authored flat color until the maps upload and whenever they are off', async () => {
+  const rocks = [['metal', 0x5a6470], ['junk', 0x1c1710]].map(([family, color]) => {
+    const material = new THREE.MeshStandardMaterial({ color });
+    const authored = material.color.clone();
+    installTriplanarRock(material, family);
+    const shader = {
+      uniforms: {},
+      vertexShader: THREE.ShaderLib.standard.vertexShader,
+      fragmentShader: THREE.ShaderLib.standard.fragmentShader,
+    };
+    material.onBeforeCompile(shader, null);
+    assert.equal(material.color.getHex(), 0xffffff, 'the texture path still uses a neutral base');
+    assert.match(shader.fragmentShader, /}\s*else\s*{\s*diffuseColor\.rgb \*= sfTpFlatColor;/);
+    assert.ok(shader.uniforms.sfTpFlatColor.value.equals(authored));
+    return { uniforms: shader.uniforms, material, version: material.version };
+  });
+  const assertMapSwitch = value => {
+    for (const { uniforms, material, version } of rocks) {
+      assert.equal(uniforms.sfTpOn.value, value);
+      assert.equal(material.version, version, 'switching textures needs no material recompile');
+    }
+  };
+  assertMapSwitch(0);
+  assert.equal(rocks[0].material.customProgramCacheKey(), rocks[1].material.customProgramCacheKey());
+
+  const warn = console.warn;
+  console.warn = () => {};
+  try {
+    const decodeFailure = await preloadRockTriplanarLibrary(null, {
+      loadTexture: async () => { throw new Error('decode failed'); },
+    });
+    assert.equal(decodeFailure, false);
+    const uploadFailure = await preloadRockTriplanarLibrary({ initTexture() { throw new Error('upload failed'); } }, {
+      loadTexture: async () => new THREE.Texture(),
+    });
+    assert.equal(uploadFailure, false);
+    assert.equal(rockTriplanarReady(), false);
+    assertMapSwitch(0);
+  } finally { console.warn = warn; }
+
   const loaded = await preloadRockTriplanarLibrary(null, { loadTexture: async () => new THREE.Texture() });
   assert.equal(loaded, true);
   assert.equal(rockTriplanarReady(), true);
+  assertMapSwitch(1);
   setRockTriplanarEnabled(false);
+  assertMapSwitch(0);
   setRockTriplanarEnabled(true);
+  assertMapSwitch(1);
 });

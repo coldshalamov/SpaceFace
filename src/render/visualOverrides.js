@@ -10,6 +10,8 @@ import { isCeresShipbreakSection } from './ceresShipbreakVisuals.js';
 // Explicit authored identities fail closed. A load/build problem may leave an entity temporarily
 // absent and diagnostic, but it must never publish a visually unrelated procedural body first.
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { frameCostFixOn } from './frameCostSwitches.js';
 import { buildKestrelHero } from './ships/kestrelHero.js';
 import { buildConcordPatrol } from './ships/concordPatrol.js';
 import { buildReaverPirate } from './ships/reaverPirate.js';
@@ -298,6 +300,176 @@ export function setBoundaryStandInResolver(resolver) {
   boundaryStandInResolver = typeof resolver === 'function' ? resolver : null;
 }
 
+// ONE DRAW PER STAND-IN MATERIAL. A ship whose authored body is still admitting draws its own
+// silhouette in the shared flat stand-in materials, leaf by leaf: a wasp stand-in was 19-22 draws, and
+// in a round-6 Swarm fight six of them were 112 of the frame's 267 draws (referee census
+// 2026-11-23). The stand-in is a static silhouette (it never animates its leaves) and every leaf
+// of one flat material can be one mesh, so a record's stand-in leaves are merged once per material
+// (position + normal, the only attributes the flat materials read) and every stand-in of that
+// record shares the merged buffers: ~6 draws a wasp instead of ~20, one upload per hull kind.
+// ?rfx=-standInMerge draws the leaves one by one again.
+const STAND_IN_MERGED = new WeakMap(); // record -> [{ geometry, material }] | null (not mergeable)
+const STAND_IN_MERGE_MAX_VERTICES = 400000;
+// Diagnostics: records merged and records left leaf by leaf (and why), for probes.
+const standInMergeStats = { merged: 0, refused: 0, reasons: {} };
+if (typeof globalThis !== 'undefined') globalThis.__SF_STANDIN_MERGE__ = standInMergeStats;
+function refuseStandInMerge(record, reason, cacheRefusal = true) {
+  standInMergeStats.refused++;
+  standInMergeStats.reasons[reason] = (standInMergeStats.reasons[reason] || 0) + 1;
+  if (cacheRefusal) STAND_IN_MERGED.set(record, null);
+  return null;
+}
+
+function buildStandInDirectLeaves(primitives, targetParent) {
+  for (const primitive of primitives) {
+    if (!primitive.geometry) continue;
+    // The substrate teardown path respects this flag; residency eviction disposes through its own
+    // resource handles, not detached-object traversal, so the record's buffers stay safe.
+    primitive.geometry.userData = primitive.geometry.userData || {};
+    primitive.geometry.userData.spacefaceSharedAsset = true;
+    const mesh = new THREE.Mesh(primitive.geometry, standInMaterialFor(primitive.material));
+    mesh.name = `StandIn_${primitive.name || 'Primitive'}`;
+    if (primitive.matrix) primitive.matrix.decompose(mesh.position, mesh.quaternion, mesh.scale);
+    mesh.castShadow = false;
+    mesh.receiveShadow = false;
+    mesh.userData.spacefaceSharedAsset = true;
+    mesh.userData.authoredResolvingMarker = true;
+    targetParent.add(mesh);
+  }
+}
+
+function floatAttributeCopy(attribute, matrix, isNormal) {
+  const count = attribute.count;
+  const out = new Float32Array(count * 3);
+  const v = new THREE.Vector3();
+  const normalMatrix = isNormal && matrix ? new THREE.Matrix3().getNormalMatrix(matrix) : null;
+  for (let i = 0; i < count; i++) {
+    v.set(attribute.getX(i), attribute.getY(i), attribute.getZ(i));
+    if (isNormal) { if (normalMatrix) v.applyMatrix3(normalMatrix); v.normalize(); }
+    else if (matrix) v.applyMatrix4(matrix);
+    out[i * 3] = v.x; out[i * 3 + 1] = v.y; out[i * 3 + 2] = v.z;
+  }
+  return new THREE.BufferAttribute(out, 3);
+}
+
+function standInMergedParts(record, primitives) {
+  if (STAND_IN_MERGED.has(record)) return STAND_IN_MERGED.get(record);
+  const recomputeDetachedNormals = frameCostFixOn('drawBatchOpt');
+  let parts = null;
+  try {
+    const byMaterial = new Map();
+    let vertices = 0;
+    for (const primitive of primitives) {
+      const source = primitive.geometry;
+      if (!source) continue;
+      const position = source.getAttribute && source.getAttribute('position');
+      // A geometry whose CPU arrays were released after upload (package CPU detach) cannot be
+      // merged if position/index is missing. Package CPU detach always keeps position+index and
+      // only releases normals; when drawBatchOpt is on, detached normals are recomputed smoothly
+      // from the kept positions and indices instead of refusing the merge.
+      if (!position || !position.array || position.array.length < position.count * position.itemSize
+        || position.itemSize !== 3) return refuseStandInMerge(record, 'position-detached');
+      const normal = source.getAttribute('normal');
+      const normalValid = !!(normal && normal.array && normal.array.length >= normal.count * normal.itemSize && normal.itemSize === 3);
+      if (normal && !normalValid && !recomputeDetachedNormals) {
+        return refuseStandInMerge(record, 'normal-detached', false);
+      }
+      const index = source.index;
+      if (index && (!index.array || index.array.length < index.count)) return refuseStandInMerge(record, 'index-detached');
+      vertices += position.count;
+      const material = standInMaterialFor(primitive.material);
+      let list = byMaterial.get(material);
+      if (!list) byMaterial.set(material, list = []);
+      list.push(primitive);
+    }
+    if (!byMaterial.size || vertices > STAND_IN_MERGE_MAX_VERTICES) return refuseStandInMerge(record, byMaterial.size ? 'too-large' : 'empty');
+    parts = [];
+    for (const [material, list] of byMaterial) {
+      const pieces = list.map((primitive) => {
+        const source = primitive.geometry;
+        const piece = new THREE.BufferGeometry();
+        const det = primitive.matrix ? primitive.matrix.determinant() : 1;
+        const flipWinding = det < 0;
+        const posAttr = floatAttributeCopy(source.getAttribute('position'), primitive.matrix || null, false);
+        piece.setAttribute('position', posAttr);
+        const normal = source.getAttribute('normal');
+        const normalValid = !!(normal && normal.array && normal.array.length >= normal.count * normal.itemSize && normal.itemSize === 3);
+        if (normalValid) {
+          piece.setAttribute('normal', floatAttributeCopy(normal, primitive.matrix || null, true));
+        }
+        if (source.index) {
+          const srcIdx = source.index.array;
+          const idxCount = source.index.count;
+          const idxCopy = posAttr.count <= 65535 ? new Uint16Array(idxCount) : new Uint32Array(idxCount);
+          if (flipWinding) {
+            for (let k = 0; k + 2 < idxCount; k += 3) {
+              idxCopy[k] = srcIdx[k];
+              idxCopy[k + 1] = srcIdx[k + 2];
+              idxCopy[k + 2] = srcIdx[k + 1];
+            }
+          } else {
+            for (let k = 0; k < idxCount; k++) idxCopy[k] = srcIdx[k];
+          }
+          piece.setIndex(new THREE.BufferAttribute(idxCopy, 1));
+        } else if (flipWinding) {
+          const arr = posAttr.array;
+          for (let k = 0; k + 2 < posAttr.count; k += 3) {
+            const i1 = (k + 1) * 3, i2 = (k + 2) * 3;
+            for (let c = 0; c < 3; c++) { const tmp = arr[i1 + c]; arr[i1 + c] = arr[i2 + c]; arr[i2 + c] = tmp; }
+          }
+          const nAttr = piece.getAttribute('normal');
+          if (nAttr) {
+            const nArr = nAttr.array;
+            for (let k = 0; k + 2 < nAttr.count; k += 3) {
+              const i1 = (k + 1) * 3, i2 = (k + 2) * 3;
+              for (let c = 0; c < 3; c++) { const tmp = nArr[i1 + c]; nArr[i1 + c] = nArr[i2 + c]; nArr[i2 + c] = tmp; }
+            }
+          }
+        }
+        return piece;
+      });
+      // Recompute missing or detached normals in place (keeps indexed meshes indexed and smooth).
+      for (const piece of pieces) {
+        if (!piece.getAttribute('normal')) piece.computeVertexNormals();
+      }
+      const indexed = pieces.every((piece) => piece.index);
+      const ready = indexed ? pieces : pieces.map((piece) => (piece.index ? piece.toNonIndexed() : piece));
+      const geometry = mergeGeometries(ready, false);
+      for (const piece of new Set([...pieces, ...ready])) piece.dispose();
+      if (!geometry) return refuseStandInMerge(record, 'merge-failed');
+      geometry.computeBoundingSphere();
+      geometry.computeBoundingBox();
+      geometry.userData = { ...(geometry.userData || {}), spacefaceSharedAsset: true, standInMerged: true };
+      parts.push({ geometry, material, leaves: list.map((primitive) => `StandIn_${primitive.name || 'Primitive'}`) });
+    }
+  } catch (_) {
+    return refuseStandInMerge(record, 'threw');
+  }
+  standInMergeStats.merged++;
+  STAND_IN_MERGED.set(record, parts);
+  return parts;
+}
+
+/** Per frame for a drawn stand-in: show its merged or its leaf-by-leaf set (in-run on/off measurement). */
+export function syncStandInMergeSwitch(marker) {
+  const on = frameCostFixOn('standInMerge') && frameCostFixOn('drawBatchOpt');
+  if (!marker || !marker.userData) return on;
+  let sets = marker.userData.standInSets;
+  if (!sets && !on && marker.userData.standInMergedGroup && marker.userData.standInPrimitives) {
+    const direct = new THREE.Group();
+    direct.name = 'StandIn_Leaves';
+    buildStandInDirectLeaves(marker.userData.standInPrimitives, direct);
+    marker.add(direct);
+    sets = { merged: marker.userData.standInMergedGroup, direct };
+    marker.userData.standInSets = sets;
+  }
+  if (sets && sets.merged.visible !== on) {
+    sets.merged.visible = on;
+    sets.direct.visible = !on;
+  }
+  return on;
+}
+
 function lodStandInFor(entity, record, target = null) {
   const primitives = standInPrimitivesFor(record);
   const boundsSize = record && record.bounds && record.bounds.size;
@@ -325,21 +497,41 @@ function lodStandInFor(entity, record, target = null) {
   }
   const groupScale = entityScale / sourceLength;
   group.scale.setScalar(groupScale);
-  for (const primitive of primitives) {
-    if (!primitive.geometry) continue;
-    // The substrate teardown path respects this flag; residency eviction disposes through its own
-    // resource handles, not detached-object traversal, so the record's buffers stay safe.
-    primitive.geometry.userData = primitive.geometry.userData || {};
-    primitive.geometry.userData.spacefaceSharedAsset = true;
-    const mesh = new THREE.Mesh(primitive.geometry, standInMaterialFor(primitive.material));
-    mesh.name = `StandIn_${primitive.name || 'Primitive'}`;
-    if (primitive.matrix) primitive.matrix.decompose(mesh.position, mesh.quaternion, mesh.scale);
-    mesh.castShadow = false;
-    mesh.receiveShadow = false;
-    mesh.userData.spacefaceSharedAsset = true;
-    mesh.userData.authoredResolvingMarker = true;
-    group.add(mesh);
+  const live = globalThis.__sfRfx;
+  const harness = !!(live && (typeof live.standInMerge === 'boolean' || typeof live.drawBatchOpt === 'boolean'));
+  const mergeOn = frameCostFixOn('standInMerge') && frameCostFixOn('drawBatchOpt');
+  // Ships only: a hull stand-in is what a crowded fight draws many of (places keep their leaves).
+  const merged = entity && entity.type === 'ship' && (mergeOn || harness)
+    ? standInMergedParts(record, primitives) : null;
+  let leafParent = group;
+  if (merged) {
+    const mergedSet = new THREE.Group();
+    mergedSet.name = 'StandIn_Merged';
+    for (const part of merged) {
+      const mesh = new THREE.Mesh(part.geometry, part.material);
+      mesh.name = 'StandIn_Merged';
+      mesh.castShadow = false;
+      mesh.receiveShadow = false;
+      mesh.userData.spacefaceSharedAsset = true;
+      mesh.userData.authoredResolvingMarker = true;
+      mesh.userData.standInLeaves = part.leaves;
+      mergedSet.add(mesh);
+    }
+    group.add(mergedSet);
+    group.userData.standInMergedGroup = mergedSet;
+    group.userData.standInPrimitives = primitives;
+    group.userData.standInAssetId = record.assetId || record.url || 'Ship';
+    if (harness) {
+      leafParent = new THREE.Group();
+      leafParent.name = 'StandIn_Leaves';
+      group.add(leafParent);
+      mergedSet.visible = mergeOn; leafParent.visible = !mergeOn;
+      group.userData.standInSets = { merged: mergedSet, direct: leafParent };
+    } else {
+      leafParent = null;
+    }
   }
+  if (leafParent) buildStandInDirectLeaves(primitives, leafParent);
   if (!group.children.length) return null;
   // Live-residency borrow: record.residency.state was stamped once at decode and never flips,
   // so byte eviction can dispose these shared buffers mid-pending while the stand-in keeps
@@ -388,17 +580,27 @@ function lodStandInFor(entity, record, target = null) {
 export function createOpeningStandInWarmSubject() {
   const group = new THREE.Group();
   group.name = 'SF_OpeningStandInWarm';
-  const standIn = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), standInMaterialFor(null));
+  const standInGeo = new THREE.BoxGeometry(1, 1, 1);
+  const standInMat = standInMaterialFor(null);
+  const standIn = new THREE.Mesh(standInGeo, standInMat);
   standIn.name = 'StandIn_OpeningWarm';
   standIn.castShadow = false;
   standIn.receiveShadow = false;
   standIn.userData.authoredResolvingMarker = true;
+  const standInInst = new THREE.InstancedMesh(standInGeo, standInMat, 1);
+  standInInst.name = 'StandIn_OpeningWarmInstanced';
+  standInInst.castShadow = false;
+  standInInst.receiveShadow = false;
+  standInInst.userData.authoredResolvingMarker = true;
   const marker = new THREE.Mesh(RESOLVING_MARKER_GEOMETRY, RESOLVING_MARKER_MATERIAL);
   marker.name = 'AuthoredResolvingMarker_OpeningWarm';
   marker.userData.authoredResolvingMarker = true;
-  group.add(standIn, marker);
+  group.add(standIn, standInInst, marker);
   group.userData.openingWarmExemplar = true;
-  group.userData.disposeOpeningWarm = () => { standIn.geometry.dispose(); };
+  group.userData.disposeOpeningWarm = () => {
+    standInGeo.dispose();
+    if (typeof standInInst.dispose === 'function') standInInst.dispose();
+  };
   return group;
 }
 
@@ -507,15 +709,26 @@ export function materializeBoundaryResolvingMarker(boundary) {
   if (!data || data.resolvingMarker || data.wantsBoundaryResolvingMarker !== true) return null;
   const entity = data.boundaryResolvingMarkerEntity;
   const standInFile = data.boundaryResolvingStandInFile;
+  // Swarm kill debris can collide immediately. Keep the warmed marker until its exact
+  // packaged body commits. A decoded record can still need buffer uploads and material links.
+  const swarmKillDebris = entity?.type === 'wreck'
+    && entity.data?.runCohort === 'survival' && entity.data.persistenceOwner === 'aftermathWrecks';
+  const resolveStandIn = swarmKillDebris ? null : boundaryStandInResolver;
   // Same-identity stand-in first: when the boundary's own authored record is already resident
   // (library plan or a settled warm decode), draw its real silhouette in the shared flat
   // materials instead of the abstract octahedron — strictly closer to the committed body.
   let marker = null;
   const standInTarget = boundaryStandInTarget(data, entity);
   let record = null;
-  if (standInFile && boundaryStandInResolver) {
-    try { record = boundaryStandInResolver(entity, standInFile) || null; } catch { record = null; }
-    if (record) marker = lodStandInFor(entity, record, standInTarget);
+  if (standInFile && resolveStandIn) {
+    try { record = resolveStandIn(entity, standInFile) || null; } catch { record = null; }
+    if (record) {
+      // A malformed record's stand-in build must not throw into the submit row — a thrown
+      // materialize faults the seat every frame, quarantines it, and leaves the pending
+      // body invisible for good. The abstract marker still gives the player an affordance.
+      try { marker = lodStandInFor(entity, record, standInTarget); }
+      catch { marker = null; }
+    }
   }
   if (!marker) {
     marker = resolvingMarkerFor(entity, boundaryStandInDrawnX(data, standInTarget));
@@ -523,7 +736,7 @@ export function materializeBoundaryResolvingMarker(boundary) {
       // A resident record that cannot build a stand-in (no primitives/bounds) never
       // becomes usable — the ship-substrate path stamps the same terminal reason.
       data.resolvingMarkerFallbackReason = 'stand-in-record-unusable';
-    } else if (standInFile && boundaryStandInResolver) {
+    } else if (standInFile && resolveStandIn) {
       // Built before the record went resident: keep the same pending retry the ship substrate
       // uses so a mid-admission warm decode still converges on the real body.
       data.admissionStandInPending = true;
@@ -1723,7 +1936,8 @@ export function installVisualOverrides(factory, options = {}) {
   factory.build = (entity) => {
     // This is the authored character body, not a missing ship asset. Production's direct
     // authored mount must not replace it with its stat-only Bastion backing definition.
-    if (ironKrakenProfileFor(entity) || ironKrakenWreckProfileFor(entity)) {
+    if (((entity?.data?.lootTableId || entity?.data?.enemyTypeId) && ironKrakenProfileFor(entity))
+      || ironKrakenWreckProfileFor(entity)) {
       const character = fallbackBuild(entity);
       if (character?.userData?.ironKrakenRig || character?.userData?.ironKrakenWreck) {
         setPresentationAdmission(entity, PRESENTATION_ADMISSION.ready);

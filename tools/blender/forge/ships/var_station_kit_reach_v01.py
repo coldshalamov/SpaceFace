@@ -24,7 +24,28 @@ COLORS = {
 RAMS = (0.0, 120.0, 240.0)
 
 
+def signature(s):
+    """The reach arm: a crimson ram thrown across the inside of the ring, trophy spikes below."""
+    a = 0.0
+    rz = math.radians(a)
+    F.box(s, 'ReachArm', K.polar(32.0, a, 14.0), (34.0, 6.0, 7.0), material='paint2',
+          rot_z=rz, taper=0.6, bevel=0.15)
+    F.box(s, 'ReachArmTip', K.polar(46.0, a, 14.0), (7.0, 3.0, 4.0), material='stripe',
+          rot_z=rz, taper=0.4, bevel=0.1)
+    F.band(s, 'ReachArm', K.polar(36.0, a, 14.0), (0, 0, 1), 1.6, 'stripe')
+    for i in range(5):
+        aa = 20.0 + i * 15.0
+        F.cylinder(s, f'ReachSpike{i}', K.polar(22.0, aa, 6.0), K.polar(26.0, aa, 12.0),
+                   0.4, 0.1, material='bare', segments=8)
+    s.detail = 1
+    for k in range(3):
+        F.light(s, f'ReachArmLamp{k}', K.polar(30.0 + k * 7.0, a, 18.0), 'glow_red.reach',
+                size=0.45)
+    s.detail = 0
+
+
 def dress(s):
+    K.interior(s, 'stripe', 'glow_red.reach')
     # war-painted band: dark armour with a crimson cut-line
     K.ring_wall(s, 'WarBand', K.SHELL_R + 0.8, 10.0, 24.0, 2.4, 'paint', segs=56)
     K.ring_wall(s, 'WarRail', K.SHELL_R + 1.0, 24.0, 25.4, 2.6, 'stripe', segs=56)
@@ -58,6 +79,7 @@ def dress(s):
     for i, a in enumerate(RAMS):
         F.light(s, f'RamLamp{i}', K.polar(K.SHELL_R + 7.0, a, 22.5), 'glow_red.reach', size=0.6)
     s.detail = 0
+    signature(s)
 
 
 def build():

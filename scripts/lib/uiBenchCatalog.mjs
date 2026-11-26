@@ -26,6 +26,11 @@ export const UI_BENCH_SHOTS = Object.freeze([
   { id: 'physicsVenues', screen: 'physicsVenues', backdrop: 'space' },
   { id: 'raceBoard', screen: 'raceBoard', backdrop: 'space' },
   { id: 'settings', screen: 'settings', backdrop: 'title' },
+  // CONTROLLER-1: the ACCESS tab at the handheld Large-text preset (130%) — the
+  // Steam-Deck-class readability claim has to be a photograph, not an assertion.
+  { id: 'settings-access', screen: 'settings', backdrop: 'title', focus: 'Access' },
+  { id: 'settings-large-text', screen: 'settings', backdrop: 'title', focus: 'Access', textScale: 1.3 },
+  { id: 'flight-large-text', screen: 'flight', backdrop: 'world', textScale: 1.3 },
   // `saves: 'filed'` loads with two lives on file (tools/ui-bench-saves.js); -empty is a fresh machine.
   { id: 'save-load', screen: 'saveLoad', backdrop: 'title', saves: 'filed' },
   { id: 'saveLoad', screen: 'saveLoad', backdrop: 'title', saves: 'filed' },
@@ -51,6 +56,11 @@ export const UI_BENCH_SHOTS = Object.freeze([
   { id: 'tech-tree', screen: 'techTree', backdrop: 'title' },
   { id: 'techTree', screen: 'techTree', backdrop: 'title' },
   // A career some hours in: six nodes researched and research points banked (tools/ui-bench.js).
+  // The Pilot Tree (T): Adventure some hours in with points to spend; Swarm mid-run and on Run Over.
+  { id: 'pilot-tree', screen: 'pilotTree', backdrop: 'title', pilotTree: 'adventure' },
+  { id: 'pilot-tree-fresh', screen: 'pilotTree', backdrop: 'title', pilotTree: 'fresh' },
+  { id: 'pilot-tree-swarm', screen: 'pilotTree', backdrop: 'title', pilotTree: 'swarm' },
+  { id: 'pilot-tree-run-over', screen: 'pilotTree', backdrop: 'title', pilotTree: 'run-over' },
   { id: 'tech-tree-progress', screen: 'techTree', backdrop: 'title', research: ['tech_combat_basics', 'tech_strike_craft', 'tech_fire_control', 'tech_deflector_theory', 'tech_industrial_mining', 'tech_drive_tuning'] },
 
   { id: 'flight', screen: 'flight', backdrop: 'world' },
@@ -107,6 +117,9 @@ export const UI_BENCH_SHOTS = Object.freeze([
 
   { id: 'station', screen: 'station', backdrop: 'shell' },
   { id: 'station-dock', screen: 'station', backdrop: 'shell' },
+  // The four-door concourse. `station` itself lands on Jobs (first-dock); this shot asks navigate
+  // for the hub so the bench can photograph the bay, not the board.
+  { id: 'station-hub', screen: 'station', tab: 'concourse', backdrop: 'shell' },
   { id: 'station-market', screen: 'station', tab: 'market', backdrop: 'shell' },
   { id: 'station-shipworks', screen: 'station', tab: 'shipworks', backdrop: 'shell' },
   { id: 'station-shipworks-impound', screen: 'station', tab: 'shipworks', backdrop: 'shell', impound: 'lot' },
@@ -132,6 +145,11 @@ export const UI_BENCH_SHOTS = Object.freeze([
   { id: 'crucibleDraft', screen: 'crucibleDraft', backdrop: 'world' },
   { id: 'crucible-rearm', screen: 'crucibleDraft', backdrop: 'world', ruleset: 'scored' },
   { id: 'crucible-fortify', screen: 'crucibleFortify', backdrop: 'world' },
+  // OVH-01b: the Pilot Tree cards over the between-round draft (a seeded hand; `pilot` picks which).
+  { id: 'pilot-cards', screen: 'pilotCards', backdrop: 'world' },
+  { id: 'pilot-cards-short', screen: 'pilotCards', backdrop: 'world', pilot: 'short' },
+  { id: 'pilot-cards-two', screen: 'pilotCards', backdrop: 'world', pilot: 'two' },
+  { id: 'pilot-cards-capstone', screen: 'pilotCards', backdrop: 'world', pilot: 'capstone' },
   { id: 'crucible-refit', screen: 'crucibleRefit', backdrop: 'world' },
   { id: 'crucibleRefit', screen: 'crucibleRefit', backdrop: 'world' },
   { id: 'crucible-refit-swarm', screen: 'crucibleRefit', backdrop: 'world', ruleset: 'swarm' },
@@ -140,7 +158,7 @@ export const UI_BENCH_SHOTS = Object.freeze([
   // C01-03: the round-30 Swarm win (THE PIT IS YOURS / Take the win / Keep going).
   { id: 'crucible-results-win', screen: 'crucibleResults', backdrop: 'world', ruleset: 'swarm', win: true },
 
-  { id: 'asteroid-works', screen: 'drill', backdrop: 'world' },
+  { id: 'asteroid-works', screen: 'drill', backdrop: 'world', drill: 'claimed' },
   { id: 'drill', screen: 'drill', backdrop: 'world' },
   // A worked claim: staked site with a survey, Core + 2 machines on one lane, heat ~40%,
   // charge ~65%, half-full hold, one ledger event (tools/ui-bench.js seedDrillShot). -build
@@ -153,7 +171,12 @@ export const UI_BENCH_SHOTS = Object.freeze([
   { id: 'base-claimed', screen: 'base', backdrop: 'shell', base: 'claimed' },
   // The boot overlay mid-load: ring at 62% with 4 stage ticks over the tableaux field.
   // Not a screen — the bench stages #boot-overlay directly (mountLoadingShot).
+  // `loading` is Continue (the Helios harbour); -swarm is the Swarm door's Foundry room; -adventure a
+  // New Game; -boot the cold boot's film and ring (LOADING-02: launches show their place).
   { id: 'loading', screen: 'bootOverlay', backdrop: 'title' },
+  { id: 'loading-swarm', screen: 'bootOverlay', backdrop: 'title', loading: 'swarm' },
+  { id: 'loading-adventure', screen: 'bootOverlay', backdrop: 'title', loading: 'adventure' },
+  { id: 'loading-boot', screen: 'bootOverlay', backdrop: 'title', loading: 'boot' },
   { id: 'automation', screen: 'automation', backdrop: 'shell', outposts: 'stocked' },
   { id: 'automation-outposts', screen: 'automation', backdrop: 'shell', outposts: 'stocked', focus: 'outposts' },
 

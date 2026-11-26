@@ -473,7 +473,7 @@ export const ENTRIES_WORLD_A = [
     channel: 'spectacle',
     payload: {
       from: 'Tethys Junction',
-      text: 'One lonely light rides the influence edge on a slow orbit, sweeping the dark side of the disc once every thirteen seconds — the only structure for a thousand WU. Pilots time their sling-band approaches by it, and the light is always exactly on time.',
+      text: 'One lonely light rides the influence edge on a slow orbit, sweeping the dark side of the disc once every thirteen seconds — the only structure for a thousand meters. Pilots time their sling-band approaches by it, and the light is always exactly on time.',
     },
   },
 
@@ -505,7 +505,7 @@ export const ENTRIES_WORLD_A = [
     channel: 'memory',
     followup: 'Bar set-dressing row at station_ceres gated to the night watch (worldCalendar stationShiftAt) + purchase option: buying the next round for the floor crew grants DMC rep +1; codex page under Shaft 7 (poi_ceres_shaft_seven keeps the stake).',
     payload: {
-      text: 'One stool on the Crucible\'s night rail has a drink on it and nobody near it. The barkeep explains, unprompted: "Shift 7\'s floor lead. Nine of eleven came back from Shaft 7. The drink is for the arithmetic." It is refreshed every night by the same crew. Nobody drinks it.',
+      text: 'One stool on the smelter\'s night rail has a drink on it and nobody near it. The barkeep explains, unprompted: "Shift 7\'s floor lead. Nine of eleven came back from Shaft 7. The drink is for the arithmetic." It is refreshed every night by the same crew. Nobody drinks it.',
     },
   },
 

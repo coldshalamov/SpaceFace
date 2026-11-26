@@ -199,12 +199,12 @@ export function stationServiceLabel(svc) {
 const STATION_TABS = [
   { id: 'market', label: 'Market', help: 'Buy cargo, sell cargo, and set profitable trade nav routes.' },
   { id: 'shipyard', label: 'Shipyard', help: 'Buy whole ships (new chassis). Changes base cargo, toughness, and what module sizes fit.' },
-  { id: 'outfit', label: 'Outfitting', help: 'Buy and install modules on your current ship: guns, shields, cargo pods, mining tools.' },
+  { id: 'outfit', label: 'Shipyard', help: 'Buy and install modules on your current ship: guns, shields, cargo pods, mining tools.' },
   { id: 'manufacture', label: 'Manufacture', help: 'Turn mined and traded materials into modules, upgrades, and hulls.' },
-  { id: 'missions', label: 'Missions', help: 'Accept contracts; accepted missions auto-track and place nav guidance.' },
-  { id: 'services', label: 'Services', help: 'Refuel, repair, and handle station services before undocking.' },
+  { id: 'missions', label: 'Jobs', help: 'Accept contracts; accepted missions auto-track and place nav guidance.' },
+  { id: 'services', label: 'Service bar', help: 'Refuel, repair, and handle station services before undocking.' },
   { id: 'factions', label: 'Factions', help: 'Check standing and learn which groups control stations and contracts.' },
-  { id: 'bar', label: 'Bar', help: 'Find rumors, contacts, and station-side leads.' },
+  { id: 'bar', label: 'People', help: 'Find rumors, contacts, and station-side leads.' },
 ];
 
 function titleCaseWords(value) {

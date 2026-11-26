@@ -13,10 +13,10 @@ export function tritonResearchLine(row, phase, aftermath) {
     + (lead ? ' Research lead sent to Triton Wake Lab’s contracts desk.' : ' No research lead posted to a desk.');
   if (phase === 'aftermath') return 'ARCHIVE FIELD LAB · The stabilized echo still holds. The Archive now has a reference for instruments that disagree.';
   if (phase === 'expired') return 'ARCHIVE FIELD LAB · The old echo has faded. The instruments need three fresh bearings; your earlier work remains recorded.';
-  const next = row.progress > 0 ? ' Circle the mast for a new baseline.' : ' Start 240 WU from the mast toward Wake Lab.';
-  if (phase === 'approach') return 'ARCHIVE FIELD LAB · Optional: scan 3 positions within 300 WU of the mast, 180 WU apart.' + next;
-  if (phase === 'rejected') return 'FIELD LAB · Same baseline; no new reading. Move 180 WU from earlier readings; stay within 300 WU of the mast.' + next;
-  if (phase === 'progress') return `FIELD LAB · Bearing ${row.progress}/3 logged. Keep readings 180 WU apart, within 300 WU of the mast.` + next;
+  const next = row.progress > 0 ? ' Circle the mast for a new baseline.' : ' Start 240 m from the mast toward Wake Lab.';
+  if (phase === 'approach') return 'ARCHIVE FIELD LAB · Optional: scan 3 positions within 300 m of the mast, 180 m apart.' + next;
+  if (phase === 'rejected') return 'FIELD LAB · Same baseline; no new reading. Move 180 m from earlier readings; stay within 300 m of the mast.' + next;
+  if (phase === 'progress') return `FIELD LAB · Bearing ${row.progress}/3 logged. Keep readings 180 m apart, within 300 m of the mast.` + next;
   return null;
 }
 

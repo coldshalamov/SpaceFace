@@ -98,11 +98,11 @@ test('the compass words are the landing point\'s, read against the pilot positio
       h.bus.emit('swarm:broodReserve', { familyId: 'mite', count: 2, wave: WAVE, pos: { x, z } });
       return lines(h)[0];
     };
-    // East is +x; west is −x (playerCompass.js — the one convention every bearing reads).
-    assert.match(word(300, 0), /out of the east\.$/);
+    // East is −x; west is +x−x (playerCompass.js — the one convention every bearing reads).
+    assert.match(word(300, 0), /out of the west\.$/);
     assert.match(word(0, -300), /out of the south\.$/);
-    assert.match(word(-300, 0), /out of the west\.$/);
-    assert.match(word(210, 210), /out of the north(?:east)?\.$/);
+    assert.match(word(-300, 0), /out of the east\.$/);
+    assert.match(word(210, 210), /out of the north(?:west)?\.$/);
   } finally {
     survivalAnnounce.destroy();
   }

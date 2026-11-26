@@ -33,11 +33,18 @@ ${W} .sx-sw__main { ${PLAIN} }
 ${W} .sx-sw__rail { ${PLAIN} }
 /* ui-polish-397: stats reading wears the promise-scale hairline card (1px bone ~18% / radius 10 /
    faint fill / padded); shade-pool ::before stands down. Densify radius 8→6 on short/narrow. */
-${W} .sx-sw__stats { position:relative; isolation:isolate; box-sizing:border-box;
+${W} .sx-sw__stats { position:relative; z-index:4 !important; isolation:isolate; box-sizing:border-box;
   border-image:none !important; box-shadow:none !important; clip-path:none !important;
   border:1px solid rgb(${BONE} / .18) !important; border-radius:10px;
   background:rgb(${BONE} / .025) !important; padding:16px 18px; }
 ${W} .sx-sw__stats::before { content:none; display:none; }
+/* the plate is a scroll rail when the viewport squeezes it: the window dissolves in the inter-row
+   gap and the ladder's cursor rides the card's left edge, so the cut row reads as "more below"
+   instead of a broken card (bench 1440x900: the sixth sheet row was sliced at the rim) */
+${W} .sx-sw__stats[data-overflow="1"] { -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 32px), rgb(0 0 0 / .45) calc(100% - 13px), transparent); mask-image:linear-gradient(180deg, #000 calc(100% - 32px), rgb(0 0 0 / .45) calc(100% - 13px), transparent); }
+${W} .sx-sw__stats[data-overflow="0"] { -webkit-mask-image:none; mask-image:none; }
+${W} .sx-sw__stats > .orr-extent { display:block; }
+${W} .sx-sw__stats > .orr-extent::before { left:0; width:2px; }
 @media (max-height:820px) { ${W} .sx-sw__stats { border-radius:8px; } }
 @media (max-height:460px) { ${W} .sx-sw__stats { border-radius:8px; } }
 @media (max-height:400px) { ${W} .sx-sw__stats { border-radius:6px; } }
@@ -65,7 +72,12 @@ ${W} .sx-sw__side::before { content:none; display:none; }
 ${W} .sx-sw__carousel { ${PLAIN} }
 ${W} .sx-sw__list { ${PLAIN} gap:2px !important;
   background:linear-gradient(90deg, transparent 7px, rgb(${BONE} / .22) 7px, rgb(${BONE} / .22) 8px, transparent 8px) !important; }
-${W} .sx-sw-row { ${PLAIN} position:relative; padding:9px 4px 9px 28px !important; min-height:0 !important; height:auto !important; text-align:left; }
+${W} .sx-sw-row { ${PLAIN} position:relative; display:grid; grid-template-columns:30px minmax(0,1fr); column-gap:10px; row-gap:3px; align-items:center;
+  padding:9px 4px 9px 28px !important; min-height:0 !important; height:auto !important; text-align:left; }
+${W} .sx-sw-row > .sx-sw-row__thumb { grid-column:1; grid-row:1 / span 2; align-self:center; }
+${W} .sx-sw-row > .sx-sw-row__body { grid-column:2; grid-row:1; display:block; min-width:0; }
+${W} .sx-sw-row .sx-sw-row__name, ${W} .sx-sw-row .sx-sw-row__sub { display:block; grid-area:auto; white-space:normal; overflow-wrap:anywhere; }
+${W} .sx-sw-row > .k-row__num { grid-column:2; grid-row:2; grid-area:auto; justify-self:start; white-space:normal; overflow-wrap:anywhere; }
 ${W} .sx-sw-row::after { display:none !important; }
 ${W} .sx-sw-row::before { content:"" !important; display:block !important; position:absolute !important; left:4px !important; top:50% !important;
   width:8px !important; height:1px !important; background:rgb(${BONE} / .38) !important; box-shadow:none !important; transform:none !important; clip-path:none !important; }
@@ -309,6 +321,9 @@ ${W} .sx-sw-rack__cell::before { content:"" !important; display:block !important
   border-radius:50% !important; border:1.4px dashed rgb(${BONE} / .6) !important; background:none !important; box-shadow:none !important;
   transform:none !important; clip-path:none !important; margin:0 !important; }
 ${W} .sx-sw-rack__cell:not(.is-empty)::before { border:5px solid rgb(248 244 234) !important; }
+${W} .sx-sw-rack__cell.has-bomb::before { display:none !important; }
+${W} .sx-sw-rack__cell.has-bomb { flex-direction:row !important; align-items:center !important; flex-wrap:wrap; gap:6px 8px; }
+${W} .sx-sw-rack__cell.has-bomb .sx-sw-rack__copy { flex:1 1 auto; min-width:0; }
 ${W} .sx-sw-rack__cell::after { display:none !important; }
 ${W} .sx-sw-rack__cell .k-row__num { ${LABEL} order:-1; font-size:12px !important; letter-spacing:.06em !important; color:rgb(${BONE} / .55) !important; text-align:left; }
 ${W} .sx-sw-rack__cell .k-row__name { display:flex !important; flex-direction:column; font-size:12px !important; color:rgb(${BONE} / .8) !important; }
@@ -402,7 +417,12 @@ ${W} .sx-modrow::before { content:"" !important; display:block !important; posit
 ${W} .sx-modrow:is(:focus-within, :hover)::before { left:2px !important; top:15px !important; width:11px !important; height:2px !important; margin-top:0 !important;
   background:var(--dp-hand, #f2b950) !important; }
 ${W} .sx-modrow:focus-visible { outline:none !important; }
-${W} .sx-modrow .sx-modrow__body { display:flex !important; flex-direction:column; gap:3px; width:auto !important; min-width:0 !important; }
+${W} .sx-modrow .sx-modrow__body { display:flex !important; flex-direction:column; gap:4px; width:auto !important; min-width:0 !important; }
+${W} .sx-modrow .sx-modrow__head { display:inline-flex !important; align-items:center !important; gap:10px; min-width:0; }
+${W} .sx-modrow .sx-modrow__head > .sf-thumb, ${W} .sx-modrow .sx-modrow__head > .sf-paint-preview, ${W} .sx-modrow .sx-modrow__head > .sx-provmark { flex:none; }
+${W} .sx-chooser__panel:has(.sf-paint-preview, [data-paint-row]) { overflow-y:auto !important; padding-right:4px; scrollbar-width:thin; scrollbar-color:rgb(${BONE} / .42) transparent; }
+${W} .sx-chooser__panel:has(.sf-paint-preview, [data-paint-row]) > .sx-chooser__list { flex:none !important; overflow:visible !important; height:auto !important; }
+${W} .sx-chooser__panel:has(.sf-paint-preview, [data-paint-row]) > .sx-chooser__kicker { margin-top:12px !important; }
 ${W} .sx-modrow :is(.sx-modrow__body, .sx-modrow__name, .sx-modrow__buy) { white-space:normal !important; overflow-wrap:anywhere; }
 ${W} .sx-modrow .sx-modrow__name { font-size:13.5px !important; font-weight:600 !important; color:${INK} !important; }
 ${W} .sx-modrow .sx-modrow__name .sf-entity-link { text-decoration:none !important; background-image:none !important; color:inherit !important; }

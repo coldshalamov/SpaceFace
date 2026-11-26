@@ -108,9 +108,9 @@ test('the first variance persists as the clue receipt; later reads use the desk 
   f.system.update(0.5, f.state);
   const popups = f.events.filter(([t, p]) => t === 'comms:popup' && p.id.startsWith('kessler_read_'));
   assert.equal(popups.length, 2);
-  assert.ok(popups[0][1].text.includes('thumb-width'), 'the first variance calls the skim');
+  assert.match(popups[0][1].text, /plate shows 37\.6 t.+stamp says 40\.0 t.+logged the difference/);
   assert.equal(popups[0][1].persist, true, 'the clue receipt stays in the log');
-  assert.ok(!popups[1][1].text.includes('thumb-width'), 'the second read is routine');
+  assert.doesNotMatch(popups[1][1].text, /logged the difference/, 'the second read is routine');
   assert.equal(popups[1][1].persist, false);
   assert.equal(f.state.story.flags[KESSLER_SCALE.countFlag], 2);
 });

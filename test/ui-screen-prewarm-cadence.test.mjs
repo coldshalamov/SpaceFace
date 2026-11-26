@@ -1,9 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { beginScreenRegistrationCycle, ui } from '../src/ui/uiRoot.js';
+import { createBus } from '../src/core/eventBus.js';
+import { laneSetMode } from '../src/core/simLaneCommands.js';
+import { createScreenManager } from '../src/ui/screenManager.js';
+import { beginScreenRegistrationCycle, invalidateScreenRegistrationCycle, ui } from '../src/ui/uiRoot.js';
+import { makeDocument } from './helpers/mini-dom.mjs';
 
-function fixture(top = 'newGame') {
-  const keys = ['requestAnimationFrame', 'scheduler', 'setTimeout', 'clearTimeout', 'performance'];
+function fixture({ mode = 'menu', top = 'newGame', mountMs = 0 } = {}) {
+  const keys = ['document', 'requestAnimationFrame', 'scheduler', 'setTimeout', 'clearTimeout', 'performance'];
   const previous = new Map(keys.map(key => [key, Object.getOwnPropertyDescriptor(globalThis, key)]));
   const frames = [];
   const tasks = [];
@@ -16,32 +20,70 @@ function fixture(top = 'newGame') {
   globalThis.setTimeout = callback => { timers.set(++nextTimer, callback); return nextTimer; };
   globalThis.clearTimeout = id => timers.delete(id);
   Object.defineProperty(globalThis, 'performance', { configurable: true, value: { now: () => now } });
+
+  const document = makeDocument();
+  document.addEventListener = () => {};
+  document.removeEventListener = () => {};
+  globalThis.document = document;
+  const screens = document.createElement('div');
+  screens.id = 'screens';
+  screens.removeChild = child => child.remove();
+  document.body.appendChild(screens);
+
   const owner = Object.create(ui);
-  owner.state = { mode: 'menu' };
-  const manager = {
-    top: () => top,
-    prewarm(id) { calls.push(`mount:${id}`); },
-    paintWarm(id) { calls.push(`paint:${id}`); },
-  };
+  const stack = top ? [top] : [];
+  owner.state = { mode, ui: { screenStack: stack } };
+  owner.bus = createBus();
+  const manager = createScreenManager({
+    state: owner.state, bus: owner.bus, timeEffects: { clear() {}, set() {} },
+  });
+  for (const id of ['pause', 'settings']) {
+    manager.register({
+      id,
+      mount(el) {
+        calls.push('mount:' + id);
+        Object.defineProperty(el, 'offsetHeight', { get() { calls.push('paint:' + id); return 1; } });
+        now += mountMs;
+      },
+      onShow(ctx) {
+        if (id === 'pause' && ctx.state.mode === 'flight') laneSetMode(ctx.state, ctx.bus, 'paused');
+        calls.push('show:' + id);
+      },
+    });
+  }
   owner.screenManager = manager;
   owner._screenPrewarmQueue = ['pause', 'settings'];
   owner._screenPrewarmDraining = false;
-  const cycle = beginScreenRegistrationCycle(owner, manager);
+  owner._screenRegistrationCycle = beginScreenRegistrationCycle(owner, manager);
+  owner._bindScreenPrewarmWake(owner._screenRegistrationCycle);
+
   const frame = async () => {
+    await Promise.resolve(); // Finish the synchronous screen/mode transition before the wake check.
     for (const callback of frames.splice(0)) callback(now);
     for (const callback of tasks.splice(0)) callback();
     await Promise.resolve();
     await Promise.resolve();
   };
-  return { owner, manager, cycle, calls, frame,
-    setTop(value) { top = value; },
-    setMode(value) { owner.state.mode = value; },
-    spend(ms) { now += ms; },
-    start() { owner._drainScreenPrewarmQueue(cycle); },
+  return {
+    owner, manager, calls, frame, screens, pendingFrames: () => frames.length,
+    setTop(value) {
+      stack.splice(0, stack.length, value);
+      manager.syncVisibility();
+    },
+    setMode(value) {
+      owner.state.mode = value;
+      owner.bus.emit('mode:changed', { mode: value });
+    },
+    dock() {
+      owner.state.ui.docked = true;
+      manager.syncVisibility();
+    },
+    start() { owner._drainScreenPrewarmQueue(); },
     async close() {
-      // Let a parked drain finish before removing the fake scheduling environment.
-      top = 'mainMenu';
-      for (let i = 0; owner._screenPrewarmDraining && i < 10; i++) await frame();
+      owner._screenPrewarmWakeOff();
+      invalidateScreenRegistrationCycle(owner);
+      await frame();
+      manager.destroy();
       for (const [key, descriptor] of previous) {
         if (descriptor) Object.defineProperty(globalThis, key, descriptor);
         else delete globalThis[key];
@@ -50,58 +92,99 @@ function fixture(top = 'newGame') {
   };
 }
 
-test('New Game holds unrelated mounts/layouts and Back resumes the same queue', async () => {
+test('New Game parks the warm queue with no frame polling and Back resumes it', async () => {
   const f = fixture();
   try {
     f.start();
     await f.frame();
-    await f.frame();
+    assert.equal(f.pendingFrames(), 0);
     assert.deepEqual(f.calls, []);
     assert.deepEqual(f.owner._screenPrewarmQueue, ['pause', 'settings']);
+
     f.setTop('mainMenu');
     await f.frame();
     assert.deepEqual(f.calls, ['mount:pause', 'paint:pause']);
     await f.frame();
     assert.deepEqual(f.calls, ['mount:pause', 'paint:pause', 'mount:settings', 'paint:settings']);
-    await f.frame();
     assert.equal(f.owner._screenPrewarmDraining, false);
   } finally { await f.close(); }
 });
 
-test('New Game opening between mount and paint retains the unfinished warm', async () => {
-  const f = fixture('mainMenu');
+test('resuming flight between mount and layout defers only the unfinished work to loading', async () => {
+  const f = fixture({ top: 'mainMenu', mountMs: 7 });
   try {
-    f.manager.prewarm = id => { f.calls.push(`mount:${id}`); f.spend(7); };
     f.start();
-    assert.deepEqual(f.calls, ['mount:pause']);
-    f.setTop('newGame');
     await f.frame();
+    assert.deepEqual(f.calls, ['mount:pause']);
+
+    f.setMode('flight');
     await f.frame();
     assert.deepEqual(f.calls, ['mount:pause']);
     assert.deepEqual(f.owner._screenPrewarmQueue, ['pause', 'settings']);
+    assert.equal(f.pendingFrames(), 0);
+
     f.setMode('loading');
     await f.frame();
-    await f.frame();
-    assert.deepEqual(f.calls.slice(0, 3), ['mount:pause', 'mount:pause', 'paint:pause']);
+    assert.deepEqual(f.calls, ['mount:pause', 'paint:pause']);
   } finally { await f.close(); }
 });
 
-test('a retired parked drain leaves the replacement registration queue alone', async () => {
-  const f = fixture();
+test('Pause opens and focuses on demand in flight while the optional queue waits for the paused screen', async () => {
+  const f = fixture({ mode: 'flight', top: null });
   try {
     f.start();
-    const replacement = { top: () => 'mainMenu',
-      prewarm(id) { f.calls.push(`replacement-mount:${id}`); },
-      paintWarm(id) { f.calls.push(`replacement-paint:${id}`); } };
+    await f.frame();
+    assert.equal(f.pendingFrames(), 0);
+    assert.deepEqual(f.calls, []);
+
+    f.manager.pushScreen('pause');
+    const pause = f.screens.firstElementChild;
+    assert.deepEqual(f.calls, ['mount:pause', 'show:pause']);
+    assert.equal(f.manager.top(), 'pause');
+    assert.equal(pause.getAttribute('aria-modal'), 'true');
+    assert.equal(pause.inert, false);
+    assert.equal(globalThis.document.activeElement, pause);
+
+    await f.frame();
+    await f.frame();
+    assert.equal(pause.classList.contains('sf-screen--visible'), true);
+    assert.deepEqual(f.calls, ['mount:pause', 'show:pause', 'mount:settings', 'paint:settings']);
+  } finally { await f.close(); }
+});
+
+test('docking wakes the optional queue without changing flight mode', async () => {
+  const f = fixture({ mode: 'flight', top: null });
+  try {
+    f.start();
+    assert.equal(f.pendingFrames(), 0);
+    f.dock();
+    assert.equal(f.owner.state.mode, 'flight');
+    assert.deepEqual(f.calls, []);
+
+    await f.frame();
+    assert.deepEqual(f.calls, ['mount:pause', 'paint:pause']);
+  } finally { await f.close(); }
+});
+
+test('an in-flight callback from a retired manager leaves the replacement queue to its own drain', async () => {
+  const f = fixture({ top: 'mainMenu' });
+  try {
+    f.start();
+    const replacement = {
+      top: () => 'mainMenu',
+      prewarm(id) { f.calls.push('replacement-mount:' + id); },
+      paintWarm(id) { f.calls.push('replacement-paint:' + id); },
+    };
     f.owner.screenManager = replacement;
     f.owner._screenPrewarmQueue = ['help'];
-    const next = beginScreenRegistrationCycle(f.owner, replacement);
+    f.owner._screenRegistrationCycle = beginScreenRegistrationCycle(f.owner, replacement);
+    f.start();
+
     await f.frame();
     assert.deepEqual(f.calls, []);
     assert.deepEqual(f.owner._screenPrewarmQueue, ['help']);
-    assert.equal(f.owner._screenPrewarmDraining, false);
-    f.owner._drainScreenPrewarmQueue(next);
-    assert.deepEqual(f.calls, ['replacement-mount:help', 'replacement-paint:help']);
     await f.frame();
+    assert.deepEqual(f.calls, ['replacement-mount:help', 'replacement-paint:help']);
+    assert.equal(f.owner._screenPrewarmDraining, false);
   } finally { await f.close(); }
 });

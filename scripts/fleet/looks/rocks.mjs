@@ -1,7 +1,9 @@
 // LOOK-05A look: Swarm round N rocks. Boots a round, reports what the on-screen rocks wear
 // (placeId / authored vs procedural, materials), and shoots frames (plain + zoomed on the nearest rocks).
 //   node scripts/fleet/game-lock.mjs run -- node scripts/fleet/looks/rocks.mjs <outPrefix> <round>
-import { chromium } from 'playwright';
+import { chromium as rawChromium } from 'playwright';
+import { quietChromium } from '../../lib/quietLaunch.mjs';
+const chromium = quietChromium(rawChromium);
 import { spawn } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';

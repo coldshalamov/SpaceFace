@@ -4,12 +4,14 @@ import { COMBAT_LAB_STARTER_PACKAGES } from '../../data/combatLabSetups.js';
 import { SHIPS } from '../../data/ships.js';
 import { WEAPONS } from '../../data/weapons.js';
 import { MODULES } from '../../data/modules.js';
+import { catalogBlurbFor } from '../../data/swarmCatalog.js';
 import { swarmStakeFor, swarmStakeYield } from '../../data/swarmStakes.js';
 import { SWARM_BOSS_EVERY, SWARM_REFIT_EVERY } from '../../data/swarmMode.js';
 import { applyWeaponsColdLoadout } from '../../systems/survivalMutators.js';
 import { buildSlotList } from '../../systems/ships.js';
 import { hullPosterUrl } from '../hullPosters.js';
 import { equipmentSvg } from './equipmentGlyphs.js';
+import { itemThumbElement } from '../icons/itemThumbnails.js';
 import { BUILD_SIGILS, STAKE_MARKS, sigilSvg } from './buildSigils.js';
 import { createHullRing } from './hullRing.js';
 import { rollTo } from './text.js';
@@ -18,7 +20,8 @@ import { createSlotJig } from './slotJig.js';
 import { injectCruciblePreparation } from './cruciblePreparationLayouts.js';
 
 const defs = new Map([...WEAPONS, ...MODULES].map(d => [d.id, d]));
-const modeName = rules => ({ swarm: 'Swarm', scored: 'Gauntlet', boss_circuit: 'Boss circuit', block: 'Foundry Block' })[rules] || 'Crucible';
+const modeName = rules => ({ swarm: 'Swarm', scored: 'Gauntlet', boss_circuit: 'Boss circuit', block: 'Foundry Block' })[rules] || 'Swarm';
+const SLOT_SIZE_LABELS = { S: 'Small', M: 'Medium', L: 'Large' };
 
 /** One hull of each starter, for the stat ring's fractions against the largest of them. */
 const STARTER_HULLS = COMBAT_LAB_STARTER_PACKAGES
@@ -75,17 +78,18 @@ export function createCruciblePreparation({ root, stage, title, foot, enter, rea
   // Each step names its ONE decision up front: the door reads as "the fight, then the ship,
   // then the armory" instead of a wall of tile rows. Big choice first, small fittings last.
   const HEADS = [
-    { step: '01 · The fight', line: 'Mode, arena, and where on the ladder this run starts. Nothing here costs anything.' },
-    { step: '02 · The ship', line: 'The hull and the kit it launches with. Kits come fitted; a bare hull buys its kit in the armory.' },
+    { label: 'Match setup', line: 'Choose how to play, how hard it is, and where you fight.' },
+    { label: 'Starting ship', line: 'Choose a starting build. Builds on the same ship come with different equipment. You can change it next.' },
   ];
   const panels = ['encounter', 'ship'].map((id, i) => {
     const panel = make('section', 'orr-prep-panel');
     panel.id = `sf-prep-${id}`; panel.setAttribute('role', 'tabpanel');
     panel.setAttribute('aria-labelledby', `sf-prep-tab-${i}`);
     const head = make('div', 'orr-prep-panelhead');
-    head.append(make('h2', 'orr-prep-panelhead-step', HEADS[i].step), make('p', 'orr-prep-panelhead-line', HEADS[i].line));
+    const instruction = make('p', 'orr-prep-panelhead-line', HEADS[i].line);
+    head.append(make('h2', 'orr-prep-panelhead-step', HEADS[i].label), instruction);
     const list = make('ul', 'sf-crd-settings orr-prep-settings');
-    panel.append(head, list); return { panel, list };
+    panel.append(head, list); return { panel, list, instruction };
   });
   const challengesWrap = make('details', 'orr-prep-disclosure');
   challengesWrap.appendChild(make('summary', '', 'Challenges — weekly, ghosts'));
@@ -114,24 +118,25 @@ export function createCruciblePreparation({ root, stage, title, foot, enter, rea
   const dailyReading = make('p', 'k-t-fine orr-prep-daily');
   panels[0].panel.insertBefore(dailyReading, panels[0].list);
   const bare = root.querySelector('.sf-crd-anyhull');
+  let bareDisclosure = null;
   if (bare) {
-    const disclosure = make('details', 'orr-prep-disclosure orr-prep-bare');
-    disclosure.appendChild(make('summary', '', 'Build from a bare hull'));
-    bare.parentNode.insertBefore(disclosure, bare); disclosure.appendChild(bare);
+    bareDisclosure = make('details', 'orr-prep-disclosure orr-prep-bare');
+    bareDisclosure.appendChild(make('summary', '', 'Start with an empty ship'));
+    bare.parentNode.insertBefore(bareDisclosure, bare); bareDisclosure.appendChild(bare);
   }
 
-  const nav = make('nav', 'orr-prep-nav'); nav.setAttribute('aria-label', 'Crucible preparation');
+  const nav = make('nav', 'orr-prep-nav'); nav.setAttribute('aria-label', 'Swarm setup');
   const tablist = make('div', 'orr-prep-tabs'); tablist.setAttribute('role', 'tablist');
-  const tabs = ['Encounter', 'Ship & kit'].map((label, i) => {
+  const tabs = HEADS.map(({ label }, i) => {
     const tab = make('button', 'orr-prep-tab'); tab.id = `sf-prep-tab-${i}`;
     tab.setAttribute('role', 'tab'); tab.setAttribute('aria-controls', panels[i].panel.id);
     tab.append(make('span', 'orr-prep-step', `0${i + 1}`), make('span', '', label));
     tab.addEventListener('click', () => show(i));
     tablist.appendChild(tab); return tab;
   });
-  const nextStep = make('span', 'orr-prep-nextstep', '03 ARMORY');
-  nextStep.setAttribute('aria-label', 'Next, fit equipment in the armory');
+  const nextStep = make('span', 'orr-prep-nextstep', '03 Review equipment');
   const summary = make('p', 'orr-prep-summary', '');
+  const stakeNumbers = [];
   nav.append(tablist, nextStep, summary); root.insertBefore(nav, stage);
   tablist.addEventListener('keydown', e => {
     const current = tabs.indexOf(doc.activeElement);
@@ -157,7 +162,7 @@ export function createCruciblePreparation({ root, stage, title, foot, enter, rea
   const jigHost = make('div', 'orr-prep-shipjig');
   const jig = createSlotJig({ host: jigHost });
   const views = make('div', 'orr-prep-views'); views.setAttribute('role', 'group'); views.setAttribute('aria-label', 'Ship view');
-  const viewButtons = ['Ship', 'Hardpoints'].map((label, i) => {
+  const viewButtons = ['Ship', 'Equipment slots'].map((label, i) => {
     const b = make('button', 'orr-prep-view', label); b.addEventListener('click', () => showView(i));
     views.appendChild(b); return b;
   });
@@ -168,7 +173,7 @@ export function createCruciblePreparation({ root, stage, title, foot, enter, rea
   const ring = createHullRing({ host: visual, anchor: img });
   img.addEventListener('load', () => ring.layout());
   const manifest = make('div', 'orr-prep-manifest'); manifest.setAttribute('role', 'group');
-  manifest.setAttribute('aria-label', 'Starting equipment; select a fitting to locate its hardpoint');
+  manifest.setAttribute('aria-label', 'Starting equipment. Select an item to see what it does and where it fits.');
   const fitNote = make('p', 'orr-prep-fitnote', ''); fitNote.setAttribute('role', 'status');
   shipHero.append(shipHead, visual, manifest, fitNote); root.insertBefore(shipHero, foot);
   const brief = make('div', 'orr-prep-brief');
@@ -179,7 +184,7 @@ export function createCruciblePreparation({ root, stage, title, foot, enter, rea
   const cadence = make('p', 'orr-prep-cadence', '');
   brief.append(purse, cadence); if (arenaHero) arenaHero.appendChild(brief);
 
-  const continueButton = make('button', 'k-word k-word--emph k-word--primary orr-prep-continue', 'Choose ship & kit →');
+  const continueButton = make('button', 'k-word k-word--emph k-word--primary orr-prep-continue', 'Choose ship →');
   const enterLi = enter.parentNode;
   const nextLi = make('li', ''); nextLi.appendChild(continueButton); enterLi.parentNode.insertBefore(nextLi, enterLi);
   continueButton.addEventListener('click', () => { show(1); tabs[1].focus({ preventScroll: true }); });
@@ -209,40 +214,54 @@ export function createCruciblePreparation({ root, stage, title, foot, enter, rea
     if (arenaHero) visibility(arenaHero, step === 0);
     visibility(shipHero, step === 1); visibility(enterLi, step === 1); visibility(nextLi, step === 0);
     stage.scrollTop = 0;
-    if (hint) hint.textContent = step === 0 ? '01 — Choose the fight: mode, arena, ladder. Your ship comes next.' : '02 — Choose the ship. Kits come fitted; bare hulls buy their kit in the armory. Nothing here costs campaign credits.';
+    if (hint) hint.textContent = step === 0 ? 'Your ship comes next.' : 'This setup uses no Adventure credits.';
     update();
   }
   function update() {
     const state = read();
-    if (state.dailySnapshot) dailyReading.textContent = `Today · ${state.dailySnapshot.dateKey} UTC · seed ${state.dailySnapshot.seed}`;
+    if (bareDisclosure) visibility(bareDisclosure, !state.hullFirst);
+    panels[1].instruction.textContent = state.hullFirst
+      ? 'Choose the ship you want to fly. Pick its equipment on the next screen.'
+      : HEADS[1].line;
+    visibility(dailyReading, state.daily && !!state.dailySnapshot);
+    if (state.daily && state.dailySnapshot) dailyReading.textContent = `Daily challenge · ${state.dailySnapshot.dateKey} UTC`;
     onPreviewVisibility(step === 0 && state.ruleset === 'swarm');
     const stake = swarmStakeFor(state.daily ? 'contender' : state.stake);
     const isSwarm = state.ruleset === 'swarm';
+    const startsAtZero = isSwarm && state.zeroScrapOpening === true;
+    const purse = startsAtZero ? 0 : stake.purse;
+    const currency = startsAtZero ? 'Scrap' : 'cr';
+    for (const { node, credits } of stakeNumbers) {
+      node.textContent = startsAtZero ? '0 Scrap' : `${credits.toLocaleString('en-US')} cr`;
+    }
     const loadout = preparationLoadout(state.starterId, state.weeklyMutatorId);
     if (!loadout) return;
     latest = loadout;
     // The run at a glance, always on screen: where, what, and what it costs. A pick that never
     // lands (a locked hull, a denied tile) reads here immediately — the summary is the receipt.
-    const purseBits = isSwarm ? ` · ${stake.purse.toLocaleString('en-US')} cr purse` : '';
+    const purseBits = startsAtZero ? ' · 0 Scrap to start'
+      : isSwarm ? ` · ${purse.toLocaleString('en-US')} cr to spend` : '';
     summary.textContent = `${state.daily ? 'Daily · ' : ''}${modeName(state.ruleset)} · ${state.arenaLabel || 'Arena'} · ${loadout.hull.name}${purseBits}`;
-    nextStep.textContent = isSwarm ? '03 ARMORY' : '03 LAUNCH';
-    nextStep.setAttribute('aria-label', isSwarm ? 'Next, fit equipment in the armory' : 'Next, enter the arena');
-    if (isSwarm) enter.textContent = 'Open armory →';
+    nextStep.textContent = isSwarm ? '03 Review equipment' : '03 Launch';
+    if (isSwarm) enter.textContent = 'Review equipment →';
     // The purse is a mechanical counter: it rolls to the new stake and settles. Non-swarm terms
     // have no number to roll, so they arrive as plain readings.
     const canRoll = typeof globalThis.document?.createElement === 'function';
-    if (isSwarm) { purseUnit.textContent = 'cr'; if (canRoll) rollTo(purseN, stake.purse); else purseN.textContent = stake.purse.toLocaleString('en-US'); }
+    if (isSwarm) { purseUnit.textContent = currency; if (canRoll) rollTo(purseN, purse); else purseN.textContent = purse.toLocaleString('en-US'); }
     else {
       purseUnit.textContent = state.ruleset === 'scored' ? 'waves' : state.ruleset === 'block' ? 'waves' : 'champions';
       purseN.textContent = state.ruleset === 'scored' ? '30' : state.ruleset === 'block' ? '10' : '5';
     }
-    cadence.textContent = isSwarm ? `Starting budget · ${Math.round(stake.pressure * 100)}% pressure\nArmory every round · Refit & boss every ${SWARM_REFIT_EVERY === SWARM_BOSS_EVERY ? SWARM_REFIT_EVERY : `${SWARM_REFIT_EVERY}/${SWARM_BOSS_EVERY}`}`
-      : 'An authored challenge. Your starter kit is ready before launch.';
-    const buildKey = `${state.starterId}:${state.weeklyMutatorId || ''}:${state.ruleset}`;
+    cadence.textContent = isSwarm
+      ? `${startsAtZero ? 'Starting Scrap' : 'Starting credits'}\nGuns on the floor · Boss every ${SWARM_BOSS_EVERY} rounds · Refit every ${SWARM_REFIT_EVERY} rounds`
+      : 'Your starter kit is ready before launch.';
+    const buildKey = `${state.starterId}:${state.weeklyMutatorId || ''}:${state.ruleset}:${state.hullFirst}`;
     if (lastBuild !== buildKey) {
       lastBuild = buildKey; lit = -1;
       name.textContent = loadout.hull.name;
-      subtitle.textContent = `${loadout.name} · ${loadout.slots.filter(s => s.defId).length} / ${loadout.slots.length} hardpoints fitted`;
+      subtitle.textContent = state.hullFirst
+        ? `${loadout.slots.length} equipment slots`
+        : `${loadout.name} · ${loadout.slots.filter(s => s.defId).length} of ${loadout.slots.length} equipment slots filled`;
       const url = hullPosterUrl(loadout.hull.id);
       if (url) img.src = url; else img.removeAttribute('src');
       ring.paint(hullRingStats(loadout.hull));
@@ -253,17 +272,25 @@ export function createCruciblePreparation({ root, stage, title, foot, enter, rea
         b.setAttribute('aria-pressed', 'false');
         b.style.setProperty('--i', String(fitIndex));
         fitIndex += 1;
-        const glyph = equipmentSvg({ defId: slot.defId || slot.type }, doc); if (glyph) b.appendChild(glyph);
-        const text = make('span', ''); text.append(make('small', '', `${String(slot.index + 1).padStart(2, '0')} / ${slot.type} ${slot.size}`), make('strong', '', slot.name));
+        const thumb = slot.defId
+          ? itemThumbElement({ defId: slot.defId, slotSize: slot.size }, { size: 'md', showCrest: true }, doc)
+          : equipmentSvg({ defId: slot.type }, doc);
+        if (thumb) b.appendChild(thumb);
+        const size = SLOT_SIZE_LABELS[slot.size] || slot.size;
+        const mount = [size, slot.type].filter(Boolean).join(' ');
+        const label = `Slot ${slot.index + 1} · ${mount}`;
+        const text = make('span', ''); text.append(make('small', '', label), make('strong', '', slot.name));
         b.appendChild(text); if (!slot.defId) b.classList.add('is-empty');
         b.addEventListener('click', () => {
           lit = slot.index; showView(1);
           for (const sibling of manifest.children) sibling.setAttribute('aria-pressed', String(sibling === b));
-          fitNote.textContent = `${slot.name} · hardpoint ${slot.index + 1} · ${slot.type} ${slot.size}`;
+          const description = catalogBlurbFor(defs.get(slot.defId));
+          fitNote.textContent = [label, slot.name, description].filter(Boolean).join(' · ');
         });
         manifest.appendChild(b);
       }
-      fitNote.textContent = isSwarm ? 'Keep this kit, replace parts, or buy supplies in the opening armory.' : 'This is the kit you take into the arena.';
+      fitNote.textContent = state.hullFirst ? 'Select a slot to see what fits there.'
+        : isSwarm ? 'Select an item to see what it does. You can fly with this equipment as-is.' : 'This is the equipment you take into the arena.';
       showView(view);
       // The weigh-in: the render rises and settles, the name snaps, the manifest staggers in.
       shipHero.classList.remove('is-arriving');
@@ -279,10 +306,22 @@ export function createCruciblePreparation({ root, stage, title, foot, enter, rea
   for (const b of root.querySelectorAll('.sf-crd-hull')) {
     const kit = preparationLoadout(b.dataset.starterId); const art = b.querySelector('.fh-tile-art');
     if (!kit || !art) continue;
+    if (b.dataset.starterId.startsWith('hull:')) {
+      const image = hullPosterUrl(kit.hull.id, 'top');
+      if (image) {
+        const thumb = make('img', ''); thumb.src = image; thumb.alt = ''; thumb.loading = 'lazy';
+        art.replaceChildren(thumb);
+      }
+      b.appendChild(make('span', 'orr-prep-hullsub', `${kit.slots.length} equipment slots`));
+      continue;
+    }
     if (b.dataset.locked === '1') b.appendChild(make('span', 'orr-prep-locknote', b.dataset.earn || 'Locked'));
     const fitted = kit.slots.filter(s => s.defId).length;
     b.appendChild(make('span', 'orr-prep-hullsub', `${kit.hull.name} · ${fitted}/${kit.slots.length} fitted`));
-    art.replaceChildren(sigilSvg(BUILD_SIGILS, b.dataset.starterId, doc) || equipmentSvg({ kind: 'hull' }, doc));
+    const sigil = sigilSvg(BUILD_SIGILS, b.dataset.starterId, doc) || equipmentSvg({ kind: 'hull' }, doc);
+    const hullThumb = itemThumbElement({ hullId: kit.hull.id, kind: 'hull', hullView: 'hero' }, { size: 'sm', className: 'orr-prep-hullbadge', showCrest: false, showPips: false }, doc);
+    if (sigil && hullThumb) art.replaceChildren(sigil, hullThumb);
+    else if (sigil) art.replaceChildren(sigil);
   }
   // The stake's mark: a service ladder of chevrons, lit when its run is the chosen contract.
   for (const b of root.querySelectorAll('.sf-crd-stake')) {
@@ -290,8 +329,11 @@ export function createCruciblePreparation({ root, stage, title, foot, enter, rea
     const art = b.querySelector('.fh-tile-art');
     const markSvg = sigilSvg(STAKE_MARKS, b.dataset.stakeId, doc, 'orr-sigil orr-prep-stake-mark');
     if (art && markSvg) art.replaceChildren(markSvg);
-    b.append(make('span', 'orr-prep-stake-number', `${stake.purse.toLocaleString('en-US')} cr`),
-      make('span', 'orr-prep-stake-pressure', `${Math.round(stake.pressure * 100)}% pressure`),
+    const waveSize = stake.pressure < 1 ? 'Fewer enemies' : stake.pressure > 1 ? 'More enemies' : 'Standard waves';
+    const number = make('span', 'orr-prep-stake-number');
+    stakeNumbers.push({ node: number, credits: stake.purse });
+    b.append(number,
+      make('span', 'orr-prep-stake-pressure', waveSize),
       make('span', 'orr-prep-stake-yield', swarmStakeYield(b.dataset.stakeId)));
   }
   for (const b of root.querySelectorAll('.sf-crd-mode,.sf-crd-block')) {
@@ -333,8 +375,201 @@ export function createCruciblePreparation({ root, stage, title, foot, enter, rea
     }
   }
   show(0);
-  return { update, attractHost: arenaHero ? attractHost : null,
+  return { update, attractHost: arenaHero ? attractHost : null, show,
     get previewVisible() { return step === 0 && read().ruleset === 'swarm'; },
     focus() { tabs[step].focus({ preventScroll: true }); },
     dispose() { onPreviewVisibility(false); jig.dispose(); ring.dispose(); for (const ro of roPool) ro.disconnect(); } };
+}
+
+/**
+ * THE SWARM FRONT (04_SWARM.md §7): the screen a player meets. The Foundry's key art, one big PLAY,
+ * and three remembered picks — the room, the difficulty and the ship with its starting gun.
+ * Everything else the door can do (the other modes, the Daily, challenges, seeds, records) stays
+ * whole behind one More, which hands over to the full setup this module already composes.
+ *
+ * Each pick is a roving radio group: Left/Right (keyboard or pad) step it and wrap, the chevrons
+ * step it for a mouse or a thumb, and only the chosen option is drawn. Up/Down walk between the
+ * picks and PLAY. Enter is PLAY anywhere on the front (the screen's onKey owns it); Esc leaves.
+ * The screen owns every value and the launch: this module draws and reports.
+ */
+export function createSwarmPlayFront({
+  root, picks = [], pitch = '', onPlay = () => {}, onMore = () => {}, onBack = () => {},
+  resume = null, art = () => null, roomName = () => '',
+} = {}) {
+  const doc = root?.ownerDocument;
+  if (!doc?.createElementNS || !root.querySelector) return null;
+  const make = (tag, cls, text) => {
+    const n = doc.createElement(tag); if (cls) n.className = cls;
+    if (text !== undefined) n.textContent = text;
+    if (tag === 'button') n.type = 'button';
+    return n;
+  };
+  const chevron = (dir) => {
+    const ns = 'http://www.w3.org/2000/svg';
+    const svg = doc.createElementNS(ns, 'svg');
+    svg.setAttribute('viewBox', '0 0 16 16'); svg.setAttribute('aria-hidden', 'true'); svg.setAttribute('focusable', 'false');
+    const path = doc.createElementNS(ns, 'path');
+    path.setAttribute('d', dir < 0 ? 'M10 3 5 8l5 5' : 'M6 3l5 5-5 5');
+    svg.appendChild(path);
+    return svg;
+  };
+  const front = make('section', 'sf-play');
+  front.setAttribute('aria-labelledby', 'sf-play-title');
+  const artBox = make('div', 'sf-play__art'); artBox.setAttribute('aria-hidden', 'true');
+  const layers = [make('img', 'sf-play__img'), make('img', 'sf-play__img')];
+  for (const img of layers) { img.alt = ''; img.decoding = 'async'; artBox.appendChild(img); }
+  const shade = make('div', 'sf-play__shade'); shade.setAttribute('aria-hidden', 'true');
+  const room = make('p', 'sf-play__room', ''); room.setAttribute('aria-hidden', 'true');
+  const panel = make('div', 'sf-play__panel');
+  const kicker = make('p', 'sf-play__kicker', 'Madame Kiln presents');
+  const title = make('h1', 'sf-play__title', 'Swarm'); title.id = 'sf-play-title';
+  const lede = make('p', 'sf-play__pitch', pitch);
+  const list = make('div', 'sf-play__picks');
+  panel.append(kicker, title, lede, list);
+
+  const rows = [];
+  for (const spec of picks) {
+    const group = make('div', `sf-play-pick${spec.sub ? ' sf-play-pick--sub' : ''}`);
+    group.setAttribute('role', 'radiogroup');
+    group.dataset.pick = spec.id;
+    const label = make('span', 'sf-play-pick__label', spec.label);
+    label.id = `sf-play-pick-${spec.id}`;
+    group.setAttribute('aria-labelledby', label.id);
+    const prev = make('button', 'sf-play-pick__step'); prev.tabIndex = -1; prev.appendChild(chevron(-1));
+    prev.setAttribute('aria-label', `Previous ${spec.label.toLowerCase()}`);
+    const next = make('button', 'sf-play-pick__step'); next.tabIndex = -1; next.appendChild(chevron(1));
+    next.setAttribute('aria-label', `Next ${spec.label.toLowerCase()}`);
+    const face = make('div', 'sf-play-pick__face');
+    const thumb = make('img', 'sf-play-pick__thumb'); thumb.alt = ''; thumb.decoding = 'async'; thumb.hidden = true;
+    const opts = make('div', 'sf-play-pick__opts');
+    face.append(thumb, opts);
+    const line = make('p', 'sf-play-pick__line', '');
+    group.append(label, prev, face, next, line);
+    list.appendChild(group);
+    const row = { spec, group, opts, line, thumb, prev, next, buttons: [] };
+    const step = (delta, focus) => {
+      const options = spec.options();
+      if (!options.length) return;
+      const here = Math.max(0, options.findIndex((o) => o.value === spec.value()));
+      const target = options[(here + delta + options.length) % options.length];
+      if (!target || target.value === spec.value()) return;
+      spec.choose(target.value);
+      paint();
+      if (focus) row.buttons.find((b) => b.dataset.value === String(target.value))?.focus({ preventScroll: true });
+    };
+    row.step = step;
+    prev.addEventListener('click', () => step(-1, false));
+    next.addEventListener('click', () => step(1, false));
+    group.addEventListener('keydown', (event) => {
+      if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+      event.preventDefault(); event.stopPropagation();
+      step(event.key === 'ArrowRight' ? 1 : -1, true);
+    });
+    rows.push(row);
+  }
+
+  const go = make('button', 'sf-play__go');
+  go.append(make('span', 'sf-play__go-word', 'Play'), make('span', 'sf-play__key', 'Enter'));
+  go.setAttribute('aria-label', 'Play. Starts round 1.');
+  go.addEventListener('click', () => onPlay());
+  const alt = make('div', 'sf-play__alt');
+  const more = make('button', 'sf-play__quiet sf-play__more');
+  more.append(make('span', 'sf-play__quiet-word', 'More'), make('span', 'sf-play__quiet-sub', 'Gauntlet, Daily, seeds, records'));
+  more.setAttribute('aria-label', 'More: Gauntlet, Foundry Block, Daily, challenges, seeds and records');
+  more.addEventListener('click', () => onMore());
+  alt.appendChild(more);
+  if (resume) {
+    const back = make('button', 'sf-play__quiet sf-play__resume');
+    back.append(make('span', 'sf-play__quiet-word', resume.label));
+    if (resume.title) back.title = resume.title;
+    back.addEventListener('click', () => resume.onClick());
+    alt.appendChild(back);
+  }
+  const leave = make('button', 'sf-play__quiet sf-play__back');
+  leave.append(make('span', 'sf-play__quiet-word', 'Back'), make('span', 'sf-play__key sf-play__key--quiet', 'Esc'));
+  leave.addEventListener('click', () => onBack());
+  alt.appendChild(leave);
+  panel.append(go, alt);
+  front.append(artBox, shade, room, panel);
+  root.appendChild(front);
+
+  // Up/Down walk the front's stops: each pick's chosen option, PLAY, then the quiet keys.
+  const stops = () => [...rows.map((r) => r.buttons.find((b) => b.getAttribute('aria-checked') === 'true')), go,
+    ...alt.querySelectorAll('button')].filter(Boolean);
+  front.addEventListener('keydown', (event) => {
+    // Enter is PLAY from anywhere on the front except a quiet key, whose own Enter wins.
+    if (event.key === 'Enter') {
+      if (event.repeat || alt.contains(event.target)) return;
+      event.preventDefault(); event.stopPropagation();
+      onPlay();
+      return;
+    }
+    if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
+    const list = stops();
+    const here = list.indexOf(doc.activeElement);
+    if (here < 0) return;
+    const target = list[Math.max(0, Math.min(list.length - 1, here + (event.key === 'ArrowDown' ? 1 : -1)))];
+    if (!target || target === doc.activeElement) return;
+    event.preventDefault(); event.stopPropagation();
+    target.focus({ preventScroll: true });
+  });
+
+  let front0 = 0; let shownArt = null;
+  function paintArt() {
+    const src = art();
+    if (!src || src === shownArt) return;
+    shownArt = src;
+    const nextImg = layers[1 - front0];
+    nextImg.src = src;
+    nextImg.classList.add('is-on');
+    layers[front0].classList.remove('is-on');
+    front0 = 1 - front0;
+  }
+  function paint() {
+    for (const row of rows) {
+      const options = row.spec.options();
+      const value = row.spec.value();
+      const known = new Map(row.buttons.map((b) => [b.dataset.value, b]));
+      const keep = [];
+      for (const option of options) {
+        let b = known.get(String(option.value));
+        if (!b) {
+          b = make('button', 'sf-play-pick__opt');
+          b.setAttribute('role', 'radio');
+          b.dataset.value = String(option.value);
+          // A press on the chosen face steps forward: the pad's A and a tap both cycle the pick.
+          b.addEventListener('click', () => row.step(1, true));
+        }
+        b.textContent = option.name;
+        const on = option.value === value;
+        b.setAttribute('aria-checked', String(on));
+        b.tabIndex = on ? 0 : -1;
+        b.hidden = !on;
+        if (option.line) b.setAttribute('aria-description', option.line); else b.removeAttribute('aria-description');
+        keep.push(b);
+      }
+      // Re-seating a focused option would drop focus; only rebuild when the set really changed.
+      const same = keep.length === row.opts.children.length && keep.every((b, i) => row.opts.children[i] === b);
+      if (!same) row.opts.replaceChildren(...keep);
+      row.buttons = keep;
+      const chosen = options.find((o) => o.value === value) || options[0] || null;
+      row.line.textContent = chosen?.line || '';
+      if (chosen?.art) { row.thumb.src = chosen.art; row.thumb.hidden = false; } else { row.thumb.hidden = true; row.thumb.removeAttribute('src'); }
+      const single = options.length < 2;
+      row.prev.hidden = single; row.next.hidden = single;
+      row.group.classList.toggle('is-single', single);
+    }
+    room.textContent = roomName();
+    paintArt();
+  }
+  paint();
+  return {
+    el: front,
+    play: go,
+    update: paint,
+    focus() { try { go.focus({ preventScroll: true }); } catch { /* best-effort */ } },
+    /** True when focus sits on a quiet key whose own Enter must win over PLAY. */
+    ownsEnter(active) { return !!active && alt.contains(active); },
+    dispose() { front.remove(); },
+  };
 }

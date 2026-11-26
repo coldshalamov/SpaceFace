@@ -6,7 +6,9 @@
 import { spawn } from 'node:child_process';
 import { createServer as createNetServer } from 'node:net';
 import { writeFileSync } from 'node:fs';
-import { chromium } from 'playwright';
+import { chromium as rawChromium } from 'playwright';
+import { quietChromium } from './lib/quietLaunch.mjs';
+const chromium = quietChromium(rawChromium);
 
 const ROOT = new URL('..', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1');
 const args = process.argv.slice(2);

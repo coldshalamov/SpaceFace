@@ -74,6 +74,7 @@ export function wobbleOffsetWu(t, periodS = FIRST_LIGHT_TUNING.wobblePeriodS, am
 }
 
 export const firstLightPlant = {
+  modes: ['flight'],
   name: 'plants294',
 
   init(ctx) {

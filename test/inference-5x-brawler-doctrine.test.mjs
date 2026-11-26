@@ -9,6 +9,7 @@ import { readFileSync } from 'node:fs';
 import {
   CombatDoctrineId,
   CombatDoctrineRuntime,
+  DOCTRINE_TELEGRAPH_TICKS,
   normalizeCombatDoctrineId,
 } from '../src/ai/combatDoctrine.js';
 import { ContactKind } from '../src/ai/contracts.js';
@@ -89,7 +90,7 @@ test('U2: brawler_commit runtime enters commit phase (not flyby strike/extend)',
   assert.equal(snap.phase, 'engine_flare');
 
   snap = runtime.update({
-    tick: 35,
+    tick: 5 + DOCTRINE_TELEGRAPH_TICKS,
     entityId: 2,
     doctrineId: CombatDoctrineId.BRAWLER_COMMIT,
     perception: perception({}, [shipContact(1, { x: 180, z: 0 })]),
@@ -226,7 +227,7 @@ test('U2: interceptor_flyby still uses strike for light fighters (no regression)
   });
   assert.equal(snap.phase, 'engine_flare');
   snap = runtime.update({
-    tick: 35,
+    tick: 5 + DOCTRINE_TELEGRAPH_TICKS,
     entityId: 3,
     doctrineId: CombatDoctrineId.INTERCEPTOR_FLYBY,
     perception: perception(

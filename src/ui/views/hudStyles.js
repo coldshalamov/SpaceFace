@@ -313,6 +313,11 @@ export const HUD_CSS = `
   .sf-toast--discovery { border-left-color:var(--dp-phos, #dfeeff); }
   .sf-toast--discovery .sf-toast__icon { color:var(--dp-phos, #dfeeff); }
   .sf-toast--credits .sf-toast__icon, .sf-toast--rep .sf-toast__icon { color:var(--hud-cyan); }
+  /* DEMO-SWARM-UX-2: a drop's quip is colour, not a status. It rides the receipt lane as a
+     quiet italic line with no tick, so it can never read as an actionable confirmation. */
+  .sf-toast--quip { color:var(--dp-ink-dim, #b7b4a6); }
+  .sf-toast--quip .sf-toast__icon { display:none; }
+  .sf-toast--quip .sf-toast__text { font-style:italic; }
   /* GF-10: count badge for grouped identical toasts ("Platinum x1 ×5"). Sits after the text,
      monospace + accent-colored so it reads as a multiplier, not part of the message. */
   .sf-toast__count { font-family:var(--hud-data); font-size:var(--k-fs-data); color:var(--hud-cyan); margin-left:6px;
@@ -403,9 +408,10 @@ export const HUD_CSS = `
     color:var(--k-bone-62); }
   .sf-lockring__bracket { fill:none; stroke:currentColor; stroke-width:2; }
 
-  /* acquiring — searching: the scale ring sweeps while the arc fills in rest bone */
-  .sf-lockring[data-stage="acquiring"] .sf-lockring__scale { transform-origin:50% 50%;
-    animation:sf-lockring-sweep 3.2s linear infinite; }
+  /* acquiring — searching: the scale rail's ticks crawl along the bar while the fill grows in
+     rest bone (a crawl, never a spin: a rotated bar would sweep a circle round the target) */
+  .sf-lockring[data-stage="acquiring"] .sf-lockring__scale {
+    animation:sf-lockring-sweep 1.6s linear infinite; }
   .sf-lockring[data-stage="tracking"] .sf-lockring__fill { stroke:var(--dp-phos, #dfeeff); }
   .sf-lockring[data-stage="tracking"] .sf-lockring__label { color:var(--dp-phos, #dfeeff); }
   .sf-lockring[data-stage="tracking"] .sf-lockring__brackets { color:var(--dp-phos, #dfeeff); }
@@ -422,7 +428,7 @@ export const HUD_CSS = `
   .sf-lockring.locked .sf-lockring__label { color:var(--dp-lamp, #f2b950); font-weight:700; }
   .sf-lockring[data-stage="locked"] .sf-lockring__brackets { color:var(--dp-lamp, #f2b950); }
   .sf-lockring[data-stage="locked"] .sf-lockring__bracket { stroke-width:2.5; }
-  @keyframes sf-lockring-sweep { to { transform:rotate(360deg); } }
+  @keyframes sf-lockring-sweep { to { stroke-dashoffset:-8.9; } }
   html.sf-reduce-motion .sf-lockring[data-stage="acquiring"] .sf-lockring__scale { animation:none; }
   @media (prefers-reduced-motion: reduce) {
     .sf-lockring[data-stage="acquiring"] .sf-lockring__scale { animation:none; }
@@ -511,32 +517,37 @@ export const HUD_CSS = `
     background:radial-gradient(ellipse at center, transparent 45%, rgba(0,5,12,.4) 72%, rgba(0,2,8,.85) 92%, rgba(0,0,0,.98) 100%);
     transition:opacity .12s linear; will-change:opacity; }
 
-  /* Electronic disruption glitch & scanlines */
-  #hud.sf-hud--glitch { animation:sf-hud-jitter 180ms steps(6, end) 1; }
-  #hud.sf-hud--glitch .sf-caption,
-  #hud.sf-hud--glitch .sf-nav-label,
-  #hud.sf-hud--glitch .sf-lockring__label,
-  #hud.sf-hud--glitch .sf-mt-obj { text-shadow:-2px 0 0 #ff0040, 2px 0 0 #00ffff !important; }
-  @keyframes sf-hud-jitter {
-    0% { transform:translate3d(0,0,0); }
-    20% { transform:translate3d(-3px,1px,0); }
-    40% { transform:translate3d(4px,-1px,0); }
-    60% { transform:translate3d(-2px,2px,0); }
-    80% { transform:translate3d(2px,-1px,0); }
-    100% { transform:translate3d(0,0,0); }
+  /* Electronic disruption: localized shield-meter kick + thin screen-edge flash only (no scanlines/tint). */
+  #hud.sf-hud--glitch { animation:none; }
+  #hud.sf-hud--glitch .orr-visor__reading[data-meter="shield"] {
+    animation:sf-shield-meter-kick 220ms steps(4, end) 1;
+    --visor-fill:var(--dp-danger, #ff644c);
+  }
+  #hud.sf-hud--glitch .orr-visor__reading[data-meter="shield"] .orr-label,
+  #hud.sf-hud--glitch .orr-visor__reading[data-meter="shield"] b {
+    color:var(--dp-danger-hot, #ff8a70);
+  }
+  @keyframes sf-shield-meter-kick {
+    0% { transform:translate3d(0,0,0); opacity:1; }
+    25% { transform:translate3d(-2px,0,0); opacity:.55; }
+    55% { transform:translate3d(2px,0,0); opacity:.95; }
+    80% { transform:translate3d(-1px,0,0); opacity:.7; }
+    100% { transform:translate3d(0,0,0); opacity:1; }
   }
   .sf-hud-glitch-overlay { display:none; position:absolute; inset:0; pointer-events:none; z-index:25; opacity:0;
-    background:repeating-linear-gradient(to bottom, transparent 0px, transparent 2px, rgba(0,255,255,.12) 3px, rgba(255,0,64,.12) 4px);
-    mix-blend-mode:screen; }
-  .sf-hud-glitch-overlay.active { display:block; opacity:.85; }
+    background:none; mix-blend-mode:normal;
+    box-shadow:inset 0 0 0 2px rgb(255 106 84 / .62), inset 0 0 26px rgb(255 96 76 / .24); }
+  .sf-hud-glitch-overlay.active { display:block; opacity:1; animation:sf-shield-edge-flash 220ms ease-out 1 forwards; }
+  @keyframes sf-shield-edge-flash { 0% { opacity:.92; } 100% { opacity:0; } }
 
   /* Gravity Mark — a persistent world-space contracting well read, independent of selection. */
   .sf-gravity-mark { position:absolute; left:0; top:0; width:46px; height:46px;
     pointer-events:none; z-index:12; opacity:0; visibility:hidden; will-change:transform;
     transition:opacity .12s ease, visibility 0s linear .12s; }
   .sf-gravity-mark.visible { visibility:visible; opacity:1; transition:opacity .12s ease; }
-  .sf-gravity-mark__ring { position:absolute; inset:3px; border:2px solid var(--hud-paper);
-    border-radius:50%;
+  .sf-gravity-mark__ring { position:absolute; inset:6px; border:2px solid var(--hud-paper);
+    border-radius:0;
+    transform:rotate(45deg);
     animation:sf-gravity-mark-contract .9s cubic-bezier(.4,0,.2,1) infinite;
     animation-play-state:paused; }
   /* The six pooled markers stay mounted; hidden rings must not invalidate style every frame. */
@@ -546,8 +557,8 @@ export const HUD_CSS = `
   .sf-gravity-mark__label { position:absolute; left:50%; top:48px; transform:translateX(-50%);
     color:var(--hud-paper); font-size:var(--k-fs-data); white-space:nowrap; }
   @keyframes sf-gravity-mark-contract {
-    from { transform:scale(1.18); opacity:.48; }
-    to { transform:scale(.78); opacity:1; }
+    from { transform:rotate(45deg) scale(1.18); opacity:.48; }
+    to { transform:rotate(45deg) scale(.78); opacity:1; }
   }
 
   /* Momentum Sink — static opposing brackets name the player's moving reference frame. */
@@ -648,9 +659,7 @@ export const HUD_CSS = `
   .sf-cmark[data-relation="hostile"] svg { filter:drop-shadow(0 0 2.4px var(--sf-hostile)); }
   .sf-cmark[data-relation="friendly"] svg { filter:drop-shadow(0 0 2.2px var(--sf-friendly)); }
   .sf-cmark[data-relation="hostile"] .sf-cmark__shape { fill-opacity:.3; }
-  .sf-cmark[data-relation="hostile"]::after { content:''; position:absolute; inset:-1px;
-    border:1px solid var(--sf-hostile); border-radius:50%; opacity:.34; }
-  .sf-cmark[data-variant="down"]::after { border-style:dashed; opacity:.22; }
+  /* No circular acquisition ring around distant hostiles (owner 2026-11-23). */
 
   /* Prograde tick (FR-1) — the kit's twin-tick prograde bracket (assets/ui/kit/assets/svg/
      reticle/reticle-pro-tick.svg) ported as light: a bloom stroke under a core stroke, token
@@ -662,75 +671,57 @@ export const HUD_CSS = `
     stroke-width:2; vector-effect:non-scaling-stroke; }
   .sf-protick__bloom { opacity:.24; stroke-width:6; }
 
-  /* Contact/threat markers — bordered, shaded, glow-by-geometry (no live filters in flight).
-     Colour rides the CSS color property (currentColor) so the JS channel palette (setForceHue)
-     retints the whole instrument — border, fill wash, bloom and ticks — with one inline write. */
+  /* Contact/threat markers — crisp red edge chevrons pointing at off-screen attackers
+     (no ruler boxes, no live blur filters in flight). Colour rides currentColor so setForceHue
+     retints the chevron stroke and plate cleanly with one inline write. */
   .sf-threat-halo { display:none; position:absolute; inset:0; pointer-events:none; z-index:13; }
-  .sf-threat-halo__slot { display:none; position:absolute; left:0; top:0; opacity:.55; }
-  /* Off-screen hostile carriage: a bordered plate that sits ON the frame edge — 1.5px core
-     border all round, a heavier 3px foot on the screen edge, a translucent channel wash, an
-     inner hairline frame (::before) and three tick marks on the foot (::after). The 54x18 box
-     is mirrored by the placement solver (ARC_SPAN_PX / ARC_DEPTH_PX) — keep them in sync. */
+  .sf-threat-halo__slot { display:none; position:absolute; left:0; top:0; opacity:.72; }
   .sf-threat-halo__slot--arc .sf-threat-halo__arc {
     position:relative;
-    width:54px; height:18px; box-sizing:border-box;
+    width:26px; height:26px; box-sizing:border-box;
+    display:grid; place-items:center;
     color:var(--k-red, #ff4d3d);
-    border:1.5px solid currentColor;
-    border-radius:2px;
-    background-image:linear-gradient(to bottom,
-      color-mix(in srgb, currentColor 22%, transparent),
-      color-mix(in srgb, currentColor 5%, transparent));
-    box-shadow:0 0 7px color-mix(in srgb, currentColor 32%, transparent);
+    border:0; border-radius:0; background:none; box-shadow:none;
   }
-  .sf-threat-halo__slot--arc .sf-threat-halo__arc::before {
-    content:''; position:absolute; inset:2px; pointer-events:none;
-    border:1px solid color-mix(in srgb, currentColor 38%, transparent);
-    border-radius:1px;
+  .sf-threat-halo__attacker-chev {
+    width:24px; height:24px; display:block; overflow:visible;
+    transform:rotate(var(--sf-threat-angle, 0deg));
   }
-  /* The tick comb on the frame-edge foot: hairline teeth pointing inward, like a ruler edge.
-     The comb axis follows the edge, so the teeth always grow from the screen edge. */
-  .sf-threat-halo__slot--arc .sf-threat-halo__arc::after {
-    content:''; position:absolute; pointer-events:none;
-    background:repeating-linear-gradient(to right,
-      color-mix(in srgb, currentColor 80%, transparent) 0 1.5px, transparent 1.5px 6px);
+  .sf-threat-halo__attacker-chev .sf-threat-halo__chev-plate {
+    fill:currentColor; fill-opacity:.32; stroke:none;
   }
-  .sf-threat-halo__slot--arc[data-edge="top"] .sf-threat-halo__arc {
-    border-top-width:3px;
+  .sf-threat-halo__attacker-chev .sf-threat-halo__chev-stroke {
+    fill:none; stroke:currentColor; stroke-width:2.4; stroke-linecap:round; stroke-linejoin:round;
   }
-  .sf-threat-halo__slot--arc[data-edge="top"] .sf-threat-halo__arc::after {
-    left:5px; right:5px; top:3px; height:4px;
+  .sf-threat-halo__attacker-chev .sf-threat-halo__chev-inner {
+    fill:none; stroke:currentColor; stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round; opacity:.8;
   }
-  .sf-threat-halo__slot--arc[data-edge="bottom"] .sf-threat-halo__arc {
-    border-bottom-width:3px;
-    background-image:linear-gradient(to top,
-      color-mix(in srgb, currentColor 22%, transparent),
-      color-mix(in srgb, currentColor 5%, transparent));
+  /* 08 §4: the arrow carries the kind and the distance ("Wasp · 420 m") on the screen side of
+     the edge — body face, tabular figures, a dark underlay so it reads over a lit floor. */
+  .sf-threat-halo__tag {
+    position:absolute; display:none; align-items:baseline; gap:6px; white-space:nowrap;
+    padding:2px 6px; border-radius:2px; background:rgb(6 8 12 / .62);
+    font:600 12px/16px var(--dp-face-read, "Instrument Sans", "Segoe UI", sans-serif);
+    font-variant-numeric:tabular-nums; letter-spacing:.01em;
+    color:var(--dp-ink, #e8e2d4); text-shadow:0 1px 2px rgb(0 0 0 / .8);
   }
-  .sf-threat-halo__slot--arc[data-edge="bottom"] .sf-threat-halo__arc::after {
-    left:5px; right:5px; bottom:3px; height:4px;
-  }
-  .sf-threat-halo__slot--arc[data-edge="left"] .sf-threat-halo__arc {
-    width:18px; height:54px; border-left-width:3px;
-    background-image:linear-gradient(to right,
-      color-mix(in srgb, currentColor 22%, transparent),
-      color-mix(in srgb, currentColor 5%, transparent));
-  }
-  .sf-threat-halo__slot--arc[data-edge="left"] .sf-threat-halo__arc::after {
-    top:5px; bottom:5px; left:3px; width:4px;
-    background:repeating-linear-gradient(to bottom,
-      color-mix(in srgb, currentColor 80%, transparent) 0 1.5px, transparent 1.5px 6px);
-  }
-  .sf-threat-halo__slot--arc[data-edge="right"] .sf-threat-halo__arc {
-    width:18px; height:54px; border-right-width:3px;
-    background-image:linear-gradient(to left,
-      color-mix(in srgb, currentColor 22%, transparent),
-      color-mix(in srgb, currentColor 5%, transparent));
-  }
-  .sf-threat-halo__slot--arc[data-edge="right"] .sf-threat-halo__arc::after {
-    top:5px; bottom:5px; right:3px; width:4px;
-    background:repeating-linear-gradient(to bottom,
-      color-mix(in srgb, currentColor 80%, transparent) 0 1.5px, transparent 1.5px 6px);
-  }
+  .sf-threat-halo__tag-kind { font-weight:700; color:var(--k-red, #ff4d3d); }
+  .sf-threat-halo__slot--arc[data-edge="top"] .sf-threat-halo__tag { left:50%; top:calc(100% + 2px); transform:translateX(-50%); }
+  .sf-threat-halo__slot--arc[data-edge="bottom"] .sf-threat-halo__tag { left:50%; bottom:calc(100% + 2px); transform:translateX(-50%); }
+  .sf-threat-halo__slot--arc[data-edge="left"] .sf-threat-halo__tag { left:calc(100% + 4px); top:50%; transform:translateY(-50%); }
+  .sf-threat-halo__slot--arc[data-edge="right"] .sf-threat-halo__tag { right:calc(100% + 4px); top:50%; transform:translateY(-50%); }
+  /* A top/bottom arrow whose inward tag would land on the HUD carries it beside itself instead. */
+  .sf-threat-halo__slot--arc[data-tag-side="after"] .sf-threat-halo__tag { left:calc(100% + 4px); right:auto; top:50%; bottom:auto; transform:translateY(-50%); }
+  .sf-threat-halo__slot--arc[data-tag-side="before"] .sf-threat-halo__tag { right:calc(100% + 4px); left:auto; top:50%; bottom:auto; transform:translateY(-50%); }
+  /* Still inward of the edge, but hung off one side of the arrow so a pack's other arrows along
+     the edge keep clear of the words, and the HUD corner it would centre over stays clear. */
+  .sf-threat-halo__slot--arc[data-edge="top"][data-tag-side="in-after"] .sf-threat-halo__tag { left:0; right:auto; top:calc(100% + 2px); bottom:auto; transform:none; }
+  .sf-threat-halo__slot--arc[data-edge="top"][data-tag-side="in-before"] .sf-threat-halo__tag { right:0; left:auto; top:calc(100% + 2px); bottom:auto; transform:none; }
+  .sf-threat-halo__slot--arc[data-edge="bottom"][data-tag-side="in-after"] .sf-threat-halo__tag { left:0; right:auto; bottom:calc(100% + 2px); top:auto; transform:none; }
+  .sf-threat-halo__slot--arc[data-edge="bottom"][data-tag-side="in-before"] .sf-threat-halo__tag { right:0; left:auto; bottom:calc(100% + 2px); top:auto; transform:none; }
+  .sf-threat-halo__slot--arc[data-edge="right"] .sf-threat-halo__attacker-chev { --sf-threat-angle:90deg; }
+  .sf-threat-halo__slot--arc[data-edge="bottom"] .sf-threat-halo__attacker-chev { --sf-threat-angle:180deg; }
+  .sf-threat-halo__slot--arc[data-edge="left"] .sf-threat-halo__attacker-chev { --sf-threat-angle:-90deg; }
   .sf-threat-halo__slot--missile .sf-threat-halo__chev {
     width:22px; height:22px; display:block; color:var(--k-signal, #e6b478);
     overflow:visible;
@@ -748,27 +739,14 @@ export const HUD_CSS = `
   .sf-threat-halo__slot--missile {
     animation: sf-threat-halo-telegraph 0.5s steps(2, end) infinite;
   }
-  /* Off-screen hostile boosting straight at the player: amber edge pulse + inward chevron,
-     same language as the torpedo glyph so the read is "something incoming from this edge". */
-  .sf-threat-halo__slot--arc .sf-threat-halo__chev {
-    display:none; position:absolute; left:50%; top:50%;
-    width:18px; height:18px; margin:-9px 0 0 -9px;
-    color:var(--k-signal, #e6b478);
-  }
-  .sf-threat-halo__slot--arc .sf-threat-halo__chev path {
-    fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round;
-  }
+  /* Closing boost / telegraph attacker pulses cleanly in amber-red without ruler boxes. */
+  .sf-threat-halo__slot--arc .sf-threat-halo__chev { display:none; }
   .sf-threat-halo__slot--arc[data-closing="boost"] {
     animation: sf-threat-halo-telegraph 0.5s steps(2, end) infinite;
   }
   .sf-threat-halo__slot--arc[data-closing="boost"] .sf-threat-halo__arc {
-    color:var(--k-signal, #e6b478);
+    color:var(--k-red, #ff4d3d);
   }
-  .sf-threat-halo__slot--arc[data-closing="boost"] .sf-threat-halo__chev { display:block; }
-  .sf-threat-halo__slot--arc[data-edge="top"] .sf-threat-halo__chev { transform:translateY(13px); }
-  .sf-threat-halo__slot--arc[data-edge="right"] .sf-threat-halo__chev { transform:rotate(90deg) translateY(13px); }
-  .sf-threat-halo__slot--arc[data-edge="bottom"] .sf-threat-halo__chev { transform:rotate(180deg) translateY(13px); }
-  .sf-threat-halo__slot--arc[data-edge="left"] .sf-threat-halo__chev { transform:rotate(-90deg) translateY(13px); }
   /* Telegraph states ride the JS-set inline channel colour (setForceHue) — border, wash, hairline,
      ticks and bloom all read currentColor, so no per-kind colour overrides live here anymore. */
   .sf-threat-halo__slot--telegraph {
@@ -840,7 +818,11 @@ export const HUD_CSS = `
     .sf-cmark svg { filter:none; }
     .sf-cmark__back, .sf-cmark::after { display:none; }
     .sf-threat-halo__slot--arc .sf-threat-halo__arc {
-      border-color:CanvasText; forced-color-adjust:none;
+      color:CanvasText; forced-color-adjust:none;
+    }
+    .sf-threat-halo__slot--arc .sf-threat-halo__attacker-chev .sf-threat-halo__chev-stroke,
+    .sf-threat-halo__slot--arc .sf-threat-halo__attacker-chev .sf-threat-halo__chev-inner {
+      stroke:CanvasText;
     }
     .sf-threat-halo__slot--missile .sf-threat-halo__chev path,
     .sf-threat-halo__slot--arc .sf-threat-halo__chev path {
@@ -893,7 +875,7 @@ export const HUD_CSS = `
     /* ORRERY phone band: the dock rides the same reserved lane above the cluster as
        the drive tape (hud.js ≤640px rule), so the cluster's key crescent and keytags
        keep the whole bottom-right strip instead of printing through the radar. */
-    #hud[data-hud="orrery"] .sf-rightdock { bottom:calc(24px + var(--orr-cluster-h, 240px) + 8px); }
+    :root[data-sf-mobile-flight="1"] #hud[data-hud="orrery"] .sf-rightdock { bottom:calc(24px + var(--orr-cluster-h, 240px) + 8px); }
     /* D261: power-rail sockets print "Pull · Draws in, key 1" — at phone width the
        verb word truncates to an unreadable stub ("PU… 1"). Keep icon + key cap; the
        full sentence stays on the socket's accessible name and tip. */
@@ -1300,6 +1282,21 @@ export const HUD_CSS = `
   .sf-commtape .sf-comm-backlog-btn {
     position:static !important; left:auto !important; top:auto !important; z-index:auto !important;
     width:auto !important; height:auto !important; margin:0 !important;
+  }
+  /* The tracker column's own COMMS chip flows above its comms feed (comms.js adopts it into
+     .sf-leftcontext). The fixed corner seat it kept in ui.css painted over the tracker heading
+     whenever both were up (bench flight-speaker 2026-11-14). */
+  .sf-leftcontext .sf-comm-backlog-btn {
+    position:static !important; left:auto !important; top:auto !important; z-index:auto !important;
+    width:auto !important; height:auto !important; margin:0 0 5px !important;
+    display:inline-flex; align-self:flex-start; padding:3px 10px;
+  }
+  /* The HAIL host rides the same column, beside the COMMS chip. position:relative (not static):
+     it stays the containing block for its absolute popover panel, as the commtape variant below. */
+  .sf-leftcontext #sf-contact-hail {
+    position:relative !important; left:auto !important; top:auto !important; z-index:auto !important;
+    width:auto !important; height:auto !important; margin:0 0 5px !important;
+    display:inline-flex; align-self:flex-start;
   }
   /* #sf-contact-hail stays position:relative, not static: it is the containing block for its
      absolute popover panel (anchored at the button), and it needs a real z-index in #hud's
@@ -1950,7 +1947,7 @@ export const HUD_CSS = `
   #hud #sf-ml2 .ml2-pill .ml2-fill i, #hud #sf-ml2 .ml2-pill.ml2-cloak .ml2-fill i { background:var(--k-text-live); }
   #hud #sf-ml2 .ml2-preview-mark i, #hud #sf-ml2 .ml2-throw .ml2-diamond, #hud #sf-ml2 .ml2-preview-mark.ml2-bridle-source i { box-shadow:none; }
   #hud #sf-ml2 .ml2-self { filter:none; }
-  #hud #sf-ml2 .ml2-ring circle { stroke:var(--k-bone-62); fill:none; }
+  #hud #sf-ml2 .ml2-ring path, #hud #sf-ml2 .ml2-ring circle { stroke:var(--k-bone-62); fill:none; }
   #hud #sf-ml2 .ml2-preview-line { stroke:var(--k-bone-62); }
   #hud #sf-ml2 .ml2-preview-link.ml2-snare-preview .ml2-preview-line { stroke:var(--k-text-live); filter:none; }
   #hud #sf-ml2 .ml2-preview-link.ml2-bridle-preview .ml2-preview-line { stroke:var(--k-signal); filter:none; }
@@ -2646,8 +2643,11 @@ export const HUD_CSS = `
   #hud .sf-overview-row { border-bottom:1px solid var(--dp-metal-3); transition:background var(--dp-d-cut) var(--dp-ease-lamp); }
   #hud .sf-overview-row:hover { background:rgb(242 185 80 / .09); }
   #hud .sf-overview-row__name { color:var(--hud-paper); }
+  /* Secondary roster words ride paper too, not muted: the roster has no plate, and the captured
+     lesson at the top of this sheet (2026-10 - the range readout unreadable over a lit planet
+     limb) applies to the class/state words the same as the name. Hierarchy holds by position. */
   #hud .sf-overview-row__right, #hud .sf-overview-row__detail,
-  #hud .sf-overview-row__state, #hud .sf-overview-row__tier, #hud .sf-overview-footer { color:var(--hud-muted); }
+  #hud .sf-overview-row__state, #hud .sf-overview-row__tier, #hud .sf-overview-footer { color:var(--hud-paper); }
   /* Collapsed roster: the count line (no instrument title — j07 contract). An etched contact
      diamond, the radar's own mark, sits before the reading so "24" reads as a scope count. */
   #hud .sf-overview--count .sf-overview-footer {
@@ -3318,6 +3318,37 @@ export const HUD_CSS = `
   #hud .sf-bar.sf-vital-gauge.sf-bar--burn .orr-gauge__head,
   #hud .sf-bar.sf-vital-gauge.sf-bar--overheated .orr-gauge__head,
   html[data-k-temp="wanted"] #hud .sf-bar.sf-vital-gauge .orr-gauge__head { fill:var(--dp-danger); }
+
+  /* --- Flight HUD attention contract: ONE attribute (data-hud-attention="teach|fight|calm")
+         owns secondary chrome visibility. In fight and teach, keep the flight screen quiet. --- */
+  #aim-reticle { z-index:9; }
+  #hud .sf-lockdiamond, #hud .sf-leadpip, #hud .sf-aimtag, #hud .sf-cmark { z-index:5; }
+  #hud > .sf-leftcontext, #hud .sf-rightdock, #hud .orr-hud-cluster { z-index:14; }
+  #hud .sf-vtape { display:none !important; }
+  #hud .sf-stableload, #hud .sf-hudphase { display:none !important; }
+  :is(#hud[data-hud-attention="fight"], #hud[data-hud-attention="teach"]) :is(
+    .sf-visor-utility-row,
+    .sf-commtape, .sf-commtape__slots, .sf-commtape__news, #news-ticker,
+    #sf-comm-backlog-btn, #sf-contact-hail, #sf-band-hud,
+    .race-tape[data-compact="true"], #sf-cargo-bar,
+    .sf-stableload, .sf-hudphase, .sf-hudlegacy, .sf-manifest-ghost
+  ) { display:none !important; }
+  :is(body[data-hud-attention="fight"], body[data-hud-attention="teach"]) :is(
+    .fb-pill-btn:not(.active),
+    #sf-floorpads .sf-fp--ambient,
+    #sf-contact-hail
+  ) { display:none !important; }
+  /* The tracker line's key as a key cap ('Latch the loose rock [F]'), in the same face and
+     weight as the power bar's key caps rather than the kit's etched one. */
+  #hud .sf-mt-compact-action .sf-mt-key { margin-left:8px; height:18px; min-width:18px; padding:0 5px;
+    font-family:var(--dp-face-read, "Instrument Sans", sans-serif); font-variation-settings:normal;
+    font-weight:700; font-size:11px; letter-spacing:.02em; vertical-align:2px; color:var(--dp-ink, #e8e2d4); }
+  #hud .sf-mt-compact-action .sf-mt-key[hidden] { display:none; }
+  /* The cap is for the cards, not the lane: #alerts is itself a child of the Stage banner
+     (stage.js), and capping it pinned a 460 px lane to the left edge, over the objective card. */
+  @media (min-width:1100px) {
+    #alerts > *, #sf-stage-banner > :not(#alerts) { max-width:min(460px, calc(100vw - 680px)); }
+  }
 
   /* --- forced colours across the new marks: the system palette owns them, structure survives --- */
   @media (forced-colors: active) {

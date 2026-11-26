@@ -13,12 +13,14 @@ import {
   starterById,
 } from '../../data/newGameDefaults.js';
 import { SHIPS } from '../../data/ships.js';
+import { describeHullRole } from '../../data/shipRoleLattice.js';
 import { WEAPONS } from '../../data/weapons.js';
 import { fittingsFromDefaultModules } from '../../systems/ships.js';
 import { starterAirCard } from '../starterAirCard.js';
 import { bindShipSheet, ensureShipSheetStyles, shipSheetHtml } from '../ship/shipSheet.js';
 import { paintStarterWorkPreview } from '../starterWorkPreview.js';
 import { coreText } from '../localizedCoreCopy.js';
+import { promptLabel } from '../bindings.js';
 import { el, words, settle, cue } from '../kit/index.js';
 import { dressLampKey } from '../orrery/lampKey.js';
 import { createStageHull } from './stageHull.js';
@@ -37,13 +39,15 @@ import { capPins, platePins, channelPins }
 
 // PQ-156.00: the catalog owns the three starter hulls; Hitch stays the default pick so a
 // Launch with no interaction emits the exact legacy ship_kestrel payload.
+/** The New Game screen's one line: what Adventure is. */
+export const NEW_GAME_PITCH = 'Adventure: start as hired labour in the Helios harbour. Rope rocks, take jobs, own asteroids.';
 const DEFAULT_STARTER = starterById(DEFAULT_STARTER_ID) || NEW_GAME_STARTERS[0];
 const SHIP_BY_ID = new Map(SHIPS.map((def) => [def.id, def]));
 const FITTABLE_BY_ID = new Map();
 for (const item of [...WEAPONS, ...MODULES]) FITTABLE_BY_ID.set(item.id, item);
 const DIFFICULTIES = [
   ['casual', 'Casual', 'Much softer combat. Learn the ropes.'],
-  ['standard', 'Standard', 'Softer hits on you; slightly easier kills.'],
+  ['standard', 'Standard', 'The intended balance.'],
   ['veteran', 'Veteran', 'Full combat baseline. No damage padding.'],
   ['ironman', 'Ironman', 'Veteran combat. Death ends the run.'],
 ];
@@ -346,6 +350,19 @@ function starterStageFittings(starter) {
   return starter ? fittingsFromDefaultModules(starter.shipId, starter.fittedModules || []) : null;
 }
 
+const STARTER_UTILITY_NOTES = Object.freeze({
+  mod_drill_amp: 'Wider ore sweet-spot window',
+  mod_winch_hd: 'Heavier Line tow capacity',
+  mod_ram_plate: 'Harder bow rams, less self-damage',
+});
+
+function starterRoleLabel(starter) {
+  const lattice = starter && describeHullRole(starter.shipId);
+  if (lattice && lattice.roleLabel) return lattice.roleLabel;
+  const card = starter ? starterAirCard(starter) : null;
+  return (card && card.railLabel) || (starter && starter.tag) || '';
+}
+
 function starterLoadoutRows(starter) {
   const labels = {
     weapon: 'Primary',
@@ -358,16 +375,17 @@ function starterLoadoutRows(starter) {
   return ((starter && starter.fittedModules) || [])
     .map((id) => FITTABLE_BY_ID.get(id))
     .filter(Boolean)
-    .map((def) => [labels[def.slotType] || def.slotType, def.name]);
+    .map((def) => [labels[def.slotType] || def.slotType, def.name, def.size || '', def.id]);
 }
 
-// The first fifteen minutes (spec2/03 §1): the four beats a Steam-demo player should know before
-// Launch. Rendered as four static kit rows under the loadout (check-new-game-first-run-rail).
+// The first minutes, in the order the game asks for them (demo route 2026-11-23: rope the loose
+// rock, throw it, dock at Helios, take a job). Rendered as four static kit rows under the loadout
+// (check-new-game-first-run-rail); the fourth row follows the picked hull's own Helios ticket.
 const FIRST_MINUTES = [
-  ['Latch the loose rock', 'Right-click the marked rock beside you. One verb at a time.'],
-  ['Swing it through the wreck', 'Fly an arc, then release toward the derelict.'],
-  ['Mine the first seam', 'Pulse, beam the bright seams, ride the heat.'],
-  ['Dock and pick work', 'Sell at Helios, then choose haul, bounty, or survey. M charts the sector; N charts the star lane.'],
+  ['Latch the loose rock', 'F / RMB on the marked rock beside you. One verb at a time.'],
+  ['Throw it at the wreck', 'Swing round, aim, and tap the Line again to let go.'],
+  ['Dock at Helios', 'DOCK_KEY · the autopilot flies you to the berth.'],
+  ['Take a job', 'Pick work from the Helios Jobs board, then undock and do it.'],
 ];
 
 /** A form field: a label at body size 62 % and its control beneath, separated from the next by a hairline. */
@@ -417,7 +435,8 @@ export const newGameScreen = {
     const heading = el('h1', 'k-display k-t-title fh-title', 'New game');
     paintMarking(heading);
     title.appendChild(heading);
-    title.appendChild(el('p', 'k-t-emph k-62', 'Choose your starting ship and pilot credentials.'));
+    // What Adventure is, in one line: a stranger arrives here from the ADVENTURE door.
+    title.appendChild(el('p', 'k-t-emph k-62 sf-ng-pitch', NEW_GAME_PITCH));
     rootEl.appendChild(title);
 
     // The form hangs on the left. `.sf-ng-body` is the scrolling region the layout probe measures.
@@ -447,9 +466,8 @@ export const newGameScreen = {
     const starterWords = words(NEW_GAME_STARTERS.map((s) => ({
       action: 'starter:' + s.id,
       label: s.name,
-      // P1 — the word under a starter is the ship sheet's authored class and build word, so the
-      // choice and the ship screen never name the same hull two different things.
-      sub: (starterAirCard(s).railLabel || s.tag),
+      // Use the same authored hull role label Shipyard prints (Starter Scout, Prospect Miner, Light Fighter).
+      sub: starterRoleLabel(s),
     })), {
       row: true, size: 'body', ariaLabel: 'Start as',
       onPick: (action) => this._setStarter(action.slice('starter:'.length)),
@@ -538,7 +556,8 @@ export const newGameScreen = {
     });
     // The scale stands on end, so the stations take Up/Down along their own line — the roving's
     // Left/Right still answers too (REV-D136b.1). The edges walk out the way the dial reads: Up
-    // off the first station climbs back to the starter words, Down off the last falls to the seed.
+    // off the first station climbs back to the starter words, Down off the last falls to First
+    // flight (the seed is the column's last, advanced field).
     diffWords.addEventListener('keydown', (e) => {
       if (e.altKey || e.ctrlKey || e.metaKey) return;
       if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
@@ -552,7 +571,8 @@ export const newGameScreen = {
         const target = liveWordIn(starterWords);
         if (target) target.focus();
       } else {
-        seed.focus();
+        const target = liveWordIn(firstFlightWords);
+        if (target) target.focus(); else seed.focus();
       }
     });
     // Once focus leaves the starter row, park every word's Tab stop again — the row's roving
@@ -569,7 +589,8 @@ export const newGameScreen = {
     // which contracts, commodities and destinations a save will ever see. Blank means "surprise me"
     // and keeps the random behaviour; `game:new` carries opts and `resetRunState` honours `opts.seed`.
     const seedField = field('Universe seed', 'sf-ng-seed');
-    const seedRow = el('div', 'k-words k-words--row of-pause');
+    seedField.wrap.classList.add('orr-ng-seed-field');
+    const seedRow = el('div', 'k-words k-words--row of-pause orr-ng-seed-row');
     // A seed is a code (ORRERY §3.4): the field reads in the mono code face (the screen sheet).
     const seed = el('input', 'k-input k-t-fine orr-ng-seed');
     seed.id = 'sf-ng-seed';
@@ -608,9 +629,9 @@ export const newGameScreen = {
     // A typed seed decides the salted dressing rows — re-arm the embark warm when it changes.
     seed.addEventListener('input', () => { syncSeedHint(); this._emitEmbarkSpec(); });
     syncSeedHint();
-    body.appendChild(seedField.wrap);
-    body.appendChild(hairline());
 
+    // First flight sits above the seed: it is the choice a stranger needs on a short window, and
+    // the seed is an advanced field that can wait at the foot of the column.
     const firstFlightField = field('First flight');
     firstFlightField.label.id = 'sf-ng-first-flight-label';
     const firstFlightWords = words([
@@ -630,21 +651,28 @@ export const newGameScreen = {
     firstFlightField.wrap.appendChild(firstFlightDesc);
     body.appendChild(firstFlightField.wrap);
     body.appendChild(hairline());
+    body.appendChild(seedField.wrap);
     firstFlightWords.addEventListener('focusout', (e) => {
       if (e.relatedTarget && firstFlightWords.contains(e.relatedTarget)) return;
       for (const b of firstFlightWords.querySelectorAll('.k-word')) b.tabIndex = -1;
     });
+    // Up/Down walk the column as it reads: difficulty, First flight, then the seed.
     seed.addEventListener('keydown', (e) => {
-      if (e.key !== 'ArrowDown' || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+      if (e.key !== 'ArrowUp' || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
       const target = liveWordIn(firstFlightWords);
       if (!target) return;
       e.preventDefault();
       target.focus();
     });
     firstFlightWords.addEventListener('keydown', (e) => {
-      if (e.key !== 'ArrowUp' || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
-      e.preventDefault();
-      seed.focus();
+      if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+      if (e.key === 'ArrowDown') { e.preventDefault(); seed.focus(); }
+      else if (e.key === 'ArrowUp') {
+        const target = liveWordIn(diffWords);
+        if (!target) return;
+        e.preventDefault();
+        target.focus();
+      }
     });
 
     // New Run+ is opt-in and read-only until Launch. The save owner revalidates this exact slot and
@@ -707,12 +735,21 @@ export const newGameScreen = {
     loadout.setAttribute('aria-label', 'Loadout');
     const renderLoadout = (starter) => {
       loadout.innerHTML = '';
-      for (const [slot, moduleName] of starterLoadoutRows(starter)) {
+      for (const [slot, moduleName, defSize, defId] of starterLoadoutRows(starter)) {
         const li = el('li');
         const word = el('span', 'k-t-body k-62 fh-legend', moduleName);
         if (ORRERY) {
           const m = /^(.*\S)\s+([SMLX]{1,2})$/.exec(String(moduleName));
-          if (m) { word.textContent = m[1]; const size = el('small', 'orr-ng-size', m[2]); size.title = 'Size ' + m[2]; word.appendChild(size); }
+          const displayName = m ? m[1] : String(moduleName);
+          const sizeCode = (m && m[2]) || defSize || '';
+          word.textContent = displayName;
+          if (sizeCode) {
+            const size = el('small', 'orr-ng-size', sizeCode);
+            size.title = 'Size ' + sizeCode;
+            word.appendChild(size);
+          }
+          const note = STARTER_UTILITY_NOTES[defId];
+          if (note) word.appendChild(el('span', 'orr-ng-mod-note', note));
         }
         word.setAttribute('aria-disabled', 'true');
         word.title = slot;
@@ -737,7 +774,11 @@ export const newGameScreen = {
     const steps = el('ul', 'k-rows sf-ng-route__steps');
     steps.style.setProperty('--k-row-cols', 'minmax(0, 1fr)');
     let workHeading, workDetail;
-    for (const [index, [beat, verb]] of FIRST_MINUTES.entries()) {
+    const firstMinutes = FIRST_MINUTES.map(([beat, verb]) => [
+      beat,
+      verb.replace('DOCK_KEY', promptLabel('dock')),
+    ]);
+    for (const [index, [beat, verb]] of firstMinutes.entries()) {
       const row = el('li', 'k-row k-row--static sf-ng-route__step');
       pin(row, { 'box-shadow': 'none' });
       const cell = el('div');
@@ -745,7 +786,7 @@ export const newGameScreen = {
       const detail = el('div', 'k-row__sub', verb);
       cell.appendChild(heading);
       cell.appendChild(detail);
-      if (index === FIRST_MINUTES.length - 1) {
+      if (index === firstMinutes.length - 1) {
         workHeading = heading;
         workDetail = detail;
         cell.setAttribute('aria-live', 'polite');
@@ -784,7 +825,33 @@ export const newGameScreen = {
       this._paintStarterSheet = (starter) => {
         const card = starterAirCard(starter);
         sheetHost.innerHTML = shipSheetHtml(card.sheet, { compact: true });
-        bindShipSheet(sheetHost.querySelector('[data-sfs]'));
+        const rootSheet = sheetHost.querySelector('[data-sfs]');
+        const sheetWordEl = sheetHost.querySelector('.sfs__word');
+        if (sheetWordEl) sheetWordEl.textContent = starterRoleLabel(starter);
+        const list = rootSheet && rootSheet.querySelector('.sfs__stats');
+        const meaningEl = rootSheet && rootSheet.querySelector('[data-sfs-meaning]');
+        const clearStatMeaning = () => {
+          if (meaningEl) {
+            meaningEl.textContent = '';
+            meaningEl.hidden = true;
+          }
+          if (list) for (const row of list.querySelectorAll('.sfs__stat')) row.classList.remove('is-active');
+        };
+        const showStatMeaning = (row) => {
+          if (!row || !meaningEl) return;
+          const text = row.getAttribute('data-sfs-stat-meaning') || '';
+          meaningEl.textContent = text;
+          meaningEl.hidden = !text;
+          if (list) for (const other of list.querySelectorAll('.sfs__stat')) other.classList.toggle('is-active', other === row);
+        };
+        clearStatMeaning();
+        if (list) {
+          list.addEventListener('pointerover', (ev) => {
+            const row = ev.target && ev.target.closest && ev.target.closest('[data-sfs-stat]');
+            if (row) showStatMeaning(row);
+          });
+          list.addEventListener('pointerleave', clearStatMeaning);
+        }
       };
       this._paintStats = (starter) => {
         if (this._paintStarterSheet) this._paintStarterSheet(starter);
@@ -811,6 +878,14 @@ export const newGameScreen = {
         onTurn: (i0, i1, f) => {
           // the poster crossfade between two hulls; the six-stat sheet is repainted on settle
           stage.style.setProperty('--ng-spin-mix', (Math.min(f, 1 - f) * 2).toFixed(3));
+          // With the circular turntable ring removed, rear carousel miniatures have no rim to sit on
+          // and clip behind the hero hull. Keep only the front hull visible cleanly on the stage.
+          if (typeof rootEl.querySelectorAll === 'function') {
+            for (const m of rootEl.querySelectorAll('.orr-yard__model')) {
+              const z = Number(m.style && m.style.zIndex) || 0;
+              m.classList.toggle('is-rear', z < 60);
+            }
+          }
         } });
     }
     rootEl.appendChild(stage);
@@ -919,12 +994,27 @@ export const newGameScreen = {
       }, STAGE_HULL_RELEASE_MS);
     });
 
+    const syncBodyOverflow = () => {
+      const sh = Number(body.scrollHeight) || 0;
+      const ch = Number(body.clientHeight) || 0;
+      const st = Number(body.scrollTop) || 0;
+      const over = (sh - ch) > 4;
+      const moreBelow = over && (sh - st - ch) > 4;
+      body.dataset.overflow = over ? '1' : '0';
+      body.dataset.moreBelow = moreBelow ? '1' : '0';
+    };
+    body.addEventListener('scroll', syncBodyOverflow, { passive: true });
+    let bodyRo = null;
+    if (typeof ResizeObserver === 'function') {
+      try { bodyRo = new ResizeObserver(syncBodyOverflow); bodyRo.observe(body); } catch (e) {}
+    }
+
     refs = {
       root: rootEl, title, body, stage, foot, name, seed, diff, diffWords, diffDesc, launch, back, launchError,
       starterWords, starterDesc, hullName, hullBlurb, renderLoadout, renderWorkPreview,
       firstFlightWords, firstFlightDesc, flownBefore: false,
       starter: DEFAULT_STARTER,
-      setLaunching, unsubStartFailed, unsubLoading, cancelHullRelease, ctx,
+      setLaunching, unsubStartFailed, unsubLoading, cancelHullRelease, syncBodyOverflow, bodyRo, ctx,
       isLaunching: () => launching,
       legacy: () => ({ on: legacyOn, select: legacySelect, candidate: newGamePlusCandidate }),
       // The embark-speculation seed: typed seeds enumerate exactly; a blank field pre-rolls
@@ -936,6 +1026,8 @@ export const newGameScreen = {
     this._setStarter(DEFAULT_STARTER.id, { silent: true });
     this._setDifficulty(DEFAULT_DIFFICULTY, { silent: true });
     this._setFirstFlight(false, { silent: true });
+    syncBodyOverflow();
+    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(syncBodyOverflow);
   },
 
   // The newGame screen used to be the only embark path with no speculation emit — every
@@ -1020,9 +1112,11 @@ export const newGameScreen = {
       b.setAttribute('aria-pressed', String((b.dataset.action === 'firstFlight:flown') === refs.flownBefore));
       b.tabIndex = -1;
     }
+    // The helper stays one short line: taking a job at the first berth retires the teaching rail,
+    // so the sentence must promise only what the ordinary route actually delivers.
     refs.firstFlightDesc.textContent = refs.flownBefore
       ? 'Skips the stick drills and the power setups. The rope, the raid and the Range stay.'
-      : 'The full first flight: stick drills, the rope, the raid, one setup per power.';
+      : 'Rope a rock, throw it, dock, then take your first job.';
     syncKeys(refs.firstFlightWords);
   },
 
@@ -1081,6 +1175,10 @@ export const newGameScreen = {
       this.hull.activate(ctx);
       this.hull.show(refs.starter.shipId, { fittings: starterStageFittings(refs.starter) });
     }
+    if (refs.syncBodyOverflow) {
+      refs.syncBodyOverflow();
+      if (typeof requestAnimationFrame === 'function') requestAnimationFrame(refs.syncBodyOverflow);
+    }
     if (this._starterDial) this._starterDial.setActive(true);
     // Native iPhone focus opens the keyboard and scrolls before the form has settled. Let a
     // touch choose the field; desktop retains the immediate name-entry shortcut.
@@ -1122,6 +1220,7 @@ export const newGameScreen = {
     this._embarkSpecActive = false;
     this._embarkSpecQueued = null;
     this._nameFocus = null;
+    if (refs && refs.bodyRo) { try { refs.bodyRo.disconnect(); } catch (e) {} }
     if (refs && refs.cancelHullRelease) refs.cancelHullRelease();
     if (this._diffDial) { this._diffDial.dispose(); this._diffDial = null; }
     if (this._starterDial) { this._starterDial.dispose(); this._starterDial = null; }

@@ -80,18 +80,22 @@ test('exit gzip fallback fits beside a large quick save and preserves every save
   assert.equal(prepared.env.data.world.history[2999].id, 'event-2999');
 });
 
-test('both unload doors save once and pageshow or resumed simulation re-arms the exit', t => {
+test('both unload doors save once and pageshow or resumed simulation re-arms the exit', async t => {
+  // 0ac8af7b63: save:completed now rides the durability promise — await each landed exit write.
   const h = harness(t);
   h.window.fire('beforeunload');
   h.window.fire('pagehide');
+  await h.owner._lastSaveDurability;
   assert.equal(h.completed.length, 1);
   h.window.fire('pageshow');
   h.window.fire('beforeunload');
   h.window.fire('pagehide');
+  await h.owner._lastSaveDurability;
   assert.equal(h.completed.length, 2, 'bfcache return gets a new exit');
   h.state.tick++;
   h.window.fire('beforeunload');
   h.window.fire('pagehide');
+  await h.owner._lastSaveDurability;
   assert.equal(h.completed.length, 3, 'cancelled unload then resumed flight gets a new exit');
 });
 

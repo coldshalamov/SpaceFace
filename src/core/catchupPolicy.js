@@ -18,6 +18,8 @@ import {
   getSystemCapability,
   getSystemClock,
   SIM_MODE,
+  systemCadencePhase,
+  systemCadenceTicks,
   systemRunsInMode,
 } from '../runtime/authoritativeSystemManifest.js';
 
@@ -141,6 +143,7 @@ export function partitionUpdateSystems(systems, { state = null, bus = null } = {
   const calendar = [];
   const tableCalendar = [];
   const tickDrains = [];
+  const cadenced = [];
   const tickQueues = [];
   const catchupTickQueues = [];
   for (let m = 0; m < CALENDAR_CLOCK_PERIOD_TICKS; m++) {
@@ -166,7 +169,14 @@ export function partitionUpdateSystems(systems, { state = null, bus = null } = {
       catchupTickQueues[calendarCohortTickMod(system.name)].push(system);
     } else {
       combat.push(system);
-      for (let m = 0; m < CALENDAR_CLOCK_PERIOD_TICKS; m++) tickQueues[m].push(system);
+      // ENGINE job 6: a cadenced owner (manifest SYSTEM_CADENCE_TICKS) sits only in the tick
+      // queues of its fixed phase; everything else runs every tick.
+      const period = systemCadenceTicks(system.name);
+      const phase = systemCadencePhase(system.name);
+      if (period > 1) cadenced.push(system);
+      for (let m = 0; m < CALENDAR_CLOCK_PERIOD_TICKS; m++) {
+        if (period <= 1 || m % period === phase) tickQueues[m].push(system);
+      }
     }
   }
 
@@ -205,7 +215,8 @@ export function partitionUpdateSystems(systems, { state = null, bus = null } = {
   // Calendar membership is fixed at partition time; updateDt is called for every queued
   // system every step, so the non-calendar early-out must not re-derive the clock from
   // the manifest by name on each call.
-  const calendarSet = new Set(calendar);
+  // Cadenced owners receive elapsed time the same way calendar owners do.
+  const calendarSet = new Set([...calendar, ...cadenced]);
   let clockRecords = new WeakMap();
   if (state && typeof state === 'object') {
     clockRecords.set(state, freshRecord(Number(state.simTime), resolveActiveSimMode(state)));
@@ -305,7 +316,7 @@ export function partitionUpdateSystems(systems, { state = null, bus = null } = {
     calendar,
     tableCalendar,
     tickDrains,
-    tickQueues: calendar.length ? tickQueues : null,
+    tickQueues: calendar.length || cadenced.length ? tickQueues : null,
     catchupTickQueues: calendar.length ? catchupTickQueues : null,
     modePartitions,
     updateDt,

@@ -151,7 +151,7 @@ test('partial reservations describe only free units, and replaying a sale cannot
 });
 
 test('mounted pointer, keyboard and radial gamepad mark the real buyer once with autopilot off', async () => {
-  for(const mode of ['pointer','Digit3','radial']){
+  for(const mode of ['pointer','Digit8','radial']){
     const f=fixture();let m,prompt;try{
       complete(f);addCargo(f.state,IRON,2);m=await mountHails(f,{radial:mode==='radial'});
       const courses=[];f.bus.on('ui:setCourse',c=>{courses.push(c);world._onSetCourse.call({state:f.state,bus:f.bus},c);});
@@ -166,7 +166,7 @@ test('mounted pointer, keyboard and radial gamepad mark the real buyer once with
         if(mode==='pointer'){
           const panel=m.ui.el.querySelector('[data-k="panel"]'), button=panel.querySelector('[data-k="actions"]').children[2];
           for(const fn of panel.listeners.click)fn({target:button});
-        }else m.doc.key('3','Digit3');
+        }else m.doc.key('8','Digit8');
       }
       assert.equal(courses.length,1);assert.equal(f.state.nav.autopilot.active,false);
       assert.equal(f.state.nav.waypoint.targetEntityId,f.station.id);
@@ -282,7 +282,7 @@ test('production cutter marks the actual world-owned Helios buyer through scanne
     const before = JSON.stringify([state.player.cargo, state.player.credits, state.missions, state.npcJobs]);
     const courses = []; runtime.bus.on('ui:setCourse', course => courses.push(course));
     runtime.bus.emit('contactHail:availability', contactHailAvailability(state));
-    mounted.ui.request(); mounted.doc.key('3', 'Digit3');
+    mounted.ui.request(); mounted.doc.key('8', 'Digit8');
     assert.equal(courses.length, 1); assert.equal(courses[0].targetEntityId, station.id);
     assert.equal(state.nav.autopilot.active, false);
     const destination = resolveAutopilotTarget(state, state.nav.autopilot);
@@ -312,7 +312,7 @@ test('native first cut, scoop, cutter directions and manual return end in one se
     h.bus.on('mining:yield',p=>yields.push(p));h.bus.on('dock:range',p=>ranges.push(p));
     h.bus.on('ui:setCourse',c=>world._onSetCourse.call({state:s,bus:h.bus},c));
     mounted=await mountHails(f);
-    const choose=()=>{h.bus.emit('contactHail:availability',contactHailAvailability(s));mounted.ui.request();mounted.doc.key('3','Digit3');};
+    const choose=()=>{h.bus.emit('contactHail:availability',contactHailAvailability(s));mounted.ui.request();mounted.doc.key('8','Digit8');};
     const steer=pos=>{
       const p=h.player,dx=pos.x-p.pos.x,dz=pos.z-p.pos.z,scale=Math.min(.5,30/Math.max(1,Math.hypot(dx,dz)));
       const ax=(dx*scale-p.vel.x)*.12,az=(dz*scale-p.vel.z)*.12,co=Math.cos(p.rot),sn=Math.sin(p.rot);

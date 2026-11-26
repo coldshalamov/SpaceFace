@@ -98,7 +98,7 @@ test('wingOrder:blocked puts the reason word on the issued slot and holds the di
     assert.equal(radial.isOpen, true);
     const receipts = receiptByOrder(overlay);
     // Press the attack wedge: scope ALL with the only wingman not deployed blocks it.
-    wedgeFor(overlay, '1').click();
+    wedgeFor(overlay, '6').click();
     assert.equal(receipts.attack.textContent, 'NOT DEPLOYED',
       'the attack slot names why the order was refused');
     assert.equal(receipts.screen.textContent, '', 'only the issued slot carries the receipt');

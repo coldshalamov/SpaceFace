@@ -59,11 +59,11 @@ test('real factory ice and gas keep their material identity and optical surface 
   const gasRoot = body('ast_gas_cloud').root;
   const gas = gasRoot.children.find(node => node.material?.userData?.spacefaceTransmissionBudget?.family === 'ordinary-gas')?.material;
   assert.ok(gas, 'actual gas shell uses its scoped family');
-  assertBudget(gas, 'ordinary-gas', 0.70, 0.88, true);
-  assert.equal(gas.color.getHex(), 0x2d6a52);
-  assert.equal(gas.roughness, 0.42);
-  assert.equal(gas.emissiveIntensity, 0.28);
-  assert.equal(gas.side, THREE.DoubleSide);
+  assertBudget(gas, 'ordinary-gas', 0.16, 0.88, true);
+  assert.equal(gas.color.getHex(), 0x275f4c);
+  assert.equal(gas.roughness, 0.85);
+  assert.equal(gas.emissiveIntensity, 0.14);
+  assert.equal(gas.side, THREE.FrontSide);
 });
 
 test('pool warm resources bind the ice and live/spent optic materials', () => {

@@ -3,11 +3,11 @@
 // space so they remain physically attached and do not become UV wallpaper.
 
 export const COMMON_ROCK_VARIANTS = Object.freeze([
-  Object.freeze({ name: 'slab-strata', strata: 1.15, strataAmp: 0.62, tilt: [0.18, 0.94, 0.12], jointA: [0.92, 0.08, 0.28], jointB: [0.12, 0.22, 0.96], spacing: 0.55, sharp: 6.2, regolith: 0.42, mineral: 0.08, mineralAxis: [0.35, 0.88, 0.15], displace: 0.24, axisScale: [1.04, 0.76, 0.92], breakAxis: [0.72, 0.42, -0.23], breakDepth: 0.11, lobe: 0.035 }),
-  Object.freeze({ name: 'shear-fault', strata: 0.72, strataAmp: 0.38, tilt: [0.62, 0.55, 0.42], jointA: [0.15, 0.95, -0.22], jointB: [0.88, -0.12, 0.35], spacing: 0.38, sharp: 8.5, regolith: 0.28, mineral: 0.11, mineralAxis: [0.72, 0.18, 0.55], displace: 0.26, axisScale: [1.02, 0.89, 0.81], breakAxis: [-0.35, 0.61, 0.71], breakDepth: 0.14, lobe: 0.045 }),
-  Object.freeze({ name: 'blocky-regolith', strata: 0.95, strataAmp: 0.48, tilt: [-0.25, 0.82, 0.48], jointA: [0.55, 0.42, 0.72], jointB: [-0.68, 0.55, 0.28], spacing: 0.72, sharp: 4.8, regolith: 0.68, mineral: 0.05, mineralAxis: [0.22, 0.45, 0.85], displace: 0.22, axisScale: [0.91, 1.03, 0.86], breakAxis: [0.48, -0.19, 0.86], breakDepth: 0.09, lobe: 0.055 }),
-  Object.freeze({ name: 'layered-ledge', strata: 1.55, strataAmp: 0.74, tilt: [0.05, 0.98, -0.08], jointA: [0.98, 0.05, 0.05], jointB: [0.08, 0.12, 0.98], spacing: 0.48, sharp: 7.1, regolith: 0.35, mineral: 0.14, mineralAxis: [0.48, 0.72, 0.22], displace: 0.28, axisScale: [1.05, 0.72, 0.94], breakAxis: [-0.66, 0.29, 0.69], breakDepth: 0.12, lobe: 0.03 }),
-  Object.freeze({ name: 'cross-jointed', strata: 0.88, strataAmp: 0.44, tilt: [0.42, 0.68, 0.58], jointA: [0.72, 0.55, -0.35], jointB: [-0.42, 0.78, 0.42], spacing: 0.32, sharp: 9.2, regolith: 0.38, mineral: 0.09, mineralAxis: [0.15, 0.62, 0.75], displace: 0.25, axisScale: [0.88, 1.04, 0.84], breakAxis: [0.81, -0.46, 0.35], breakDepth: 0.13, lobe: 0.05 }),
+  Object.freeze({ name: 'slab-strata', strata: 1.15, strataAmp: 0.66, tilt: [0.18, 0.94, 0.12], jointA: [0.92, 0.08, 0.28], jointB: [0.12, 0.22, 0.96], spacing: 0.55, sharp: 6.8, regolith: 0.42, mineral: 0.08, mineralAxis: [0.35, 0.88, 0.15], displace: 0.28, axisScale: [1.06, 0.72, 0.88], breakAxis: [0.72, 0.42, -0.23], breakDepth: 0.15, lobe: 0.035 }),
+  Object.freeze({ name: 'shear-fault', strata: 0.72, strataAmp: 0.42, tilt: [0.62, 0.55, 0.42], jointA: [0.15, 0.95, -0.22], jointB: [0.88, -0.12, 0.35], spacing: 0.38, sharp: 8.8, regolith: 0.28, mineral: 0.11, mineralAxis: [0.72, 0.18, 0.55], displace: 0.30, axisScale: [1.05, 0.86, 0.78], breakAxis: [-0.35, 0.61, 0.71], breakDepth: 0.18, lobe: 0.045 }),
+  Object.freeze({ name: 'blocky-regolith', strata: 0.95, strataAmp: 0.52, tilt: [-0.25, 0.82, 0.48], jointA: [0.55, 0.42, 0.72], jointB: [-0.68, 0.55, 0.28], spacing: 0.72, sharp: 5.4, regolith: 0.68, mineral: 0.05, mineralAxis: [0.22, 0.45, 0.85], displace: 0.26, axisScale: [0.88, 1.02, 0.84], breakAxis: [0.48, -0.19, 0.86], breakDepth: 0.14, lobe: 0.055 }),
+  Object.freeze({ name: 'layered-ledge', strata: 1.55, strataAmp: 0.78, tilt: [0.05, 0.98, -0.08], jointA: [0.98, 0.05, 0.05], jointB: [0.08, 0.12, 0.98], spacing: 0.48, sharp: 7.4, regolith: 0.35, mineral: 0.14, mineralAxis: [0.48, 0.72, 0.22], displace: 0.31, axisScale: [1.08, 0.68, 0.92], breakAxis: [-0.66, 0.29, 0.69], breakDepth: 0.16, lobe: 0.03 }),
+  Object.freeze({ name: 'cross-jointed', strata: 0.88, strataAmp: 0.48, tilt: [0.42, 0.68, 0.58], jointA: [0.72, 0.55, -0.35], jointB: [-0.42, 0.78, 0.42], spacing: 0.32, sharp: 9.4, regolith: 0.38, mineral: 0.09, mineralAxis: [0.15, 0.62, 0.75], displace: 0.29, axisScale: [0.86, 1.04, 0.82], breakAxis: [0.81, -0.46, 0.35], breakDepth: 0.17, lobe: 0.05 }),
 ]);
 
 // These are response identities rather than four tints. The runtime blends them in object space,
@@ -15,16 +15,16 @@ export const COMMON_ROCK_VARIANTS = Object.freeze([
 // in several PBR dimensions so a fracture wall cannot become "matrix, but darker" and a ferrite
 // inclusion stays mill iron: metallic, not an emissive ore lamp and not a cyan crystal.
 export const COMMON_ROCK_MATERIAL_ROLES = Object.freeze({
-  // Painted industrial stone. Matrix stays near the scan so the rock is not dimmed to mud;
-  // regolith is matte dust, not a beige clay highlight; ferrite is mill iron, not a cyan crystal.
-  matrix: Object.freeze({ color: [0.88, 0.86, 0.82], roughness: 0.74, metalness: 0.025, ao: 0.98, normalStrength: 0.56 }),
-  fracture: Object.freeze({ color: [0.44, 0.42, 0.40], roughness: 0.965, metalness: 0.012, ao: 0.50, normalStrength: 1.1 }),
-  regolith: Object.freeze({ color: [0.70, 0.66, 0.60], roughness: 0.985, metalness: 0.006, ao: 0.84, normalStrength: 0.5 }),
-  ferrite: Object.freeze({ color: [0.72, 0.55, 0.42], roughness: 0.25, metalness: 0.64, ao: 0.9, normalStrength: 0.26 }),
+  // Cut industrial stone: cool-neutral slate/basalt matrix, deep dark fracture walls with strong
+  // relief, matte dust regolith, and worn dark mill-iron ferrite (never chrome or muddy clay).
+  matrix: Object.freeze({ color: [0.84, 0.85, 0.88], roughness: 0.86, metalness: 0.02, ao: 0.98, normalStrength: 1.05 }),
+  fracture: Object.freeze({ color: [0.40, 0.41, 0.44], roughness: 0.95, metalness: 0.01, ao: 0.44, normalStrength: 1.65 }),
+  regolith: Object.freeze({ color: [0.68, 0.67, 0.66], roughness: 0.98, metalness: 0.005, ao: 0.80, normalStrength: 0.72 }),
+  ferrite: Object.freeze({ color: [0.68, 0.62, 0.56], roughness: 0.38, metalness: 0.62, ao: 0.92, normalStrength: 0.38 }),
 });
 
-/** Mineral sheen mixed onto common rock. Iron in the cut, not a pink or cyan crystal. */
-export const COMMON_ROCK_MINERAL_SHEEN = Object.freeze([0.55, 0.42, 0.34]);
+/** Mineral sheen mixed onto common rock. Worn gunmetal iron in the cut, not a cyan crystal. */
+export const COMMON_ROCK_MINERAL_SHEEN = Object.freeze([0.64, 0.60, 0.56]);
 
 // UV transforms live on the five shared geometries, not on the shared material. This keeps a single
 // draw-compatible material while ensuring the Rock023 microstructure is attached, deterministic,
@@ -140,39 +140,145 @@ export function silhouetteRadius(x, y, z, variantIndex = 0) {
   };
 
   let shaped = ellipsoid;
+  const halfPlane = (normal, distance) => {
+    const alignment = dot(x, y, z, normal);
+    return alignment > 1e-5 ? distance / alignment : Infinity;
+  };
   if (normalizedIndex === 0) {
-    // Flattened stratified slab: broad side mass, clipped top/bottom bedding planes.
-    shaped = Math.min(ellipsoid * 1.04, planeRadius([0, 1, 0], 0.52));
-    shaped *= 1 + Math.sign(Math.sin((y + 0.08) * 12.0)) * 0.025;
+    // Flattened stratified slab: broad side mass, clipped top/bottom bedding planes + cleaved flank.
+    shaped = Math.min(ellipsoid * 1.06, planeRadius([0, 1, 0], 0.50), halfPlane([0.82, 0.22, 0.53], 0.78), halfPlane([-0.68, 0.34, -0.65], 0.82));
+    shaped *= 1 + Math.sign(Math.sin((y + 0.08) * 12.0)) * 0.03;
   } else if (normalizedIndex === 1) {
-    // Sheared wedge: box-derived planes in a skewed frame plus one deep breakaway face.
-    const wedge = boxRadius(x, y + x * 0.42, z - x * 0.12, [1.02, 0.65, 0.76]);
-    shaped = wedge * 0.86 + ellipsoid * 0.14;
-    shaped *= 1 - smoothstep(0.18, 0.82, dot(x, y, z, variant.breakAxis)) * 0.2;
+    // Sheared wedge: box-derived planes in a skewed frame plus two angular cleavage cuts.
+    const wedge = boxRadius(x, y + x * 0.46, z - x * 0.16, [1.04, 0.62, 0.74]);
+    shaped = Math.min(wedge * 0.90 + ellipsoid * 0.10, halfPlane([-0.74, 0.42, 0.52], 0.76));
+    shaped *= 1 - smoothstep(0.14, 0.78, dot(x, y, z, variant.breakAxis)) * 0.24;
   } else if (normalizedIndex === 2) {
-    // Chipped block: six coherent planes, chamfered enough to avoid primitive-box reads.
-    const block = boxRadius(x, y, z, [0.84, 0.8, 0.9]);
-    shaped = block * 0.88 + ellipsoid * 0.12;
-    shaped *= 1 - smoothstep(0.55, 0.92, dot(x, y, z, variant.breakAxis)) * 0.12;
+    // Chipped quarry block: six coherent planes with diagonal shear bevels so it never reads smooth.
+    const block = boxRadius(x, y, z, [0.84, 0.78, 0.92]);
+    shaped = Math.min(block * 0.92 + ellipsoid * 0.08, halfPlane([0.62, 0.52, -0.58], 0.75), halfPlane([-0.70, -0.22, 0.68], 0.80));
+    shaped *= 1 - smoothstep(0.48, 0.90, dot(x, y, z, variant.breakAxis)) * 0.16;
   } else if (normalizedIndex === 3) {
-    // Asymmetric ledged body: a flat cap and stepped quarry-like side terraces.
+    // Asymmetric ledged body: a flat cap and crisp stepped quarry-like side terraces.
     const ledgeSide = dot(x, y, z, [0.92, 0.08, 0.28]);
-    const terrace = ledgeSide > 0.46 ? 0.8 : ledgeSide > 0.02 ? 0.92 : ledgeSide > -0.42 ? 1.04 : 0.88;
-    shaped = Math.min(ellipsoid * terrace, planeRadius([0.05, 0.99, -0.08], 0.56));
+    const terrace = ledgeSide > 0.46 ? 0.76 : ledgeSide > 0.02 ? 0.92 : ledgeSide > -0.42 ? 1.06 : 0.84;
+    shaped = Math.min(ellipsoid * terrace, planeRadius([0.05, 0.99, -0.08], 0.54), halfPlane([0.45, 0.35, -0.82], 0.78));
   } else {
-    // Cross-jointed/lobed body: an asymmetric clover mass cut by both joint families.
+    // Cross-jointed crag: an asymmetric angular mass split by both joint families and a shear plane.
     const azimuth = Math.atan2(z, x);
-    const lobes = 1 + Math.sin(azimuth * 3 + y * 1.7) * 0.11 * (1 - y * y * 0.55);
-    shaped = ellipsoid * lobes;
-    shaped *= 1 - smoothstep(0.45, 0.9, Math.abs(dot(x, y, z, variant.jointA))) * 0.08;
+    const lobes = 1 + Math.sin(azimuth * 3 + y * 1.7) * 0.14 * (1 - y * y * 0.50);
+    shaped = Math.min(ellipsoid * lobes, halfPlane([0.78, -0.38, 0.49], 0.76), halfPlane([-0.55, 0.58, -0.60], 0.80));
+    shaped *= 1 - smoothstep(0.40, 0.88, Math.abs(dot(x, y, z, variant.jointA))) * 0.11;
   }
 
   const structuralCut = fractureField(x, y, z, normalizedIndex)
-    * [0.055, 0.085, 0.05, 0.07, 0.1][normalizedIndex];
-  const oppositeChip = smoothstep(0.7, 0.96, -dot(x, y, z, variant.jointB));
+    * [0.07, 0.10, 0.065, 0.085, 0.115][normalizedIndex];
+  const oppositeChip = smoothstep(0.66, 0.94, -dot(x, y, z, variant.jointB));
   return Math.max(0.52, Math.min(1.1,
-    shaped - structuralCut - oppositeChip * variant.breakDepth * 0.24,
+    shaped - structuralCut - oppositeChip * variant.breakDepth * 0.26,
   ));
+}
+
+// Per-family fractured rock silhouettes (metal, ice, crystal, exotic, gas, optic_mirror).
+// Every family builds asymmetric broken geology from planar cleavage cuts, stepped fault terraces,
+// and directional elongation rotated per variant so neighbours never match and none reads as a ball.
+const FAMILY_ROT_YAW = Object.freeze([0.0, 1.24, 2.51, 3.82, 5.06]);
+const FAMILY_ROT_PITCH = Object.freeze([0.12, -0.28, 0.34, -0.18, 0.24]);
+const FAMILY_AXES = Object.freeze({
+  metal: Object.freeze([[1.18, 0.68, 0.78], [0.92, 0.82, 1.14], [1.16, 0.64, 0.86], [0.84, 0.94, 1.08], [1.12, 0.74, 0.74]]),
+  ice: Object.freeze([[1.20, 0.60, 0.80], [0.98, 0.72, 1.16], [1.22, 0.56, 0.74], [0.86, 0.84, 1.12], [1.16, 0.66, 0.82]]),
+  crystal: Object.freeze([[1.12, 0.82, 0.80], [0.88, 0.94, 1.12], [1.16, 0.72, 0.82], [0.84, 1.00, 0.90], [1.10, 0.80, 0.84]]),
+  exotic: Object.freeze([[1.18, 0.74, 0.72], [0.82, 1.02, 0.86], [1.14, 0.76, 0.90], [0.92, 0.70, 1.16], [1.08, 0.88, 0.76]]),
+  gas: Object.freeze([[1.08, 0.78, 0.90], [0.92, 0.90, 0.84], [1.12, 0.72, 0.86], [0.86, 0.94, 0.98], [1.08, 0.80, 0.82]]),
+  optic_mirror: Object.freeze([[1.14, 0.70, 0.92], [1.06, 0.74, 0.98], [1.16, 0.68, 0.88], [0.96, 0.78, 1.08], [1.10, 0.72, 0.90]]),
+});
+const CLEAVE_PLANES = Object.freeze([
+  // [nx, ny, nz, dist] — unit normals slicing bold asymmetric fracture planes into the hull
+  Object.freeze([0.80, 0.38, 0.46, 0.70]),
+  Object.freeze([-0.68, 0.52, 0.51, 0.68]),
+  Object.freeze([0.38, -0.48, -0.79, 0.72]),
+  Object.freeze([-0.82, -0.26, -0.51, 0.72]),
+  Object.freeze([0.14, 0.92, -0.36, 0.64]),
+  Object.freeze([-0.24, -0.88, 0.41, 0.66]),
+  Object.freeze([0.92, -0.18, -0.34, 0.76]),
+  Object.freeze([-0.46, 0.20, -0.86, 0.72]),
+]);
+
+export function familySilhouette(x, y, z, family = 'metal', variantIndex = 0) {
+  const v = ((Number(variantIndex) || 0) % 5 + 5) % 5;
+  const yaw = FAMILY_ROT_YAW[v];
+  const pitch = FAMILY_ROT_PITCH[v];
+  const cy = Math.cos(yaw), sy = Math.sin(yaw);
+  const cp = Math.cos(pitch), sp = Math.sin(pitch);
+  // Rotate query vector into the variant's fractured frame so every neighbour has a distinct posture.
+  const rx0 = x * cy + z * sy;
+  const rz0 = -x * sy + z * cy;
+  const ry = y * cp - rz0 * sp;
+  const rz = y * sp + rz0 * cp;
+  const rx = rx0;
+
+  const axesTable = FAMILY_AXES[family] || FAMILY_AXES.metal;
+  const [sx, syA, sz] = axesTable[v];
+  let r = 1 / Math.sqrt((rx * rx) / (sx * sx) + (ry * ry) / (syA * syA) + (rz * rz) / (sz * sz));
+
+  const cut = (nx, ny, nz, dist) => {
+    const a = rx * nx + ry * ny + rz * nz;
+    return a > 1e-4 ? dist / a : Infinity;
+  };
+  // Tight smooth-min preserves crisp angular fracture corners without zero-area slivers.
+  const smin = (a, b, k) => {
+    const h = Math.max(k - Math.abs(a - b), 0) / k;
+    return Math.min(a, b) - h * h * k * 0.25;
+  };
+
+  if (family === 'optic_mirror') {
+    // Sculpted cleaved dark-iron reflector monolith: crisp planar bevel cuts + stepped iron shoulders.
+    const k = 0.006;
+    r = smin(r, cut(0.86, 0.24, 0.45, 0.72), k);
+    r = smin(r, cut(-0.84, 0.28, 0.46, 0.74), k);
+    r = smin(r, cut(0.42, 0.22, -0.88, 0.70), k);
+    r = smin(r, cut(-0.46, 0.26, -0.85, 0.74), k);
+    r = smin(r, cut(0.08, 0.98, 0.16, 0.56), k);
+    r = smin(r, cut(-0.10, -0.97, -0.20, 0.58), k);
+    r = smin(r, cut(0.22, -0.32, 0.92, 0.74), k);
+    r = smin(r, cut(-0.56, 0.64, 0.52, 0.70), k);
+    const step = (smoothstep(-0.04, 0.04, rx * 0.72 - rz * 0.68) - 0.5) * 0.07;
+    return Math.max(0.54, Math.min(1.06, r + step));
+  }
+
+  const k = family === 'ice' ? 0.008 : family === 'metal' || family === 'exotic' ? 0.012 : 0.018;
+  const planeCount = family === 'ice' ? 6 : 5;
+  for (let p = 0; p < planeCount; p++) {
+    const plane = CLEAVE_PLANES[(p + v * 2) % CLEAVE_PLANES.length];
+    const jitter = ((p * 7 + v * 13) % 5 - 2) * 0.035;
+    const tighten = family === 'ice' ? -0.025 : family === 'exotic' ? -0.015 : 0.0;
+    r = smin(r, cut(plane[0], plane[1], plane[2], plane[3] + jitter + tighten), k);
+  }
+
+  // Deep stepped fault terrace + cleft grooves (creates unmistakable broken quarry notches in silhouette).
+  const faultCoord = rx * 0.68 - rz * 0.62 + ry * 0.39 + (v - 2) * 0.09;
+  const faultStep = (smoothstep(-0.05, 0.05, faultCoord) - 0.5) * (family === 'ice' ? 0.18 : 0.14);
+  const faultGroove = Math.exp(-faultCoord * faultCoord * 32) * (family === 'gas' ? 0.18 : 0.13);
+
+  const crossCoord = rz * 0.76 + rx * 0.54 - ry * 0.36 - (v - 2) * 0.07;
+  const crossStep = (smoothstep(-0.06, 0.06, crossCoord) - 0.5) * 0.09;
+  const crossGroove = Math.exp(-crossCoord * crossCoord * 36) * 0.10;
+
+  // Ridged geological crag (sharp rocky edges and chipped ribs, NOT soft sinusoidal blobs).
+  const w1 = 1 - Math.abs(Math.sin(rx * 2.8 + rz * 2.3 + v * 1.9));
+  const w2 = 1 - Math.abs(Math.cos(ry * 3.4 - rx * 2.6 + rz * 1.7 + v * 1.1));
+  const crag = ((w1 * w1 * 0.6 + w2 * w2 * 0.4) - 0.45) * (family === 'gas' ? 0.16 : family === 'ice' ? 0.09 : 0.14);
+
+  // Porous craters on volatile gas rock so it reads as craggy cinder/pumice stone.
+  let crater = 0;
+  if (family === 'gas') {
+    const c1 = Math.max(0, 1 - Math.hypot(rx - 0.52, ry - 0.35, rz + 0.44) * 1.50);
+    const c2 = Math.max(0, 1 - Math.hypot(rx + 0.48, ry + 0.28, rz - 0.50) * 1.55);
+    const c3 = Math.max(0, 1 - Math.hypot(rx + 0.10, ry - 0.55, rz + 0.55) * 1.65);
+    crater = (c1 * c1 + c2 * c2 + c3 * c3) * 0.18;
+  }
+
+  return Math.max(0.52, Math.min(1.08, r + faultStep + crossStep - faultGroove - crossGroove + crag - crater));
 }
 
 function materialRoleWeights(sample) {

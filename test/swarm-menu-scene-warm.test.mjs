@@ -122,18 +122,63 @@ test('leaving the menu warm discards the scene cohort and its speculation', () =
   assert.ok(!owner._rosterPrewarmRoots.includes(warm.root));
 });
 
-test('the warm run enumerates the sector recipe, mints the rock cohort, and settles clean', async () => {
+test('ordinary Swarm adopts both menu warms while the opening equipment screen holds round zero', () => {
+  const roster = { root: new THREE.Group(), swarmScoped: true, waveBase: 1 };
+  const room = { root: new THREE.Group(), sectorId: 'sector_helios_prime', building: true };
+  const owner = menuOwner({
+    state: { mode: 'loading', run: { kind: 'survival', ruleset: 'swarm', phase: 'draft', wave: 0 } },
+    _earlyCrucibleWarm: roster,
+    _earlyCrucibleWarmMenu: true,
+    _menuSwarmSceneWarm: room,
+    _rosterPrewarmRoots: [roster.root, room.root],
+    _beginCrucibleBoundedRosterWarm() {},
+    _topUpEarlyCrucibleWarmPlayerSpec() {},
+  });
+  owner.scene.add(roster.root, room.root);
+
+  owner._beginEarlyCrucibleRosterWarm();
+
+  assert.equal(owner._earlyCrucibleWarm, roster);
+  assert.equal(owner._earlyCrucibleWarmMenu, false);
+  assert.equal(owner._menuSwarmSceneWarm, room);
+  assert.equal(room.root.parent, owner.scene);
+  assert.equal(room.building, true);
+});
+
+test('a checkpoint armory keeps a warm scoped to the bought round', () => {
+  const roster = { root: new THREE.Group(), swarmScoped: true, waveBase: 11 };
+  const owner = menuOwner({
+    state: {
+      mode: 'loading',
+      run: { kind: 'survival', ruleset: 'swarm', phase: 'draft', wave: 10, telemetry: { startWave: 11 } },
+    },
+    _earlyCrucibleWarm: roster,
+    _rosterPrewarmRoots: [roster.root],
+    _beginCrucibleBoundedRosterWarm() {},
+    _topUpEarlyCrucibleWarmPlayerSpec() {},
+  });
+  owner.scene.add(roster.root);
+
+  owner._beginEarlyCrucibleRosterWarm();
+
+  assert.equal(owner._earlyCrucibleWarm, roster);
+});
+
+test('the Swarm warm run excludes campaign places, mints the rock cohort, and settles clean', async () => {
   const compiled = [];
+  const requests = [];
   const owner = menuOwner({
     state: {
       mode: 'menu',
       render: { compileObjectPipelines: async (subject) => { compiled.push(subject); return { ok: true }; } },
     },
     bloom: { prepareResources: async () => ({ warmed: true }) },
+    _rosterPrewarmPendingLabels: { set(_promise, label) { requests.push(label); } },
   });
   const warm = {
     root: new THREE.Group(),
     sectorId: 'sector_helios_prime',
+    arenaOnly: true,
     building: true,
   };
   warm.root.visible = false;
@@ -145,6 +190,25 @@ test('the warm run enumerates the sector recipe, mints the rock cohort, and sett
   assert.equal(warm.root.userData.warmBuilding, false);
   assert.equal(warm.root.parent, null, 'a settled cohort leaves the presented scene');
   assert.ok(compiled.length >= 1, 'the rock-leaf family at least compiled behind the menu');
+  const files = requests.filter(key => key.startsWith('menu-scene:file:'));
+  assert.ok(files.some(key => key.includes('/place_rock_')));
+  assert.ok(files.every(key => key.includes('/place_rock_')), 'the arena warms no campaign sector files');
+  assert.ok(requests.includes('menu-scene:post'), 'shared post resources remain staged');
+});
+
+test('the Swarm embark marker warms the picked hull without borrowing the Adventure opening cast', () => {
+  const requests = [];
+  const owner = menuOwner({
+    _warmSectorRecipeStubs(places, ships, roster) { requests.push({ places, ships, roster }); },
+  });
+  const spec = { sectorId: 'sector_helios_prime', seed: 4242, shipDefId: 'ship_hornet' };
+  owner._prefetchEmbarkVisuals({ ...spec, swarmArenaOnly: true });
+  assert.deepEqual(requests[0], {
+    places: [], ships: [{ type: 'ship', data: { defId: 'ship_hornet' } }], roster: [],
+  });
+  owner._prefetchEmbarkVisuals(spec);
+  assert.ok(requests[1]?.places.some(place => place.data.packagedPropFile === 'pods/pod_47a_evidence_spindle.glb'),
+    'a later ordinary embark still warms its Adventure props');
 });
 
 test('menu warm arm rides the real crucible trigger and embark speculation', () => {

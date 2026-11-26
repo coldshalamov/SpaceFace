@@ -10,6 +10,7 @@ import { createPalletJackVisualDriver } from '../src/render/palletJackVisuals.js
 import { createKilnbackVisualDriver, KILNBACK_MOTION_NODES } from '../src/render/kilnbackVisuals.js';
 import { ironKrakenAnimationPose, createIronKrakenVisual } from '../src/render/ironKrakenVisuals.js';
 import { IRON_KRAKEN_PROFILES } from '../src/data/ironKraken.js';
+import { IRON_KRAKEN_HEAVY } from '../src/data/encounters/capital-boss/iron-kraken.js';
 
 test('worker boss presentation retains live tell clock and clears retired fight', () => {
   const fight = { fightId: 'f', encounterId: IRON_KRAKEN_PROFILES.heavy.scoreId,
@@ -57,13 +58,20 @@ test('worker Kraken fight frame follows post-spawn start, update and retirement'
   const publish = () => { const rows = collectEntityVitals(state, shadow); applyEntityVitals(model, JSON.parse(JSON.stringify(rows))); return rows; };
   publish(); assert.equal(mirror.ironKrakenMotionFrame, null);
   source.data.ironKraken.fightId = 'fight-1';
+  const inkRing = IRON_KRAKEN_HEAVY.score.beats.find(beat => beat.id === 'ink_ring');
+  const recovery = { beatId: inkRing.id, startedAt: 68, durationTicks: inkRing.recoverTicks,
+    heading: 0, cancelled: false };
   state.capitalBossEncounters.fights['fight-1'] = { bossId: id, encounterId: profile.scoreId,
-    phase: 'recovery', clock: 80, nextAt: 98, plates: [{ id: 'mantle_port', attached: false }] };
+    phase: 'recovery', clock: 80, nextAt: recovery.startedAt + recovery.durationTicks,
+    recovery, plates: [{ id: 'mantle_port', attached: false }] };
   assert.equal(publish().length, 1);
   let frame = JSON.parse(mirror.ironKrakenMotionFrame);
   assert.equal(frame.fightId, 'fight-1'); assert.equal(frame.ownerLife, life);
-  assert.ok(ironKrakenAnimationPose(frame, 0).mantle > 0);
-  assert.notEqual(ironKrakenAnimationPose(frame, 0).missingShellMask, 0);
+  assert.deepEqual(frame.recovery, recovery);
+  const recoveryPose = ironKrakenAnimationPose(frame, 0);
+  assert.ok(recoveryPose.mantle > 0, 'the ring recovery vents the mantle');
+  assert.ok(recoveryPose.aperture > 0, 'recovery exposes the front core');
+  assert.notEqual(recoveryPose.missingShellMask, 0);
   const root = createIronKrakenVisual(mirror);
   root.userData.updateAuthoredMotion(mirror, 1, {}, { simTime: 1, render: {} });
   assert.ok(root.userData.ironKrakenRig.pose.mantle > 0, 'actual visual reads the worker frame');
@@ -74,6 +82,7 @@ test('worker Kraken fight frame follows post-spawn start, update and retirement'
   assert.equal(publish().length, 1); assert.equal(mirror.ironKrakenMotionFrame, null);
   root.userData.updateAuthoredMotion(mirror, 2, {}, { simTime: 2, render: {} });
   assert.equal(root.userData.ironKrakenRig.pose.mantle, 0);
+  assert.equal(root.userData.ironKrakenRig.pose.aperture, 0);
   source.data.ironKraken.fightId = 'fight-1'; publish();
   delete source.data.ironKraken;
   assert.equal(publish().length, 1); assert.equal(mirror.ironKrakenMotionFrame, null);

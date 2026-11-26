@@ -57,51 +57,55 @@ export function buildDriftBarge(entity) {
   hullDarkMat.name = 'Drift_HullDark';
   const rustMat = kit.standardMaterial(COLOR.rust, 0.88, 0.20); rustMat.name = 'Drift_Rust';
   const graphiteMat = kit.machineryMaterial(COLOR.graphite, 0.55, 0.75); graphiteMat.name = 'Drift_Graphite';
-  const hazardMat = kit.emissiveMaterial(COLOR.hazard, 1.4); hazardMat.name = 'Drift_Hazard';
-  const workLightMat = kit.emissiveMaterial(COLOR.workLight, 2.2); workLightMat.name = 'Drift_WorkLight';
+  const hazardMat = kit.standardMaterial(COLOR.hazard, 0.5, 0.2); hazardMat.name = 'Drift_Hazard';
+  const hazardGlow = kit.shadedSignal(COLOR.hazard, 0.4); hazardGlow.name = 'Drift_Hazard_Glow';
+  const workLightMat = kit.shadedSignal(COLOR.workLight, 0.85); workLightMat.name = 'Drift_WorkLight';
 
   // ---- industrial barge hull: a WIDE SQUAT lofted shell with a flat reinforced deck (§8.4) ----
   // Broader than it is tall — a working barge, not a sleek hull. The flat top is the cargo/ore deck.
-  const pressureHull = kit.addMesh(hull, kit.loftXGeometry([
+  const DRIFT_SECTIONS = [
     { x: -8.5, halfY: 1.6, halfZ: 3.2 },
     { x: -2.0, halfY: 1.8, halfZ: 3.5 },
     { x: 5.0,  halfY: 1.7, halfZ: 3.3 },
     { x: 10.0, halfY: 1.3, halfZ: 2.6 },
     { x: 13.5, halfY: 0.5, halfZ: 1.0 },
-  ], 10), hullMat, 'Drift_Pressure_Hull');
+  ];
+  const pressureHull = kit.addMesh(hull, kit.loftXGeometry(DRIFT_SECTIONS, 10), hullMat, 'Drift_Pressure_Hull');
   pressureHull.castShadow = true;
 
   // reinforced flat deck plate on top (broad load path, §8.4)
-  kit.addBox(hull, hullDarkMat, 'Drift_Deck_Plate', [16.0, 0.4, 6.4], [-0.5, 1.7, 0]);
+  kit.addBox(hull, hullDarkMat, 'Drift_Deck_Plate', [10.5, 0.16, 5.2], [-1.2, 1.78, 0]);
 
   // ---- external structural cross-braces (external braces, §8.4) ----
   // Visible truss-like members spanning the hull — honest load-bearing structure, not hidden inside.
   for (let i = 0; i < 4; i++) {
-    const x = -5.0 + i * 3.5;
-    kit.addBox(hull, rustMat, `Drift_Brace_${i}`, [0.5, 1.8, 6.0], [x, 0.5, 0]).castShadow = true;
+    const side = i < 2 ? -1 : 1;
+    const x = (i % 2 === 0 ? -3.4 : 2.0);
+    const sec = kit.sectionAt(DRIFT_SECTIONS, x);
+    kit.addBox(hull, rustMat, `Drift_Brace_${i}`, [3.0, 0.12, 0.16], [x, 1.94, side * Math.min(2.05, sec.halfZ - 0.55)]).castShadow = true;
   }
 
   // ---- crusher scoop with unmistakable mount geometry (replaceable tool, §8.4) ----
   // A bolted bucket on the nose with a clear mounting collar — reads as a detachable mining tool.
   const scoop = new THREE.Group(); scoop.name = 'Drift_Crusher_Scoop';
   scoop.userData.keepSeparate = true; // group survives merge (shed at critical)
-  kit.addBox(scoop, rustMat, 'Drift_Scoop_Bucket', [2.8, 2.8, 4.4], [0, 0, 0]).castShadow = true;
+  kit.addBox(scoop, rustMat, 'Drift_Scoop_Bucket', [1.5, 0.9, 1.9], [0.15, 0, 0]).castShadow = true;
   // the mounting collar (unmistakable mount geometry)
-  kit.addCylinderX(scoop, graphiteMat, 'Drift_Scoop_Collar', 1.2, 1.4, [-1.6, 0, 0], 12);
+  kit.addCylinderX(scoop, graphiteMat, 'Drift_Scoop_Collar', 0.42, 0.7, [-0.85, 0, 0], 12);
   // hazard-yellow jaw teeth (safety color near moving systems, §8.4)
   for (const side of [-1, 1]) {
     for (let t = 0; t < 3; t++) {
-      kit.addBox(scoop, hazardMat, `Drift_Scoop_Tooth_${side < 0 ? 'P' : 'S'}${t}`, [0.3, 0.6, 0.4], [1.2, 0.9 - t * 0.7, side * (1.2 + t * 0.4)]);
+      kit.addBox(scoop, hazardMat, `Drift_Scoop_Tooth_${side < 0 ? 'P' : 'S'}${t}`, [0.16, 0.28, 0.14], [0.85, 0.28 - t * 0.22, side * (0.55 + t * 0.12)]);
     }
   }
   hull.add(scoop);
-  scoop.position.set(12.0, -0.2, 0);
+  scoop.position.set(11.7, -0.35, 0);
 
   // ---- cargo clamps on the deck (external clamps, §8.4) — hazard-yellow, pairs ----
   const clamps = [];
   for (let i = 0; i < 4; i++) {
     for (const side of [-1, 1]) {
-      const c = kit.addBox(hull, hazardMat, `Drift_Clamp_${i}_${side < 0 ? 'P' : 'S'}`, [0.8, 1.0, 0.8], [-3.0 + i * 2.5, 2.2, side * 2.0]);
+      const c = kit.addBox(hull, hazardMat, `Drift_Clamp_${i}_${side < 0 ? 'P' : 'S'}`, [0.32, 0.16, 0.24], [-4.2 + i * 2.1, 1.96, side * 1.55]);
       c.castShadow = true;
       clamps.push(c);
     }
@@ -111,28 +115,32 @@ export function buildDriftBarge(entity) {
   // Higher grime intensity than corporate/authority, concentrated on the dorsal deck where ore is
   // loaded. This is wear-from-work, not battle damage.
   const oreGrimeMat = kit.grimeMaterial({ hull: COLOR.hull, seed: seed + 17, intensity: 0.65 });
-  kit.addDecal(hull, oreGrimeMat, 'Drift_Ore_Stain', [14.0, 5.0], [-1.0, 1.72, 0], [-Math.PI / 2, 0, 0]);
+  // The plate is centered at 1.7 with a 0.4 height; keep the stain just above its top.
+  kit.addDecal(hull, oreGrimeMat, 'Drift_Ore_Stain', [9.6, 4.2], [-1.2, 1.91, 0], [-Math.PI / 2, 0, 0]);
 
   // ---- hazard chevron decals on the bow (safety color, §8.4) — dropped at LOD1+ ----
   const chevronDecalMat = kit.decalMaterial({ hull: COLOR.hull, accent: COLOR.warning, seed: seed + 21, kind: 'decal' });
   const chevronDecals = [];
   for (const side of [-1, 1]) {
-    const d = kit.addDecal(hull, chevronDecalMat, `Drift_Chevron_${side < 0 ? 'Port' : 'Starboard'}`, [4.0, 2.0], [8.0, 0.5, side * 3.21], [0, side < 0 ? -Math.PI / 2 : Math.PI / 2, 0]);
+    const sec = kit.sectionAt(DRIFT_SECTIONS, 6.2);
+    const d = kit.addDecal(hull, chevronDecalMat, `Drift_Chevron_${side < 0 ? 'Port' : 'Starboard'}`, [1.5, Math.min(1.0, sec.halfY * 0.75)], [6.2, 0.05, side * (sec.halfZ - 0.04)], [0, side > 0 ? 0 : Math.PI, 0]);
     chevronDecals.push(d);
   }
 
   // ---- crude industrial drive: a single big rough nozzle (workhorse, not showy) ----
   const drive = kit.buildDrive(hull, {
-    name: 'Drift_Drive', position: [-9.0, 0.6, 0], radius: 1.25, length: 1.6,
-    materials: { dark: graphiteMat, accent: hazardMat },
+    name: 'Drift_Drive', position: [-8.62, 0.35, 0], radius: 0.85, length: 1.15,
+    materials: { dark: graphiteMat, accent: hazardGlow },
     driveColor: COLOR.drive, coreColor: COLOR.driveCore, driveGlowOpacity: 0.48, flicker: true,
   });
 
   // ---- work flood-lights (not decorative glow, §8.4) ----
   // Warm white-ish floods illuminating the deck for night ops. Tagged as the navLight damage group.
   const navLights = [];
+  const lampHousing = kit.standardMaterial(COLOR.graphite, 0.62, 0.45);
   for (const x of [3.0, -3.0]) {
-    const l = kit.addBox(hull, workLightMat, `Drift_WorkLight_${x}`, [0.5, 0.4, 0.5], [x, 2.5, 0]);
+    kit.addBox(hull, lampHousing, `Drift_WorkHousing_${x}`, [0.22, 0.08, 0.16], [x, 1.92, 0]);
+    const l = kit.addBox(hull, workLightMat, `Drift_WorkLight_${x}`, [0.1, 0.035, 0.08], [x, 1.98, 0]);
     l.userData.damageRole = 'navLight'; l.userData.keepSeparate = true;
     navLights.push(l);
   }
@@ -141,7 +149,7 @@ export function buildDriftBarge(entity) {
   // ---- greeble: honest industrial detail (external pipes, vents — denser than corporate) ----
   kit.scatterGreeble(hull, {
     R: DESIGN_RADIUS, length: 1.8, halfWidth: 0.16, height: 0.14, density: 0.45, seed: seed + 7,
-    materials: { primary: hullDarkMat, dark: graphiteMat, glow: hazardMat }, xMin: -0.30, xMax: 0.20,
+    materials: { primary: hullDarkMat, dark: graphiteMat, glow: hazardGlow }, xMin: -0.30, xMax: 0.20,
   });
 
   // ---- sockets ----

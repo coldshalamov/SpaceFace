@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
 import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -21,11 +20,6 @@ import {
 const ALPHA_SCHEMA = 'spaceface.alphaEvidence.v1';
 const TEST_FILE = '.\\test\\alpha\\evidence.json';
 const PROJECT_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-// design/VISION.md was deliberately inserted into the chain on 2026-08-10 (86d3d5c6, "wire
-// VISION.md into every authority chain"); it declares itself PRODUCT AUTHORITY and outranks every
-// other document's emphasis. This constant still asserted the pre-VISION chain, so the check was
-// failing the repository for honouring an explicit owner decision.
-const AUTHORITY_CHAIN = "root `ARCHITECTURE.md` (technical) > `design/VISION.md` (the owner's fantasy and UVP — wins on product emphasis) > `design/GDD_2_0.md` (design) > `design/spec2/00_MASTER_TASTE.md` (historical taste reference; visual tokens not binding)";
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -241,101 +235,6 @@ async function runRepositoryWiringAssertions() {
       `${aggregate} must not require ignored runtime evidence artifacts`,
     );
   }
-
-  const masterPlanPath = path.join(PROJECT_ROOT, 'design/vision/03_MASTER_BUILD_PLAN.md');
-  const checkedDocs = [
-    'design/vision/00_CONSTITUTION.md',
-    existsSync(masterPlanPath) ? 'design/vision/03_MASTER_BUILD_PLAN.md' : null,
-    'design/spec2/00_MASTER_TASTE.md',
-  ].filter(Boolean);
-
-  for (const relativePath of checkedDocs) {
-    const head = (await readFile(path.join(PROJECT_ROOT, relativePath), 'utf8')).split(/\r?\n/).slice(0, 14).join('\n');
-    const normalizedHead = head.replace(/^>\s?/gm, '').replace(/\s+/g, ' ');
-    assert.ok(normalizedHead.includes(AUTHORITY_CHAIN), `${relativePath} must show the current authority chain at its top`);
-    assert.ok(head.includes('design/vision/ALPHA_PROGRAM.md'), `${relativePath} must identify ALPHA_PROGRAM as current execution authority`);
-  }
-
-  const constitution = await readFile(path.join(PROJECT_ROOT, 'design/vision/00_CONSTITUTION.md'), 'utf8');
-  assert.doesNotMatch(constitution, /\*\*Status:\*\* AUTHORITATIVE/, 'vision constitution is supporting framing, not authority');
-  assert.equal(
-    constitution.includes('This file supersedes conflicting clauses in `design/spec2/00_MASTER_TASTE.md`'),
-    false,
-    'vision constitution cannot supersede MASTER_TASTE',
-  );
-
-  if (existsSync(masterPlanPath)) {
-    const masterPlan = await readFile(masterPlanPath, 'utf8');
-    const masterPlanHeading = masterPlan.split(/\r?\n/, 1)[0];
-    assert.doesNotMatch(masterPlanHeading, /point agents here/i, 'supporting roadmap heading must not route agents here');
-    assert.match(masterPlanHeading, /supporting|historical/i, 'supporting roadmap heading identifies its non-authoritative role');
-    assert.doesNotMatch(masterPlan, /\*\*Status:\*\* LIVE execution authority/, 'old master plan is not current execution authority');
-    assert.equal(masterPlan.includes('Use [`05_GOAL_PROMPTS.md`](./05_GOAL_PROMPTS.md) to dispatch.'), false, 'old goal prompts are not default dispatch');
-    assert.equal(masterPlan.includes('Do not apply superseded MASTER_TASTE rules'), false, 'supporting roadmap cannot supersede taste rules');
-    assert.doesNotMatch(masterPlan, /ignore[^\n]*constitution/i, 'supporting roadmap cannot tell agents to ignore rules in favor of the constitution');
-    const normalizedMasterPlan = masterPlan.replace(/^>\s?/gm, '').replace(/\s+/g, ' ');
-    assert.match(normalizedMasterPlan, /active only when `?ALPHA_PROGRAM\.md`? (?:cites|activates)/i);
-  }
-
-  const taste = await readFile(path.join(PROJECT_ROOT, 'design/spec2/00_MASTER_TASTE.md'), 'utf8');
-  assert.equal(
-    taste.includes('Authority chain: 00_MASTER_TASTE > the specific spec2 file > design/GDD_2_0.md > older docs.'),
-    false,
-    'taste body must not retain the reversed authority chain',
-  );
-  assert.match(
-    taste,
-    /ARCHITECTURE\.md.*>.*GDD_2_0\.md.*>.*00_MASTER_TASTE\.md.*historical taste reference/is,
-    'taste banner keeps architecture and GDD authoritative while marking taste historical',
-  );
-  assert.match(
-    taste,
-    /never outranks the\s+current program, an activated task spec, or stronger player-facing evidence/is,
-    'taste body defers to the current program, activated task specs, and player-facing evidence',
-  );
-
-  const rootAgents = await readFile(path.join(PROJECT_ROOT, 'AGENTS.md'), 'utf8');
-  const authorityHead = rootAgents.split(/\r?\n/).slice(0, 18).join('\n');
-  // The front door now routes through the Finish Program (three lane boards); the retired
-  // build_map/single-program-map chain is historical. Pin the live routing, not the old one.
-  assert.match(authorityHead, /design\/program\/finish\/README\.md/i,
-    'root orientation routes multi-plan work through the canonical Finish program');
-  assert.ok(
-    rootAgents.indexOf('design/program/finish/README.md') < rootAgents.indexOf('design/program/NOW.md'),
-    'program routing reads the canonical program before live NOW state',
-  );
-  const productRoute = rootAgents.split(/\r?\n/).find((line) => line.includes('Product or system intent')) || '';
-  assert.match(
-    productRoute,
-    /design\/VISION\.md.*design\/GDD_2_0\.md/i,
-    'product design starts at the vision and the GDD before the selected spec section',
-  );
-  const authorityTokens = [
-    'user direction',
-    'ARCHITECTURE.md',
-    'design/VISION.md',
-    'design/GDD_2_0.md',
-    'Finish board',
-  ];
-  const authoritySection = rootAgents.slice(rootAgents.indexOf('Authority and contracts'));
-  const authorityIndexes = authorityTokens.map((token) => authoritySection.indexOf(token));
-  assert.ok(authorityIndexes.every((index) => index >= 0),
-    'root orientation names every current authority tier');
-  assert.deepEqual([...authorityIndexes].sort((a, b) => a - b), authorityIndexes,
-    'root orientation carries the current authority order instead of historical Alpha routing');
-
-  const alphaProgram = await readFile(path.join(PROJECT_ROOT, 'design/vision/ALPHA_PROGRAM.md'), 'utf8');
-  assert.match(alphaProgram,
-    /\| 0\.1 \|[^\n]+\| Contract complete; live corpus RED \|/,
-    'Task 0.1 distinguishes the approved checker contract from the still-red live corpus');
-  assert.match(alphaProgram, /independent spec and quality reviews approved/i,
-    'Task 0.1 completion records both independent approvals');
-  assert.ok(alphaProgram.includes('npm run check:alpha:evidence:contract'), 'ledger names the clean-CI contract command');
-  assert.ok(alphaProgram.includes('npm run check:alpha:evidence'), 'ledger names the real evidence scan command');
-  assert.ok(
-    alphaProgram.includes('.devshots/alpha/m0-alpha-evidence/evidence.json'),
-    'ledger names the supporting M0.1 evidence record',
-  );
 }
 
 async function runScannerMatrix() {

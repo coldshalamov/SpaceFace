@@ -1,7 +1,9 @@
 // One-shot probe: inspect sector state + onSectorEnter behavior in the live game.
 import { spawn } from 'node:child_process';
 import { createServer as createNetServer } from 'node:net';
-import { chromium } from 'playwright';
+import { chromium as rawChromium } from 'playwright';
+import { quietChromium } from './lib/quietLaunch.mjs';
+const chromium = quietChromium(rawChromium);
 
 const ROOT = 'C:/Users/93rob/Documents/GitHub/SpaceFace';
 

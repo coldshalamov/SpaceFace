@@ -142,7 +142,7 @@ function applySednaGridReadingGuidance(state, plates) {
     && (row.status !== 'active' || row.params.landmarkProbe.returned))) {
     text = 'The Grid Reading contract is no longer active. No Ringworld grid reading is filed.';
   } else if (active.some(row => row.status === 'active' && canonical(row))) {
-    text = 'Grid Reading accepted at Sedna Survey Post. Return to the Ringworld Arc and fire a close scanner pulse within 300 WU.';
+    text = 'Grid Reading accepted at Sedna Survey Post. Return to the Ringworld Arc and fire a close scanner pulse within 300 m.';
   } else {
     text = 'For Grid Reading work, check Sedna Survey Post’s Jobs board. The post keeps earned filings, not a regular contracts desk.';
   }

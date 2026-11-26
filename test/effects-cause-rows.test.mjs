@@ -528,7 +528,8 @@ test('four simultaneous well boundaries survive other marks and sleep when empty
     entities.set(wreck.id, wreck);
     layer.noteKill({ id: 499, pos: { x: 0, z: 0 }, vel: { x: 2, z: 0 } }, 0);
     assert.ok(bindKillStreak(layer.handoff, entities, 0.1));
-    const expected = 24 + 4 + 24 + 1 + 4 * 28;
+    // Four corner ticks per well (no rings around things, owner 2026-11-23).
+    const expected = 24 + 4 + 24 + 1 + 4 * 4;
     assert.equal(layer.update(0.1, id => entities.get(id), false, entities), expected);
     assert.equal(layer.mesh.geometry.drawRange.count, expected * 2);
     layer.clear(); layer.update(11, () => null, false, entities);

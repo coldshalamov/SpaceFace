@@ -1,7 +1,7 @@
 // Small acquisition family in the canonical fitting economy. Mass and draw are real sacrifices.
 export const BLACK_FLAG_MODULES = [
   {id:'mod_claw_anchor_s',name:'Claw Anchor S',adventureOnly:true,slotType:'utility',size:'S',tier:1,mass:5,price:1800,energyDraw:3,mods:{},
-    description:'Counter-torques a Masslined hull during a close custody approach. Adds five tonnes; does not cancel drift or make the line unbreakable.'},
+    description:'Counter-torques a hitched hull during a close custody approach. Adds five tonnes; does not cancel drift or make the line unbreakable.'},
   {id:'mod_signature_reader_s',name:'Signature Reader S',adventureOnly:true,slotType:'utility',size:'S',tier:1,mass:2,price:2400,energyDraw:2,mods:{radarRangePct:.12},
     description:'An identified target reveals forensic broadcast/engine disagreement before docking. Uses the utility bay and reactor margin.'},
   {id:'mod_quiet_intrusion_s',name:'Quiet Intrusion Rig S',adventureOnly:true,slotType:'utility',size:'S',tier:2,mass:4,price:4200,energyDraw:6,requiresTech:'tech_long_range_survey',mods:{},

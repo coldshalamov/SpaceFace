@@ -64,6 +64,33 @@ export function mark47aPlayerActor(player) {
   return player;
 }
 
+// The live can's seat: beside the nearest authored Helios boulder (the "marked rock" the opening
+// drifts toward and the objective names), on the side facing the player, outside the rock's body.
+function liveSpindleSeat(state) {
+  const player = state && state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
+  const origin = player && player.pos ? player.pos : { x: 0, z: 0 };
+  const rows = [];
+  const field = state && state.world && state.world.asteroidField;
+  if (field && field.byId) for (const row of field.byId.values()) rows.push(row);
+  for (const e of (state && state.entityList) || []) if (e && e.type === 'asteroid') rows.push(e);
+  let best = null; let bestD2 = Infinity;
+  for (const row of rows) {
+    if (!row || row.alive === false || !row.pos) continue;
+    if (!String((row.data && row.data.authoredBoulderId) || '').startsWith('helios_boulder_')) continue;
+    const dx = row.pos.x - origin.x; const dz = row.pos.z - origin.z;
+    const d2 = dx * dx + dz * dz;
+    if (d2 < bestD2) { bestD2 = d2; best = row; }
+  }
+  if (!best || !(bestD2 > 1)) return null;
+  const d = Math.sqrt(bestD2);
+  const standoff = (Number(best.radius) || 40) + 40;
+  if (d <= standoff + 60) return null;
+  return {
+    x: best.pos.x - ((best.pos.x - origin.x) / d) * standoff,
+    z: best.pos.z - ((best.pos.z - origin.z) / d) * standoff,
+  };
+}
+
 export function makeEvidenceSpindleSpec({ pos, rot = 0 } = {}) {
   return {
     type: 'payload',
@@ -127,7 +154,12 @@ export function spawn47aOpeningScene({ state, helpers, spawn = null, includeTarg
     throw new Error('47-A opening scene requires a spawnEntity helper');
   }
   const spawned = {};
-  spawned.spindle = spawnEntity(makeEvidenceSpindleSpec({ pos: { x: 92, z: 0 }, rot: 0 }));
+  // The deterministic 47-A harness keeps the can at (92, 0). The live new game must not: there the
+  // ship drifts toward the marked rock at the first frame, and a 960 t can 92 WU ahead on that line
+  // rode the nose for ~12 s (~390 contacts; owner 2026-11-19 "objects stuck to my ship"). Live, the
+  // can sits at the marked rock it is recovered from, on the near side, clear of the rock's body.
+  const spindlePos = liveColdStartSafe ? (liveSpindleSeat(state) || { x: 92, z: 0 }) : { x: 92, z: 0 };
+  spawned.spindle = spawnEntity(makeEvidenceSpindleSpec({ pos: spindlePos, rot: 0 }));
   if (includeTargetDummy) {
     spawned.targetDummy = spawnEntity(makeShipEntitySpec('ship_wasp', {
       team: 1,

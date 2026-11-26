@@ -7,6 +7,7 @@ import { chargeCueLanes, isCriticalCue, laneBudgetReason } from '../presentation
 import { worldSiteConditionText } from '../presentation/worldSiteDamageStates.js';
 import { worldSiteManifestById } from '../data/worldSiteManifests.js';
 import { damageLayerHierarchy, doctrinePhaseStage, grammarForDoctrine, isLiveDoctrineId } from '../presentation/combatChoreography.js';
+import { enemyMindTell } from '../presentation/enemyMindTells.js';
 import { classifyDrillWarning, drillHardnessBand, fieldDepletionBand, seamQualityTag } from '../presentation/miningChoreography.js';
 import {
   arrivalHeading,
@@ -171,6 +172,10 @@ export const presentationOrchestrator = {
       this.bus.on('ai:counterTether', (payload) => this._onCounterTether(payload || {})),
       this.bus.on('ai:doctrinePhase', (payload) => this._onDoctrinePhase(payload || {})),
       this.bus.on('ai:flee', (payload) => this._onDoctrineWithdraw(payload || {})),
+      // CW-TELLS (INV-21 item 5): the Enemy Mind's decisions speak through the same cue
+      // family as doctrine telegraphs — the mind becomes legible instead of debug-only.
+      this.bus.on('ai:mind:decision', (payload) => this._onEnemyMindTell('decision', payload || {})),
+      this.bus.on('ai:mind:mistake', (payload) => this._onEnemyMindTell('mistake', payload || {})),
       this.bus.on('combat:fire', (payload) => this._onCombatFire(payload || {})),
       this.bus.on('combat:actionStarted', (payload) => this._onCombatActionStarted(payload || {})),
       ...COMBAT_ACTION_LIFECYCLE_EVENTS.map((sourceEvent) => (
@@ -487,6 +492,33 @@ export const presentationOrchestrator = {
     const cycle = sourceId == null ? null : this._doctrineCycles.get(sourceId);
     if (!cycle) return;
     this._emitDoctrineWithdraw(cycle, payload, 'ai:flee');
+  },
+
+  /**
+   * CW-TELLS (INV-21 item 5): one Enemy Mind fact becomes one cue. Only decisions aimed at the
+   * player speak (a mind plan against an NPC is still sim life, not a player tell), and the
+   * pure mapper (src/presentation/enemyMindTells.js) decides which verbs earn words at all.
+   */
+  _onEnemyMindTell(kind, payload) {
+    const playerId = this.state && this.state.playerId;
+    if (playerId == null || payload.targetId !== playerId) return false;
+    const tell = enemyMindTell({ ...payload, kind });
+    if (!tell) return false;
+    const source = this.state && this.state.entities && this.state.entities.get(payload.entityId);
+    if (!source || source.alive === false || !source.pos) return false;
+    return this._emitCue('combat.mind.tell', {
+      ...payload,
+      position: source.pos,
+    }, {
+      sourceEvent: `ai:mind:${kind}`,
+      sourceId: payload.entityId,
+      targetId: payload.targetId,
+      material: 'doctrine',
+      // One verb per hull may speak inside the window; a different decision speaks at once.
+      sequence: `${payload.entityId}:${tell.tellId}`,
+      accessibilityText: tell.sentence || undefined,
+      tags: ['mind', tell.tellId, payload.verb, tell.mistake].filter(Boolean),
+    });
   },
 
   _emitDoctrineWithdraw(cycle, payload, sourceEvent) {

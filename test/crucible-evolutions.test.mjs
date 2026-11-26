@@ -48,7 +48,9 @@ function shop({ cash = 400, hullId = 'ship_hawser', ruleset = 'swarm' } = {}) {
   for (const next of ['arena_intro', 'wave_intro', 'active', 'cleanup']) {
     bus.emit('run:transitionRequested', { expectedPhase: phase, nextPhase: next }); phase = next;
   }
-  state.run.wave = 1;
+  // Tests follow d4db73990f: the Swarm menu opens at the Bench, every tenth round (04_SWARM.md §2),
+  // never after a boss round — rounds 5, 15 and 25 flow straight on.
+  state.run.wave = 10;
   bus.emit('run:awardRequested', { credits: cash, reason: 'round_loot' });
   bus.emit('run:transitionRequested', { expectedPhase: 'cleanup', nextPhase: 'draft' });
   return { state, bus, events };

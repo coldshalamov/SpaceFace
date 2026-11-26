@@ -256,13 +256,13 @@ export function mountPlaceGraffiti(bus, state, parent, resolveHud = null) {
 
 // category → accent color + label prefix. Most are NOT addressed to the player.
 const CATEGORY_STYLE = {
-  machine:  { color: 'var(--dp-ice)', tag: 'PROTOCOL', glow: 'none' },
-  ecology:  { color: 'var(--dp-hand)', tag: 'FIELD', glow: 'none' },
-  ambient:  { color: 'var(--ink-mute)',  tag: 'CHN',  glow: 'none' },
-  trap:     { color: 'var(--warn)',      tag: 'ALERT', glow: '0 0 8px rgba(255,179,71,.4)' },
-  personal: { color: 'var(--accent-3)',  tag: 'MSG',  glow: '0 0 8px rgba(167,139,202,.4)' },
-  late:     { color: 'var(--danger)',    tag: 'LOG',  glow: '0 0 8px rgba(255,84,112,.4)' },
-  story:    { color: 'var(--accent)',    tag: 'LOG',  glow: '0 0 10px rgba(79,143,221,.5)' },
+  machine:  { color: 'var(--dp-ice)', tag: 'Automated' },
+  ecology:  { color: 'var(--dp-hand)', tag: 'Field report' },
+  ambient:  { color: 'var(--dp-ink-dim)' },
+  trap:     { color: 'var(--dp-danger-hot)', tag: 'Alert' },
+  personal: { color: 'var(--dp-hand-hot)', tag: 'To you' },
+  late:     { color: 'var(--dp-ink-dim)' },
+  story:    { color: 'var(--dp-ink)' },
 };
 
 const MAX_LIVE = 4;          // max simultaneous live comms entries on the feed
@@ -401,6 +401,47 @@ export function createComms(ctx) {
     pushComms(q.payload, true);
   }
 
+  // Feed rows are pooled like floatingText/swarmJuiceHud/damageIndicators nodes: a line's five
+  // elements are created once and recycled by class/text swap. The drip is capped (~17 a minute)
+  // but each used to pay five createElement + insert + remove per line inside the fight's DOM
+  // churn. The free list is bounded at the live cap plus the 220 ms exit-beat margin.
+  const commNodeFree = [];
+  const COMM_NODE_POOL_MAX = MAX_LIVE + 4;
+  function acquireCommNode() {
+    const node = commNodeFree.pop();
+    if (node) return node;
+    const entry = document.createElement('div');
+    const head = document.createElement('div');
+    head.className = 'sf-comm__head';
+    const tag = document.createElement('span');
+    tag.className = 'sf-comm__tag mono';
+    const sender = document.createElement('span');
+    sender.className = 'sf-comm__sender mono';
+    head.append(tag, sender);
+    const body = document.createElement('div');
+    body.className = 'sf-comm__body';
+    entry.append(head, body);
+    // dismiss on click (the player learns to clear the migraine). A player dismissal is the
+    // attention stat SP2-188's channel reads — TTL sweeps and feed overflow are not attention.
+    // One listener per pooled node: the live record is re-bound through _sfRec on each fill.
+    entry.addEventListener('click', () => {
+      const rec = entry._sfRec;
+      if (rec && dismissLive(rec)) {
+        if (!state.ui) state.ui = {};
+        state.ui.commsDismissed = (state.ui.commsDismissed | 0) + 1;
+      }
+    });
+    return { entry, tag, sender, body };
+  }
+  function releaseCommNode(node) {
+    if (!node) return;
+    node.entry._sfRec = null;
+    node.entry.className = 'sf-comm';
+    // The sweep's fade ramp owns inline opacity near end-of-life; a recycled row starts clear.
+    node.entry.style.opacity = '';
+    if (commNodeFree.length < COMM_NODE_POOL_MAX) commNodeFree.push(node);
+  }
+
   function pushComms(p, delivery = null) {
     if (!p || !p.text) return;
     // OPENING-3: a named cast member speaks from a face card, not the plain feed line. The card is
@@ -451,42 +492,25 @@ export function createComms(ctx) {
       return;
     }
     const cat = CATEGORY_STYLE[p.category] || CATEGORY_STYLE.ambient;
-    const entry = document.createElement('div');
+    const node = acquireCommNode();
+    const entry = node.entry;
     entry.className = `sf-comm sf-comm--${p.category || 'ambient'}`;
     entry.style.setProperty('--comm-color', cat.color);
-    entry.style.setProperty('--comm-glow', cat.glow);
+    node.tag.textContent = cat.tag || '';
+    node.tag.hidden = !cat.tag;
+    node.sender.textContent = p.sender || 'UNKNOWN';
+    node.body.textContent = p.text;
 
-    const head = document.createElement('div');
-    head.className = 'sf-comm__head';
-    const tag = document.createElement('span');
-    tag.className = 'sf-comm__tag mono';
-    tag.textContent = cat.tag;
-    const sender = document.createElement('span');
-    sender.className = 'sf-comm__sender mono';
-    sender.textContent = p.sender || 'UNKNOWN';
-    head.append(tag, sender);
-
-    const body = document.createElement('div');
-    body.className = 'sf-comm__body';
-    body.textContent = p.text;
-
-    entry.append(head, body);
-    // dismiss on click (the player learns to clear the migraine). A player dismissal is the
-    // attention stat SP2-188's channel reads — TTL sweeps and feed overflow are not attention.
-    entry.addEventListener('click', () => {
-      if (dismissLive(rec)) {
-        if (!state.ui) state.ui = {};
-        state.ui.commsDismissed = (state.ui.commsDismissed | 0) + 1;
-      }
-    });
     feed.prepend(entry);
 
     const rec = {
       el: entry,
+      _node: node,
       sender: p.sender || 'UNKNOWN', text: p.text, category: p.category || 'ambient',
       note: p.note || null, born: performance.now(),
       ttl: p.persist ? Infinity : normalizeTtlMs(p.ttl), persist: !!p.persist,
     };
+    entry._sfRec = rec;
     live.unshift(rec);
     // The channel's own counter of what it actually surfaced: SP2-188's run-end read needs a
     // seen-count as well as the dismissal count, so "zero dismissed" cannot mean "nothing said".
@@ -514,12 +538,17 @@ export function createComms(ctx) {
   }
 
   function dismissLive(rec) {
-    if (!rec) return false;
+    if (!rec || rec._released) return false;
     const i = live.indexOf(rec);
     if (i >= 0) live.splice(i, 1);
     rec.el.classList.remove('sf-comm--in');
     rec.el.classList.add('sf-comm--out');
-    setTimeout(() => { if (rec.el.parentNode) rec.el.parentNode.removeChild(rec.el); }, 220);
+    setTimeout(() => {
+      rec._released = true; // a recycled node must never re-enter the pool a second time
+      if (rec.el.parentNode) rec.el.parentNode.removeChild(rec.el);
+      releaseCommNode(rec._node);
+      rec._node = null;
+    }, 220);
     recomputeNextSweep();
     return i >= 0;
   }
@@ -606,70 +635,119 @@ export function createComms(ctx) {
   const backlogBtn = document.createElement('button');
   backlogBtn.className = 'sf-comm-backlog-btn';
   backlogBtn.id = 'sf-comm-backlog-btn';
-  backlogBtn.title = 'Comms log (' + BINDINGS.comms.label + ')';
-  backlogBtn.setAttribute('aria-label', 'Open comms log');
+  backlogBtn.title = 'Radio log (' + BINDINGS.comms.label + ')';
+  backlogBtn.setAttribute('aria-label', 'Open radio log');
+  backlogBtn.setAttribute('aria-expanded', 'false');
+  backlogBtn.setAttribute('aria-controls', 'sf-comm-backlog');
   backlogBtn.textContent = 'COMMS';
-  document.getElementById('ui-root').appendChild(backlogBtn);
+  // The chip flows with the tracker column, just above its comms feed — the old fixed corner
+  // seat (ui-root, left 20 / top 20) painted over the tracker heading whenever both were up
+  // (bench flight-speaker 2026-11-14). A page without the HUD keeps the corner fallback.
+  {
+    const backlogHost = document.querySelector('.sf-leftcontext');
+    const commsFeed = document.getElementById('sf-comms');
+    if (backlogHost && commsFeed && commsFeed.parentElement === backlogHost) commsFeed.before(backlogBtn);
+    else if (backlogHost) backlogHost.appendChild(backlogBtn);
+    else document.getElementById('ui-root').appendChild(backlogBtn);
+    // The HAIL host may have mounted first and landed at the column's foot (under the speaker
+    // card's lane); the two chips read as one cluster, so seat it beside this one.
+    const hailHost = document.getElementById('sf-contact-hail');
+    if (backlogHost && hailHost && backlogHost.contains(hailHost) && commsFeed && commsFeed.parentElement === backlogHost) {
+      backlogBtn.after(hailHost);
+    }
+  }
 
   const backlogView = document.createElement('div');
   backlogView.className = 'sf-comm-backlog';
   backlogView.id = 'sf-comm-backlog';
+  backlogView.setAttribute('role', 'dialog');
+  backlogView.setAttribute('aria-labelledby', 'sf-comm-backlog-title');
+  backlogView.setAttribute('aria-hidden', 'true');
   backlogView.innerHTML =
-    '<div class="sf-comm-backlog__head"><span class="sf-comm-backlog__title">COMMS LOG</span>' +
-    '<button class="sf-comm-backlog__close">ESC</button></div>' +
-    '<div class="sf-comm-backlog__hint">Most of these are not for you. The ones that are don\u2019t name you.</div>' +
+    '<div class="sf-comm-backlog__head"><h2 id="sf-comm-backlog-title" class="sf-comm-backlog__title">Radio log</h2>' +
+    '<button class="sf-comm-backlog__close" type="button" aria-label="Close radio log">Close <kbd>Esc</kbd></button></div>' +
     '<div class="sf-comm-backlog__list"></div>';
   dialogHost(ctx).appendChild(backlogView);
   const backlogList = backlogView.querySelector('.sf-comm-backlog__list');
 
   let backlogOpen = false;
+  let backlogOpener = null;
   if (state.ui) state.ui.commsBacklogOpen = false;
   function appendBacklog(p, fallbackCategory) {
-    backlog.unshift({ sender: p.sender || 'UNKNOWN', text: p.text, category: p.category || fallbackCategory, note: p.note || null, at: Date.now() });
+    const entry = { sender: p.sender || 'Unknown sender', text: String(p.text), category: p.category || fallbackCategory, note: p.note || null };
+    backlog.unshift(entry);
     while (backlog.length > MAX_BACKLOG) backlog.pop();
     if (!backlogOpen) backlogBtn.classList.add('sf-comm-backlog-btn--pulse');
-    else rebuildBacklog();
+    else {
+      if (backlog.length === 1) backlogList.replaceChildren();
+      backlogList.prepend(renderBacklogEntry(entry));
+      if (backlogList.childElementCount > MAX_BACKLOG) backlogList.lastElementChild.remove();
+    }
   }
   function openBacklog() {
+    backlogOpener = document.activeElement;
     backlogOpen = true;
     if (state.ui) state.ui.commsBacklogOpen = true;
     backlogBtn.classList.remove('sf-comm-backlog-btn--pulse');
     rebuildBacklog();
     backlogView.classList.add('open');
     backlogView.setAttribute('aria-hidden', 'false');
+    backlogBtn.setAttribute('aria-expanded', 'true');
+    backlogCloseBtn?.focus?.({ preventScroll: true });
   }
   function closeBacklog() {
+    const restoreFocus = backlogView.contains?.(document.activeElement);
     backlogOpen = false;
     if (state.ui) state.ui.commsBacklogOpen = false;
     backlogView.classList.remove('open');
     backlogView.setAttribute('aria-hidden', 'true');
+    backlogBtn.setAttribute('aria-expanded', 'false');
+    if (restoreFocus && backlogOpener?.isConnected) backlogOpener.focus?.({ preventScroll: true });
+    backlogOpener = null;
   }
   function toggleBacklog() { backlogOpen ? closeBacklog() : openBacklog(); }
 
+  function renderBacklogEntry(entry) {
+    const category = CATEGORY_STYLE[entry.category] || CATEGORY_STYLE.ambient;
+    const collapsed = entry.text.length > 170 && entry.category !== 'personal' && entry.category !== 'trap';
+    const row = document.createElement(collapsed ? 'details' : 'div');
+    row.className = `sf-comm-backlog__row sf-comm-backlog__row--${entry.category}`;
+    row.style.setProperty('--comm-color', category.color);
+    const sender = document.createElement('span');
+    sender.className = 'sf-comm-backlog__sender';
+    sender.textContent = entry.sender;
+
+    if (collapsed) {
+      const summary = document.createElement('summary');
+      const preview = document.createElement('span');
+      preview.className = 'sf-comm-backlog__preview';
+      const prefix = entry.text.slice(0, 113);
+      const lastSpace = prefix.lastIndexOf(' ');
+      const excerpt = prefix.slice(0, lastSpace > 70 ? lastSpace : 110).trimEnd();
+      preview.textContent = /[.!?…]$/.test(excerpt) ? excerpt : `${excerpt}…`;
+      summary.append(sender, preview);
+      row.append(summary);
+    } else row.append(sender);
+
+    const body = document.createElement('div');
+    body.className = 'sf-comm-backlog__text';
+    body.textContent = entry.text;
+    row.append(body);
+    if (entry.note) {
+      const note = document.createElement('div');
+      note.className = 'sf-comm-backlog__note';
+      note.textContent = entry.note;
+      row.append(note);
+    }
+    return row;
+  }
+
   function rebuildBacklog() {
-    backlogList.innerHTML = '';
     if (!backlog.length) {
-      backlogList.innerHTML = '<div class="sf-comm-backlog__empty">Channel is quiet. For now.</div>';
+      backlogList.innerHTML = '<div class="sf-comm-backlog__empty">No messages received.</div>';
       return;
     }
-    const frag = document.createDocumentFragment();
-    for (const e of backlog) {
-      const cat = CATEGORY_STYLE[e.category] || CATEGORY_STYLE.ambient;
-      const row = document.createElement('div');
-      row.className = `sf-comm-backlog__row sf-comm-backlog__row--${e.category}`;
-      row.style.setProperty('--comm-color', cat.color);
-      row.innerHTML =
-        `<span class="sf-comm-backlog__sender mono">${escapeHtml(e.sender)}</span>` +
-        `<span class="sf-comm-backlog__text">${escapeHtml(e.text)}</span>`;
-      if (e.note) {
-        const note = document.createElement('div');
-        note.className = 'sf-comm-backlog__note';
-        note.textContent = e.note;
-        row.appendChild(note);
-      }
-      frag.appendChild(row);
-    }
-    backlogList.appendChild(frag);
+    backlogList.replaceChildren(...backlog.map(renderBacklogEntry));
   }
 
   const backlogCloseBtn = backlogView.querySelector('.sf-comm-backlog__close');
@@ -700,11 +778,11 @@ export function createComms(ctx) {
     wrap.setAttribute('aria-label', title);
     wrap.innerHTML =
       '<div class="sf-endgame__panel sf-endgame__panel--c">' +
-      '<div class="sf-endgame__c-prompt">' + escapeHtml(title) + '</div>' +
-      '<div class="sf-endgame__c-hint">' + escapeHtml(hint) + '</div>' +
-      '<div class="sf-endgame__c-actions"><button type="button" class="sf-endgame__c-yes"></button><button type="button" class="sf-endgame__c-no"></button></div></div>';
-    const buttons = [wrap.querySelector('.sf-endgame__c-yes'), wrap.querySelector('.sf-endgame__c-no')];
-    for (const [i, action] of [yes, no].entries()) {
+      '<h2 class="sf-endgame__c-prompt">' + escapeHtml(title) + '</h2>' +
+      '<p class="sf-endgame__c-hint">' + escapeHtml(hint) + '</p>' +
+      '<div class="sf-endgame__c-actions"><button type="button" class="sf-endgame__c-no"></button><button type="button" class="sf-endgame__c-yes"></button></div></div>';
+    const buttons = [wrap.querySelector('.sf-endgame__c-no'), wrap.querySelector('.sf-endgame__c-yes')];
+    for (const [i, action] of [no, yes].entries()) {
       const button = buttons[i];
       button.textContent = action.label;
       button.addEventListener('click', () => {
@@ -743,14 +821,17 @@ export function createComms(ctx) {
     intentEvent = 'ui:endgameChoose',
     decision = null,
   ) {
+    const [accept, decline] = choice === 'C' ? ['Jump', 'Cancel jump']
+      : choice === 'D' ? ['Depart', 'Stay']
+        : choice === 'SANDBOX' ? ['Keep playing', 'Cancel'] : ['Confirm ending', 'Cancel'];
     presentStoryChoice(promptText, hint, {
-      label: 'Yes',
+      label: accept,
       run: () => {
         if (decision?.onYes) decision.onYes();
         else bus.emit(intentEvent, { choice, confirm: true });
       },
     }, {
-      label: 'No',
+      label: decline,
       run: () => {
         if (decision?.onNo) decision.onNo();
         else {
@@ -762,12 +843,12 @@ export function createComms(ctx) {
   }
   listen('endgame:promptChoiceC', ({ promptText }) => presentPhysicalChoice(
     'C', promptText || 'JUMP WITHOUT DESTINATION?',
-    'The wormhole files a return, not an escape.',
+    'This jump has no filed destination.',
     () => bus.emit('world:abortJumpCharge', { reason: 'choice_c_declined' }),
     'ui:endgameUnfiledJumpConfirm',
   ));
   listen('endgame:promptChoiceD', ({ promptText, targetSectorId, via }) => presentPhysicalChoice(
-    'D', promptText || 'DEPART ASHFALL REACH?', 'Leave, or stay and keep the record.',
+    'D', promptText || 'Depart Ashfall Reach?', 'Staying keeps your current record.',
     null,
     'ui:endgameChoose',
     {
@@ -778,7 +859,7 @@ export function createComms(ctx) {
   listen('endgame:promptSandbox', ({ promptText, confirmHint }) => presentPhysicalChoice(
     'SANDBOX',
     promptText || 'CONTINUE WITHOUT FINAL DISPOSITION?',
-    confirmHint || 'Not an ending. The world remains open and no disposition rewards apply.',
+    confirmHint || 'The world stays open. Ending rewards stay locked.',
     null,
     'ui:endgameSandbox',
   ));
@@ -802,19 +883,33 @@ export function createComms(ctx) {
   });
   listen('scenario:safeOpeningDemand', () => {
     presentStoryChoice('Scavenger claim: sealed spindle',
-      'They hold fire in a wedge. Cut loose safely, or refuse and use the twelve-second escape window.',
+      'Release the spindle, or keep it and escape within 12 seconds.',
       { label: 'Cut line', run: () => bus.emit('scenario:scavengerResponse', { choice: 'yield' }) },
       { label: 'Refuse', run: () => bus.emit('scenario:scavengerResponse', { choice: 'refuse' }) });
   });
 
   // ── tick: fade sweep (called by uiRoot.frame via the returned api) ────────────────────────
+  let lastBacklogSwarmHidden = null;
+  function syncBacklogSwarmVisibility() {
+    const hideBacklog = isSwarmGlass(state);
+    if (hideBacklog === lastBacklogSwarmHidden) return;
+    lastBacklogSwarmHidden = hideBacklog;
+    backlogBtn.hidden = hideBacklog;
+    if (hideBacklog && backlogOpen) closeBacklog();
+  }
+  syncBacklogSwarmVisibility();
+
   function tick() {
-    if (pirateParleyPrompt && pirateParleyPrompt.tick) pirateParleyPrompt.tick();
-    if (sectorLawPresenter && sectorLawPresenter.tick) sectorLawPresenter.tick();
-    if (signalInvestigationPrompt && signalInvestigationPrompt.tick) signalInvestigationPrompt.tick();
-    if (recoveryEncounterPrompt && recoveryEncounterPrompt.tick) recoveryEncounterPrompt.tick();
-    if (contactHailPrompt && contactHailPrompt.tick) contactHailPrompt.tick();
-    if (commsRadial && commsRadial.tick) commsRadial.tick();
+    syncBacklogSwarmVisibility();
+    // Dormant children don't get a call: each live presenter exposes isActive — the same
+    // condition its own tick() early-return checks — so an idle surface costs a flag read.
+    // The choice adapters (pirateParleyPrompt, signalInvestigationPrompt,
+    // recoveryEncounterPrompt) return inert `() => {}` ticks today; rewire them here with an
+    // isActive getter if one gains real frame work.
+    if (sectorLawPresenter && sectorLawPresenter.isActive) sectorLawPresenter.tick();
+    if (contactHailPrompt && contactHailPrompt.isActive) contactHailPrompt.tick();
+    if (commsRadial && commsRadial.isActive) commsRadial.tick();
+    // The wheel must keep watching the held flag: the hold itself is the open edge.
     if (contextWheel && contextWheel.tick) contextWheel.tick();
     updateCommsTrace();
     tickHeldComms();
@@ -823,6 +918,7 @@ export function createComms(ctx) {
 
   // Hide the flight feed on the menu. A dock keeps the place line up.
   function setFlightVisibility(visible) {
+    syncBacklogSwarmVisibility();
     feed.style.display = visible ? 'flex' : 'none';
     const docked = !!(state.ui && state.ui.docked);
     const graffitiDisplay = placeGraffitiDisplay(visible, docked);

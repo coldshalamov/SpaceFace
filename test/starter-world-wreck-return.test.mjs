@@ -100,6 +100,9 @@ describe('opening raid wreck return', { concurrency: false }, () => {
       pos: { ...carrier.pos },
       sectorId: SECTOR,
     });
+    // The non-player kill's field materialization rides the deferred spawn lane — drain it
+    // where the step sweep would before asserting the bound wreck.
+    sim.helpers.drainEntitySpawnJobs();
     openingRaid.tick(director, live, state, state.simTime);
     assert.equal(live.outcome, 'hauler_destroyed');
 
@@ -185,6 +188,8 @@ describe('opening raid wreck return', { concurrency: false }, () => {
       pos: { ...carrier.pos },
       sectorId: SECTOR,
     });
+    // Deferred lane again — the sweep-equivalent drain before the wreck assertions.
+    sim.helpers.drainEntitySpawnJobs();
     openingRaid.tick(director, live, state, state.simTime);
     const marker = aftermathForSector(state, SECTOR)
       .find((row) => row.freightIdentity && row.freightIdentity.manifestId === 'fm_starter_world_seam_lot');
@@ -225,6 +230,8 @@ describe('opening raid wreck return', { concurrency: false }, () => {
       pos: { x: 40, z: 30 },
       sectorId: SECTOR,
     });
+    // Same deferred-lane drain before reading the reminted wreck.
+    sim.helpers.drainEntitySpawnJobs();
 
     const fresh = aftermathForSector(state, SECTOR);
     assert.equal(fresh.length, 1);

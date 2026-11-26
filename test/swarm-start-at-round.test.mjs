@@ -47,7 +47,7 @@ test('purse is the checkpoint purse a real mid-ladder start pays', () => {
       `round ${n}`,
     );
   }
-  // Round 20 sits in zone 2's purse band; round 1-10 carry no checkpoint purse.
-  assert.equal(swarmStartAtRound(20).purse, 800);
+  // Director 2026-11-20: checkpoint starts also begin at 0 Scrap (every run starts at zero).
+  assert.equal(swarmStartAtRound(20).purse, 0);
   assert.equal(swarmStartAtRound(1).purse, 0);
 });

@@ -316,6 +316,12 @@ export function createPresentationPublisher(world, state, options = {}) {
 
   function applyRecord(record, rebuiltIds = null) {
     const entity = entityForId(state, record.entityId);
+    if ((record.kind === PRESENTATION_JOURNAL_KINDS.SPAWN || record.kind === PRESENTATION_JOURNAL_KINDS.DESTROY)
+      && typeof window !== 'undefined' && window.__SF_LIFE_FORENSICS__) {
+      const log = window.__SF_LIFE_FORENSICS__;
+      log.push([record.kind, record.entityId, record.generation, record.sequence, record.tick, rebuiltIds ? 1 : 0, Math.round(performance.now())]);
+      if (log.length > 6000) log.splice(0, 1000);
+    }
     switch (record.kind) {
       case PRESENTATION_JOURNAL_KINDS.SPAWN: {
         const firstInRebuild = rebuiltIds && !rebuiltIds.has(record.entityId);

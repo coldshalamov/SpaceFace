@@ -379,6 +379,56 @@ const SECTOR_FAMILY_PROFILES = Object.freeze({
     },
     post: { exposure: 0.94, bloomStrengthScale: 1.0, bloomThresholdBias: 0.0 },
   }),
+  // PLACES-1 (INV-25 item 2) — the icy fringe. The plain fringe keeps its CRIMSON tidal
+  // filament; Haumea Rift, Eris Margin and Nereid Shoal share this sky instead: one broad pale
+  // ice sheet sheared by dark rift cracks, an AZURE procedural tint, and the fringe's own
+  // grammar of a deliberately plateless accent layer — the baked backdrop IS the region's sky.
+  pale_ice: freezeProfile({
+    id: 'pale_ice',
+    skyPalette: 'AZURE',
+    lighting: { ambient: 0.14, key: 2.85, rim: 1.55, fill: 0.36 },
+    background: {
+      intensity: 0.55,
+      nebulaOpacity: 0.0,
+      paintedSky: null,
+      sky: { plate: 'sky-fringe-pale-ice-shelf', strength: 1.0, parallax: 0.002 },
+      structure: {
+        ...DEFAULT_STRUCTURE,
+        recipeId: 'fringe_pale_ice_shelf',
+        structureKind: 'sparse_wisps',
+        starDensity: 1.0,
+        clusterCount: 6,
+        clusterStrength: 1.0,
+        voidFloor: 0.10,
+        flareDensity: 0.8,
+        maxCoverage: 0.10,
+        regionLo: 0.62,
+        regionHi: 0.84,
+        warp: 0.24,
+        dustAmt: 0.12,
+        l1Alpha: 0.10,
+        l2Alpha: 0.02,
+        bandCenter: 0.44,
+        bandWidth: 0.12,
+        bandAngle: -0.5,
+        landmarkBias: 'planet',
+      },
+      composition: {
+        planetChance: 0.10, wormholeChance: 0.0, ringChance: 0.0,
+        planetTypes: ['ice', 'rocky'],
+        cometInterval: [20, 56],
+        // One white ice world with a thin ring hangs over the shelf — the family's shared hero,
+        // exactly as every plain fringe sector shares the family's rocky body.
+        signatureHero: {
+          kind: 'planet', type: 'ice', ring: true, frac: 0.13,
+          offset: [-0.26, 0.20], screenNdc: [-0.42, 0.30],
+          // Aimed key: atan2(0.30, 0.42) — the sun sits on the body's own screen side.
+          lightAngle: 0.620, ringTilt: -0.35,
+        },
+      },
+    },
+    post: { exposure: 0.96, bloomStrengthScale: 1.0, bloomThresholdBias: 0.0 },
+  }),
 });
 
 // Way-of-life sectors get their own rig instead of sharing the palette-class fallback: the mood
@@ -443,6 +493,55 @@ const PER_SECTOR_RIGS = Object.freeze({
       planetChance: 0.14, wormholeChance: 0.04, ringChance: 0,
       planetTypes: ['rocky'], cometInterval: [36, 84], signatureHero: null,
     } },
+  // PLACES-1 (INV-25 item 1) — the three story sectors that had no profile row, following the
+  // Ceres/Dione precedent: their own rig (key/fill colour, hero body, planetTypes) over the
+  // family frame, so no story sector shares a family look.
+  // Io Reach is a working parcel frontier, not neon noir: a sulfur-gold Reach-shop key with a
+  // burnt-rust bounce, the Wreck Cathedral's vigil amber in the fill. Its sky body is the
+  // sector's own slagged volcanic rock — burned pins and burned moons.
+  sector_io_reach: { base: 'fringe', id: 'io_reach',
+    lighting: { ambient: 0.14, key: 3.05, rim: 1.50, fill: 0.42, keyColor: 0xffd98f, fillColor: 0xc08a62 },
+    composition: {
+      planetChance: 0.10, ringChance: 0, planetTypes: ['rocky'],
+      signatureHero: {
+        kind: 'planet', type: 'rocky', ring: false, frac: 0.12,
+        offset: [0.28, 0.18], screenNdc: [0.40, 0.24],
+        // Aimed key: atan2(0.24, -0.40) — the sun sits on the body's own screen side.
+        lightAngle: 2.601, ringTilt: 0,
+      },
+    } },
+  // Charon Expanse reads as the cold belt its own barks describe ("the hull reads warm in a
+  // cold belt"): a steel-white key, slate bounce, the Shatterstone hanging dim as the only
+  // world in a dead convoy's sky.
+  sector_charon_expanse: { base: 'belt', id: 'charon_expanse',
+    lighting: { ambient: 0.15, key: 2.70, rim: 1.40, fill: 0.38, keyColor: 0xdfe9f2, fillColor: 0x8fa0b4 },
+    composition: {
+      planetChance: 0.10, ringChance: 0, planetTypes: ['rocky', 'ice'],
+      signatureHero: {
+        kind: 'planet', type: 'rocky', ring: false, frac: 0.11,
+        offset: [-0.28, 0.17], screenNdc: [-0.40, 0.26],
+        // Aimed key: atan2(0.26, 0.40) — same side as the body's screenNdc.
+        lightAngle: 0.576, ringTilt: 0,
+      },
+    } },
+  // Ashfall Reach, the endgame: the Roaming Burn's far face replaces the anomaly's ION scar
+  // (its own baked backdrop, the cold-halo accent dropped — the violet halo belongs to the
+  // Veil), an ember key over ash, rare wormholes for a raider hellhole, and one scoured dead
+  // world in the sky.
+  sector_ashfall_reach: { base: 'anomaly', id: 'ashfall_reach',
+    lighting: { ambient: 0.15, key: 2.55, rim: 1.45, fill: 0.38, keyColor: 0xff9d62, fillColor: 0x6f5148 },
+    sky: { plate: 'sky-ashfall-burn-front', strength: 1.0, parallax: 0.002 },
+    paintedSky: null,
+    composition: {
+      planetChance: 0.12, wormholeChance: 0.08, ringChance: 0,
+      planetTypes: ['rocky'], cometInterval: [14, 42],
+      signatureHero: {
+        kind: 'planet', type: 'rocky', ring: false, frac: 0.13,
+        offset: [-0.30, 0.16], screenNdc: [-0.44, 0.24],
+        // Aimed key: atan2(0.24, 0.44) — same side as the body's screenNdc.
+        lightAngle: 0.500, ringTilt: 0,
+      },
+    } },
 });
 
 const DERIVED_PROFILES = {};
@@ -454,8 +553,18 @@ for (const rig of Object.values(PER_SECTOR_RIGS)) {
     lighting: rig.lighting,
     // A sector may fork only the hero/composition grammar while sharing the family's baked sky
     // (structure, painted plate, intensity) — the shared sub-objects stay frozen references.
-    background: rig.composition
-      ? { ...base.background, composition: { ...base.background.composition, ...rig.composition } }
+    // A rig may also name its OWN baked backdrop (`sky`, PLACES-1: Ashfall's burn front) and
+    // drop the family accent plate (`paintedSky: null`) when the family's halo belongs to
+    // another region; both override only the named layer, everything else stays inherited.
+    background: (rig.composition || rig.sky !== undefined || rig.paintedSky !== undefined)
+      ? {
+        ...base.background,
+        ...(rig.sky !== undefined ? { sky: rig.sky } : {}),
+        ...(rig.paintedSky !== undefined ? { paintedSky: rig.paintedSky } : {}),
+        ...(rig.composition
+          ? { composition: { ...base.background.composition, ...rig.composition } }
+          : {}),
+      }
       : base.background,
   });
 }
@@ -477,12 +586,21 @@ export const PROFILE_BY_ID = new Map([
   ['sector_the_bolus', SECTOR_VISUAL_PROFILES.viscera],
   ['sector_helios_prime', SECTOR_VISUAL_PROFILES.helios_core],
   ['sector_tethys_junction', SECTOR_VISUAL_PROFILES.tethys],
-  ['sector_io_reach', SECTOR_VISUAL_PROFILES.fringe],
+  // PLACES-1 (INV-25 items 1+2) — Io reaches its own rig instead of the plain fringe family;
+  // Charon and Ashfall get rows at all (they previously fell through the palette-tint
+  // fallback, Ashfall literally showing the Veil's sky); the icy-fringe three map to the
+  // pale-ice family so eight sectors no longer share the CRIMSON plate.
+  ['sector_io_reach', SECTOR_VISUAL_PROFILES.io_reach],
   ['sector_ceres_belt', SECTOR_VISUAL_PROFILES.ceres_belt],
   ['sector_dione_lane', SECTOR_VISUAL_PROFILES.dione_lane],
   ['sector_vesta_forge', SECTOR_VISUAL_PROFILES.vesta_forge],
   ['sector_pallas_drift', SECTOR_VISUAL_PROFILES.pallas_drift],
   ['sector_sker_haven', SECTOR_VISUAL_PROFILES.sker_haven],
+  ['sector_charon_expanse', SECTOR_VISUAL_PROFILES.charon_expanse],
+  ['sector_ashfall_reach', SECTOR_VISUAL_PROFILES.ashfall_reach],
+  ['sector_haumea_rift', SECTOR_VISUAL_PROFILES.pale_ice],
+  ['sector_eris_margin', SECTOR_VISUAL_PROFILES.pale_ice],
+  ['sector_nereid_shoal', SECTOR_VISUAL_PROFILES.pale_ice],
   ['sector_veil_nebula', SECTOR_VISUAL_PROFILES.anomaly],
 ]);
 

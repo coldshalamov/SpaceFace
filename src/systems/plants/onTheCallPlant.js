@@ -39,6 +39,7 @@ export function isCollisionKill(payload, playerId, tuning = ON_THE_CALL_TUNING) 
 }
 
 export const onTheCallPlant = {
+  modes: ['swarm'],
   name: 'plants163',
 
   init(ctx) {

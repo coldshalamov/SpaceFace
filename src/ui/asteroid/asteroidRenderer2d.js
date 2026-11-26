@@ -46,6 +46,15 @@ export const ORE_TINTS = {
   cmdty_gem_ruby: { vein: '#b8434f', glint: '#f0a8b0', glow: null },
   cmdty_gem_diamond: { vein: '#b9d6d8', glint: '#e6f5f6', glow: null },
   cmdty_exotic_amazonite: { vein: '#2fb8a6', glint: '#b8f0e6', glow: null },
+  // Rock-type interiors (drillFieldModel ROCK_GEOLOGY). Same law as above: albedo, no glow.
+  cmdty_ore_titanium: { vein: '#8e95a3', glint: '#d3d9e4', glow: null },
+  cmdty_ore_platinoid: { vein: '#a9a08c', glint: '#e6dfcc', glow: null },
+  cmdty_ice_water: { vein: '#9fc4d6', glint: '#e2f2f8', glow: null },
+  cmdty_volatiles: { vein: '#a8b6a0', glint: '#dfe8d8', glow: null },
+  cmdty_gas_helium3: { vein: '#c7b98a', glint: '#f0e6c0', glow: null },
+  cmdty_crystal_silica: { vein: '#b7a9d6', glint: '#e6dcf7', glow: null },
+  cmdty_crystal_lumin: { vein: '#6fb7c9', glint: '#c9eef5', glow: null },
+  cmdty_exotic_xenium: { vein: '#a35fc4', glint: '#e0b8f2', glow: null },
 };
 
 export const STATUS_COLORS = {
@@ -356,7 +365,7 @@ export function paintMachine(g, defId, x, y, opts = {}) {
   g.save();
 
   // Contact arms FIRST (under the housing): the §1 ring made visible — one clamp per worked face.
-  if (opts.geo && (defId === 'sm_extractor' || defId === 'sm_gas_tap')) {
+  if (opts.geo && (defId === 'sm_extractor' || defId === 'sm_gas_tap' || defId === 'sm_harmonic_resonator')) {
     for (const cell of opts.geo.cells || []) {
       if (cell.kind === 'empty') continue;
       if (defId === 'sm_gas_tap' && cell.kind !== 'gas') continue;
@@ -481,6 +490,94 @@ export function paintMachine(g, defId, x, y, opts = {}) {
       g.ellipse(cx, y + 15, 5, 7, 0, 0, Math.PI * 2);
       g.fill();
     }
+  } else if (defId === 'sm_charge_press') {
+    box(x + 7, y + 6, TILE - 14, TILE - 12);
+    g.fillStyle = '#8a6b3a';
+    g.fillRect(cx - 5, y + 11, 10, 8);
+    g.fillStyle = frame;
+    g.fillRect(x + 11, cy + 5, TILE - 22, 5);
+  } else if (defId === 'sm_auto_drill') {
+    box(x + 8, y + 10, TILE - 16, TILE - 16);
+    g.fillStyle = '#5a6c8f';
+    g.beginPath();
+    g.moveTo(cx - 5, y + 8);
+    g.lineTo(cx, y + 2);
+    g.lineTo(cx + 5, y + 8);
+    g.closePath();
+    g.fill();
+    g.fillStyle = '#8a6b3a';
+    g.fillRect(cx - 3, cy - 3, 6, 8);
+  } else if (defId === 'sm_relay') {
+    box(x + 10, y + 14, TILE - 20, TILE - 20);
+    g.strokeStyle = edge;
+    g.lineWidth = 2;
+    g.beginPath();
+    g.moveTo(cx, y + 14);
+    g.lineTo(cx, y + 5);
+    g.moveTo(cx - 8, y + 8);
+    g.lineTo(cx + 8, y + 8);
+    g.stroke();
+    g.fillStyle = '#5cc8f2';
+    g.beginPath();
+    g.arc(cx, y + 5, 3, 0, Math.PI * 2);
+    g.fill();
+  } else if (defId === 'sm_cryo_condenser') {
+    box(x + 8, y + 7, TILE - 16, TILE - 14);
+    g.strokeStyle = '#7cd4fc';
+    g.lineWidth = 2;
+    g.beginPath();
+    g.moveTo(cx - 6, cy);
+    g.lineTo(cx + 6, cy);
+    g.moveTo(cx, cy - 6);
+    g.lineTo(cx, cy + 6);
+    g.stroke();
+  } else if (defId === 'sm_seismic_brace') {
+    g.fillStyle = '#635746';
+    g.fillRect(x + 5, y + 6, TILE - 10, 5);
+    g.fillStyle = body;
+    g.fillRect(x + 9, y + 11, 6, TILE - 16);
+    g.fillRect(x + TILE - 15, y + 11, 6, TILE - 16);
+    g.fillStyle = '#8a6b3a';
+    g.fillRect(x + 11, cy, TILE - 22, 4);
+  } else if (defId === 'sm_capacitor_bank') {
+    box(x + 6, y + 8, 11, TILE - 16);
+    box(x + TILE - 17, y + 8, 11, TILE - 16);
+    g.fillStyle = '#ffd25a';
+    g.fillRect(cx - 4, cy - 3, 8, 6);
+  } else if (defId === 'sm_deep_synthesizer') {
+    box(x + 7, y + 7, TILE - 14, TILE - 14);
+    g.fillStyle = '#c79dff';
+    g.beginPath();
+    g.moveTo(cx, y + 10);
+    g.lineTo(cx + 7, cy);
+    g.lineTo(cx, y + TILE - 10);
+    g.lineTo(cx - 7, cy);
+    g.closePath();
+    g.fill();
+  } else if (defId === 'sm_mass_driver') {
+    box(x + 6, y + 12, TILE - 12, TILE - 18);
+    g.strokeStyle = '#8a6b3a';
+    g.lineWidth = 3;
+    g.beginPath();
+    g.moveTo(x + 9, y + TILE - 12);
+    g.lineTo(cx + 7, y + 5);
+    g.moveTo(x + 15, y + TILE - 9);
+    g.lineTo(cx + 12, y + 8);
+    g.stroke();
+  } else if (defId === 'sm_harmonic_resonator') {
+    g.fillStyle = body;
+    g.beginPath();
+    g.arc(cx, cy + 2, 12, 0, Math.PI * 2);
+    g.fill();
+    g.strokeStyle = '#6ceab8';
+    g.lineWidth = 1.8;
+    g.beginPath();
+    g.arc(cx, cy + 2, 7, 0, Math.PI * 2);
+    g.stroke();
+    g.fillStyle = '#6ceab8';
+    g.beginPath();
+    g.arc(cx, cy + 2, 2.8, 0, Math.PI * 2);
+    g.fill();
   } else {
     box(x + 8, y + 8, TILE - 16, TILE - 16);
   }

@@ -124,6 +124,20 @@ test('recovery site fix survives the bound body shelving to its field record', (
   assert.equal(h.missions.contract47aSampleEntity(), promoted, 'the promoted body is the live source again');
 });
 
+test('the first visit to Helios before the sample is cut says nothing about a missing sample', () => {
+  const h = harness(48);
+  h.bus.emit('dock:docked', { stationId: 'station_helios' });
+  const mission = contract(h);
+  assert.ok(mission, 'the 47-A contract stays active');
+  assert.notEqual(mission.params.sampleRecovered, true);
+  assert.ok(!h.toasts.some((row) => /sample missing|re-marked/i.test(row.text)),
+    'docking before the seam is not a loss');
+  // ...and the contract still closes the ordinary way: cut the sample, dock, story moves on.
+  h.bus.emit('mining:yield', { commodityId: 'cmdty_ore_iron', qty: 1, minerId: 1, pos: { ...h.asteroid.pos } });
+  h.bus.emit('dock:docked', { stationId: 'station_helios' });
+  assert.equal(h.state.story.beatIndex, 1, 'the 47-A delivery completes after an early visit');
+});
+
 test('missing sample re-marks recovery instead of dead-ending delivery', () => {
   const h = harness(48);
   h.bus.emit('mining:yield', { commodityId: 'cmdty_ore_iron', qty: 1, minerId: 1, pos: { ...h.asteroid.pos } });

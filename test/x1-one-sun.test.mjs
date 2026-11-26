@@ -73,7 +73,7 @@ test('every PROFILE_BY_ID sky hero follows its projected key (one sun)', (t) => 
     // Every authored hero sits above the flight line, so its lit limb must too.
     assert.ok(sky.y > 0, `${sectorId} is lit from below the horizon`);
   }
-  assert.equal(heroes, 6, 'the six authored sky heroes are covered');
+  assert.equal(heroes, 11, 'the eleven authored sky heroes are covered');
   t.diagnostic(`projected-key agreement ${minDot.toFixed(3)}..${maxDot.toFixed(3)} (bar 0.85)`);
 });
 

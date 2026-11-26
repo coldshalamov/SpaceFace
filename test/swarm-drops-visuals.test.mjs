@@ -21,7 +21,8 @@ test('every drop builds its own crystal, hued per drop, with the pickup contract
     const g = factory.build(drop(def.id));
     assert.equal(g.name, 'SF_SwarmDrop', def.id);
     assert.equal(g.userData.visualLanguage, 'swarm-drop');
-    assert.ok(g.userData.gem && g.userData.pickupHalo, 'gem + halo targets');
+    assert.ok(g.userData.gem, 'faceted crystal target intact');
+    assert.equal(g.userData.pickupHalo, null, 'no rings around things, owner 2026-11-23');
     hues.add(g.userData.gem.material.emissive.getHexString());
   }
   assert.equal(hues.size, SWARM_DROP_DEFS.length, 'all eight hues differ');

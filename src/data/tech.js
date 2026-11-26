@@ -12,7 +12,9 @@ export const TECH_NODES = [
   {
     id: 'tech_combat_basics', name: 'Combat Basics', branch: 'combat', prereqs: [],
     cost: { credits: 1200, rp: 0 },
-    unlocks: { ships: ['ship_wasp'], modules: ['wpn_pulse_laser_s', 'wpn_autocannon_s'] },
+    // The Wasp and the two starter guns need no research (FIRST HOUR 2026-11-21); this node now
+    // only opens the combat branch.
+    unlocks: { ships: [], modules: [] },
   },
   {
     id: 'tech_beam_focusing', name: 'Beam Focusing', branch: 'combat', prereqs: ['tech_combat_basics'],
@@ -22,7 +24,8 @@ export const TECH_NODES = [
   {
     id: 'tech_kinetic_drivers', name: 'Kinetic Drivers', branch: 'combat', prereqs: ['tech_combat_basics'],
     cost: { credits: 3667, rp: 6 },
-    unlocks: { modules: ['wpn_autocannon_m', 'wpn_railgun_m', 'wpn_concussion_cannon_m', 'wpn_concussion_cannon_s'] },
+    // Concussion Cannon S is a starter gun (credits only, R7); the node no longer claims to open it.
+    unlocks: { modules: ['wpn_autocannon_m', 'wpn_railgun_m', 'wpn_concussion_cannon_m'] },
   },
   {
     id: 'tech_guided_ordnance', name: 'Guided Ordnance', branch: 'combat', prereqs: ['tech_combat_basics'],

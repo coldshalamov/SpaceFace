@@ -100,7 +100,7 @@ test('the visual factory gives each category its own shared geometry and keeps t
   assert.equal(gas.userData.gem.material.emissive.getHexString(), '59d6c7');
 });
 
-test('every commodity drop carries the collectible beacon ring; solid cargo does not', () => {
+test('commodity drops read by emissive silhouette with no orbiting beacon ring (no rings around things, owner 2026-11-23)', () => {
   invalidateVisualFactoryCaches();
   const factory = createVisualFactory();
   const make = (id, data) => factory.build({
@@ -110,19 +110,21 @@ test('every commodity drop carries the collectible beacon ring; solid cargo does
   const mystery = make(112, { kind: 'module' });
   const crate = make(113, { freightCustodyPod: true });
 
-  for (const v of [ore, mystery]) {
-    const halo = v.userData.pickupHalo;
-    assert.ok(halo && halo.isMesh, 'the drop carries a beacon ring mesh');
-    assert.equal(halo.userData.baseScale, 2.2, 'ring base scale = drop radius');
-    assert.equal(halo.geometry, ore.userData.pickupHalo.geometry, 'ring geometry is shared');
-    assert.ok(halo.material.transparent && halo.material.depthWrite === false, 'ring reads as light, not solid');
+  for (const v of [ore, mystery, crate]) {
+    assert.equal(v.userData.pickupHalo, null, 'no rings around things, owner 2026-11-23');
   }
-  // The flash writes per-drop opacity, so materials are cloned per drop even within one colour.
-  assert.notEqual(ore.userData.pickupHalo.material, mystery.userData.pickupHalo.material,
-    'ring material is per-drop');
-  // A canister that looks like solid cargo but is takeable carries the ring too...
-  assert.ok(crate.userData.pickupHalo, 'custody canister keeps the collectible signal');
-  // ...while ordinary tow cargo (a real payload body) never does.
+  assert.ok(ore.userData.gem && ore.userData.gem.material.emissiveIntensity >= 1.5, 'gem reads through emissive glint');
+  assert.notEqual(ore.userData.gem.material, mystery.userData.gem.material, 'glint material is per-drop');
   const payload = factory.build({ id: 114, type: 'payload', radius: 2.2, pos: { x: 0, z: 0 }, data: {} });
   assert.ok(!payload.userData.pickupHalo, 'payloads stay unmarked');
+  // The custody canister looks like solid cargo, so its takeable read moves onto its own light:
+  // a pod-green transponder on a per-pod material. Ordinary tow cargo keeps the shared cyan lamp.
+  const crateLamp = crate.getObjectByName('PayloadTransponder');
+  const payloadLamp = payload.getObjectByName('PayloadTransponder');
+  assert.ok(crateLamp && payloadLamp, 'both canisters carry a transponder');
+  assert.equal(crate.userData.custodyBeacon, 'transponder');
+  assert.equal(crateLamp.material.emissive.getHexString(), '4fbf8f', 'custody beacon burns pod green');
+  assert.notEqual(crateLamp.material, payloadLamp.material, 'the beacon is a per-pod clone');
+  assert.equal(payloadLamp.material.emissive.getHexString(), '2abbd8', 'tow cargo keeps the shared transponder');
+  assert.equal(payload.userData.custodyBeacon, undefined, 'tow cargo carries no takeable beacon');
 });

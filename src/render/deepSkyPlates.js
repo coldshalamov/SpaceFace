@@ -24,6 +24,7 @@
 // disagree with the sizes the runtime budgets from.
 import { shouldStartHeavyAdmissionEventually } from './admissionSliceBudget.js';
 import { forcedFrameSpend, FORCED_FRAME_BUDGET_MS, noteForcedFrameSpend } from './decodeTaskBudget.js';
+import { acquireSharedKtx2Loader, releaseSharedKtx2Loader } from './assetLoader.js';
 import { dedupError } from '../core/warnDedup.js';
 
 /**
@@ -107,6 +108,24 @@ export const DEEP_SKY_PLATES = Object.freeze({
     height: 1024,
     residentBytes: 11184812,
   }),
+  // PLACES-1 (INV-25 items 1+2) — two more base backdrops, baked by the same offline pipeline
+  // (bake_deep_sky_plates.mjs) at the sector-skies luminance band (measured mean 0.016 / 0.017,
+  // manifest.json carries the stats). Files live with the accent plates because they are locally
+  // baked, not drop imports; they are bound through profile background.sky like the six above.
+  'sky-fringe-pale-ice-shelf': Object.freeze({
+    id: 'sky-fringe-pale-ice-shelf',
+    url: '/assets/background/deep-sky/sky-fringe-pale-ice-shelf.png',
+    width: 2048,
+    height: 1024,
+    residentBytes: 11184812,
+  }),
+  'sky-ashfall-burn-front': Object.freeze({
+    id: 'sky-ashfall-burn-front',
+    url: '/assets/background/deep-sky/sky-ashfall-burn-front.png',
+    width: 2048,
+    height: 1024,
+    residentBytes: 11184812,
+  }),
 });
 
 /** One active plate plus one incoming during a region transition. Nothing else may be held. */
@@ -158,6 +177,13 @@ export class DeepSkyPlateResidency {
     this.uploadMs = 0;
     this.lastUploadMs = 0;
     this.disposed = false;
+    // Every plate def ships a sibling `url.ktx2` (UASTC + baked mips, produced by
+    // scripts/encode-world-ktx2.mjs). Transcoding on the shared pool moves the whole image
+    // decode off the main thread and cuts the upload to a fraction of the RGBA payload.
+    // The acquire starts now so the first request usually finds it settled; `undefined`
+    // means "still coming up" and that single request takes the raster path it always did.
+    this._ktx2 = renderer ? undefined : null;
+    if (renderer) acquireSharedKtx2Loader(renderer).then((l) => { this._ktx2 = l; });
   }
 
   /** True while a plate is loading or waiting for its upload slot. */
@@ -206,20 +232,48 @@ export class DeepSkyPlateResidency {
     this.pendingId = wanted;
     this.pendingDecoded = false;
     const plateDef = DEEP_SKY_PLATES[wanted];
-    this.pendingTexture = this.loader.load(
-      plateDef.url,
-      () => { if (!this.disposed && this.pendingId === wanted) this.pendingDecoded = true; },
-      undefined,
-      (error) => {
-        if (this.disposed) return;
-        // A missing plate is a quiet region, never a broken frame.
-        dedupError('deep-sky-plate.load', `[background] deep-sky plate failed to load: ${wanted}`, error);
-        this.failedIds.add(wanted);
-        if (this.pendingId === wanted) this._releasePending();
-      },
-    );
-    if (this.pendingTexture && this.configure) this.configure(this.pendingTexture, plateDef);
+    this._loadPlate(plateDef, wanted);
     return true;
+  }
+
+  _loadPlate(plateDef, wanted) {
+    const useRaster = () => {
+      if (this.disposed || this.pendingId !== wanted) return;
+      this.pendingTexture = this.loader.load(
+        plateDef.url,
+        () => { if (!this.disposed && this.pendingId === wanted) this.pendingDecoded = true; },
+        undefined,
+        (error) => {
+          if (this.disposed) return;
+          // A missing plate is a quiet region, never a broken frame.
+          dedupError('deep-sky-plate.load', `[background] deep-sky plate failed to load: ${wanted}`, error);
+          this.failedIds.add(wanted);
+          if (this.pendingId === wanted) this._releasePending();
+        },
+      );
+      if (this.pendingTexture && this.configure) this.configure(this.pendingTexture, plateDef);
+    };
+    const ktx2 = this._ktx2;
+    if (!ktx2) { useRaster(); return; }
+    try {
+      ktx2.load(
+        `${plateDef.url}.ktx2`,
+        (texture) => {
+          if (this.disposed || this.pendingId !== wanted) { texture?.dispose?.(); return; }
+          this.pendingTexture = texture;
+          if (this.configure) this.configure(texture, plateDef);
+          this.pendingDecoded = true;
+        },
+        undefined,
+        (error) => {
+          if (this.disposed || this.pendingId !== wanted) return;
+          dedupError('deep-sky-plate.ktx2', `[background] deep-sky KTX2 missed, raster fallback: ${wanted}`, error);
+          useRaster();
+        },
+      );
+    } catch {
+      useRaster();
+    }
   }
 
   /**
@@ -296,6 +350,8 @@ export class DeepSkyPlateResidency {
     this.disposed = true;
     this._releasePending();
     this._releaseActive();
+    if (this._ktx2) releaseSharedKtx2Loader(this._ktx2);
+    this._ktx2 = null;
   }
 }
 

@@ -127,7 +127,9 @@ export function physicalWeaponLabelFromDamage(packet = {}) {
     if (tag === 'bomb') return crushTick ? 'crush' : 'blast';
   }
   for (const tag of tags) {
-    if (tag === 'terrain_collision' || tag === 'collision_terrain') return 'arena impact';
+    if (tag === 'terrain_collision' || tag === 'collision_terrain' || tag === 'arena_slam') {
+      return 'arena impact';
+    }
   }
   for (const tag of tags) {
     if (tag === 'ship_collision' || tag === 'collision_craft' || tag === 'direct_contact') return 'hull ram';
@@ -249,14 +251,17 @@ export function defeatSource(state, attackerId, context = null) {
   };
 }
 
-export function weaponLabel(weaponId) {
+export function weaponLabel(weaponId, fallback = 'the ship that hit you') {
   const weapon = WEAPON_BY_ID.get(weaponId);
   if (weapon) return weapon.name;
   // SFQ-B058 — a physical kill label ('thrown mass', 'arena impact', 'hull ram')
   // is already player words: pass it through verbatim. Anything else is still an
   // id, humanised as before.
   if (typeof weaponId === 'string' && weaponId && !weaponId.includes('_')) return weaponId;
-  return weaponId ? titleWords(weaponId) : 'Unknown weapon';
+  // 04_SWARM.md §8 — the source is never unnamed: with no id the caller passes what
+  // struck the player (the attacking hull's own display name), and the last resort
+  // stays plain words instead of "Unknown weapon".
+  return weaponId ? titleWords(weaponId) : fallback;
 }
 
 export function impactDirection(state, attackerId, hitPos = null) {
@@ -281,10 +286,15 @@ export function buildDamageReadout(state, payload = {}) {
   const after = payload.after || {};
   const layer = String(payload.dominantLayer || 'impact').toUpperCase();
   const subsystem = payload.subsystemId ? String(payload.subsystemId).replace(/_/g, ' ').toUpperCase() : null;
+  const attacker = attackerLabel(state, payload.attackerId);
   const readout = {
     direction: impactDirection(state, payload.attackerId, payload.pos),
-    attacker: attackerLabel(state, payload.attackerId),
-    weapon: weaponLabel(weaponIdFromDamage(payload)),
+    attacker,
+    // 04_SWARM.md §8 — a hit with no weapon id is named from the hull that fired it,
+    // so the impact readout never says "Unknown weapon".
+    weapon: weaponLabel(weaponIdFromDamage(payload), payload.attackerId == null
+      ? 'Environmental impact'
+      : attacker !== 'Unknown contact' ? attacker : 'the ship that hit you'),
     layer,
     subsystem,
     shieldPct: pct(after.shield, after.shieldMax),
@@ -315,7 +325,11 @@ function fatalSummary(source, weapon, direction, dominantLayer) {
   }
   const faction = source.faction ? ` (${source.faction})` : '';
   const bearing = String(direction || 'unknown').toLowerCase();
-  return `Final hit from ${source.label}${faction} · ${weapon || 'unidentified weapon'} · ${bearing} ${layer} breach.`;
+  // 04_SWARM.md §8 — the killer is never unnamed: with no weapon id the final hit is
+  // named from the attacking hull's own display name, and a source with no name of
+  // its own still reads as the ship itself, never "unidentified weapon".
+  const hullName = source.kind === 'unknown' ? null : source.label;
+  return `Final hit from ${source.label}${faction} · ${weapon || hullName || 'the ship that hit you'} · ${bearing} ${layer} breach.`;
 }
 
 function stationIsLawful(station) {
@@ -603,10 +617,15 @@ export function buildDefeatReceipt(state, playerEntity, killerId, lethal = {}) {
     : (physicalLabel || rawWeaponId);
   const dominantLayer = lethal.dominantLayer || lethal.result && lethal.result.dominantLayer || 'hull';
   const context = lethal.context || lethal.origin && lethal.origin.kind || 'combat';
-  const source = defeatSource(state, killerId, context);
+  const foundryRim = lethal.origin?.kind === 'arena_slam' && typeof lethal.origin.id === 'string'
+    && /^foundry_rim_\d+$/.test(lethal.origin.id);
+  // An earlier impulse can earn kill credit. The rim and its contact point explain the loss.
+  const impactActorId = foundryRim ? null : killerId;
+  const source = defeatSource(state, impactActorId, context);
+  if (foundryRim) source.label = 'Foundry rim';
   const subsystemId = lethal.subsystemId || lethal.result && lethal.result.subsystemId || null;
   const finalDamage = buildDamageReadout(state, {
-    attackerId: killerId,
+    attackerId: impactActorId,
     weaponId,
     dominantLayer,
     subsystemId,
@@ -625,6 +644,7 @@ export function buildDefeatReceipt(state, playerEntity, killerId, lethal = {}) {
     faction: source.faction,
     weaponId,
     weapon: weaponId ? weaponLabel(weaponId) : null,
+    physicalLabel,
     dominantLayer,
     direction: finalDamage.direction,
     subsystemId,

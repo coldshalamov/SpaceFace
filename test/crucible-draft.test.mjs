@@ -275,9 +275,11 @@ test('the card copy states the verb, the hardpoint, and what it replaces', () =>
   assert.equal(lines.verb, 'Throw');
   // The replaced fitting is named as the player knows it, never by its id — and the line says
   // where it goes, so a swap never reads as a deletion.
-  assert.equal(lines.slot, 'Swaps with Pulse Laser M on hardpoint 2 — it goes to your spares');
+  assert.equal(lines.slot, 'Replaces Pulse Laser M in slot 2. The old part goes to your spares.');
   const emptySlot = offerCardLines({ id: 'x', verb: 'X', slotIndex: 0, replaces: null });
-  assert.equal(emptySlot.slot, 'Bolts onto empty hardpoint 1');
+  assert.equal(emptySlot.slot, 'Installs in empty slot 1.');
+  const trial = offerCardLines({ id: 'x', verb: 'X', slotIndex: 0, replaces: 'wpn_pulse_laser_m', replacesTrial: true });
+  assert.equal(trial.slot, 'Replaces borrowed Pulse Laser M in slot 1. The loan ends.');
 });
 
 test('survivalDraft is event-driven and never joins the per-frame update order', () => {
@@ -505,8 +507,8 @@ test('the re-roll control reads as unavailable rather than looking live and doin
     open: true, wave: 2, rerolls: 0, price: 12, credits: 40, available: true, reason: null, note: '',
   });
   assert.equal(live.visible, true);
-  assert.equal(live.label, 'Re-roll · 12 cr');
-  assert.equal(live.wallet, 'Run wallet 40 cr');
+  assert.equal(live.label, 'Re-roll · 12 Scrap'); // one Swarm money word (director 2026-11-20)
+  assert.equal(live.wallet, '40 Scrap');
   assert.equal(live.disabled, false);
   assert.equal(live.notice, '');
 
@@ -517,7 +519,7 @@ test('the re-roll control reads as unavailable rather than looking live and doin
   assert.equal(short.disabled, true, 'unaffordable is drawn dead');
   assert.match(short.notice, /12 cr/);
   assert.match(short.notice, /5 cr/);
-  assert.equal(short.wallet, 'Run wallet 5 cr');
+  assert.equal(short.wallet, '5 Scrap');
 
   const dry = rerollControlLines({
     open: true, wave: 9, rerolls: 3, price: 132, credits: 400, available: false,

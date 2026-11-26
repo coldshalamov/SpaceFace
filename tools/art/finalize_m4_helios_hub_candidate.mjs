@@ -676,7 +676,7 @@ loader.load(glbUrl, (gltf) => {
 async function captureThreeEvidence(results) {
   let playwright;
   try {
-    playwright = await import('playwright');
+    playwright = await (await import('../../scripts/lib/quietLaunch.mjs')).loadQuietPlaywright();
   } catch (err) {
     return { ok: false, error: `playwright unavailable: ${err}` };
   }

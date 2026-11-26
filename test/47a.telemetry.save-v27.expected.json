@@ -67,7 +67,7 @@
     "tether:attached": 1
   },
   "acceptanceCriteria": {
-    "authoritativeHash": "c0557999b5591d77be8b62ada467c72b3c58888cdc86d3d49a22dde4e6447ab3",
+    "authoritativeHash": "4dac41d0fdfa01057c5226c239f0e7b268065daaa05a3fe259431ab9333838cc",
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
     "firstHostileShotTickMax": 5400,
@@ -256,6 +256,19 @@
     "phase0ObservedTraceCounts are UNCHANGED: identical fires, hits, tether attach/break ticks, damage, economy. The alert family present in runs is a post-envelope instrumentation superset, identical across solvers.",
     "v24: W1 Act I announcement adds story.flags.journey_act_I_announced and one comms:popup. sim-golden-diff: CONTENT_ONLY, zero motion fields. v23 retained for rollback.",
     "v26: P1 starter loadout (Hitch shield liner; dry 35->33, shield 345->210, max speed 136.8->142.1) and W1 story.journeyActs. sim-golden-diff: motion 63, no flight/gunnery code change. v24/v25 retained.",
-    "v27: PARK-01 Lane B lands tender-haul data + dock store sentence, economySlicing still OFF. Delta vs v26 is one leaf: missions.config.BASE_REP.tender_haul; zero motion fields. v26 retained for rollback."
+    "v27: PARK-01 Lane B lands tender-haul data + dock store sentence, economySlicing still OFF. Delta vs v26 is one leaf: missions.config.BASE_REP.tender_haul; zero motion fields. v26 retained for rollback.",
+    "[reference] v1 recorded 2026-11-20T09:29:25.577Z by scripts/reference.mjs; ticket E2-ECON-SLICING; reason: economySlicing ON: the 5 s economy pass drains per fixed tick; receipts land exactly on",
+    "(cont.) 300/600 instead of one tick late; owner no-holds ruling 2026-11-19; previous hash: c0557999b5591d77be8b62ada467c72b3c58888cdc86d3d49a22dde4e6447ab3.",
+    "2026-11-20 re-record: state hash moved for foreign R17/HARMONY flight edits (helm-assist default, cruise brake drop, corridor autopilot gate); all trace counts identical; economy closed-form verified hash-neutral (econEvents empty in tape).",
+    "2026-11-20 re-record: CARGO-BUILD-1 (R22) joins the serialized hold — player.cargo gains slots/slotCount, derived gains cargoSlots, save meta.version 23->24, seeded capVolume 40->250.",
+    "(cont.) sim-golden-diff VERDICT: CONTENT_ONLY, zero motion fields changed; all trace counts identical.",
+    "2026-11-20 version-only re-record: the Adventure Pilot Tree migration raises meta.version 25->26.",
+    "(cont.) Pinning CURRENT_VERSION back to 25 reproduces the prior hash aa9a843c517be0cf0f9dfa440c6a5d58efbfbe98a76f307a56dd8618304b389d exactly; no simulated behaviour moved.",
+    "2026-11-24 deliberate re-record: the hash moved for contract wording only. The prior authoritativeHash was 29e58fa338750ad2e0fd4d61fc869e95b01184e441e05a179097ef69d5660722.",
+    "The mover is the plain-words copy pass on CONTRACT_47A_B0_BODY in src/data/narrative.js, committed in the same change as this pin: title/summary/fullText 'Mass Variance Sample' -> 'Weigh the sample'.",
+    "(cont.) missionStoryOps copies title/summary/fullText onto the hashed missions.active row, so contract wording reaches this envelope.",
+    "scripts/sim-golden-diff.mjs --ref 8ef7a7d475 (last commit before the red window): VERDICT CONTENT_ONLY — 3 diffs total, all $.missions.active[0] title/description/summary text. ZERO entity pos/vel/rot/angVel/prevPos fields changed and zero trace counts moved.",
+    "The same pass also renamed the persistent cargo row '47-A ASSAY SAMPLE' -> '47-A SAMPLE'; that field is not in this hashed snapshot and did not move the hash.",
+    "Recorded from a --reload-at 600 run on the working tree that carries the copy: sha256 equals baselineSha256 at 4dac41d0fdfa01057c5226c239f0e7b268065daaa05a3fe259431ab9333838cc."
   ]
 }

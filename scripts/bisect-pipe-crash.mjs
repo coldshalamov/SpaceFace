@@ -4,7 +4,9 @@ import { spawn } from 'node:child_process';
 import { createServer as createNetServer } from 'node:net';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
-import { chromium } from 'playwright-core';
+import { chromium as rawChromium } from 'playwright-core';
+import { quietChromium } from './lib/quietLaunch.mjs';
+const chromium = quietChromium(rawChromium);
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 

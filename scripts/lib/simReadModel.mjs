@@ -1,6 +1,7 @@
 import { NINTH_MOUTH_LIGHT_VITAL_KEYS, foldNinthMouthLightVitals } from './ceresNinthMouthMirror.mjs';
 import { projectIlexGreenhouse } from '../../src/data/ilexGreenhouse.js';
 import { foldSwarmSpecialistPresentation } from '../../src/data/swarmSpecialistPresentation.js';
+import { IRON_MAW } from '../../src/data/encounters/capital-boss/iron-maw.js';
 import { bindCeresCradlePublicLayout } from '../../src/core/ceresWorkfleetLayoutAdmission.js';
 import { bindCeresWorkfleetPublicActuation } from '../../src/core/ceresWorkfleetActuation.js';
 import { LAST_SHIFT, lastShiftFactIds, lastShiftLocalReport } from '../../src/data/lastShift.js';
@@ -270,6 +271,7 @@ export function createReadModel() {
     entities: new Map(),   // entityId -> projected entity row (journal-covered)
     rosterVersion: 0,      // bumped on every entities set/delete so the lane can skip list rebuilds
     weaponVfxProjectiles: new Map(), // visual-factory-skipped shots, for the weapon presenter only
+    weaponVfxVersion: 0,   // bumped on vfx row add/remove and alive flips (list membership only)
     aux: new Map(),        // rowId -> aux row (far | rock | dressing)
     auxCells: new Map(),   // numeric cellKey -> Set(rowId)
     auxVersion: 0,
@@ -281,6 +283,9 @@ export function createReadModel() {
 
 export function applyWeaponVfxProjectiles(readModel, projectileInfos) {
   const seen = new Set();
+  // Membership/alive changes bump the version so the lane can rebuild its flat
+  // list only when it actually changed (the map itself carries no diff signal).
+  const bump = () => { readModel.weaponVfxVersion = (readModel.weaponVfxVersion || 0) + 1; };
   for (const info of projectileInfos || []) {
     if (!info || !Number.isSafeInteger(info.entityId)) continue;
     const id = info.entityId;
@@ -289,9 +294,16 @@ export function applyWeaponVfxProjectiles(readModel, projectileInfos) {
     if (!row) {
       row = { id, type: 'projectile', pos: {}, prevPos: {}, vel: {}, data: {} };
       readModel.weaponVfxProjectiles.set(id, row);
+      bump();
     }
     row.type = 'projectile';
-    row.alive = info.alive !== false;
+    const alive = info.alive !== false;
+    if (row.alive !== alive) {
+      // The presented list filters on this flag — a flip is a membership change
+      // even though the map itself is untouched.
+      row.alive = alive;
+      bump();
+    }
     row.team = Number.isFinite(info.team) ? info.team : 0;
     row.ownerId = Number.isSafeInteger(info.ownerId) ? info.ownerId : null;
     row.pos.x = finite(info.x);
@@ -308,7 +320,10 @@ export function applyWeaponVfxProjectiles(readModel, projectileInfos) {
     row.data.weaponId = typeof info.weaponId === 'string' ? info.weaponId : null;
   }
   for (const id of readModel.weaponVfxProjectiles.keys()) {
-    if (!seen.has(id)) readModel.weaponVfxProjectiles.delete(id);
+    if (!seen.has(id)) {
+      readModel.weaponVfxProjectiles.delete(id);
+      bump();
+    }
   }
 }
 
@@ -909,6 +924,20 @@ export const DOMAIN_MIRROR_KEYS = Object.freeze([
   'counterweightCircuitOffer', 'counterweightCircuitView', 'counterweightCircuitGhost',
   'breakwaterSpurOffer', 'breakwaterSpurView',
   'cinderglassJobView', 'cinderglassJobToken', 'cinderglassJobPresentationReady',
+  // PORT-PRO-FIVE: SWITCHBACK's active raid/train mirror reaches the presenting thread.
+  'convoyRaid',
+  // TOWJAW's bounded fight view carries the live warning geometry and captions to
+  // the main-thread overlay when the sim runs in its worker lane.
+  'towjawView',
+  // BLACKBOX RUNS: the worker computes the bounded HUD projection; the main-thread
+  // facade returns it from derelictExpedition.presentation() without re-deriving it.
+  'derelictExpeditionView',
+  // GLASSWAKE: the bounded storm view (fronts, pockets, custody, cues) drives the
+  // renderer's four pooled drawables on the presenting lane.
+  'stormChaseView',
+  // KINETIC CATALYSTS: the bounded public view (armed relays, capture orbits, echo
+  // charges, links) drives the renderer's swept-surface batch on the presenting lane.
+  'kineticCatalystsPublic',
   'replay.latestPoseSample', 'mercyServicePublic', 'wreckCourtPublic',
   // leaf-path mirrors (root stays on the facade; only the subtree ships)
   'flightRuntime.angularIntent',
@@ -981,6 +1010,13 @@ export const DOMAIN_MIRROR_KEYS = Object.freeze([
   'ceresNinthMouthOffer',
   // Fixed eight-original receipt/conversation record for the station and chart. No live poses.
   'npcJobs.ceresNinthMouth',
+  // Held drift-bomb preview and the power rail share the selected loaded rack and its timers.
+  // The worker retains stock, fitting authority, and active ordnance ownership.
+  'bombs.selectedId', 'bombs.bombChosen', 'bombs.rack.cells', 'bombs.cooldownUntil', 'bombs.cooldowns',
+  // The belt-wide record (raid pressure and the last raid, doctrines unlocked, charters held,
+  // belt weather). Without it the belt view read a fresh blank one every frame: raids always
+  // at zero, a bought doctrine shown as never bought. Appended so existing slots keep their cadence.
+  'sites.empire',
 ]);
 
 // Per-key canonical-serialization ship cap (report-only): any single mirrored
@@ -1020,7 +1056,7 @@ export function resolveDomainValue(state, key) {
 // at worst — the signed digest still describes the shipped content).
 // massline2: 2 — the throw's release window (massline2.throw.solution) lasts a few ticks; as one big leaf it re-signed
 // on the cold/warm cadence and the main-thread throw cue lit late or never. Split, it ships every pass.
-export const DOMAIN_EXPAND = Object.freeze({ economy: 2, combat: 1, story: 1, input: 1, meta: 1, player: 1, run: 1, salvageOutfits: 2, massline2: 2 });
+export const DOMAIN_EXPAND = Object.freeze({ economy: 2, combat: 1, story: 1, input: 1, meta: 1, player: 1, run: 1, salvageOutfits: 2, massline2: 2, convoyRaid: 3, towjawView: 2, derelictExpeditionView: 3, stormChaseView: 3, kineticCatalystsPublic: 2 });
 // player: 1 — the wallet/cargo fields the UI reads hot (player.credits,
 // player.cargo) sign every pass instead of trailing the monolithic player
 // leaf's cold-tier 60-tick interval: a settled trade used to leave the facade
@@ -1371,9 +1407,11 @@ function projectDrillPresentation(source) {
     return out;
   };
   const point = value => fields(value, ['col', 'row']);
-  const out = fields(source, ['active','asteroidId','asteroidGeneration','fieldId','rockBudget','rockBudgetMax',
+  const out = fields(source, ['active','asteroidId','asteroidGeneration','fieldId','boreFamily','rockBudget','rockBudgetMax',
     'drillDir','moveCooldown','drillTemp','overheated','drillEnergy','energyDepleted','gasHits',
     'tilesCleared','maxDepth','sessionElapsed','chargeArmed','chargePayload','chargeStock','chargeCooldown','chargesSet']);
+  const requestId = fields(source, ['_requestId'])._requestId;
+  if (requestId != null) out.requestId = requestId;
   out.avatar = fields(source.avatar, ['col','row','fromCol','fromRow','moveDuration','moveElapsed','faceDir','isDrilling','drillBlocked']);
   if (out.avatar) out.avatar.drillTarget = point(source.avatar.drillTarget);
   out.scan = fields(source.scan, ['cooldown','active','serial','contacts']);
@@ -1390,7 +1428,7 @@ function projectDrillPresentation(source) {
   out.field = Array.isArray(source.field) ? source.field.slice(0, 28).map(column => Array.isArray(column)
     ? column.slice(0, 45).map(tile => {
       const shown = fields(tile, ['type','hp','maxHp','ore','yieldU','hazard','tierReq','hardness','risk',
-        'stratum','rich','cave','fault','cracked','rubble','vented','structure']);
+        'stratum','rich','cave','fault','cracked','rubble','fill','vented','structure']);
       if (shown && tile.structure && typeof tile.structure === 'object') shown.structure = fields(tile.structure, ['id','defId']);
       return shown;
     }) : null) : null;
@@ -1542,6 +1580,9 @@ function projectDomainLeaf(rule, v, state) {
         plates: Array.isArray(fight.plates) ? fight.plates.map(p => ({ id: p.id, attached: p.attached, strainTicks: p.strainTicks })) : null,
         cast: cast ? { id: cast.id, beatId: cast.beatId, startedAt: cast.startedAt,
           locked: cast.locked, shapes: cast.shapes } : null };
+      if (fight.fightId === 'swarm:w5' && fight.encounterId === IRON_MAW.id && fight.recovery) {
+        fights[id].recovery = selectPresentationFields(fight.recovery, ['beatId', 'startedAt', 'cancelled', 'mawFed', 'mawCounter']);
+      }
     }
     return { fights };
   }
@@ -1713,6 +1754,16 @@ const SIG_OPAQUE = '@@opaque';
 const SIG_CYCLE = '@@cycle';
 const NO_SIGNED_SCALAR = Symbol('no signed scalar');
 
+function isPlainAsciiJsonString(str) {
+  const len = str.length;
+  if (len > 128) return false;
+  for (let i = 0; i < len; i++) {
+    const c = str.charCodeAt(i);
+    if (c < 32 || c > 126 || c === 34 || c === 92) return false;
+  }
+  return true;
+}
+
 export function writeDomainSignature(value, parts, seen) {
   if (value === null) {
     parts.push('null');
@@ -1720,14 +1771,12 @@ export function writeDomainSignature(value, parts, seen) {
   }
   const t = typeof value;
   if (t === 'number') {
-    parts.push('n:', Number.isNaN(value) ? 'NaN'
-      : Object.is(value, -0) ? '-0'
-        : Number.isFinite(value) ? String(value)
-          : String(value));
+    parts.push('n:', Object.is(value, -0) ? '-0' : String(value));
     return;
   }
   if (t === 'string') {
-    parts.push('s:', JSON.stringify(value));
+    if (isPlainAsciiJsonString(value)) parts.push('s:"', value, '"');
+    else parts.push('s:', JSON.stringify(value));
     return;
   }
   if (t === 'boolean') {
@@ -1811,14 +1860,58 @@ export function writeDomainSignature(value, parts, seen) {
     return;
   }
   seen.add(value);
-  const keys = Object.keys(value).sort();
+  const keys = Object.keys(value);
+  const n = keys.length;
+  if (n === 0) {
+    parts.push('o:{}');
+    seen.delete(value);
+    return;
+  }
+  if (n === 1) {
+    const k = keys[0];
+    parts.push('o:{');
+    if (isPlainAsciiJsonString(k)) parts.push('"', k, '"=');
+    else parts.push(JSON.stringify(k), '=');
+    let field;
+    try { field = value[k]; } catch (_) { field = undefined; }
+    writeDomainSignature(field, parts, seen);
+    parts.push('}');
+    seen.delete(value);
+    return;
+  }
+  if (n === 2) {
+    let k0 = keys[0], k1 = keys[1];
+    if (k0 > k1) { const tmp = k0; k0 = k1; k1 = tmp; }
+    parts.push('o:{');
+    if (isPlainAsciiJsonString(k0)) parts.push('"', k0, '"=');
+    else parts.push(JSON.stringify(k0), '=');
+    let f0;
+    try { f0 = value[k0]; } catch (_) { f0 = undefined; }
+    writeDomainSignature(f0, parts, seen);
+    parts.push(',');
+    if (isPlainAsciiJsonString(k1)) parts.push('"', k1, '"=');
+    else parts.push(JSON.stringify(k1), '=');
+    let f1;
+    try { f1 = value[k1]; } catch (_) { f1 = undefined; }
+    writeDomainSignature(f1, parts, seen);
+    parts.push('}');
+    seen.delete(value);
+    return;
+  }
+  let sorted = true;
+  for (let i = 1; i < n; i++) {
+    if (keys[i - 1] > keys[i]) { sorted = false; break; }
+  }
+  if (!sorted) keys.sort();
   parts.push('o:{');
-  for (let i = 0; i < keys.length; i++) {
+  for (let i = 0; i < n; i++) {
     if (i) parts.push(',');
-    parts.push(JSON.stringify(keys[i]), '=');
+    const k = keys[i];
+    if (isPlainAsciiJsonString(k)) parts.push('"', k, '"=');
+    else parts.push(JSON.stringify(k), '=');
     let field;
     try {
-      field = value[keys[i]];
+      field = value[k];
     } catch (_) {
       field = undefined; // throwing getter — opaque leaf
     }
@@ -1826,6 +1919,222 @@ export function writeDomainSignature(value, parts, seen) {
   }
   parts.push('}');
   seen.delete(value);
+}
+
+function createDomainHashScratch() {
+  return { h1: 0, h2: 0, h3: 0, len: 0, seen: new Set(), parts: [] };
+}
+
+function feedDomainHashStr(ctx, str) {
+  const n = str.length;
+  ctx.len += n;
+  let h1 = ctx.h1;
+  let h2 = ctx.h2;
+  let h3 = ctx.h3;
+  for (let i = 0; i < n; i++) {
+    const c = str.charCodeAt(i);
+    h1 = Math.imul(h1 ^ c, 0x01000193);
+    h2 = Math.imul(h2 ^ ((c << 7) | (c >>> 25)), 0x85ebca6b);
+    h3 = Math.imul((h3 + c + 1) | 0, 0xc2b2ae35);
+  }
+  ctx.h1 = h1;
+  ctx.h2 = h2;
+  ctx.h3 = h3;
+}
+
+function feedDomainKey(ctx, key) {
+  if (isPlainAsciiJsonString(key)) {
+    feedDomainHashStr(ctx, '"');
+    feedDomainHashStr(ctx, key);
+    feedDomainHashStr(ctx, '"=');
+  } else {
+    feedDomainHashStr(ctx, JSON.stringify(key));
+    feedDomainHashStr(ctx, '=');
+  }
+}
+
+function hashDomainWrite(value, ctx) {
+  if (value === null) {
+    feedDomainHashStr(ctx, 'null');
+    return;
+  }
+  const t = typeof value;
+  if (t === 'number') {
+    feedDomainHashStr(ctx, 'n:');
+    feedDomainHashStr(ctx, Object.is(value, -0) ? '-0' : String(value));
+    return;
+  }
+  if (t === 'string') {
+    if (isPlainAsciiJsonString(value)) {
+      feedDomainHashStr(ctx, 's:"');
+      feedDomainHashStr(ctx, value);
+      feedDomainHashStr(ctx, '"');
+    } else {
+      feedDomainHashStr(ctx, 's:');
+      feedDomainHashStr(ctx, JSON.stringify(value));
+    }
+    return;
+  }
+  if (t === 'boolean') {
+    feedDomainHashStr(ctx, value ? 'b:true' : 'b:false');
+    return;
+  }
+  if (t === 'bigint') {
+    feedDomainHashStr(ctx, 'g:');
+    feedDomainHashStr(ctx, String(value));
+    return;
+  }
+  if (t !== 'object') {
+    feedDomainHashStr(ctx, SIG_OPAQUE);
+    return;
+  }
+  const seen = ctx.seen;
+  if (seen.has(value)) {
+    feedDomainHashStr(ctx, SIG_CYCLE);
+    return;
+  }
+  if (Array.isArray(value)) {
+    seen.add(value);
+    feedDomainHashStr(ctx, 'a:[');
+    for (let i = 0; i < value.length; i++) {
+      if (i) feedDomainHashStr(ctx, ',');
+      hashDomainWrite(value[i], ctx);
+    }
+    feedDomainHashStr(ctx, ']');
+    seen.delete(value);
+    return;
+  }
+  if (value instanceof Map) {
+    seen.add(value);
+    const entries = [];
+    const keyParts = ctx.parts;
+    for (const [k, v] of value) {
+      keyParts.length = 0;
+      writeDomainSignature(k, keyParts, seen);
+      entries.push([keyParts.join(''), v]);
+    }
+    entries.sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
+    feedDomainHashStr(ctx, 'm:{');
+    for (let i = 0; i < entries.length; i++) {
+      if (i) feedDomainHashStr(ctx, ',');
+      feedDomainHashStr(ctx, entries[i][0]);
+      feedDomainHashStr(ctx, '=>');
+      hashDomainWrite(entries[i][1], ctx);
+    }
+    feedDomainHashStr(ctx, '}');
+    seen.delete(value);
+    return;
+  }
+  if (value instanceof Set) {
+    seen.add(value);
+    const sigs = [];
+    const itemParts = ctx.parts;
+    for (const item of value) {
+      itemParts.length = 0;
+      writeDomainSignature(item, itemParts, seen);
+      sigs.push(itemParts.join(''));
+    }
+    sigs.sort();
+    feedDomainHashStr(ctx, 'e:{');
+    for (let i = 0; i < sigs.length; i++) {
+      if (i) feedDomainHashStr(ctx, ',');
+      feedDomainHashStr(ctx, sigs[i]);
+    }
+    feedDomainHashStr(ctx, '}');
+    seen.delete(value);
+    return;
+  }
+  if (value instanceof Date) {
+    feedDomainHashStr(ctx, 'd:');
+    feedDomainHashStr(ctx, String(value.getTime()));
+    return;
+  }
+  if (value instanceof RegExp) {
+    feedDomainHashStr(ctx, 'r:');
+    feedDomainHashStr(ctx, value.source);
+    feedDomainHashStr(ctx, '/');
+    feedDomainHashStr(ctx, value.flags);
+    return;
+  }
+  if (ArrayBuffer.isView(value)) {
+    if (value instanceof DataView) {
+      feedDomainHashStr(ctx, 'y:DataView:[');
+      feedDomainHashStr(ctx, String(value.byteLength));
+      feedDomainHashStr(ctx, ']');
+      return;
+    }
+    feedDomainHashStr(ctx, 'y:');
+    feedDomainHashStr(ctx, value.constructor.name);
+    feedDomainHashStr(ctx, ':[');
+    for (let i = 0; i < value.length; i++) {
+      if (i) feedDomainHashStr(ctx, ',');
+      hashDomainWrite(value[i], ctx);
+    }
+    feedDomainHashStr(ctx, ']');
+    return;
+  }
+  seen.add(value);
+  const keys = Object.keys(value);
+  const n = keys.length;
+  if (n === 0) {
+    feedDomainHashStr(ctx, 'o:{}');
+    seen.delete(value);
+    return;
+  }
+  if (n === 1) {
+    const k = keys[0];
+    feedDomainHashStr(ctx, 'o:{');
+    feedDomainKey(ctx, k);
+    let field;
+    try { field = value[k]; } catch (_) { field = undefined; }
+    hashDomainWrite(field, ctx);
+    feedDomainHashStr(ctx, '}');
+    seen.delete(value);
+    return;
+  }
+  if (n === 2) {
+    let k0 = keys[0], k1 = keys[1];
+    if (k0 > k1) { const tmp = k0; k0 = k1; k1 = tmp; }
+    feedDomainHashStr(ctx, 'o:{');
+    feedDomainKey(ctx, k0);
+    let f0;
+    try { f0 = value[k0]; } catch (_) { f0 = undefined; }
+    hashDomainWrite(f0, ctx);
+    feedDomainHashStr(ctx, ',');
+    feedDomainKey(ctx, k1);
+    let f1;
+    try { f1 = value[k1]; } catch (_) { f1 = undefined; }
+    hashDomainWrite(f1, ctx);
+    feedDomainHashStr(ctx, '}');
+    seen.delete(value);
+    return;
+  }
+  let sorted = true;
+  for (let i = 1; i < n; i++) {
+    if (keys[i - 1] > keys[i]) { sorted = false; break; }
+  }
+  if (!sorted) keys.sort();
+  feedDomainHashStr(ctx, 'o:{');
+  for (let i = 0; i < n; i++) {
+    if (i) feedDomainHashStr(ctx, ',');
+    const k = keys[i];
+    feedDomainKey(ctx, k);
+    let field;
+    try { field = value[k]; } catch (_) { field = undefined; }
+    hashDomainWrite(field, ctx);
+  }
+  feedDomainHashStr(ctx, '}');
+  seen.delete(value);
+}
+
+function hashDomainValue(value, scratch) {
+  scratch.h1 = 0x811c9dc5 | 0;
+  scratch.h2 = 0x9e3779b1 | 0;
+  scratch.h3 = 0x27d4eb2d | 0;
+  scratch.len = 0;
+  scratch.seen.clear();
+  hashDomainWrite(value, scratch);
+  return scratch;
 }
 
 // Canonical signature of a value. `scratch` is a caller-retained object the
@@ -1992,12 +2301,13 @@ export function deepAssignInPlace(target, source, touched) {
       || target instanceof ArrayBuffer) {
     return source; // container kind changed — replacement is the only merge
   }
-  const targetKeys = Object.keys(target);
-  for (const k of targetKeys) {
-    if (!Object.prototype.hasOwnProperty.call(source, k)) delete target[k];
+  for (const k in target) {
+    if (Object.hasOwn(target, k) && !Object.hasOwn(source, k)) delete target[k];
   }
-  for (const k of Object.keys(source)) {
-    target[k] = deepAssignInPlace(target[k], source[k], touched);
+  for (const k in source) {
+    if (Object.hasOwn(source, k)) {
+      target[k] = deepAssignInPlace(target[k], source[k], touched);
+    }
   }
   return target;
 }
@@ -2038,7 +2348,7 @@ function domainWireChildSegs(segs, aliased, child, name) {
 function domainPathMetadata(path, segs) {
   const root = segs[0];
   return {
-    ownerSnapshot: root === 'survivalDraftPublic' || root === 'survivalResultsPublic',
+    ownerSnapshot: root === 'survivalDraftPublic' || root === 'survivalResultsPublic' || root === 'stormChaseView' || root === 'kineticCatalystsPublic',
     isCombatTrace: isCombatTracePath(segs),
     isCombatAttachments: isCombatAttachmentsPath(segs),
     isNpcJobsById: isNpcJobsByIdPath(segs),
@@ -2062,6 +2372,7 @@ export function createDomainDiffer(options = {}) {
   const rootNodes = new Array(DOMAIN_MIRROR_KEYS.length);
   const rootAliasSegs = new Array(DOMAIN_MIRROR_KEYS.length);
   const sigScratch = {};
+  const hashScratch = createDomainHashScratch();
   const cloneScratch = {};
   let nextSlot = 0;
   // Probe slot table: leaf paths interned to stable integer slots so the
@@ -2114,6 +2425,9 @@ export function createDomainDiffer(options = {}) {
       signature: null,
       signedScalar: NO_SIGNED_SCALAR,
       bytes: 0,
+      h1: 0,
+      h2: 0,
+      h3: 0,
       lastSign: -1,
       slot: nextSlot++,
       probeSlot: null,
@@ -2180,11 +2494,17 @@ export function createDomainDiffer(options = {}) {
           node.lastSign = -1;
           node.signature = null;
           node.digest = null;
+          node.h1 = 0;
+          node.h2 = 0;
+          node.h3 = 0;
         }
         if (segs[0] === 'run' && segs.length === 1) {
           // A reset/null run must enumerate the new identity on its first reply.
           node.lastSign = -1;
           node.digest = null;
+          node.h1 = 0;
+          node.h2 = 0;
+          node.h3 = 0;
         }
       }
       node.leaf = false;
@@ -2194,29 +2514,33 @@ export function createDomainDiffer(options = {}) {
       const enumDue = metadata.isCombatAttachments || freshOwnerSnapshot || node.kids === null
         || tick % DOMAIN_ENUM_TICKS === node.slot % DOMAIN_ENUM_TICKS;
       if (enumDue) {
-        const previousKids = node.kids;
-        const nextKids = new Map();
-        for (const c of Object.keys(v)) {
-          let child = previousKids && previousKids.get(c);
+        const kidsMap = node.kids || (node.kids = new Map());
+        const mark = (node._enumMark = ((node._enumMark || 0) + 1) | 0 || 1);
+        let seenCount = 0;
+        for (const c in v) {
+          if (!Object.hasOwn(v, c)) continue;
+          let child = kidsMap.get(c);
           let childSegs;
           if (child) {
             childSegs = domainWireChildSegs(segs, aliased, child, c);
           } else {
             childSegs = segs.concat(c);
             child = getOrCreateNode(`${path}.${c}`, childSegs);
+            kidsMap.set(c, child);
           }
-          nextKids.set(c, child);
+          child._enumSeen = mark;
+          seenCount++;
           walk(child, v[c], tick, updates, stats, npcJobsRevision, runContext, state, childSegs);
         }
-        if (previousKids) {
-          for (const [c, child] of previousKids) {
-            if (!nextKids.has(c)) {
+        if (kidsMap.size > seenCount) {
+          for (const [c, child] of kidsMap) {
+            if (child._enumSeen !== mark) {
               updates.push({ segs: domainWireChildSegs(segs, aliased, child, c), del: true });
               dropNode(child);
+              kidsMap.delete(c);
             }
           }
         }
-        node.kids = nextKids;
       } else {
         // Between enumerations walk the known set only: absent children delete
         // eagerly (a present-undefined child will be re-discovered next enum);
@@ -2247,6 +2571,9 @@ export function createDomainDiffer(options = {}) {
         // A previously shipped null still has to replace a newer expanded run.
         node.lastSign = -1;
         node.digest = null;
+        node.h1 = 0;
+        node.h2 = 0;
+        node.h3 = 0;
       }
     }
     node.leaf = true;
@@ -2355,21 +2682,34 @@ export function createDomainDiffer(options = {}) {
     }
     const pv = projectDomainLeaf(leafRule, v, state);
     // Mutable containers still need the complete canonical walk. Identical scalar values
-    // already have the exact wire text, including NaN and signed zero.
+    // already have the exact wire text, including NaN and signed zero; mutable objects
+    // use a streaming 96-bit hash + exact UTF-16 byte length to skip giant string joins
+    // whenever nothing changed.
     const type = typeof pv;
     const scalar = pv === null || (type !== 'object' && type !== 'function') ? pv : NO_SIGNED_SCALAR;
-    const sig = scalar !== NO_SIGNED_SCALAR && node.lastSign >= 0 && Object.is(scalar, node.signedScalar)
-      ? node.signature : canonicalSignature(pv, sigScratch);
-    // Production sends the canonical value, never its hash. Compare the retained
-    // text directly instead of UTF-8 encoding and SHA-256 hashing every leaf on
-    // every due reply. The optional parity probe still gets the same digest,
-    // computed only when its source changes. This keeps complete payloads and
-    // freshness unchanged, and exact text equality cannot hide a hash collision.
-    const changed = node.lastSign < 0 || sig !== node.signature;
-    stats.signedBytes += sig.length;
+    let sigLen, h1, h2, h3, changed;
+    if (scalar !== NO_SIGNED_SCALAR && node.lastSign >= 0 && Object.is(scalar, node.signedScalar)) {
+      sigLen = node.bytes;
+      h1 = node.h1;
+      h2 = node.h2;
+      h3 = node.h3;
+      changed = false;
+    } else {
+      hashDomainValue(pv, hashScratch);
+      sigLen = hashScratch.len;
+      h1 = hashScratch.h1;
+      h2 = hashScratch.h2;
+      h3 = hashScratch.h3;
+      changed = node.lastSign < 0 || sigLen !== node.bytes
+        || h1 !== node.h1 || h2 !== node.h2 || h3 !== node.h3;
+    }
+    stats.signedBytes += sigLen;
     node.urgentSign = false;
     node.lastSign = tick;
-    node.bytes = sig.length;
+    node.bytes = sigLen;
+    node.h1 = h1;
+    node.h2 = h2;
+    node.h3 = h3;
     node.signedScalar = scalar;
     if (leafRule && leafRule.project === 'marketLive') node.marketLiveSource = v;
     if (path === 'counterweightCircuitGhost') node.circuitGhostSource = v;
@@ -2388,16 +2728,19 @@ export function createDomainDiffer(options = {}) {
     const freshSlot = node.probeSlot == null;
     if (freshSlot) assignProbeSlot(node, path);
     if (changed) {
-      node.signature = sig;
-      node.digest = probeEnabled ? domainSigDigest(sig) : null;
+      node.signature = null;
+      node.digest = probeEnabled ? domainSigDigest(canonicalSignature(pv, sigScratch)) : null;
       node.probeChanged = true;
-      updates.push({ segs, v: canonicalClone(pv, cloneScratch), bytes: sig.length });
-      stats.shipBytes += sig.length;
+      updates.push({ segs, v: canonicalClone(pv, cloneScratch), bytes: sigLen });
+      stats.shipBytes += sigLen;
       stats.ships++;
-      if (sig.length > DOMAIN_SHIP_CAP_BYTES && stats.oversize.length < 32) {
-        stats.oversize.push({ path, bytes: sig.length, tick });
+      if (sigLen > DOMAIN_SHIP_CAP_BYTES && stats.oversize.length < 32) {
+        stats.oversize.push({ path, bytes: sigLen, tick });
       }
     } else if (freshSlot) {
+      if (probeEnabled && node.digest == null) {
+        node.digest = domainSigDigest(canonicalSignature(pv, sigScratch));
+      }
       node.probeChanged = true; // runner needs this digest for the new slot
     }
   }

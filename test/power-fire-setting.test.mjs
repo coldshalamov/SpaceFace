@@ -1,7 +1,7 @@
-// Row 493 — Settings → Gameplay → Powers. "Use on press" must survive a relaunch (the profile
-// allow-list in saveSystem.profileSettingsSnapshot drops any gameplay key it does not name), and
-// the Gameplay page reset must return it to "Hold to preview" (the shipped defaults omit the key,
-// so the reset reaches it through RESET_FALLBACKS).
+// Settings → Gameplay → "Powers: aim first" (ruling R17, 2026-11-20: every power acts on press by
+// default). The opt-in must survive a relaunch (the profile allow-list in
+// saveSystem.profileSettingsSnapshot drops any gameplay key it does not name), and the Gameplay
+// page reset must return it to press (the shipped defaults omit the key; RESET_FALLBACKS reach it).
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
@@ -30,38 +30,42 @@ function writeProfile(state) {
   return storage;
 }
 
-test('"Use on press" reaches the stored profile and a fresh launch reads it back', () => {
+test('"Aim first" reaches the stored profile and a fresh launch reads it back', () => {
   const state = createGameState(4931);
   const bus = createBus();
-  settingsScreen._set({ state, bus }, 'gameplay', 'powerFire', 'press');
-  assert.equal(powersFireOnPress(state), true);
+  settingsScreen._set({ state, bus }, 'gameplay', 'powerFire', 'aim');
+  assert.equal(powersFireOnPress(state), false);
   const storage = writeProfile(state);
   const profile = JSON.parse(storage.getItem(PROFILE_SETTINGS_KEY));
-  assert.equal(profile.settings.gameplay.powerFire, 'press');
+  assert.equal(profile.settings.gameplay.powerFire, 'aim');
 
   const relaunched = createGameState(4931);
-  assert.equal(powersFireOnPress(relaunched), false, 'a fresh state is hold to preview');
+  assert.equal(powersFireOnPress(relaunched), true,
+    'R17: one input rule for all five powers: they act on press, at the cursor');
   assert.equal(bootstrapProfileSettingsBeforeRegistry(relaunched, storage), true);
-  assert.equal(relaunched.settings.gameplay.powerFire, 'press');
-  assert.equal(powersFireOnPress(relaunched), true, 'the choice survives the relaunch');
+  assert.equal(relaunched.settings.gameplay.powerFire, 'aim');
+  assert.equal(powersFireOnPress(relaunched), false, 'the choice survives the relaunch');
 });
 
-test('the shipped default stores as hold, and a stray value reads as hold', () => {
+test('the shipped default stores as press; the old stored default "hold" and stray values read as press', () => {
   const storage = writeProfile(createGameState(4932));
-  assert.equal(JSON.parse(storage.getItem(PROFILE_SETTINGS_KEY)).settings.gameplay.powerFire, 'hold');
+  assert.equal(JSON.parse(storage.getItem(PROFILE_SETTINGS_KEY)).settings.gameplay.powerFire, 'press');
   const state = createGameState(4932);
-  state.settings.gameplay.powerFire = 'sometimes';
-  assert.equal(powersFireOnPress(state), false);
+  for (const stale of ['hold', 'sometimes', undefined]) {
+    state.settings.gameplay.powerFire = stale;
+    assert.equal(powersFireOnPress(state), true,
+      `"${stale}" acts on press: the old hold default was never a choice the player made`);
+  }
 });
 
-test('the Gameplay page reset returns Powers to hold to preview', () => {
+test('the Gameplay page reset returns Powers to act on press', () => {
   const defaults = createGameState(0).settings;
   const item = settingsPageResetPlan('Gameplay', defaults).find((row) => row.key === 'powerFire');
-  assert.deepEqual(item, { section: 'gameplay', key: 'powerFire', value: 'hold', fallback: true });
+  assert.deepEqual(item, { section: 'gameplay', key: 'powerFire', value: 'press', fallback: true });
   const state = createGameState(4933);
   const bus = createBus();
-  state.settings.gameplay.powerFire = 'press';
+  state.settings.gameplay.powerFire = 'aim';
   settingsScreen._resetPage({ state, bus }, 'Gameplay');
-  assert.equal(state.settings.gameplay.powerFire, 'hold');
-  assert.equal(powersFireOnPress(state), false);
+  assert.equal(state.settings.gameplay.powerFire, 'press');
+  assert.equal(powersFireOnPress(state), true);
 });

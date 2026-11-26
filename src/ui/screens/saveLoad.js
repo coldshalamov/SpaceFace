@@ -15,10 +15,11 @@ import { FACTION_META } from '../../data/factions.js';
 import { NEW_GAME } from '../../data/newGameDefaults.js';
 import { SECTORS } from '../../data/sectors.js';
 import { contestedSectorForPair } from '../../data/conflictZones.js';
-import { SHIPS } from '../../data/ships.js';
+import { SHIPS, shipDisplayName as shipLabel } from '../../data/ships.js';
 import { THUNDERCHILD, THUNDERCHILD_TITLE_ID, TITLES } from '../../data/titles.js';
 import { rankFromRep } from '../../systems/factions.js';
 import { localizeText } from '../../localization/sourceText.js';
+import { playerFacingObjectiveSummary } from '../sim/missionRecap.js';
 import { pluralWord } from '../numberFormat.js';
 import { SAVE_IMPORT_MAX_BYTES, saveImportByteLength, selectLatestOccupiedSlot } from '../../save/saveSystem.js';
 import { boundSlotThumbnail } from '../../save/slotStill.js';
@@ -303,14 +304,7 @@ function titleCaseWords(s) {
   return String(s).split(/[\s_]+/).filter(Boolean).map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 }
 
-export function shipLabel(id) {
-  if (!id) return '';
-  // Catalog name wins. ship_kestrel's player-facing name is Hitch; title-casing the id
-  // would put the legacy "Kestrel" on the load portrait.
-  const known = SHIP_NAME_BY_ID.get(id);
-  if (known) return known;
-  return titleCaseWords(String(id).replace(/^ship_/, ''));
-}
+export { shipLabel };
 
 function fmtSavedAt(meta) {
   const when = meta.savedAt || meta.lastSavedAt;
@@ -328,7 +322,8 @@ export function fmtLastFlown(savedAt, now = Date.now()) {
   if (days <= 0) return 'today';
   if (days === 1) return 'yesterday';
   if (days < 30) return days + ' days ago';
-  return new Date(t).toLocaleDateString();
+  // The same date voice as the ledger's stamp ("Sep 22, 2026"), never a numeric 9/22/2026.
+  return new Date(t).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 /** "22 Sep 2026, 15:41": the ledger's stamp for when a save was filed. */
@@ -431,7 +426,8 @@ export async function importValidatedSave(sys, text, slot) {
 
 export function slotObjectiveSummary(meta) {
   if (!meta) return '';
-  return meta.objectiveSummary || meta.navObjectiveSummary || meta.missionSummary || meta.storySummary || '';
+  const raw = meta.objectiveSummary || meta.navObjectiveSummary || meta.missionSummary || meta.storySummary || '';
+  return playerFacingObjectiveSummary(raw, meta.sampleRecovered === true);
 }
 
 // An empty slot says "empty" once: one heading plus one sentence. The berth
@@ -711,7 +707,7 @@ function buildRapSheetField(player, meta) {
   const parts = [];
   if (info && info.id && info.id !== WANTED_TIER.NONE) {
     parts.push(info.label);
-    const clock = wantedClearClause(Number.isFinite(heat) ? heat : 0).replace(/^ · /, '');
+    const clock = wantedClearClause(Number.isFinite(heat) ? heat : 0, { player, saved: true }).replace(/^ · /, '');
     if (clock) parts.push(clock);
   }
   if (Number.isFinite(bounty) && bounty > 0) parts.push(fmtCredits(bounty) + ' bounty');

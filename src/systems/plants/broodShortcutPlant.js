@@ -38,6 +38,7 @@ export function cutReceiptKind(cutCount, tuning = BROOD_SHORTCUT_TUNING) {
 }
 
 export const broodShortcutPlant = {
+  modes: ['swarm'],
   name: 'plants224',
 
   init(ctx) {

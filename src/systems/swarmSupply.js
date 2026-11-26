@@ -34,7 +34,7 @@
 // Init-order only: event-driven, never ticks.
 
 import { mulberry32 } from '../core/rng.js';
-import { validateRunState } from '../core/runState.js';
+import { validateRunStateForTick } from '../core/runState.js';
 import { runOwnsReward, createRewardDeathLedger } from '../combat/rewardEligibility.js';
 import { isSwarmRuleset } from './survivalSwarm.js';
 import { addCargo } from './cargo.js';
@@ -86,7 +86,7 @@ function liveSwarmRun(state) {
   if (run.kind !== 'survival') return null;
   if (run.phase === 'inactive') return null;
   if (!isSwarmRuleset(run.ruleset)) return null;
-  if (!validateRunState(run).ok) return null;
+  if (!validateRunStateForTick(run, state.tick).ok) return null;
   return run;
 }
 
@@ -112,6 +112,9 @@ export const swarmSupply = {
     this._unsubs.push(this.bus.on('pickup:collected', (p) => this._onCollected(p)));
     this._unsubs.push(this.bus.on('entity:destroyed', (p) => this._onDestroyed(p)));
     this._unsubs.push(this.bus.on('run:ended', () => this._reset()));
+    // Victory transitions straight into run:started without run:ended — the charge ledger
+    // resets on both edges or the next run opens with the old one's supply state.
+    this._unsubs.push(this.bus.on('run:started', () => this._reset()));
   },
 
   destroy() {
@@ -319,7 +322,9 @@ export const swarmSupply = {
       hullMax: max,
     });
     this._emit('toast', {
-      text: `Repair cell — hull ${Math.round((player.hull / max) * 100)}%`,
+      // A repair is the hull that came back, not a percentage that can already read 100
+      // (DEMO-SWARM-UX-2: 'Repair cell — hull 100%' read as a no-op).
+      text: `Repair cell — +${Math.max(1, Math.round(healed - before))} hull`,
       kind: 'good',
       ttl: 2.2,
     });

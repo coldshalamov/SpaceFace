@@ -17,8 +17,8 @@ const firstLightHandlerActivePages = new WeakSet();
 export function isFirstLightPrompt(title, cancelLabel, confirmLabel = '') {
   // confirm.js appends an aria-hidden ESC keycap inside the button.
   const cancel = norm(cancelLabel).toUpperCase().replace(/\s*ESC$/, '');
-  return norm(title) === 'First light' && (cancel === 'KEEP MY SETTINGS'
-    || cancel === 'USE FIRST LIGHT' && norm(confirmLabel).toUpperCase() === 'PLAY');
+  return norm(title) === 'Comfort preset' && (cancel === 'KEEP MY SETTINGS'
+    || cancel === 'TURN ON COMFORT PRESET' && norm(confirmLabel).toUpperCase() === 'PLAY');
 }
 
 // First light is scheduled after the title is painted. On a busy renderer it can appear
@@ -28,7 +28,7 @@ export function isFirstLightPrompt(title, cancelLabel, confirmLabel = '') {
 // because a locator action from inside its own locator handler waits on that same handler.
 export async function installFirstLightPromptHandler(page, step) {
   if (firstLightHandlerPages.has(page) || typeof page.addLocatorHandler !== 'function') return;
-  await page.addLocatorHandler(page.locator('#sf-confirm-root.sf-confirm--in #sf-confirm-title').filter({ hasText: /^First light$/ }), async () => {
+  await page.addLocatorHandler(page.locator('#sf-confirm-root.sf-confirm--in #sf-confirm-title').filter({ hasText: /^Comfort preset$/ }), async () => {
     try {
       await answerFirstRunPrompt(page, step);
     } catch (error) {
@@ -89,9 +89,10 @@ export async function readStartupFailure(page) {
         paneVisible: nodeStyle.display !== 'none' && nodeStyle.visibility !== 'hidden'
           && node.getClientRects().length > 0,
         stage: String(pane.getAttribute('data-startup-stage') || ''),
-        code: String((pane.querySelector('.sf-state__word') || {}).getAttribute?.('data-sf-code') || ''),
+        code: String(pane.getAttribute('data-startup-code')
+          || (pane.querySelector('.sf-state__word') || {}).getAttribute?.('data-sf-code') || ''),
         headline: line('.sf-state__head'),
-        detail: line('.sf-state__detail'),
+        detail: pane.getAttribute('data-startup-diagnostic') || line('.sf-state__detail'),
         text: String(pane.innerText || ''),
       };
     }
@@ -161,7 +162,7 @@ export async function bootToMenu(page, baseUrl, step) {
 }
 
 // A fresh profile can be asked a first-run question on the menu (the shared confirm surface, e.g.
-// "First light", the accessibility preset offer). A measured run keeps the shipped settings, so it
+// "Comfort preset", the accessibility preset offer). A measured run keeps the shipped settings, so it
 // chooses the actual "Play" control (legacy "keep" cancel) and records the answer; nothing else is
 // dismissed. The dialog and its choices are selected by their public accessible names.
 export async function answerFirstRunPrompt(page, step = () => {}) {
@@ -182,8 +183,8 @@ async function answerFirstRunPromptOnce(page, step) {
     if (prompt.dialogPresent) await waitForFirstLightInputRelease(page);
     return false;
   }
-  const title = 'First light';
-  const dialog = page.getByRole('dialog', { name: 'First light', exact: true });
+  const title = 'Comfort preset';
+  const dialog = page.getByRole('dialog', { name: 'Comfort preset', exact: true });
   const play = dialog.getByRole('button', { name: /^Play$/i });
   const keep = dialog.getByRole('button', { name: /^Keep my settings$/i });
   const playCount = await play.count();
@@ -204,7 +205,7 @@ async function answerFirstRunPromptOnce(page, step) {
       if ((await readFirstLightDialogState(page)).dialogPresent) await waitForFirstLightInputRelease(page);
       return false;
     }
-    throw new Error(`First light has no uniquely supported settings choice (expected Play or Keep my settings); controls: ${JSON.stringify(labels.map(norm))}`);
+    throw new Error(`The comfort preset prompt has no uniquely supported settings choice (expected Play or Keep my settings); controls: ${JSON.stringify(labels.map(norm))}`);
   }
   // Keep the semantic accessible-name lookup, then click the actual visible control with trusted
   // mouse input. Locator.click() here re-enters the active locator handler and can wait on itself.
@@ -218,7 +219,7 @@ async function answerFirstRunPromptOnce(page, step) {
       if (current.dialogPresent) await waitForFirstLightInputRelease(page);
       return false;
     }
-    throw new Error(`First light ${choice.name} control is not visibly actionable`);
+    throw new Error(`The comfort preset prompt's ${choice.name} control is not visibly actionable`);
   }
   await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
   await waitForFirstLightInputRelease(page);
@@ -231,8 +232,8 @@ async function readFirstLightDialogState(page) {
     const root = document.getElementById('sf-confirm-root');
     const dialog = root?.querySelector('[role="dialog"]');
     const title = String(dialog?.querySelector('#sf-confirm-title')?.textContent || '').replace(/\s+/g, ' ').trim();
-    return { active: !!(root?.classList.contains('sf-confirm--in') && title === 'First light'),
-      dialogPresent: !!(dialog && title === 'First light') };
+    return { active: !!(root?.classList.contains('sf-confirm--in') && title === 'Comfort preset'),
+      dialogPresent: !!(dialog && title === 'Comfort preset') };
   });
 }
 
@@ -241,16 +242,16 @@ async function waitForFirstLightInputRelease(page) {
     const root = document.getElementById('sf-confirm-root');
     const dialog = root?.querySelector('[role="dialog"]');
     const currentTitle = String(dialog?.querySelector('#sf-confirm-title')?.textContent || '').replace(/\s+/g, ' ').trim();
-    if (dialog && currentTitle !== 'First light') return { superseded: true, title: currentTitle || 'another confirmation' };
+    if (dialog && currentTitle !== 'Comfort preset') return { superseded: true, title: currentTitle || 'another confirmation' };
     if (dialog) return false;
     if (root && (root._sfConfirmToken != null || root.innerHTML.trim())) return false;
     return { released: true };
   }, null, { timeout: T(5000) });
   const cleanup = await consumePageConditionValue(cleanupHandle);
   if (cleanup?.superseded) {
-    throw new Error(`First light was superseded before input release; preserving ${cleanup.title}`);
+    throw new Error(`The comfort preset prompt was superseded before input release; preserving ${cleanup.title}`);
   }
-  if (cleanup?.released !== true) throw new Error('First light dialog did not release its modal input fence');
+  if (cleanup?.released !== true) throw new Error('The comfort preset dialog did not release its modal input fence');
   return true;
 }
 
@@ -262,17 +263,17 @@ async function waitForFirstLightOpenOrRelease(page, timeout) {
       const root = document.getElementById('sf-confirm-root');
       const dialog = root?.querySelector('[role="dialog"]');
       const title = String(dialog?.querySelector('#sf-confirm-title')?.textContent || '').replace(/\s+/g, ' ').trim();
-      if (dialog && title !== 'First light') return { superseded: true, title: title || 'another confirmation' };
+      if (dialog && title !== 'Comfort preset') return { superseded: true, title: title || 'another confirmation' };
       if (dialog) return root.classList.contains('sf-confirm--in') ? { opened: true } : false;
       if (root && (root._sfConfirmToken != null || root.innerHTML.trim())) return false;
       return { released: true };
     }, null, { timeout });
     const outcome = await consumePageConditionValue(outcomeHandle);
     if (outcome?.superseded) {
-      throw new Error(`First light was superseded before input release; preserving ${outcome.title}`);
+      throw new Error(`The comfort preset prompt was superseded before input release; preserving ${outcome.title}`);
     }
     if (outcome?.opened !== true && outcome?.released !== true) {
-      throw new Error('First light did not open or release its modal input fence');
+      throw new Error('The comfort preset prompt did not open or release its modal input fence');
     }
   } catch (error) {
     if (error?.name !== 'TimeoutError') throw error;
@@ -285,7 +286,7 @@ async function isActiveFirstLightPrompt(page) {
     if (!root || !root.classList.contains('sf-confirm--in')) return false;
     const dialog = root.querySelector('[role="dialog"]');
     const title = dialog?.querySelector('#sf-confirm-title');
-    if (!title || String(title.textContent || '').replace(/\s+/g, ' ').trim() !== 'First light') return false;
+    if (!title || String(title.textContent || '').replace(/\s+/g, ' ').trim() !== 'Comfort preset') return false;
     const style = getComputedStyle(title);
     return style.display !== 'none' && style.visibility !== 'hidden' && title.getClientRects().length > 0;
   }).catch(() => false);
@@ -298,6 +299,14 @@ export async function dismissCinematicIntro(page, step = () => {}, { timeout = 1
   let spacePresses = 0;
   let promptAnswers = 0;
   let last = { splashVisible: false, firstLightVisible: false };
+  const finish = () => {
+    if (shown) {
+      const message = spacePresses ? 'visible cinematic dismissed with Space' : 'visible cinematic finished';
+      const interruption = promptAnswers ? ` after ${promptAnswers} comfort preset interruption` : '';
+      step('intro-dismissed', true, message + interruption);
+    } else step('intro-not-shown', true, 'fresh route reached the menu without a visible cinematic');
+    return { shown, spacePresses, promptAnswers };
+  };
 
   while (Date.now() < deadline) {
     last = await page.evaluate(() => {
@@ -312,7 +321,7 @@ export async function dismissCinematicIntro(page, step = () => {}, { timeout = 1
       const root = document.getElementById('sf-confirm-root');
       const dialog = root?.querySelector('[role="dialog"]');
       const title = dialog?.querySelector('#sf-confirm-title');
-      const firstLightDialogPresent = !!(title && String(title.textContent || '').replace(/\s+/g, ' ').trim() === 'First light');
+      const firstLightDialogPresent = !!(title && String(title.textContent || '').replace(/\s+/g, ' ').trim() === 'Comfort preset');
       const firstLightVisible = !!(root?.classList.contains('sf-confirm--in') && firstLightDialogPresent && visible(title));
       const otherModal = [...document.querySelectorAll('[aria-modal="true"]')].find((node) => {
         if (node.id === 'cinematic-splash') return false;
@@ -321,15 +330,12 @@ export async function dismissCinematicIntro(page, step = () => {}, { timeout = 1
         if (firstLightDialogPresent && (node === dialog || node.contains(title))) return false;
         return visible(node);
       });
-      return { splashVisible: visible(splash), firstLightVisible, firstLightDialogPresent,
+      return { splashVisible: visible(splash), splashClosing: !!splash?.classList.contains('is-closing'),
+        firstLightVisible, firstLightDialogPresent,
         otherModalActive: !!otherModal,
         otherModalTitle: String(otherModal?.getAttribute('aria-label') || otherModal?.querySelector('h1,h2,[role="heading"]')?.textContent || '').replace(/\s+/g, ' ').trim() || null };
     });
-    if (!last.splashVisible) {
-      if (shown) step('intro-dismissed', true, `visible cinematic dismissed with Space${promptAnswers ? ` after ${promptAnswers} First light interruption` : ''}`);
-      else step('intro-not-shown', true, 'fresh route reached the menu without a visible cinematic');
-      return { shown, spacePresses, promptAnswers };
-    }
+    if (!last.splashVisible) return finish();
     shown = true;
 
     if (last.otherModalActive && !last.firstLightVisible) {
@@ -350,14 +356,14 @@ export async function dismissCinematicIntro(page, step = () => {}, { timeout = 1
       continue;
     }
 
-    // The intro listens for Space. Observe the authored splash and the known prompt through page
-    // state instead of a splash locator: a locator wait can invoke the prompt handler after Space
-    // was consumed, then continue waiting for a dismissal that never received another keypress.
-    await page.keyboard.press('Space');
-    spacePresses++;
+    // Focus returns to the menu while the cinematic is still fading. Space would activate that menu.
+    if (!last.splashClosing) {
+      await page.keyboard.press('Space');
+      spacePresses++;
+    }
     const remaining = Math.max(1, deadline - Date.now());
     try {
-      await page.waitForFunction(() => {
+      await page.waitForFunction((waitingForFade) => {
         const visible = (node) => {
           if (!node || node.hidden) return false;
           const style = getComputedStyle(node);
@@ -368,7 +374,7 @@ export async function dismissCinematicIntro(page, step = () => {}, { timeout = 1
         const splash = document.getElementById('cinematic-splash');
         const root = document.getElementById('sf-confirm-root');
         const title = root?.querySelector('[role="dialog"] #sf-confirm-title');
-        const firstLightDialogPresent = !!(title && String(title.textContent || '').replace(/\s+/g, ' ').trim() === 'First light');
+        const firstLightDialogPresent = !!(title && String(title.textContent || '').replace(/\s+/g, ' ').trim() === 'Comfort preset');
         const firstLightVisible = !!(root?.classList.contains('sf-confirm--in') && firstLightDialogPresent && visible(title));
         const otherModal = [...document.querySelectorAll('[aria-modal="true"]')].find((node) => {
           if (node.id === 'cinematic-splash') return false;
@@ -377,8 +383,9 @@ export async function dismissCinematicIntro(page, step = () => {}, { timeout = 1
           if (firstLightDialogPresent && (node === root?.querySelector('[role="dialog"]') || node.contains(title))) return false;
           return visible(node);
         });
-        return !visible(splash) || firstLightVisible || firstLightDialogPresent || !!otherModal;
-      }, null, { timeout: remaining });
+        return !visible(splash) || (!waitingForFade && splash.classList.contains('is-closing'))
+          || firstLightVisible || firstLightDialogPresent || !!otherModal;
+      }, last.splashClosing, { timeout: remaining });
     } catch (error) {
       if (error?.name !== 'TimeoutError') throw error;
     }
@@ -400,7 +407,7 @@ export async function dismissCinematicIntro(page, step = () => {}, { timeout = 1
     const root = document.getElementById('sf-confirm-root');
     const dialog = root?.querySelector('[role="dialog"]');
     const title = dialog?.querySelector('#sf-confirm-title');
-    const firstLightDialogPresent = !!(title && String(title.textContent || '').replace(/\s+/g, ' ').trim() === 'First light');
+    const firstLightDialogPresent = !!(title && String(title.textContent || '').replace(/\s+/g, ' ').trim() === 'Comfort preset');
     const firstLightVisible = !!(root?.classList.contains('sf-confirm--in') && firstLightDialogPresent && visible(title));
     const otherModal = [...document.querySelectorAll('[aria-modal="true"]')].find((node) => {
       if (node.id === 'cinematic-splash') return false;
@@ -409,15 +416,12 @@ export async function dismissCinematicIntro(page, step = () => {}, { timeout = 1
       if (firstLightDialogPresent && (node === dialog || node.contains(title))) return false;
       return visible(node);
     });
-    return { splashVisible: visible(splash), firstLightVisible, firstLightDialogPresent,
+    return { splashVisible: visible(splash), splashClosing: !!splash?.classList.contains('is-closing'),
+      firstLightVisible, firstLightDialogPresent,
       otherModalActive: !!otherModal,
       otherModalTitle: String(otherModal?.getAttribute('aria-label') || otherModal?.querySelector('h1,h2,[role="heading"]')?.textContent || '').replace(/\s+/g, ' ').trim() || null };
   });
-  if (!last.splashVisible) {
-    if (shown) step('intro-dismissed', true, `visible cinematic dismissed with Space${promptAnswers ? ` after ${promptAnswers} First light interruption` : ''}`);
-    else step('intro-not-shown', true, 'fresh route reached the menu without a visible cinematic');
-    return { shown, spacePresses, promptAnswers };
-  }
+  if (!last.splashVisible) return finish();
   throw new Error(`cinematic did not dismiss within ${T(timeout)}ms; ${JSON.stringify({ ...last, spacePresses, promptAnswers })}`);
 }
 
@@ -470,19 +474,24 @@ export async function listDoorArenas(page) {
 
 /** Every hull tile the Crucible ship step offers: starter id, face word, locked flag. */
 export async function listHulls(page) {
-  return page.evaluate(() => [...document.querySelectorAll('#screens .sf-crd-hull')].map((b) => ({ id: b.dataset.starterId, face: b.textContent.replace(/\s+/g, ' ').trim().slice(0, 40), locked: b.dataset.locked === '1' || !!b.disabled })));
+  return page.evaluate(() => [...document.querySelectorAll('#screens .sf-crd-hull')]
+    .filter(b => b.getClientRects().length > 0)
+    .map((b) => ({ id: b.dataset.starterId, face: b.textContent.replace(/\s+/g, ' ').trim().slice(0, 40), locked: b.dataset.locked === '1' || !!b.disabled })));
 }
 
 /** Crucible door → ruleset → arena → seed → ship & kit → armory. Returns what the door showed.
  *  `hooks.onShip(doorPrep)` runs after the hull is selected and before the launch click, so a
  *  caller can photograph the ship step. Gauntlet never opens an armory; the door sentence is the preparation. */
 export async function crucibleToArmory(page, { ruleset, arena, seed, hull: wantHull = null }, step, hooks = {}) {
-  const modeAction = page.locator('[data-screen="mainMenu"] [data-action="crucible"]').first();
-  if (!(await modeAction.isVisible())) {
-    const more = page.locator('[data-screen="mainMenu"] [data-title-more]').first();
-    if (await more.isVisible()) await more.click({ timeout: T(60000) });
-  }
-  await modeAction.click({ timeout: T(60000) });
+  // The Swarm door itself launches round 1 in one press now; the setup screen is its
+  // "Customize Swarm" key. Older builds without that key still open the door from Swarm.
+  const setupKey = page.locator('[data-screen="mainMenu"] [data-action="swarmSetup"]').first();
+  const modeAction = (await setupKey.count().catch(() => 0))
+    ? setupKey
+    : page.locator('[data-screen="mainMenu"] [data-action="swarm"]').first();
+  // TITLE-02: "Customize Swarm" is a lab verb, hidden on a player's title; press it through its own handler.
+  if (await modeAction.isVisible()) await modeAction.click({ timeout: T(60000) });
+  else await modeAction.evaluate((b) => b.click());
   await page.waitForFunction(() => window.SF.ctx.screenManager.top() === 'crucible', null, { timeout: T(60000) });
   await page.locator(`#screens .sf-crd-mode[data-ruleset="${ruleset}"]`).click();
   const arenas = await listDoorArenas(page);
@@ -551,7 +560,7 @@ export async function crucibleToArmory(page, { ruleset, arena, seed, hull: wantH
   const doorPrep = await readDoorPreparation(page);
   if (hooks && typeof hooks.onShip === 'function') await hooks.onShip(doorPrep);
   if (ruleset === 'swarm') {
-    await clickText(page, 'Open armory');
+    await clickText(page, 'Review equipment');
     // #318: a Training Derelict fallthrough fails immediately. Any other non-draft
     // world still gets the 60 s named miss (mode, kind, phase, top, helios_core spawn).
     await waitForArmory(page, { failOnTutorial: true });
@@ -568,14 +577,14 @@ export async function crucibleToArmory(page, { ruleset, arena, seed, hull: wantH
   return { arenas, seedSet, seed, runSeed, hull, hulls, doorPrep };
 }
 
-/** A non-draft world may sit this long after Open armory before the route is lost. */
+/** A non-draft world may sit this long after Review equipment before the route is lost. */
 export const ARMORY_WORLD_GRACE_MS = 60000;
 
 /** #318's worker-lane regression: OPEN ARMORY staged the Adventure tutorial instead of the armory. */
 export const SWARM_TUTORIAL_MISS = 'Swarm OPEN ARMORY did not open the armory: launch fell into the Adventure tutorial (Training Derelict)';
 
 /**
- * After Open armory the next public screen is crucibleDraft. The world may boot
+ * After Review equipment the next public screen is crucibleDraft. The world may boot
  * first; survivalDraft re-opens the draft once the run phase is draft. A flight
  * or loading world that is not in draft, held past the grace, missed the armory.
  * With failOnTutorial, a flight that already shows the tutorial or a rescue cast
@@ -598,7 +607,7 @@ export function classifyArmoryArrival(snap, flightForMs, opts = {}) {
 }
 
 /** First line of a route failure. formatRouteFailure keeps 180 characters of it. */
-export function formatArmoryMiss(snap, verb = 'Open armory') {
+export function formatArmoryMiss(snap, verb = 'Review equipment') {
   const top = snap && snap.top ? snap.top : 'none';
   const mode = snap && snap.mode ? snap.mode : 'none';
   const kind = snap && snap.kind ? snap.kind : 'none';
@@ -650,7 +659,7 @@ async function readArmorySnap(page) {
 }
 
 /** Poll the live page. Ready on crucibleDraft. Lost when the world is not a draft. */
-async function waitForArmory(page, { timeoutMs = 300000, graceMs = ARMORY_WORLD_GRACE_MS, acceptSurvival = false, failOnTutorial = false, verb = 'Open armory' } = {}) {
+async function waitForArmory(page, { timeoutMs = 300000, graceMs = ARMORY_WORLD_GRACE_MS, acceptSurvival = false, failOnTutorial = false, verb = 'Review equipment' } = {}) {
   const deadline = Date.now() + T(timeoutMs);
   let flightSince = null;
   let last = null;
@@ -753,6 +762,34 @@ export async function readArmoryShelf(page) {
   return { cards, ...census, fittedClaimed: fittedClaimFromText(`${census.sub} ${census.emptyText}`) };
 }
 
+/** The free opening has no Rearrange control until a pilot actually fits something. */
+export async function fitFreeStartingGun(page) {
+  const shelf = page.getByRole('heading', { name: 'Starting guns', exact: true });
+  if (!(await shelf.isVisible())) return null;
+  const card = page.locator('#screens .sf-cru-card:visible:not(.is-unavail):not(.is-fitted)')
+    .filter({ has: page.locator('.sf-cru-price', { hasText: /^Free$/ }) }).first();
+  const offerId = await card.getAttribute('data-offer-id', { timeout: T(15000) });
+  if (!offerId) throw new Error('The starting gun card did not identify its offer.');
+  const credits = await page.evaluate(() => window.SF.state.run.credits);
+  if (credits !== 0) throw new Error(`The free starting shelf opened with ${credits} Scrap.`);
+  await card.click({ timeout: T(15000) });
+  await page.getByRole('button', { name: /^Fit free: / }).click({ timeout: T(15000) });
+  const fit = await page.waitForFunction((offer) => {
+    const { state, registry } = window.SF;
+    const receipt = registry.get('survivalDraft')?.preparationReceipt?.();
+    const run = state.run;
+    if (!receipt || receipt.outcome !== 'accepted' || receipt.offerId !== offer || receipt.price !== 0
+      || receipt.charged !== false || !Number.isInteger(receipt.slotIndex) || run.credits !== 0) return false;
+    const ship = state.player.ownedShips?.[state.player.activeShipIndex];
+    const item = ship?.fittedInstances?.[receipt.slotIndex];
+    const grant = run.modifiers?.find(row => row.startingEquipment === true && row.offerId === offer);
+    if (item?.instanceId == null || item.defId !== receipt.defId || ship.fittings?.[receipt.slotIndex] !== receipt.defId
+      || grant?.instanceId !== item.instanceId || grant.defId !== receipt.defId || grant.slotIndex !== receipt.slotIndex) return false;
+    return { ...receipt, instanceId: item.instanceId, credits: run.credits };
+  }, offerId, { timeout: T(20000) });
+  return consumePageConditionValue(fit);
+}
+
 /**
  * Open Rearrange loadout, read each fitted row's name and any explanation that is not the name,
  * then Back to armory (draft pop, not a launch). Throws when the control is missing; the caller
@@ -779,10 +816,11 @@ export async function readFittedRows(page) {
       }
       const slot = norm((row.querySelector('.sf-cru-slottag') || {}).textContent);
       return {
-        name: name || label, contrast: contrast !== (name || label) ? contrast : '', clipped, contrastVisible,
+        name: name || label, slotLabel: label, contrast: contrast !== (name || label) ? contrast : '', clipped, contrastVisible,
         lit: row.classList.contains('is-lit'),
         category: slot || 'fitted', role: 'fitted', text: norm(row.textContent).slice(0, 200),
-        box: [r.left, r.top, r.right, r.bottom], visible: r.width > 0 && r.height > 0,
+        box: [r.left, r.top, r.right, r.bottom], visible: r.width > 0 && r.height > 0
+          && getComputedStyle(row).visibility === 'visible',
       };
     });
   });
@@ -948,7 +986,7 @@ function prepText(value) {
 
 /**
  * Name painted on a preparation screen that is not the swarm armory.
- * The draft stamp stays "CRUCIBLE / REARM" on the Armory screen too, so the heading wins.
+ * The draft stamp stays "SWARM / REARM" on the Armory screen too, so the heading wins.
  */
 export function preparationScreenName(snap) {
   const title = prepText(snap && snap.title);
@@ -962,7 +1000,7 @@ export function preparationScreenName(snap) {
 
 /**
  * Swarm preparation is ready when an enabled "Launch round 1" is on screen.
- * The opening armory (heading Armory, or "Fit out before round 1") is that same
+ * The opening equipment screen (including the previous Armory heading) is that same
  * screen while the button is still warming, so it keeps waiting. A different
  * #screens screen, such as Rearm after "Wave 0 cleared", is unexpected.
  * Nothing visible yet is waiting.
@@ -970,11 +1008,18 @@ export function preparationScreenName(snap) {
  */
 export function classifyPreparationScreen(snap) {
   if (!snap || typeof snap !== 'object') return { status: 'waiting' };
-  if (snap.launch === true) return { status: 'ready' };
   if (snap.visible !== true) return { status: 'waiting' };
+  const openingReview = snap.mode === 'loading' && snap.openingArmory === true
+    && snap.dialog === 'crucibleDraft' && snap.ruleset === 'swarm'
+    && snap.loadingOverlay === 'hidden' && !snap.startupFailure;
+  if (snap.launch === true && snap.top === 'crucibleDraft'
+      && (snap.mode === 'flight' || snap.mode === 'paused' || openingReview) && snap.phase === 'draft'
+      && snap.loadingOverlay !== 'visible') {
+    return { status: 'ready' };
+  }
   const title = prepText(snap.title);
   const sub = prepText(snap.sub);
-  if (/^armory$/i.test(title)) return { status: 'waiting' };
+  if (/^(?:armory|ship equipment)$/i.test(title)) return { status: 'waiting' };
   if (/fit out before round 1/i.test(sub)) return { status: 'waiting' };
   if (!title && !sub) return { status: 'waiting' };
   return { status: 'unexpected', name: preparationScreenName(snap) };
@@ -993,26 +1038,47 @@ export function notePreparationWait(hold, snap, now, unexpectedMs = PREPARATION_
 }
 
 /** DOM snap for the preparation wait. Null when the page cannot be read. */
-export async function readPreparationSnap(page) {
-  return page.evaluate(() => {
+export async function readPreparationSnap(page, round = 1) {
+  return page.evaluate((expectedRound) => {
     const n = (s) => String(s || '').replace(/\s+/g, ' ').trim();
     const root = document.getElementById('screens');
     const visible = !!(root && root.style.display !== 'none' && root.getAttribute('aria-hidden') !== 'true');
-    const titleEl = document.querySelector('#screens #sf-crucible-draft-title, #screens h1');
-    const subEl = document.querySelector('#screens .sf-cru-sub');
-    const screen = document.querySelector('#screens .k-screen');
+    const screen = root?.querySelector('[data-screen][aria-modal="true"]');
+    const titleEl = screen?.querySelector('#sf-crucible-draft-title, h1');
+    const subEl = screen?.querySelector('.sf-cru-sub');
     const stamp = screen && screen.dataset ? screen.dataset.stamp || '' : '';
-    const launch = [...document.querySelectorAll('#screens button')].some((x) => x.offsetParent && !x.disabled && /Launch round 1/.test(n(x.textContent)));
+    const rendered = (element) => !!(element?.getClientRects().length
+      && getComputedStyle(element).visibility === 'visible');
+    const controlState = (element) => element ? (rendered(element) ? 'visible' : 'hidden') : 'absent';
+    const buttons = screen ? [...screen.querySelectorAll('button')] : [];
+    const launch = buttons.some((x) => /^Launch round (\d+)\b/.exec(n(x.textContent))?.[1] === String(expectedRound)
+      && rendered(x) && !x.disabled && x.getAttribute('aria-disabled') !== 'true');
+    const browse = buttons.find((button) => /^Browse all\b/i.test(n(button.textContent)));
+    const overlay = document.getElementById('boot-overlay');
+    const state = window.SF && window.SF.state;
     const sm = window.SF && window.SF.ctx && window.SF.ctx.screenManager;
+    const startWave = Number.isInteger(state?.run?.telemetry?.startWave) ? state.run.telemetry.startWave : 1;
     return {
       visible,
       title: titleEl ? n(titleEl.textContent) : '',
       sub: subEl ? n(subEl.textContent) : '',
       stamp: n(stamp),
       top: sm && typeof sm.top === 'function' ? sm.top() : null,
+      dialog: screen?.dataset.screen ?? null,
+      mode: state?.mode ?? null,
+      phase: state?.run?.phase ?? null,
+      ruleset: state?.run?.ruleset ?? null,
+      wave: state?.run?.wave ?? null,
+      guns: controlState(screen?.querySelector('[data-category="Weapons"]')),
+      browse: controlState(browse),
+      loadingOverlay: controlState(overlay),
+      startupFailure: overlay?.dataset.startupFailure ?? null,
+      openingArmory: state?.run?.wave === startWave - 1
+        && state?.render?.veilLiftReason === 'opening-armory'
+        && state?.render?.openingFirstPictureReady !== true,
       launch,
     };
-  }).catch(() => null);
+  }, round).catch(() => null);
 }
 
 /**
@@ -1025,12 +1091,13 @@ export async function waitForPreparationLaunch(page, {
   unexpectedMs = PREPARATION_UNEXPECTED_MS,
   pollMs = 250,
   now = Date.now,
+  round = 1,
   read = null,
 } = {}) {
   const deadline = now() + T(timeoutMs);
   let hold = null;
   let last = null;
-  const load = read || (() => readPreparationSnap(page));
+  const load = read || (() => readPreparationSnap(page, round));
   while (now() < deadline) {
     last = await load();
     const note = notePreparationWait(hold, last, now(), unexpectedMs);
@@ -1042,7 +1109,7 @@ export async function waitForPreparationLaunch(page, {
     await page.waitForTimeout(Math.min(pollMs, left));
   }
   const name = last && (last.title || last.top) ? preparationScreenName(last) : '';
-  throw new Error(name ? `preparation: Launch round 1 did not appear (screen ${name})` : 'preparation: Launch round 1 did not appear');
+  throw new Error(`preparation: Launch round ${round} did not appear${name ? ` (screen ${name})` : ''}`);
 }
 
 export async function armoryLaunchWord(page) {
@@ -1088,7 +1155,7 @@ export async function adventureToFlight(page, step, { seed = null } = {}) {
     if (window.SF.ctx.screenManager.top() === 'newGame') return 'newGame';
     const root = document.getElementById('sf-confirm-root');
     if (root?.classList.contains('sf-confirm--in')
-      && root.querySelector('#sf-confirm-title')?.textContent?.trim() === 'First light') return 'firstLight';
+      && root.querySelector('#sf-confirm-title')?.textContent?.trim() === 'Comfort preset') return 'firstLight';
     return false;
   }, null, { timeout: T(60000) });
   if (await consumePageConditionValue(opened) === 'firstLight') {

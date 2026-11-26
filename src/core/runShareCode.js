@@ -19,6 +19,10 @@ import { SHIPS } from '../data/ships.js';
 import { MODULES } from '../data/modules.js';
 import { WEAPONS } from '../data/weapons.js';
 import { SECTORS } from '../data/sectors.js';
+import { COMBAT_LAB_ARENAS } from '../data/combatLabSetups.js';
+import { SWARM_STAKE_BY_ID } from '../data/swarmStakes.js';
+import { normalizeThreatIds } from '../data/swarmThreats.js';
+import { SURVIVAL_MUTATOR_BY_ID } from '../data/survivalMutators.js';
 
 const HULL_IDS = new Set(SHIPS.map((ship) => ship.id));
 const FIT_IDS = new Set([...MODULES, ...WEAPONS].map((item) => item.id));
@@ -98,6 +102,7 @@ export function runShareWreckId(wreck) {
 export const RUN_SHARE_PREFIX = 'SFC1';
 export const GHOST_SHARE_PREFIX = 'SFG1';
 export const SHARE_CODE_VERSION = 1;
+const ORDINARY_SWARM_SHARE_VERSION = 2;
 
 const B64_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
 const B64_LOOKUP = (() => {
@@ -280,6 +285,9 @@ export function decodeShareBlock(text, expectedPrefix = null) {
  *      receiving machine also imported the ghost block)
  *   t  swarmStake (optional — the swarm's purse/pressure contract; swarm only)
  *   e  versioned dead hull (optional; exact global position, scars and final fitted modules)
+ *
+ *   v=2 describes a bare Round 1 Swarm launch funded at zero. It adds q (Threat IDs) and
+ *   o (optional one-enemy opening), and carries no prefit, dated challenge, ghost or wreck.
  * ------------------------------------------------------------------------- */
 
 function asId(value) {
@@ -302,9 +310,40 @@ function asDateKey(value) {
   return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : null;
 }
 
+const ORDINARY_SWARM_SHARE_KEYS = new Set(['v', 's', 'r', 'a', 'k', 'h', 't', 'm', 'q', 'o']);
+
+function normalizeOrdinarySwarmShare(src) {
+  const seed = src.s ?? src.seed;
+  const ruleset = src.r ?? src.ruleset;
+  const arenaId = src.a ?? src.arenaId;
+  const hullId = src.h ?? src.hullId;
+  const starterId = src.k ?? src.starterId;
+  const stake = src.t ?? src.stake;
+  const mutators = src.m ?? src.mutators ?? [];
+  const threats = src.q ?? src.swarmThreats ?? [];
+  const lesson = src.o ?? src.openingLesson ?? false;
+  if (!Number.isInteger(seed) || seed < 1 || seed > 0xffffffff || ruleset !== 'swarm'
+    || !HULL_IDS.has(hullId) || starterId !== `hull:${hullId}` || !Object.hasOwn(SWARM_STAKE_BY_ID, stake)
+    || !COMBAT_LAB_ARENAS.some(arena => arena.id === arenaId)
+    || !Array.isArray(mutators) || mutators.some(id => typeof id !== 'string' || !Object.hasOwn(SURVIVAL_MUTATOR_BY_ID, id))
+    || !Array.isArray(threats) || threats.includes('thin_purse') || normalizeThreatIds(threats).length !== threats.length
+    || typeof lesson !== 'boolean' || (lesson && mutators.length > 0)
+    || (src.loadout != null && (!Array.isArray(src.loadout) || src.loadout.length))
+    || src.dailyDateKey != null || src.weeklyMutatorId != null || src.ghostHash != null || src.wreck != null) return null;
+  return { v: ORDINARY_SWARM_SHARE_VERSION, s: seed, r: ruleset, a: arenaId, k: starterId, h: hullId, t: stake,
+    ...(mutators.length ? { m: [...new Set(mutators)].sort() } : {}),
+    ...(threats.length ? { q: threats.slice() } : {}),
+    ...(lesson ? { o: true } : {}) };
+}
+
 /** Normalize a loose spec into the canonical share payload. Null when no usable seed. */
 export function normalizeRunShareSpec(input) {
   const src = input && typeof input === 'object' ? input : {};
+  if (src.v === ORDINARY_SWARM_SHARE_VERSION) {
+    return Object.keys(src).every(key => ORDINARY_SWARM_SHARE_KEYS.has(key) && src[key] != null)
+      ? normalizeOrdinarySwarmShare(src) : null;
+  }
+  if (src.v == null && src.zeroScrapOpening === true) return normalizeOrdinarySwarmShare(src);
   const seed = asUint(src.s != null ? src.s : src.seed);
   if (seed == null) return null;
   const spec = { v: SHARE_CODE_VERSION, s: seed };
@@ -373,10 +412,15 @@ export function decodeRunShareCode(code) {
   // envelope version must fail closed as non-comparable — never silently re-versioned
   // into a run the writer did not mean.
   const version = Number(res.payload && res.payload.v);
+  if (res.payload.v === ORDINARY_SWARM_SHARE_VERSION) {
+    const spec = normalizeRunShareSpec(res.payload);
+    if (!spec) return { ok: false, error: 'This zero-Scrap code has unsupported starting rules — the attempt is not comparable.' };
+    return { ok: true, spec };
+  }
   if (version !== SHARE_CODE_VERSION) {
     return {
       ok: false,
-      error: `code was written by codec v${Number.isInteger(version) ? version : '?'} — this build reads v${SHARE_CODE_VERSION}; the attempt is not comparable`,
+      error: `code was written by codec v${Number.isInteger(version) ? version : '?'} — this build reads v${SHARE_CODE_VERSION} and v${ORDINARY_SWARM_SHARE_VERSION}; the attempt is not comparable`,
     };
   }
   if (res.payload.e != null && !normalizeRunShareWreck(res.payload.e)) {
@@ -406,7 +450,10 @@ export function compareChallengeCodes(left, right) {
     && af.arenaId === bf.arenaId
     && af.starterId === bf.starterId
     && JSON.stringify(af.mutators) === JSON.stringify(bf.mutators)
-    && JSON.stringify(af.loadout) === JSON.stringify(bf.loadout);
+    && JSON.stringify(af.loadout) === JSON.stringify(bf.loadout)
+    && af.zeroScrapOpening === bf.zeroScrapOpening
+    && (!af.zeroScrapOpening || (af.stake === bf.stake && af.openingLesson === bf.openingLesson
+      && JSON.stringify(af.swarmThreats) === JSON.stringify(bf.swarmThreats)));
   if (!af.ruleset || !bf.ruleset) {
     return { ok: true, comparable: false, label: 'non-comparable', reason: 'seed_is_not_replay', mutated: false };
   }
@@ -433,6 +480,9 @@ export function runShareSpecFields(spec) {
     weeklyMutatorId: asId(s.w),
     ghostHash: asHash(s.g),
     stake: asId(s.t),
+    ...(s.v === ORDINARY_SWARM_SHARE_VERSION ? {
+      zeroScrapOpening: true, swarmThreats: s.q?.slice() ?? [], openingLesson: s.o === true,
+    } : {}),
     ...(s.e != null ? { wreck: normalizeRunShareWreck(s.e) } : {}),
   };
 }

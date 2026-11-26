@@ -15,13 +15,16 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
+import { createSimHost } from '../scripts/lib/simWorkerHost.mjs';
 import { core } from '../src/core/coreSystem.js';
 import { createGameState } from '../src/core/gameState.js';
 import { aiEncounter } from '../src/systems/aiEncounter.js';
 import { aiPorts } from '../src/systems/aiPorts.js';
 import { barkDirector } from '../src/systems/barkDirector.js';
 import { makeEnemySpawnSpec } from '../src/systems/combat.js';
+import { makeShipEntitySpec } from '../src/systems/ships.js';
 
 const DT = 1 / 60;
 
@@ -195,6 +198,72 @@ test('an authored reaver caller reaches the live route: hull drop calls the swar
   assert.equal(arrivals.length, 1, 'the screen announces once when it lands');
   const secondCall = eventsOf(h, 'ai:reinforcementScheduled');
   assert.equal(secondCall.length, 1, 'the caller latches after one call');
+});
+
+test('the production worker clears a blocked Reaver ingress without moving the clear lane or delaying the warned Wasp', async () => {
+  const scenarioContract = JSON.parse(readFileSync(new URL('../src/data/scenarios/47a.scenario.json', import.meta.url)));
+  for (const blocked of [true, false]) {
+    const lane = createSimHost();
+    try {
+      const init = await lane.init({ profile: 'production', seed: 7, bridgeAll: true, scenarioContract });
+      const { state, registry, runtime, bus } = lane.host;
+      state.mode = 'flight';
+      state.ui.screenStack = [];
+      const pilot = runtime.spawn(makeShipEntitySpec('ship_kestrel', {
+        isPlayer: true, player: state.player, team: 0, pos: { x: -1000, z: 0 },
+      }));
+      state.playerId = pilot.id;
+      const caller = runtime.spawn(makeEnemySpawnSpec('reaver_pirate', 4, { x: 300, z: 0 }));
+      caller.hull = Math.floor(caller.hullMax * 0.2);
+      const physics = registry.get('physics');
+      assert.equal(await physics.prepareBackend(state), true);
+
+      let seq = 0;
+      let ackEnd = init.initRebuild?.end ?? 0;
+      const step = async (steps) => {
+        const reply = await lane.tick({ tick: ++seq, steps, ackEnd, commands: [] });
+        ackEnd = reply.journalRange?.end ?? ackEnd;
+        return reply;
+      };
+      const calls = [], warns = [], arrivals = [], impacts = [];
+      bus.on('ai:reinforcementScheduled', p => calls.push(p));
+      bus.on('alert', p => { if (/reinforcements/i.test(p.text)) warns.push({ tick: state.tick, text: p.text }); });
+      bus.on('ai:reinforcementSpawned', p => arrivals.push({ ...p, velocity: { ...state.entities.get(p.entityId).vel } }));
+      bus.on('physics:impact', p => impacts.push({ aId: p.aId, bId: p.bId, closingSpeed: p.preSolveClosingSpeed }));
+      const opening = await step(1);
+      assert.ok(opening.events.some(row => row.t === 'ai:reinforcementScheduled' && row.p.callerId === caller.id));
+      assert.equal(calls.length, 1);
+      assert.equal(calls[0].packageId, 'reaver_swarm_screen');
+      assert.deepEqual(arrivals, []);
+      const pending = state.aiEncounter.owner.pendingReinforcements[0];
+      const preferred = { ...pending.pos };
+      const x = pending.anchor.x - preferred.x, z = pending.anchor.z - preferred.z;
+      const length = Math.hypot(x, z);
+      // The forward seat's point check clears 63 WU. A rock in that same spot
+      // behind the seat is separating and must leave the proposed lane alone.
+      const offset = blocked ? 63 : -63;
+      const rockPos = { x: preferred.x + x / length * offset, z: preferred.z + z / length * offset };
+      const rock = runtime.spawn({ type: 'asteroid', radius: 20, mass: 160, collides: true,
+        pos: rockPos, vel: { x: 0, z: 0 }, hull: 1000, hullMax: 1000 });
+      await step(calls[0].dueTick - state.tick + 120);
+      assert.equal(arrivals.length, 1);
+      const [arrival] = arrivals;
+      assert.equal(arrival.tick, calls[0].dueTick);
+      assert.equal(arrival.typeId, 'wasp_swarmer');
+      assert.equal(warns.filter(row => /CALLING REINFORCEMENTS/.test(row.text) && row.tick < arrival.tick).length, 1);
+      assert.equal(warns.filter(row => row.text === 'REINFORCEMENTS ON FIELD' && row.tick === arrival.tick).length, 1);
+      assert.ok(Math.abs(Math.hypot(arrival.velocity.x, arrival.velocity.z) - 130) < 0.001);
+      assert.deepEqual(impacts.filter(p => [p.aId, p.bId].includes(rock.id)
+        && [p.aId, p.bId].includes(arrival.entityId)), [],
+      'the arriving Wasp must not strike the resident rock');
+      assert.ok(Math.hypot(rock.pos.x - rockPos.x, rock.pos.z - rockPos.z) < 0.001,
+        'the adjacent rock stays put');
+      if (blocked) assert.notDeepEqual(arrival.pos, preferred);
+      else assert.deepEqual(arrival.pos, preferred);
+    } finally {
+      lane.shutdown();
+    }
+  }
 });
 
 test('the announce path replays deterministically', () => {

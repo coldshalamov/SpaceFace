@@ -406,8 +406,8 @@ export const ATTACK_TRAITS = freezeDeep([
     cost: {},
     triggers: [],
     text: {
-      summary: 'Payloads against the active Massline anchor are amplified within a cap.',
-      detail: 'Reads the live tether target id. Other targets are unchanged. Does not rewrite Massline attachment or fire-control.',
+      summary: 'Payloads against the active Line anchor are amplified within a cap.',
+      detail: 'Reads the live tether target id. Other targets are unchanged. Does not rewrite line attachment or fire-control.',
     },
   },
   {

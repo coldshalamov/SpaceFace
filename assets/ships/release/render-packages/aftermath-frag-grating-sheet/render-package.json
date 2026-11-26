@@ -6,132 +6,107 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "3d4ceb37b356e908294134abb11653927ea3baaf88ff98e4958690ddde2af31b",
+  "contentHash": "75b46325d184f9f67a4ff0bc175f2659a5c47f1d4990b6acacd8d5a6186a11e6",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
-          -2.664474130768246,
-          0.785782659626938,
-          1.8768824338912964
+          3.5712808747678224,
+          2.121411141777481,
+          1.973324044337878
         ],
         "min": [
-          -3.3075796354823646,
-          -0.2479695772895586,
-          -3.5654311180114746
+          -3.5712808747678224,
+          -1.019191936846746,
+          -4.000010967254639
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5867ff2b7ebaf5714e08b65b62d667637746273bb2ac227fdc5ba5b6994c16c6",
-      "id": "sf.render.aftermath-frag-grating-sheet.mesh.gbar0.primitive.0",
-      "indexCount": 48,
+      "geometryHash": "40b50a370bb6fc25444bad01a2bf27c4b62737161f2ddefad48237029492f34a",
+      "id": "sf.render.aftermath-frag-grating-sheet.mesh.batten0.primitive.0",
+      "indexCount": 468,
       "indexed": true,
       "materialHash": "203cc84c70ad17be35f60b4e7416632e43a1605add5bc4460c54b5859e2c8279",
       "materialPipelineKey": "opaque",
-      "meshName": "gBar0",
-      "nodeId": "sf.render.aftermath-frag-grating-sheet.mesh.gbar0",
+      "meshName": "render:sf.render.aftermath-frag-grating-sheet.static-opaque-lane.1",
+      "nodeId": "sf.render.aftermath-frag-grating-sheet.mesh.batten0",
       "primitiveIndex": 0,
-      "vertexCount": 30
+      "vertexCount": 294
     },
     {
       "bounds": {
         "max": [
-          -0.44294299294418726,
-          0.8809911629328501,
-          1.8768824338912964
+          1.1671514764537736,
+          1.9811478799381979,
+          1.874688086490932
         ],
         "min": [
-          -1.086048497658306,
-          -0.15276107398364658,
-          -3.5654311180114746
+          0.5171063334649288,
+          -0.7915235440440802,
+          -3.902351603049742
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6176434105b7e90d07e63ebe4292758d255b58ea3feec7492af2bda29e1721dd",
-      "id": "sf.render.aftermath-frag-grating-sheet.mesh.gbar1.primitive.0",
-      "indexCount": 48,
+      "geometryHash": "4262f3f6dc10f1494071db0fc878e78fb8a20de0c439762ec9d521c0440788d4",
+      "id": "sf.render.aftermath-frag-grating-sheet.mesh.batten0.primitive.1",
+      "indexCount": 96,
       "indexed": true,
-      "materialHash": "203cc84c70ad17be35f60b4e7416632e43a1605add5bc4460c54b5859e2c8279",
+      "materialHash": "317a877634df11ab20826062e21b6d49b6fdd47296c5a12541637ebcc3397515",
       "materialPipelineKey": "opaque",
-      "meshName": "gBar1",
-      "nodeId": "sf.render.aftermath-frag-grating-sheet.mesh.gbar1",
-      "primitiveIndex": 0,
-      "vertexCount": 30
+      "meshName": "render:sf.render.aftermath-frag-grating-sheet.static-opaque-lane.1",
+      "nodeId": "sf.render.aftermath-frag-grating-sheet.mesh.batten0",
+      "primitiveIndex": 1,
+      "vertexCount": 60
     },
     {
       "bounds": {
         "max": [
-          1.7785881746821937,
-          0.9761997016290199,
-          1.8768824338912964
+          1.875181866939276,
+          -0.8032426677486678,
+          4
         ],
         "min": [
-          1.135482669968075,
-          -0.057552535287476725,
-          -3.5654311180114746
+          -1.8312351530470723,
+          -2.1213999361042633,
+          1.8639455564283935
         ]
       },
       "drawMode": 4,
-      "geometryHash": "95d6fc12f03eb0332d774bf83b78e0c59945ce36d73f2f4ce3c51e93f8315c3c",
-      "id": "sf.render.aftermath-frag-grating-sheet.mesh.gbar2.primitive.0",
-      "indexCount": 48,
+      "geometryHash": "c992c6a17e2ef5c164e6b769a8b6d95d05e6d5ff79a5f6d484ccf7e84f67ec4b",
+      "id": "sf.render.aftermath-frag-grating-sheet.mesh.batten0.primitive.2",
+      "indexCount": 96,
       "indexed": true,
-      "materialHash": "203cc84c70ad17be35f60b4e7416632e43a1605add5bc4460c54b5859e2c8279",
+      "materialHash": "f3c61f3fcace5021bc3900327b183ff78bde4a80de494fe9d79d0439a9ddddf6",
       "materialPipelineKey": "opaque",
-      "meshName": "gBar2",
-      "nodeId": "sf.render.aftermath-frag-grating-sheet.mesh.gbar2",
-      "primitiveIndex": 0,
-      "vertexCount": 30
+      "meshName": "render:sf.render.aftermath-frag-grating-sheet.static-opaque-lane.1",
+      "nodeId": "sf.render.aftermath-frag-grating-sheet.mesh.batten0",
+      "primitiveIndex": 2,
+      "vertexCount": 60
     },
     {
       "bounds": {
         "max": [
-          4.000119327407413,
-          1.0714080633739007,
-          1.8768824338912964
+          3.5580968606001613,
+          -0.14794833393380988,
+          2.383615448203701
         ],
         "min": [
-          3.3570138226932946,
-          0.03765582645740395,
-          -3.5654311180114746
+          1.621267520006544,
+          -1.951838865003511,
+          1.2945914631138447
         ]
       },
       "drawMode": 4,
-      "geometryHash": "29bbe691647b65fba507ad9a584f24e793a795c4a1d21e48b6f523191e57b410",
-      "id": "sf.render.aftermath-frag-grating-sheet.mesh.gbar3.primitive.0",
-      "indexCount": 48,
-      "indexed": true,
-      "materialHash": "203cc84c70ad17be35f60b4e7416632e43a1605add5bc4460c54b5859e2c8279",
-      "materialPipelineKey": "opaque",
-      "meshName": "gBar3",
-      "nodeId": "sf.render.aftermath-frag-grating-sheet.mesh.gbar3",
-      "primitiveIndex": 0,
-      "vertexCount": 30
-    },
-    {
-      "bounds": {
-        "max": [
-          3.7774438858032227,
-          3.782386457173902,
-          3.56560885663377
-        ],
-        "min": [
-          -4,
-          -3.782386457173902,
-          -0.4974510645424002
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "fc6cf436b36eb0b3459d332f45d1883686493329ac6f4d68c44e0a3f0039796d",
-      "id": "sf.render.aftermath-frag-grating-sheet.mesh.grate.primitive.0",
+      "geometryHash": "a062dd3518d0d4caa12688a484ca0f11717358e87ea0736c2fa7a5664b54a7e8",
+      "id": "sf.render.aftermath-frag-grating-sheet.mesh.batten0.primitive.3",
       "indexCount": 36,
       "indexed": true,
       "materialHash": "edf55240cfd35c4f717eb63acff8997999c9aafcbc90bef9d5f1f06a332a3c23",
       "materialPipelineKey": "opaque",
-      "meshName": "grate",
-      "nodeId": "sf.render.aftermath-frag-grating-sheet.mesh.grate",
-      "primitiveIndex": 0,
+      "meshName": "render:sf.render.aftermath-frag-grating-sheet.static-opaque-lane.1",
+      "nodeId": "sf.render.aftermath-frag-grating-sheet.mesh.batten0",
+      "primitiveIndex": 3,
       "vertexCount": 24
     }
   ],
@@ -172,6 +147,38 @@
       ]
     },
     {
+      "hash": "317a877634df11ab20826062e21b6d49b6fdd47296c5a12541637ebcc3397515",
+      "id": "material:317a877634df11ab20826062",
+      "name": "Forge_ore_barge_wk_torn__dead",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
       "hash": "edf55240cfd35c4f717eb63acff8997999c9aafcbc90bef9d5f1f06a332a3c23",
       "id": "material:edf55240cfd35c4f717eb63a",
       "name": "Forge_ore_barge_wk_scorch__dead",
@@ -202,32 +209,64 @@
           "uri": null
         }
       ]
+    },
+    {
+      "hash": "f3c61f3fcace5021bc3900327b183ff78bde4a80de494fe9d79d0439a9ddddf6",
+      "id": "material:f3c61f3fcace5021bc390032",
+      "name": "Forge_ore_barge_wk_cut__dead",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
     }
   ],
   "nodes": [
     {
-      "id": "sf.render.aftermath-frag-grating-sheet.mesh.gbar0",
+      "id": "sf.render.aftermath-frag-grating-sheet.mesh.batten0",
       "localTransform": [
-        2.7211567759513855,
+        4.000005483627319,
         0,
         0,
         0,
         0,
-        2.7211567759513855,
+        4.000005483627319,
         0,
         0,
         0,
         0,
-        2.7211567759513855,
+        4.000005483627319,
         0,
-        -2.986026883125305,
-        0.26890654116868973,
-        -0.8442743420600891,
+        0,
+        0.000005602836608886719,
+        -0.0000054836273193359375,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "gBar0",
-      "nodeName": "gBar0",
+      "mergeBoundary": "static:opaque",
+      "nodeName": "batten0",
       "nodePath": [
         0,
         0
@@ -236,47 +275,47 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-frag-grating-sheet.body",
       "worldTransform": [
-        2.7211567759513855,
+        4.000005483627319,
         0,
         0,
         0,
         0,
-        2.7211567759513855,
+        4.000005483627319,
         0,
         0,
         0,
         0,
-        2.7211567759513855,
+        4.000005483627319,
         0,
-        -2.986026883125305,
-        0.26890654116868973,
-        -0.8442743420600891,
+        0,
+        0.000005602836608886719,
+        -0.0000054836273193359375,
         1
       ]
     },
     {
-      "id": "sf.render.aftermath-frag-grating-sheet.mesh.gbar1",
+      "id": "sf.render.aftermath-frag-grating-sheet.mesh.batten1",
       "localTransform": [
-        2.7211567759513855,
+        1,
         0,
         0,
         0,
         0,
-        2.7211567759513855,
+        1,
         0,
         0,
         0,
         0,
-        2.7211567759513855,
+        1,
         0,
-        -0.7644957453012466,
-        0.36411504447460175,
-        -0.8442743420600891,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "gBar1",
-      "nodeName": "gBar1",
+      "mergeBoundary": "static:opaque",
+      "nodeName": "batten1",
       "nodePath": [
         0,
         1
@@ -285,47 +324,47 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-frag-grating-sheet.body",
       "worldTransform": [
-        2.7211567759513855,
+        1,
         0,
         0,
         0,
         0,
-        2.7211567759513855,
+        1,
         0,
         0,
         0,
         0,
-        2.7211567759513855,
+        1,
         0,
-        -0.7644957453012466,
-        0.36411504447460175,
-        -0.8442743420600891,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
-      "id": "sf.render.aftermath-frag-grating-sheet.mesh.gbar2",
+      "id": "sf.render.aftermath-frag-grating-sheet.mesh.batten2",
       "localTransform": [
-        2.7211567759513855,
+        1,
         0,
         0,
         0,
         0,
-        2.7211567759513855,
+        1,
         0,
         0,
         0,
         0,
-        2.7211567759513855,
+        1,
         0,
-        1.4570354223251343,
-        0.4593235831707716,
-        -0.8442743420600891,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "gBar2",
-      "nodeName": "gBar2",
+      "mergeBoundary": "static:opaque",
+      "nodeName": "batten2",
       "nodePath": [
         0,
         2
@@ -334,47 +373,47 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-frag-grating-sheet.body",
       "worldTransform": [
-        2.7211567759513855,
+        1,
         0,
         0,
         0,
         0,
-        2.7211567759513855,
+        1,
         0,
         0,
         0,
         0,
-        2.7211567759513855,
+        1,
         0,
-        1.4570354223251343,
-        0.4593235831707716,
-        -0.8442743420600891,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
-      "id": "sf.render.aftermath-frag-grating-sheet.mesh.gbar3",
+      "id": "sf.render.aftermath-frag-grating-sheet.mesh.bearer0",
       "localTransform": [
-        2.7211567759513855,
+        1,
         0,
         0,
         0,
         0,
-        2.7211567759513855,
+        1,
         0,
         0,
         0,
         0,
-        2.7211567759513855,
+        1,
         0,
-        3.678566575050354,
-        0.5545319449156523,
-        -0.8442743420600891,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "gBar3",
-      "nodeName": "gBar3",
+      "mergeBoundary": "static:opaque",
+      "nodeName": "bearer0",
       "nodePath": [
         0,
         3
@@ -383,47 +422,47 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-frag-grating-sheet.body",
       "worldTransform": [
-        2.7211567759513855,
+        1,
         0,
         0,
         0,
         0,
-        2.7211567759513855,
+        1,
         0,
         0,
         0,
         0,
-        2.7211567759513855,
+        1,
         0,
-        3.678566575050354,
-        0.5545319449156523,
-        -0.8442743420600891,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
-      "id": "sf.render.aftermath-frag-grating-sheet.mesh.grate",
+      "id": "sf.render.aftermath-frag-grating-sheet.mesh.bearer1",
       "localTransform": [
-        3.8887219429016113,
+        1,
         0,
         0,
         0,
         0,
-        3.8887219429016113,
+        1,
         0,
         0,
         0,
         0,
-        3.8887219429016113,
+        1,
         0,
-        -0.11127805709838867,
         0,
-        1.5340788960456848,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "grate",
-      "nodeName": "grate",
+      "mergeBoundary": "static:opaque",
+      "nodeName": "bearer1",
       "nodePath": [
         0,
         4
@@ -432,21 +471,511 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-frag-grating-sheet.body",
       "worldTransform": [
-        3.8887219429016113,
+        1,
         0,
         0,
         0,
         0,
-        3.8887219429016113,
+        1,
         0,
         0,
         0,
         0,
-        3.8887219429016113,
+        1,
         0,
-        -0.11127805709838867,
         0,
-        1.5340788960456848,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-frag-grating-sheet.mesh.bearer2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "static:opaque",
+      "nodeName": "bearer2",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.aftermath-frag-grating-sheet.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-frag-grating-sheet.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-frag-grating-sheet.mesh.bearer3a",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "static:opaque",
+      "nodeName": "bearer3a",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.aftermath-frag-grating-sheet.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-frag-grating-sheet.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-frag-grating-sheet.mesh.bearer3b",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "static:opaque",
+      "nodeName": "bearer3b",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.aftermath-frag-grating-sheet.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-frag-grating-sheet.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-frag-grating-sheet.mesh.bearer4",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "static:opaque",
+      "nodeName": "bearer4",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.aftermath-frag-grating-sheet.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-frag-grating-sheet.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-frag-grating-sheet.mesh.bearer5",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "static:opaque",
+      "nodeName": "bearer5",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.aftermath-frag-grating-sheet.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-frag-grating-sheet.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-frag-grating-sheet.mesh.hanger0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "static:opaque",
+      "nodeName": "hanger0",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.aftermath-frag-grating-sheet.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-frag-grating-sheet.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-frag-grating-sheet.mesh.hanger1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "static:opaque",
+      "nodeName": "hanger1",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.aftermath-frag-grating-sheet.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-frag-grating-sheet.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-frag-grating-sheet.mesh.raila",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "static:opaque",
+      "nodeName": "railA",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.aftermath-frag-grating-sheet.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-frag-grating-sheet.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-frag-grating-sheet.mesh.railb",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "static:opaque",
+      "nodeName": "railB",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.aftermath-frag-grating-sheet.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-frag-grating-sheet.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-frag-grating-sheet.mesh.treadpatch",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "static:opaque",
+      "nodeName": "treadPatch",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.aftermath-frag-grating-sheet.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-frag-grating-sheet.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
         1
       ]
     },
@@ -501,45 +1030,45 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "052c099ba4ac5633b5553fa3c86f2934119062c64dbbe3ca871a89af0a5afa45"
+      "sha256": "3382d51912c7a30c450cfddb4913bbed35431db406aa078c44afe18724d8af72"
     },
     "sourceGlb": {
-      "bytes": 43616,
-      "sha256": "ff1021c6b3f123c94c889aab68618466621b7228c47b6334713d2bf7ac4380d9",
+      "bytes": 153696,
+      "sha256": "6fa5c4ce53bc75ce8608f69ac8057774a5de357898839f785432e81828108ba1",
       "uri": "place_aftermath_frag_grating_sheet.glb"
     },
     "sourceManifest": {
-      "bytes": 340541,
-      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
+      "bytes": 352460,
+      "sha256": "7b29a65ee148539881ae9782eccdf6b975daa858f6ccb23db9554e3ec5c293f7",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 44632,
-    "sha256": "257277849992c2c9f30c49e2b90b3158defb4c7c38bef9f10c28e1411c9d236b",
+    "bytes": 142264,
+    "sha256": "3c5df6517b037d843478cfae84b4995374d9d8ecd0eff86ae326acd7feab4c5e",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        0.00005966370370646956,
         0,
-        0.0000888693111475991
+        0.000005602836608886719,
+        -0.0000054836273193359375
       ],
       "max": [
-        4.000119327407413,
-        3.782386457173902,
-        3.56560885663377
+        3.5712808747678224,
+        2.121411141777481,
+        4
       ],
       "min": [
-        -4,
-        -3.782386457173902,
-        -3.5654311180114746
+        -3.5712808747678224,
+        -2.1213999361042633,
+        -4.000010967254639
       ],
       "size": [
-        8.000119327407413,
-        7.564772914347804,
-        7.131039974645244
+        7.142561749535645,
+        4.242811077881744,
+        8.000010967254639
       ]
     },
     "hidden": [],
@@ -547,14 +1076,9 @@
     "markers": [],
     "materialProfileRoles": {
       "ceramic": 1,
-      "mechanical": 4
+      "mechanical": 3
     },
     "materialProfiles": [
-      {
-        "allowTextures": true,
-        "planIndex": 2,
-        "role": "mechanical"
-      },
       {
         "allowTextures": true,
         "planIndex": 3,
@@ -576,56 +1100,29 @@
         "role": "ceramic"
       }
     ],
-    "nodeCount": 7,
+    "nodeCount": 21,
     "primitives": [
       {
         "canopy": false,
         "matrix": [
-          2.7211567759513855,
+          4.000005483627319,
           0,
           0,
           0,
           0,
-          2.7211567759513855,
+          4.000005483627319,
           0,
           0,
           0,
           0,
-          2.7211567759513855,
+          4.000005483627319,
           0,
-          -2.986026883125305,
-          0.26890654116868973,
-          -0.8442743420600891,
+          0,
+          0,
+          0,
           1
         ],
-        "name": "gBar0",
-        "planIndex": 2,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          2.7211567759513855,
-          0,
-          0,
-          0,
-          0,
-          2.7211567759513855,
-          0,
-          0,
-          0,
-          0,
-          2.7211567759513855,
-          0,
-          -0.7644957453012466,
-          0.36411504447460175,
-          -0.8442743420600891,
-          1
-        ],
-        "name": "gBar1",
+        "name": "rendersfrenderaftermath-frag-grating-sheetstatic-opaque-lane1",
         "planIndex": 3,
         "tags": {
           "canopy": false,
@@ -635,24 +1132,24 @@
       {
         "canopy": false,
         "matrix": [
-          2.7211567759513855,
+          4.000005483627319,
           0,
           0,
           0,
           0,
-          2.7211567759513855,
+          4.000005483627319,
           0,
           0,
           0,
           0,
-          2.7211567759513855,
+          4.000005483627319,
           0,
-          1.4570354223251343,
-          0.4593235831707716,
-          -0.8442743420600891,
+          0,
+          0,
+          0,
           1
         ],
-        "name": "gBar2",
+        "name": "rendersfrenderaftermath-frag-grating-sheetstatic-opaque-lane1_1",
         "planIndex": 4,
         "tags": {
           "canopy": false,
@@ -662,24 +1159,24 @@
       {
         "canopy": false,
         "matrix": [
-          2.7211567759513855,
+          4.000005483627319,
           0,
           0,
           0,
           0,
-          2.7211567759513855,
+          4.000005483627319,
           0,
           0,
           0,
           0,
-          2.7211567759513855,
+          4.000005483627319,
           0,
-          3.678566575050354,
-          0.5545319449156523,
-          -0.8442743420600891,
+          0,
+          0,
+          0,
           1
         ],
-        "name": "gBar3",
+        "name": "rendersfrenderaftermath-frag-grating-sheetstatic-opaque-lane1_2",
         "planIndex": 5,
         "tags": {
           "canopy": false,
@@ -689,24 +1186,24 @@
       {
         "canopy": false,
         "matrix": [
-          3.8887219429016113,
+          4.000005483627319,
           0,
           0,
           0,
           0,
-          3.8887219429016113,
+          4.000005483627319,
           0,
           0,
           0,
           0,
-          3.8887219429016113,
+          4.000005483627319,
           0,
-          -0.11127805709838867,
           0,
-          1.5340788960456848,
+          0,
+          0,
           1
         ],
-        "name": "grate",
+        "name": "rendersfrenderaftermath-frag-grating-sheetstatic-opaque-lane1_3",
         "planIndex": 6,
         "tags": {
           "canopy": false,
@@ -718,29 +1215,39 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_frag_grating_sheet.glb"
   },
-  "runtimeHash": "58603d1a8b6a7128a0f77fe29bff9354cbc93a506c190a69baf96958761f73e5",
+  "runtimeHash": "4f4dc183088233821cc9cafe9c9602c5bc758299df557a33b581595b8ef3ef4a",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          4.000119327407413,
-          3.782386457173902,
-          3.56560885663377
+          3.5712808747678224,
+          2.121411141777481,
+          4
         ],
         "min": [
-          -4,
-          -3.782386457173902,
-          -3.5654311180114746
+          -3.5712808747678224,
+          -2.1213999361042633,
+          -4.000010967254639
         ]
       },
       "id": "sf.render.aftermath-frag-grating-sheet.body",
       "nodeIds": [
-        "sf.render.aftermath-frag-grating-sheet.mesh.gbar0",
-        "sf.render.aftermath-frag-grating-sheet.mesh.gbar1",
-        "sf.render.aftermath-frag-grating-sheet.mesh.gbar2",
-        "sf.render.aftermath-frag-grating-sheet.mesh.gbar3",
-        "sf.render.aftermath-frag-grating-sheet.mesh.grate",
+        "sf.render.aftermath-frag-grating-sheet.mesh.batten0",
+        "sf.render.aftermath-frag-grating-sheet.mesh.batten1",
+        "sf.render.aftermath-frag-grating-sheet.mesh.batten2",
+        "sf.render.aftermath-frag-grating-sheet.mesh.bearer0",
+        "sf.render.aftermath-frag-grating-sheet.mesh.bearer1",
+        "sf.render.aftermath-frag-grating-sheet.mesh.bearer2",
+        "sf.render.aftermath-frag-grating-sheet.mesh.bearer3a",
+        "sf.render.aftermath-frag-grating-sheet.mesh.bearer3b",
+        "sf.render.aftermath-frag-grating-sheet.mesh.bearer4",
+        "sf.render.aftermath-frag-grating-sheet.mesh.bearer5",
+        "sf.render.aftermath-frag-grating-sheet.mesh.hanger0",
+        "sf.render.aftermath-frag-grating-sheet.mesh.hanger1",
+        "sf.render.aftermath-frag-grating-sheet.mesh.raila",
+        "sf.render.aftermath-frag-grating-sheet.mesh.railb",
+        "sf.render.aftermath-frag-grating-sheet.mesh.treadpatch",
         "sf.render.aftermath-frag-grating-sheet.root"
       ]
     }

@@ -64,6 +64,7 @@ export function emptyBerthSlotPoint(leadPos, dirX, dirZ, shipIndex, tuning = EMP
 }
 
 export const emptyBerthPlant = {
+  modes: ['flight'],
   name: 'plants157',
 
   init(ctx) {

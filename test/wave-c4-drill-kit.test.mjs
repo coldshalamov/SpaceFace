@@ -21,11 +21,18 @@ test('the bore rig has no default button chrome', () => {
 
 test('pulse survey and retract show the live key', () => {
   const map = resolveDrillControlMap({ settings: {} });
-  assert.ok(map.scanLabel && map.scanLabel !== 'UNBOUND', 'scan has a default key');
-  assert.notEqual(map.scanLabel, 'Space', 'Space is the tether, not the survey');
+  assert.deepEqual(map.scan, ['KeyC']);
+  assert.equal(map.scanLabel, 'C');
   assert.match(source, /Pulse survey · \$\{escapeHtml\(controlMap\.scanLabel\)\}/);
   assert.match(source, /exitBtn\.textContent = 'Retract rig · Esc'/);
   assert.match(source, /<kbd>Esc<\/kbd>/);
+});
+
+test('the survey fallback respects remapping, unbinding, and rover movement', () => {
+  const resolve = bindings => resolveDrillControlMap({ settings: { controls: { bindings } } });
+  assert.deepEqual(resolve({ scanPulse: ['KeyH'] }).scan, ['KeyH']);
+  assert.deepEqual(resolve({ scanPulse: [] }).scan, []);
+  assert.deepEqual(resolve({ forward: ['KeyC'] }).scan, []);
 });
 
 test('restart, abort, and the extraction report are labeled kit words', () => {

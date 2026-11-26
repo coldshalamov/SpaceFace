@@ -118,11 +118,12 @@ import { isReleaseAssetMode } from './releaseMode.js';
 import { entityVisualCullRadius, primeDrawnCullStamps } from './visualCullRadius.js';
 import { RENDER_PACKAGE_PILOTS } from './renderPackageManifest.js';
 import * as kit from './ships/shipKit.js';
-import { attachRetroMounts, sharedRetroHardwareMaterial } from './thruster/retroMounts.js';
+import { attachRetroMounts, sharedRetroHardwareMaterial, sharedRetroIdleHotMaterial } from './thruster/retroMounts.js';
 import { attachPlaceHlod, attachStationHlod } from './hlod.js';
 import { freezeStaticChildMatrices, freezeStaticChildMatricesSteps, freezeStaticTransformRootMarked, installStaticLodLeafMatrixUpdate } from './staticChildMatrices.js';
 import { optimizeStaticBatchesForRoot } from './visualFactory.js';
 import { attachLodState } from './lod.js';
+import { frameCostFixOn, frameCostFixPending } from './frameCostSwitches.js';
 import {
   canInstallWholeShipLodFamily,
   isOrdinaryLodShip,
@@ -2554,10 +2555,49 @@ function initialShipProjectionCurrent(sample, state) {
         || state.render.viewport.height !== sample.height))) return false;
   const view = camera.matrixWorldInverse?.elements, projection = camera.projectionMatrix?.elements;
   if (!view || !projection || sample.view?.length !== 16 || sample.projection?.length !== 16) return false;
+  // The sample is retaken every presented frame and must be under 250 ms old (the callers check).
+  // It used to be refused unless the camera's matrices still equalled the sampled ones to the last
+  // bit. A fight's camera moves every frame, so in a fight that never held: every enemy was
+  // admitted at full detail and then asked to load, compose and compile a cheaper sibling of
+  // itself in live play (measured in the Foundry: six wasps 50 px long on screen, each on its
+  // 24-draw, 24,900-triangle body). The projection must still be the same lens; where the camera
+  // stands may have moved by one frame, and the publish-time recheck reads the newest sample.
+  const strict = !frameCostFixOn('shipTier'); // ?rfx=-shipTier: the old bit-equal camera rule
   for (let i = 0; i < 16; i++) {
-    if (view[i] !== sample.view[i] || projection[i] !== sample.projection[i]) return false;
+    if (projection[i] !== sample.projection[i] || (strict && view[i] !== sample.view[i])) return false;
   }
   return true;
+}
+
+// IN-FILE SHIP TIERS (Swarm). A whole-ship hull file such as ashline_dart.glb carries its LOD1 and
+// LOD2 leaves beside LOD0. The separate-file tier family ignores them: every tier change loads,
+// composes and admits a second (then a third) whole body of the same ship in live play, in main-
+// thread slices between frames, and a wasp lives ten to twenty seconds. Once the hull leaves are
+// pooled proxies (motionPool) a tier change needs none of that: the leaf of the wanted level is
+// shown, the others hidden, and the instance pool moves the ship's matrix to that level's draw on
+// the same frame. In a Swarm run an ordinary hostile whose active body carries its own lower
+// levels therefore keeps that one body for life and the family controller is not installed.
+// Files learnt to carry in-file levels are remembered so a later spawn of the same hull is
+// admitted on the full file instead of on a single-level sibling. ?rfx=-inFileTiers restores the
+// separate-file family.
+const IN_FILE_SHIP_TIER_FILES = new Set();
+
+function inFileShipTiersAllowed() {
+  return frameCostFixOn('inFileTiers') && frameCostFixOn('motionPool')
+    && authoredRuntimeState()?.run?.kind === 'survival';
+}
+
+function activeRootCarriesInFileTiers(boundary) {
+  let lod0 = false, lower = false;
+  for (const child of boundary?.children || EMPTY_ARRAY) {
+    if (!child || child.visible === false || child.userData?.authoredVisualRoot === 'procedural-fallback') continue;
+    child.traverse((object) => {
+      const level = object.userData?.spacefaceTags?.lod;
+      if (level === 'lod0') lod0 = true;
+      else if (level === 'lod1' || level === 'lod2') lower = true;
+    });
+  }
+  return lod0 && lower;
 }
 
 /** Only a recent projection of this exact boundary and actor can select a cheap first body. */
@@ -2572,6 +2612,8 @@ export function initialWholeShipLodForBoundary(entity, boundary, now = monotonic
   const family = visual?.lodFamily;
   if (!family || family.lod0 !== visual.file || !packagedLiveWholeShipFile(family.lod1)
       || !packagedLiveWholeShipFile(family.lod2)) return 'lod0';
+  // The full file already holds every level: admit it and let the leaves flip.
+  if (IN_FILE_SHIP_TIER_FILES.has(visual.file) && inFileShipTiersAllowed()) return 'lod0';
   return initialShipLodFromProjection(sample.px);
 }
 
@@ -2587,6 +2629,28 @@ export function initialWholeShipLodPublicationSafe(entity, boundary, level, file
   return !!visual?.lodFamily && visual.lodFamily.lod0 === visual.file
     && packagedLiveWholeShipFile(visual.lodFamily[level]) === file
     && initialShipLodStillSafe(level, sample.px);
+}
+
+/**
+ * Publish-time recheck for a live family swap. A runtime demotion commits frames after its
+ * request, so the admission pick's same-camera-matrix identity cannot apply — the camera has
+ * legitimately moved while the sibling decoded and compiled. Freshness for a live swap is the
+ * selector itself: it re-resolves every frame and republishes wholeShipLodDesiredLevel, which the
+ * caller already compares against the pending request. What remains to vet here is the
+ * entity/family contract and, when the newest projection sample still belongs to this entity and
+ * is fresh, that the ship has not grown back past the promote boundary during the load.
+ */
+export function liveWholeShipLodPublicationSafe(entity, boundary, level, file, now = monotonicNow()) {
+  if (level === 'lod0') return true;
+  const state = authoredRuntimeState();
+  if (!isOrdinaryLodShip(entity) || entityIsMissionCritical(entity, state)) return false;
+  const visual = wholeShipVisualForEntity(entity, { requiredWholeShip: true });
+  if (!visual?.lodFamily || visual.lodFamily.lod0 !== visual.file
+      || packagedLiveWholeShipFile(visual.lodFamily[level]) !== file) return false;
+  const sample = boundary?.userData?.initialShipLodSample;
+  if (!sample || sample.entity !== entity || sample.protectedBody
+      || !Number.isFinite(sample.at) || now < sample.at || now - sample.at > 250) return true;
+  return initialShipLodStillSafe(level, sample.px);
 }
 
 export function authoredPreloadPlanForEntityAtLod(entity, level, options = {}) {
@@ -2634,8 +2698,8 @@ export function spawnableShipArchetypePrewarmUrls() {
     WHOLE_SHIP_FILE_BY_DEF_ID.ship_wasp,
     // Separate-file LOD siblings load lazily on distance demotion — a far spawn's lod1/lod2
     // body is a different GLB with materials the lod0 exemplar never linked (PQ-210.00 wasp
-    // link). Runtime demotion is off, so the lod1 file has no live consumer (admission builds
-    // lod0, stand-ins borrow lod2): warm lod2 only and skip decode bytes nobody can draw.
+    // link). With runtime demotion on the lod1 file has a live consumer, so both siblings warm;
+    // while disabled only the lod2 stand-in is reachable and lod1 decode bytes are skipped.
     ...Object.values(WHOLE_SHIP_LOD_FAMILY_BY_DEF_ID)
       .flatMap((family) => (WHOLE_SHIP_LOD_RUNTIME_DEMOTION === true
         ? [family.lod1, family.lod2]
@@ -5120,9 +5184,23 @@ export function* buildPlacePropRootSteps(entity, record, scene, ownerBoundary, o
   // The Cathedral and claim relay authored LODs are uniformly indexed. Keep that topology through
   // their static merges so the runtime does not transform one duplicate vertex per triangle index.
   // Mixed/index-less authored places retain the conservative ordinary path.
+  // Repeated static arena/world scenery props (monoliths, rocks, cover furniture) keep one mesh
+  // per canonical material instead of folding into a multi-material group mesh, so identical
+  // props across the scene share cross-owner InstancedMesh draws via poolStaticPropLeaves.
+  const isInstancableStaticProp = !isStation
+    && !options.overlayRecord
+    && placeId !== WRECK_CATHEDRAL_PLACE_ID
+    && placeId !== CLAIM_RELAY_PLACE_ID
+    && !isOrchardFrame(entity)
+    && !isCeresWorkfleetPlace(entity)
+    && !isCeresShipbreakSection(entity)
+    && !isLatchActor(entity)
+    && !isTallyThreeAssessor(entity);
+  root.userData.staticPropPoolEligible = isInstancableStaticProp;
   const staticBatches = createStaticBatchCollector(root, bindings, {
     preserveIndexedGeometry: placeId === WRECK_CATHEDRAL_PLACE_ID
       || placeId === CLAIM_RELAY_PLACE_ID,
+    separateMaterialsForInstancing: isInstancableStaticProp,
   });
   const authoredLength = Math.max(record.bounds && record.bounds.size && record.bounds.size[0] || 1, 1e-6);
   // Key the census scale off the resolved record's file stem — claimSpecId/claimOwned picks
@@ -6367,7 +6445,7 @@ export function enqueueBoundaryUpgrade(scene, job) {
   state.byBoundary.set(queuedJob.boundary, queuedJob);
   state.byKey.set(queuedJob.key, queuedJob);
   upgradeTokensByBoundary.set(queuedJob.boundary, queuedJob.boundaryToken);
-  if (state.firstFlightHandoffHold === true && firstFlightReadableShipJob(queuedJob)) {
+  if (state.firstFlightHandoffHold === true && firstFlightHoldPassJob(state, queuedJob)) {
     primeNextAuthoredAssetPlan(state);
   }
   if (!state.running) processUpgradeQueue(state);
@@ -6455,6 +6533,7 @@ export function resumeAuthoredUpgradeQueueAfterOpening(scene) {
   const held = state.openingHandoffHold === true || state.firstFlightHandoffHold === true;
   state.openingHandoffHold = false;
   state.firstFlightHandoffHold = false;
+  state.firstFlightDressingHoldOnly = false;
   state.firstFlightPrefetchJob = null;
   if (state.heldShipWakeTimer != null) clearTimeout(state.heldShipWakeTimer);
   state.heldShipWakeTimer = null;
@@ -6471,6 +6550,7 @@ export function resumeAuthoredUpgradeQueueForLoadingHulls(scene) {
   if (!state) return false;
   state.openingHandoffHold = false;
   state.firstFlightHandoffHold = false;
+  state.firstFlightDressingHoldOnly = false;
   state.firstFlightPrefetchJob = null;
   if (state.heldShipWakeTimer != null) clearTimeout(state.heldShipWakeTimer);
   state.heldShipWakeTimer = null;
@@ -6494,7 +6574,25 @@ export function holdAuthoredUpgradeQueueForFirstFlight(scene, options = {}) {
   // every non-ship job until the regular release latch.
   state.openingHandoffHold = false;
   state.firstFlightHandoffHold = true;
+  state.firstFlightDressingHoldOnly = false;
   state.loadingHullsOnly = false;
+  invalidateScheduledUpgradeFrame(state);
+  scheduleNextUpgradeFrame(state);
+  return true;
+}
+
+/**
+ * Narrow the first-flight hold to dressing once the first playable frame has painted. A hull
+ * or any body the player can hit is a contact, not dressing — a mid-flight spawn that parks
+ * behind leftover place/fx compiles for the full handoff window shows exactly the hole this
+ * packet exists to kill (a colliding ship stuck as a marker for ~20 s). Dressing itself still
+ * waits out the handoff window so leftover compiles cannot land inside the first presents.
+ */
+export function releaseAuthoredUpgradeFirstFlightContactHold(scene) {
+  const state = scene && upgradeQueuesByScene.get(scene);
+  if (!state || state.retired) return false;
+  if (state.firstFlightHandoffHold !== true || state.firstFlightDressingHoldOnly === true) return false;
+  state.firstFlightDressingHoldOnly = true;
   invalidateScheduledUpgradeFrame(state);
   scheduleNextUpgradeFrame(state);
   return true;
@@ -6515,6 +6613,7 @@ function upgradeQueueState(scene) {
       firstFlightPrefetchJob: null,
       openingHandoffHold: false,
       firstFlightHandoffHold: false,
+      firstFlightDressingHoldOnly: false,
       stallBypassShipPass: false,
       loadingHullsOnly: false,
       lateSkips: 0,
@@ -6735,6 +6834,47 @@ function firstFlightReadableGlassJob(job) {
     && (entityIsOnReadableGlass(entity) || entity.mesh?.visible === true));
 }
 
+// Once the first paint has narrowed the hold to dressing, anything the player can hit passes
+// immediately: hulls and every colliding body — a solid asteroid or parked station waiting out
+// the window is the same "crash into nothing" hole a marker-ship is.
+function firstFlightContactReleaseJob(job) {
+  const entity = job && job.entity;
+  return !!(entity && entity.alive !== false
+    && (firstFlightReadableContactKind(entity) || entity.collides === true));
+}
+
+function firstFlightHoldPassJob(state, job) {
+  return firstFlightReadableGlassJob(job)
+    || firstFlightReadableShipJob(job)
+    || (state && state.firstFlightDressingHoldOnly === true && firstFlightContactReleaseJob(job));
+}
+
+// Equal-priority ties break toward what the player can hit (STREAM-BUILD-1): a solid body
+// closing on the player, then solids by distance, then ships by distance, then dressing —
+// enqueue order used to let queued dressing starve an inbound ship. Ranking only moves jobs
+// inside a priority rung; the rungs themselves still express deadline vs ambient.
+function authoredUpgradeContactRank(job, live) {
+  const entity = job && job.entity;
+  if (!entity || entity.alive === false || !live || live.mode !== 'flight') return 3;
+  const player = live.entities && typeof live.entities.get === 'function'
+    ? live.entities.get(live.playerId) : null;
+  if (entity.collides === true) {
+    return player && firstFlightClosingToward(entity, player, live) ? 0 : 1;
+  }
+  return entity.type === 'ship' ? 2 : 3;
+}
+
+// The drawn envelope leads the pivot: a freighter's far edge counts, not just its centre.
+function authoredUpgradeContactEdge(job, live) {
+  const entity = job && job.entity;
+  const player = live && live.entities && typeof live.entities.get === 'function'
+    ? live.entities.get(live.playerId) : null;
+  const dist = planarRangeWU(entity, player);
+  if (dist === null) return Infinity;
+  const radius = Number(entity && entity.radius);
+  return dist - (Number.isFinite(radius) && radius > 0 ? radius : 0);
+}
+
 function scheduleHeldShipWake(state) {
   if (!state || state.retired || state.heldShipWakeTimer != null || state.jobs.length === 0) return;
   state.heldShipWakeTimer = setTimeout(() => {
@@ -6746,7 +6886,7 @@ function scheduleHeldShipWake(state) {
 
 function firstFlightShipCanPassBusyPlace(state) {
   if (!state || state.firstFlightHandoffHold !== true || state.inFlight !== 1
-      || !state.jobs.some(firstFlightReadableShipJob)) return false;
+      || !state.jobs.some((job) => firstFlightHoldPassJob(state, job))) return false;
   const active = [...state.byBoundary.values()].filter((job) =>
     job.lifecycle === 'in-flight' && job.serialSlotReleased !== true);
   // A slow hub/place upload may remain in flight long after the opening shell has gone. Reserve
@@ -8041,8 +8181,7 @@ function scheduleNextUpgradeFrame(state) {
     return;
   }
   if (state.firstFlightHandoffHold === true
-      && !state.jobs.some((job) => firstFlightReadableGlassJob(job)
-        || firstFlightReadableShipJob(job))) {
+      && !state.jobs.some((job) => firstFlightHoldPassJob(state, job))) {
     scheduleHeldShipWake(state);
     // The hold does not freeze in-flight jobs — a hog stalled through the hold still needs its
     // diagnostic closed on schedule.
@@ -8068,8 +8207,7 @@ function scheduleNextUpgradeFrame(state) {
   scheduleUpgradeFrame(() => {
     if (state.retired || state.frameScheduleToken !== token || state.openingHandoffHold === true) return;
     if (state.firstFlightHandoffHold === true
-        && !state.jobs.some((job) => firstFlightReadableGlassJob(job)
-          || firstFlightReadableShipJob(job))) {
+        && !state.jobs.some((job) => firstFlightHoldPassJob(state, job))) {
       state.frameScheduled = false;
       scheduleHeldShipWake(state);
       armStalledHogWake(state);
@@ -8155,6 +8293,11 @@ function admitNextUpgradeJob(state) {
       const urgentDelta = Number(pickVerdict(b, 'shipJob', firstFlightReadableShipJob))
         - Number(pickVerdict(a, 'shipJob', firstFlightReadableShipJob));
       if (urgentDelta) return urgentDelta;
+      if (state.firstFlightDressingHoldOnly === true) {
+        const contactDelta = Number(pickVerdict(b, 'contactJob', firstFlightContactReleaseJob))
+          - Number(pickVerdict(a, 'contactJob', firstFlightContactReleaseJob));
+        if (contactDelta) return contactDelta;
+      }
     }
     const priorityDelta = pickVerdict(a, 'priority', authoredUpgradePriority)
       - pickVerdict(b, 'priority', authoredUpgradePriority);
@@ -8167,12 +8310,25 @@ function admitNextUpgradeJob(state) {
       const nearB = pickVerdict(b, 'near', (j) => planarRangeWU(j.entity, player));
       if (nearA !== null && nearB !== null && nearA !== nearB) return nearA - nearB;
     }
+    // Equal-rung work orders by what the player can hit — closing solids, then solids by
+    // envelope edge, then ships by edge — so ambient dressing can no longer drain ahead of
+    // an inbound hull whose deadline is measured in seconds, not rungs.
+    const rankA = pickVerdict(a, 'contactRank', (j) => authoredUpgradeContactRank(j, live));
+    const rankB = pickVerdict(b, 'contactRank', (j) => authoredUpgradeContactRank(j, live));
+    if (rankA !== rankB) return rankA - rankB;
+    if (rankA < 3) {
+      const edgeA = pickVerdict(a, 'contactEdge', (j) => authoredUpgradeContactEdge(j, live));
+      const edgeB = pickVerdict(b, 'contactEdge', (j) => authoredUpgradeContactEdge(j, live));
+      if (edgeA !== edgeB) return edgeA - edgeB;
+    }
     return a.sequence - b.sequence;
   });
   noteForcedFrameSpend(Math.min(monotonicNow() - pickSortStarted, FORCED_FRAME_BUDGET_MS));
   if (state.firstFlightHandoffHold === true
       && !(state.jobs[0] && pickVerdict(state.jobs[0], 'shipJob', firstFlightReadableShipJob))
-      && !(state.jobs[0] && pickVerdict(state.jobs[0], 'glassJob', firstFlightReadableGlassJob))) {
+      && !(state.jobs[0] && pickVerdict(state.jobs[0], 'glassJob', firstFlightReadableGlassJob))
+      && !(state.firstFlightDressingHoldOnly === true
+        && state.jobs[0] && pickVerdict(state.jobs[0], 'contactJob', firstFlightContactReleaseJob))) {
     scheduleHeldShipWake(state);
     armStalledHogWake(state);
     return null;
@@ -8448,6 +8604,7 @@ function authoredUpgradeConcurrencyLimit() {
     opening: render.deferNoncriticalMeshStreaming === true,
     deferNoncriticalMeshStreaming: render.deferNoncriticalMeshStreaming === true,
     firstPlayableFrameAt: render.firstPlayableFrameAt,
+    lastPresentDtMs: render.lastPresentDtMs,
     nowMs,
   });
 }
@@ -8467,8 +8624,7 @@ function primeNextAuthoredAssetPlan(state) {
         && jobStillNeeded(state, state.firstFlightPrefetchJob)) return;
     state.firstFlightPrefetchJob = null;
     const player = liveState.entities?.get?.(liveState.playerId);
-    const eligible = state.jobs.filter((job) => (firstFlightReadableGlassJob(job)
-        || firstFlightReadableShipJob(job))
+    const eligible = state.jobs.filter((job) => firstFlightHoldPassJob(state, job)
       && job.renderer && jobStillNeeded(state, job) && !job.prefetchPromise
       // A requestless non-ship's prefetch resolves null immediately — it would still park
       // the first-flight slot for a whole serial admit while real warms wait behind it.
@@ -10350,6 +10506,17 @@ export function installWholeShipLodFamilyController(boundary, entity, setActive,
   let family = selection && selection.lodFamily;
   const eligible = canInstallWholeShipLodFamily(entity, selection) && isOrdinaryLodShip(entity)
     && !!packagedLiveWholeShipFile(family?.lod1) && !!packagedLiveWholeShipFile(family?.lod2);
+  // In-file tiers: this body carries its own lower levels, so the selector flips leaves and no
+  // sibling body is ever composed for it (see IN-FILE SHIP TIERS above).
+  boundary.userData.inFileShipTiers = false;
+  if (!boundary.userData.wholeShipLodFamilyInstalled && inFileShipTiersAllowed()
+      && isOrdinaryLodShip(entity) && activeRootCarriesInFileTiers(boundary)) {
+    boundary.userData.inFileShipTiers = true;
+    delete boundary.userData.shipLodSelection;
+    boundary.userData._appliedLodLevel = undefined;
+    if (selection?.file) IN_FILE_SHIP_TIER_FILES.add(selection.file);
+    return false;
+  }
   if (boundary.userData.wholeShipLodFamilyInstalled) {
     // The commit already swapped a fresh root in; a refresh failure must not reject this
     // admission — the stale retained roots stay covered by the teardown hook.
@@ -10591,17 +10758,22 @@ export function installWholeShipLodFamilyController(boundary, entity, setActive,
     const generation = ++requestGeneration;
     const admissionEpoch = boundary.userData.admissionEpoch;
     const paletteSignature = JSON.stringify(paletteFor(liveEntity));
-    const stillWanted = () => generation === requestGeneration
-      && admissionEpoch === boundary.userData.admissionEpoch
-      && isAuthoredAdmissionBoundaryCurrent(options)
-      && (typeof options.isResidencyOwnerActive !== 'function' || options.isResidencyOwnerActive())
-      && boundary.userData.wholeShipLodDesiredLevel === requestedLevel
-      && (requestedLevel === 'lod0' || isOrdinaryLodShip(boundaryLiveEntity(boundary, entity)))
-      && (requestedLevel === 'lod0' || initialWholeShipLodPublicationSafe(
-        boundaryLiveEntity(boundary, entity), boundary, requestedLevel, file))
-      && shouldCommitWholeShipLodLoad(pendingLevel, requestedLevel, boundaryBelongsToScene(boundary, scene))
-      && JSON.stringify(paletteFor(boundaryLiveEntity(boundary, entity))) === paletteSignature
-      && wholeShipVisualForEntity(boundaryLiveEntity(boundary, entity), { ...options, requiredWholeShip: true })?.file === selection.file;
+    const stillWanted = () => {
+      const live = boundaryLiveEntity(boundary, entity);
+      const aborts = [];
+      if (generation !== requestGeneration) aborts.push('generation');
+      if (admissionEpoch !== boundary.userData.admissionEpoch) aborts.push('admission-epoch');
+      if (!isAuthoredAdmissionBoundaryCurrent(options)) aborts.push('boundary-current');
+      if (typeof options.isResidencyOwnerActive === 'function' && !options.isResidencyOwnerActive()) aborts.push('owner-inactive');
+      if (boundary.userData.wholeShipLodDesiredLevel !== requestedLevel) aborts.push('desired-changed');
+      if (requestedLevel !== 'lod0' && !isOrdinaryLodShip(live)) aborts.push('not-ordinary');
+      if (requestedLevel !== 'lod0' && !liveWholeShipLodPublicationSafe(live, boundary, requestedLevel, file)) aborts.push('publication');
+      if (!shouldCommitWholeShipLodLoad(pendingLevel, requestedLevel, boundaryBelongsToScene(boundary, scene))) aborts.push('pending-or-detached');
+      if (JSON.stringify(paletteFor(live)) !== paletteSignature) aborts.push('palette');
+      if (wholeShipVisualForEntity(live, { ...options, requiredWholeShip: true })?.file !== selection.file) aborts.push('file-drift');
+      if (aborts.length) boundary.userData.wholeShipLodLastAbort = { requestedLevel, aborts, at: monotonicNow() };
+      return aborts.length === 0;
+    };
     const lodLoad = (async () => {
       // Hoisted so the catch can still dispose a root abandoned by a mid-prepare throw.
       let composed = null;
@@ -10655,6 +10827,7 @@ export function installWholeShipLodFamilyController(boundary, entity, setActive,
           composed = null;
           return;
         }
+        freezeStaticChildMatrices(composed.root);
         roots[requestedLevel] = composed.root;
         retainedComposed.set(requestedLevel, composed);
         if (stillWanted()) swapTo(requestedLevel);
@@ -10832,6 +11005,7 @@ async function commitAuthoredBoundary(
   const newHull = authored.root.userData && authored.root.userData.hull;
   if (oldHull && newHull) newHull.rotation.x = oldHull.rotation.x;
   primeAuthoredState(authored.root, fallbackRoot, entity, options.lodLevel);
+  freezeStaticChildMatrices(authored.root);
 
   // Pace pre-graft compute separately from the atomic graft + publication.
   // The mounted root and its admission bookkeeping must share one ownership
@@ -10876,6 +11050,23 @@ async function commitAuthoredBoundary(
   // substrate, or the boundary keeps reporting a resolving marker over the committed hero hull.
   const staleMarker = boundary.userData && boundary.userData.resolvingMarker;
   if (staleMarker && staleMarker.parent !== boundary) delete boundary.userData.resolvingMarker;
+  // wrapShipWithAuthoredParts copies every pending-window stamp off the substrate onto the
+  // boundary. They describe a window that just closed: syncResolvingMarker exits early once
+  // resolvingMarker is gone, so a committed hull otherwise reports 'no-resident-record' /
+  // 'pending' for the rest of its life and the streaming census counts real hulls as stand-ins.
+  delete boundary.userData.admissionStandInPending;
+  delete boundary.userData.admissionStandInRetryAt;
+  delete boundary.userData.admissionStandInResolver;
+  delete boundary.userData.admissionStandInRelease;
+  delete boundary.userData.resolvingMarkerFallbackReason;
+  delete boundary.userData.authoredResolvingMarker;
+  delete boundary.userData.authoredAdmissionSubstrate;
+  delete boundary.userData.authoredAdmissionTemporaryDrawables;
+  delete boundary.userData.wantsBoundaryResolvingMarker;
+  delete boundary.userData.boundaryResolvingMarkerEntity;
+  delete boundary.userData.admissionProceduralFallback;
+  delete boundary.userData.admissionProceduralFallbackMissionOnly;
+  delete boundary.userData.shipConstruction;
   boundary.add(authored.root);
   // The swap mutated the tree under no park key — a withheld/parked verdict
   // keyed on the fallback subtree stays stale until the recheck backstop
@@ -12099,20 +12290,311 @@ function poolSwarmRetroHardware(ship, entity, scene, owner) {
   // proxy stays under its gimbal. The independently heated throat and iris stay direct.
   const admissions = new Set(ship.packagePoolAdmissions);
   const localMaterials = new Set(ship.ownerLocalMaterials);
+  const idleHot = frameCostFixPending('retroIdleHot') || frameCostFixOn('drawBatchOpt');
+  const idleHotItems = [];
+  const idleHotReleases = owner.userData.retroIdleHotPoolReleases || (owner.userData.retroIdleHotPoolReleases = new Set());
   retros.traverse((object) => {
-    const material = sharedRetroHardwareMaterial(object);
-    if (!material) return;
-    localMaterials.add(object.material);
-    object.material = material;
-    try {
-      admitRenderPackageShipPoolCandidate(scene, owner, object, object.geometry, object.material,
-        object.name, admissions, ship.packagePoolReleases);
-    } catch (error) {
-      dedupWarn('partsLibrary:retro-pool', '[partsLibrary] retro hardware remains on its direct draw', error);
+    const hwMat = sharedRetroHardwareMaterial(object);
+    if (hwMat) {
+      localMaterials.add(object.material);
+      object.material = hwMat;
+      try {
+        admitRenderPackageShipPoolCandidate(scene, owner, object, object.geometry, object.material,
+          object.name, admissions, ship.packagePoolReleases);
+      } catch (error) {
+        dedupWarn('partsLibrary:retro-pool', '[partsLibrary] retro hardware remains on its direct draw', error);
+      }
+      return;
+    }
+    const idleMat = sharedRetroIdleHotMaterial(object);
+    if (!idleMat) return;
+    const privateMat = object.material;
+    localMaterials.add(privateMat);
+    object.userData = {
+      ...(object.userData || {}),
+      sfPrivateRetroMat: privateMat,
+      sfIdleHotRetroMat: idleMat,
+    };
+    idleHotItems.push({ object, idleMat, privateMat });
+    if (idleHot) {
+      object.material = idleMat;
+      try {
+        admitRenderPackageShipPoolCandidate(scene, owner, object, object.geometry, idleMat,
+          object.name, admissions, idleHotReleases);
+      } catch (error) {
+        dedupWarn('partsLibrary:retro-pool', '[partsLibrary] retro idle hot mesh remains on its direct draw', error);
+      }
     }
   });
+  if (idleHotItems.length > 0) {
+    owner.userData.retroIdleHotItems = idleHotItems;
+    owner.userData.retroIdleHotPooled = idleHot;
+  }
   ship.packagePoolAdmissions = [...admissions];
   ship.ownerLocalMaterials = [...localMaterials];
+}
+
+/** Toggle hostile retro throat/iris idle-material pooling live for in-run A/B measurement. */
+export function syncHostileRetroIdleHotPool(scene, owner, wantOn) {
+  const items = owner && owner.userData && owner.userData.retroIdleHotItems;
+  if (!scene?.isScene || !Array.isArray(items) || items.length === 0) return false;
+  const on = Boolean(wantOn);
+  if (Boolean(owner.userData.retroIdleHotPooled) === on) return false;
+  const releases = owner.userData.retroIdleHotPoolReleases || (owner.userData.retroIdleHotPoolReleases = new Set());
+  const state = sceneState(scene);
+  if (!on) {
+    for (const release of [...releases]) {
+      try { release(); } catch (_) { /* best effort */ }
+    }
+    releases.clear();
+    for (const { object, privateMat } of items) {
+      if (object.userData?.spacefacePackagePoolCandidate && state) {
+        for (const [key, candidate] of state.packageCandidates) {
+          if (candidate.object === object) state.packageCandidates.delete(key);
+        }
+      }
+      restoreDirectPackageMesh(object, false);
+      if (privateMat) object.material = privateMat;
+    }
+    owner.userData.retroIdleHotPooled = false;
+    return true;
+  }
+  for (const { object, idleMat } of items) {
+    if (!object.geometry || !idleMat) continue;
+    object.material = idleMat;
+    try {
+      admitRenderPackageShipPoolCandidate(scene, owner, object, object.geometry, idleMat,
+        object.name || 'Retro_Idle', null, releases);
+    } catch (_) { /* remain direct */ }
+  }
+  owner.userData.retroIdleHotPooled = true;
+  return true;
+}
+
+// COLD HULKS DRAW AS ONE INSTANCED SET PER LEAF. A Swarm kill leaves a hulk of its hull (the arena
+// keeps up to 40) and each one drew every leaf directly: ten wasp hulks were 140 draws. Once a hulk's
+// ember is spent its leaves sit on the cold dead materials every spent hulk of that hull shares
+// (visualFactory.js settleColdHulk), so a leaf's (geometry, material) repeats across hulks exactly
+// like a ship hull's leaves do: each rigid opaque leaf joins the same cross-owner instance pool the
+// ships use, one instanced draw per leaf for every cold hulk of a hull. The proxy stays in the
+// hulk's graph (picking, bounds, visibility, teardown release are unchanged); the pool reads its
+// world matrix each frame, so a hulk thrown on the Line moves in its instance too.
+// ?rfx=-hulkPool keeps cold hulks on direct draws.
+export function poolColdHulkLeaves(scene, root) {
+  if (!scene?.isScene || !root || typeof root.traverse !== 'function') return 0;
+  const leaves = [];
+  root.traverse((object) => {
+    const material = object && object.isMesh ? object.material : null;
+    if (!material || Array.isArray(material) || material.userData?.spacefaceSharedAsset !== true) return;
+    if (object.userData?.spacefaceInstanceProxy || object.userData?.spacefacePackagePoolCandidate) return;
+    if (!isRigidOpaqueBatchableSurface(object, object.userData?.spacefaceTags || {}, RIGID_MOTION_POOL_OPTIONS)) return;
+    if (object.onBeforeRender !== THREE.Object3D.prototype.onBeforeRender
+      || object.onAfterRender !== THREE.Object3D.prototype.onAfterRender) return;
+    leaves.push(object);
+  });
+  let pooled = 0;
+  const label = String(root.userData?.assetId || 'ColdHulk');
+  for (const object of leaves) {
+    try {
+      admitRenderPackageShipPoolCandidate(scene, root, object, object.geometry, object.material,
+        `${label}_${object.name || 'Mesh'}`, null, null);
+      pooled++;
+    } catch (error) {
+      dedupWarn('partsLibrary:cold-hulk-pool', '[partsLibrary] cold hulk leaf remains on its direct draw', error);
+    }
+  }
+  root.userData.coldHulkPooled = pooled > 0;
+  return pooled;
+}
+
+/** Undo poolColdHulkLeaves (in-run on/off measurement): every leaf back on its own direct draw. */
+export function unpoolColdHulkLeaves(scene, root) {
+  if (!root || root.userData?.coldHulkPooled !== true) return false;
+  try { releaseOwnerInstances(root); } catch (_) { /* release is best effort; leaves are restored below */ }
+  const state = scene?.isScene ? sceneState(scene) : null;
+  root.traverse((object) => {
+    const data = object && object.userData;
+    if (!data) return;
+    if (data.spacefacePackagePoolCandidate && state) {
+      for (const [key, candidate] of state.packageCandidates) {
+        if (candidate.object === object) state.packageCandidates.delete(key);
+      }
+    }
+    if (data.spacefaceInstanceProxy || data.spacefacePackagePoolCandidate || data.spacefaceInstancePoolKey != null) {
+      restoreDirectPackageMesh(object, false);
+    }
+  });
+  root.userData.coldHulkPooled = false;
+  return true;
+}
+
+/**
+ * Pool merged ship stand-in meshes across all pending ships of the same hull record
+ * (?rfx=-drawBatchOpt restores direct draws). Uses marker-scoped releases so unpooling or
+ * authored commit releases only the stand-in slots without touching authored ship slots on owner.
+ */
+export function poolStandInLeaves(scene, owner, marker) {
+  if (!scene?.isScene || !owner || !marker || marker.userData?.standInPooled === true) return 0;
+  const mergedGroup = marker.userData?.standInMergedGroup;
+  if (!mergedGroup || !Array.isArray(mergedGroup.children) || mergedGroup.children.length === 0) return 0;
+  const poolReleases = marker.userData.standInPoolReleases || (marker.userData.standInPoolReleases = new Set());
+  const assetLabel = String(marker.userData.standInAssetId || 'Ship').replace(/[^A-Za-z0-9_.-]+/g, '_').slice(0, 48);
+  let pooled = 0;
+  for (let i = 0; i < mergedGroup.children.length; i++) {
+    const mesh = mergedGroup.children[i];
+    const material = mesh && mesh.isMesh ? mesh.material : null;
+    if (!material || Array.isArray(material) || !mesh.geometry) continue;
+    if (mesh.userData?.spacefaceInstanceProxy || mesh.userData?.spacefacePackagePoolCandidate) continue;
+    try {
+      admitRenderPackageShipPoolCandidate(
+        scene,
+        owner,
+        mesh,
+        mesh.geometry,
+        material,
+        `StandIn_${assetLabel}_${i}`,
+        null,
+        poolReleases,
+      );
+      pooled++;
+    } catch (error) {
+      dedupWarn('partsLibrary:standin-pool', '[partsLibrary] stand-in leaf remains on its direct draw', error);
+    }
+  }
+  if (pooled > 0) {
+    marker.userData.standInPooled = true;
+    const substrate = marker.parent;
+    if (substrate && substrate.userData && marker.userData.standInReleaseHooked !== true) {
+      marker.userData.standInReleaseHooked = true;
+      const prevRelease = substrate.userData.admissionStandInRelease;
+      substrate.userData.admissionStandInRelease = () => {
+        unpoolStandInLeaves(scene, owner, marker);
+        if (typeof prevRelease === 'function') prevRelease();
+      };
+    }
+  }
+  return pooled;
+}
+
+/** Undo poolStandInLeaves: release only this stand-in's pool slots and restore its direct meshes. */
+export function unpoolStandInLeaves(scene, owner, marker) {
+  if (!marker || marker.userData?.standInPooled !== true) return false;
+  const poolReleases = marker.userData.standInPoolReleases;
+  if (poolReleases instanceof Set) {
+    for (const release of [...poolReleases]) {
+      try { release(); } catch (_) { /* best effort */ }
+    }
+    poolReleases.clear();
+  }
+  const state = scene?.isScene ? sceneState(scene) : null;
+  const mergedGroup = marker.userData.standInMergedGroup;
+  if (mergedGroup && typeof mergedGroup.traverse === 'function') {
+    mergedGroup.traverse((object) => {
+      const data = object && object.userData;
+      if (!data) return;
+      if (data.spacefacePackagePoolCandidate && state) {
+        for (const [key, candidate] of state.packageCandidates) {
+          if (candidate.object === object) state.packageCandidates.delete(key);
+        }
+      }
+      if (data.spacefaceInstanceProxy || data.spacefacePackagePoolCandidate || data.spacefaceInstancePoolKey != null) {
+        restoreDirectPackageMesh(object, false);
+      }
+    });
+  }
+  marker.userData.standInPooled = false;
+  return true;
+}
+
+/**
+ * Pool repeated static PlaceProp meshes (rocks, monoliths, arena furniture) and BroodRemain debris
+ * meshes across identical owners in the scene (?rfx=-drawBatchOpt restores direct draws).
+ */
+export function poolStaticPropLeaves(scene, boundary) {
+  if (!scene?.isScene || !boundary || boundary.userData?.staticPropPooled === true) return 0;
+  const isBroodRemain = typeof boundary.userData?.broodRemainKind === 'string' && boundary.userData.broodRemainKind.length > 0;
+  if (!isBroodRemain && boundary.userData?.authoredAssetState !== 'authored') return 0;
+  const eligibleRoots = [];
+  if (isBroodRemain) {
+    eligibleRoots.push(boundary);
+  } else {
+    for (const child of boundary.children || []) {
+      if (child && child.visible !== false && child.userData?.staticPropPoolEligible === true) {
+        eligibleRoots.push(child);
+      }
+    }
+  }
+  if (eligibleRoots.length === 0) return 0;
+  const poolReleases = boundary.userData.staticPropPoolReleases || (boundary.userData.staticPropPoolReleases = new Set());
+  let pooled = 0;
+  for (const propRoot of eligibleRoots) {
+    const labelPrefix = String(
+      isBroodRemain ? `BroodRemain_${boundary.userData.broodRemainKind}` : (propRoot.userData.placeId || 'StaticProp'),
+    ).replace(/[^A-Za-z0-9_.-]+/g, '_').slice(0, 48);
+    const leaves = [];
+    propRoot.traverse((object) => {
+      const material = object && object.isMesh ? object.material : null;
+      if (!material || Array.isArray(material) || !object.geometry) return;
+      if (material.transparent || material.depthWrite === false || material.transmission > 0) return;
+      if (object.userData?.spacefaceInstanceProxy || object.userData?.spacefacePackagePoolCandidate) return;
+      if (object.onBeforeRender !== THREE.Object3D.prototype.onBeforeRender
+        || object.onAfterRender !== THREE.Object3D.prototype.onAfterRender) return;
+      leaves.push(object);
+    });
+    for (let i = 0; i < leaves.length; i++) {
+      const object = leaves[i];
+      try {
+        admitRenderPackageShipPoolCandidate(
+          scene,
+          boundary,
+          object,
+          object.geometry,
+          object.material,
+          `PlaceProp_${labelPrefix}_${i}`,
+          null,
+          poolReleases,
+        );
+        pooled++;
+      } catch (error) {
+        dedupWarn('partsLibrary:static-prop-pool', '[partsLibrary] static prop leaf remains on its direct draw', error);
+      }
+    }
+  }
+  boundary.userData.staticPropPooled = pooled > 0;
+  return pooled;
+}
+
+/** Undo poolStaticPropLeaves (in-run on/off measurement): restore direct meshes on this prop boundary. */
+export function unpoolStaticPropLeaves(scene, boundary) {
+  if (!boundary || boundary.userData?.staticPropPooled !== true) return false;
+  const poolReleases = boundary.userData.staticPropPoolReleases;
+  if (poolReleases instanceof Set) {
+    for (const release of [...poolReleases]) {
+      try { release(); } catch (_) { /* best effort */ }
+    }
+    poolReleases.clear();
+  }
+  const state = scene?.isScene ? sceneState(scene) : null;
+  const isBroodRemain = typeof boundary.userData?.broodRemainKind === 'string' && boundary.userData.broodRemainKind.length > 0;
+  const roots = isBroodRemain
+    ? [boundary]
+    : (boundary.children || []).filter((child) => child && child.userData?.staticPropPoolEligible === true);
+  for (const child of roots) {
+    child.traverse((object) => {
+      const data = object && object.userData;
+      if (!data) return;
+      if (data.spacefacePackagePoolCandidate && state) {
+        for (const [key, candidate] of state.packageCandidates) {
+          if (candidate.object === object) state.packageCandidates.delete(key);
+        }
+      }
+      if (data.spacefaceInstanceProxy || data.spacefacePackagePoolCandidate || data.spacefaceInstancePoolKey != null) {
+        restoreDirectPackageMesh(object, false);
+      }
+    });
+  }
+  boundary.userData.staticPropPooled = false;
+  return true;
 }
 
 export function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) {
@@ -14565,8 +15047,8 @@ function flushStaticBatchGroup(parent, bindings, buckets, options = {}) {
 
 function* flushStaticBatchGroupSteps(parent, bindings, buckets, options = {}) {
   if (!buckets || buckets.length === 0) return;
-  if (buckets.length === 1) {
-    yield* flushStaticBatchSteps(parent, bindings, buckets[0], options);
+  if (buckets.length === 1 || options.separateMaterialsForInstancing === true) {
+    for (const bucket of buckets) yield* flushStaticBatchSteps(parent, bindings, bucket, options);
     return;
   }
 
@@ -15262,8 +15744,26 @@ function createRenderPackageShipNodeFactory({
   };
 }
 
+// A leaf under an authored MOTION_* group moves rigidly with that group: the motion bank's contract
+// (src/contracts/motionBank.js) admits translation and rotation channels only. The pool reads each
+// proxy's own world matrix every frame through its retained owner-to-leaf path
+// (updateInstanceProxyWorldPath), which is how the gimballed retro hardware is already pooled, so a
+// motion-group leaf can share one instanced draw across every ship of its hull instead of costing
+// one draw per ship. Whole-hull motion groups (the Ashline Dart and Lode keep every hull leaf under
+// MOTION_HULL_CORE) used to put ten direct draws on each wasp and thirteen on each bastion.
+// Fans, turrets, drive cores, canopies, lamps and damage surfaces still refuse inside the predicate.
+// ?rfx=-motionPool restores the direct draws.
+const PER_SHIP_POOL_OPTIONS = Object.freeze({ requiresPerShipMesh });
+const RIGID_MOTION_POOL_OPTIONS = Object.freeze({
+  requiresPerShipMesh,
+  isTransformOnlySource: () => true,
+  isAttestedRigidMotionOwner: () => true,
+});
+
 function canPoolRenderPackageShipMesh(source, tags = {}) {
-  if (!isRigidOpaqueBatchableSurface(source, tags, { requiresPerShipMesh })) return false;
+  const options = tags.motionGroup && frameCostFixOn('motionPool')
+    ? RIGID_MOTION_POOL_OPTIONS : PER_SHIP_POOL_OPTIONS;
+  if (!isRigidOpaqueBatchableSurface(source, tags, options)) return false;
   // R8 pin (W142): an armed source (armGeometryGpuResidentLedger set a custom onAfterRender)
   // is rejected here — correct: instanced pools never fire per-object hooks, so an armed
   // source would silently lose its ledger stamp. Unreachable today (preview/subject
@@ -15622,7 +16122,7 @@ function admitRenderPackageShipPoolCandidate(
           deferNewChunkPublication,
           initializeVisibleMatrix: true,
           deferProxyActivation: deferNewChunkPublication,
-          activateProxy: () => promoteRenderPackageMeshToPoolProxy(first.object, key),
+          activateProxy: () => promoteRenderPackageMeshToPoolProxy(first.object, key, first.label),
           packageCandidate: first,
           releaseScope: first.releaseScope,
         },
@@ -15631,7 +16131,7 @@ function admitRenderPackageShipPoolCandidate(
     allocations.push(allocateInstance(scene, owner, object, geometry, material, label, {
       deferNewChunkPublication,
       deferProxyActivation: deferNewChunkPublication,
-      activateProxy: () => promoteRenderPackageMeshToPoolProxy(object, key),
+      activateProxy: () => promoteRenderPackageMeshToPoolProxy(object, key, label),
       packageCandidate: nextCandidate,
       releaseScope: poolReleases,
     }));
@@ -15776,12 +16276,16 @@ function installPackagePoolCandidate(state, candidate) {
   return true;
 }
 
-function promoteRenderPackageMeshToPoolProxy(object, key) {
+function promoteRenderPackageMeshToPoolProxy(object, key, poolLabel = '') {
   // Keep visibility true: pool visibility follows this exact object's ancestor/LOD chain. Suppress
   // only direct Mesh submission so the same object can remain in planNodes/nodes/anchors maps while
   // the scene-level InstancedMesh owns the draw. Geometry/material stay attached for bounds,
   // texture-residency collection, diagnostics, and semantic inspection.
-  object.isMesh = false;
+  const bypassOff = isDrawBatchOptPoolLabel(poolLabel) && !frameCostFixOn('drawBatchOpt');
+  object.isMesh = bypassOff;
+  if (bypassOff && object.userData && object.userData.sfPrivateRetroMat) {
+    object.material = object.userData.sfPrivateRetroMat;
+  }
   object.userData = {
     ...(object.userData || {}),
     spacefaceInstanceProxy: true,
@@ -16346,7 +16850,8 @@ function createInstanceChunk(scene, pool, ordinal, options = {}) {
   mesh.name = `GLTFKit_InstancePool_${pool.label}_${ordinal}`;
   mesh.count = 0;
   mesh.frustumCulled = false; // world positions span the scene; source-geometry bounds are meaningless
-  mesh.castShadow = !pool.material.transparent && pool.material.depthWrite !== false;
+  mesh.castShadow = !pool.material.transparent && pool.material.depthWrite !== false
+    && !String(pool.label || '').startsWith('StandIn_');
   mesh.receiveShadow = !pool.material.transparent;
   mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
   mesh.userData.spacefaceInstancePool = true;
@@ -16571,9 +17076,46 @@ function commitInstanceChunkMatrix(chunk) {
   }
 }
 
+function isDrawBatchOptPoolLabel(label) {
+  const s = String(label || '');
+  return s.startsWith('StandIn_')
+    || s.startsWith('PlaceProp_')
+    || s.startsWith('Retro_Throat')
+    || s.startsWith('Retro_Iris');
+}
+
+function syncDrawBatchOptPoolBypass(state) {
+  const on = frameCostFixOn('drawBatchOpt');
+  if (state.lastDrawBatchOpt === on) return;
+  state.lastDrawBatchOpt = on;
+  for (const pool of state.pools.values()) {
+    if (!isDrawBatchOptPoolLabel(pool.label)) continue;
+    for (const chunk of pool.chunks) {
+      if (!chunk || chunk.retired) continue;
+      for (const slot of chunk.slots.values()) {
+        if (!slot || slot.released || !slot.proxy) continue;
+        const proxy = slot.proxy;
+        if (proxy.userData?.spacefaceInstanceProxy !== true) continue;
+        if (!on) {
+          proxy.isMesh = true;
+          if (proxy.userData.sfPrivateRetroMat) proxy.material = proxy.userData.sfPrivateRetroMat;
+        } else {
+          proxy.isMesh = false;
+          if (proxy.userData.sfIdleHotRetroMat) proxy.material = proxy.userData.sfIdleHotRetroMat;
+          if (slot.ownerState) slot.ownerState.dirty = true;
+        }
+      }
+      if (chunk.mesh) {
+        chunk.mesh.visible = on && chunk.mesh.count > 0 && (!chunk.packageAdmission || chunk.packageAdmission.activated);
+      }
+    }
+  }
+}
+
 function syncSceneState(state, opts = {}) {
   const stats = resetPoolStats(state);
   if (!state.pools.size) return stats;
+  syncDrawBatchOptPoolBypass(state);
   const context = buildInstanceCullContext(state, opts);
   primePoolStats(state, stats);
   if (context.frameBounded) syncSceneStateFromFrame(state, context, stats);
@@ -16690,13 +17232,14 @@ function finalizeInstanceChunk(chunk, dirty, stats, context = null) {
     chunk.mesh.count = nextCount;
     dirty = true;
   }
-  chunk.mesh.visible = nextCount > 0;
+  const bypassOff = isDrawBatchOptPoolLabel(chunk.pool && chunk.pool.label) && !frameCostFixOn('drawBatchOpt');
+  chunk.mesh.visible = nextCount > 0 && !bypassOff;
   if (dirty) {
     stats.dirtyChunks++;
     commitInstanceChunkMatrix(chunk);
   }
   applyInstanceChunkSubmitPolicy(chunk, {
-    count: nextCount,
+    count: bypassOff ? 0 : nextCount,
     playerX: context && context.playerX,
     playerZ: context && context.playerZ,
     castRadiusSq: context && context.castRadiusSq,
@@ -16709,10 +17252,12 @@ function applyInstanceChunkPolicies(state, context) {
   // Bound slack-expired metric recomputes per pass — a large same-frame displacement
   // exhausts every chunk's slack at once; deferred chunks re-evaluate next frame.
   const recomputeBudget = { remaining: 32 };
+  const drawBatchOn = frameCostFixOn('drawBatchOpt');
   for (const pool of state.pools.values()) {
+    const poolBypassOff = !drawBatchOn && isDrawBatchOptPoolLabel(pool.label);
     for (const chunk of pool.chunks) {
       applyInstanceChunkSubmitPolicy(chunk, {
-        count: chunk.mesh ? chunk.mesh.count : 0,
+        count: poolBypassOff ? 0 : (chunk.mesh ? chunk.mesh.count : 0),
         playerX: context && context.playerX,
         playerZ: context && context.playerZ,
         castRadiusSq: context && context.castRadiusSq,

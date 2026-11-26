@@ -83,11 +83,11 @@ export const salvageTender = {
     const body = this.physical.find(this._row), player = this._player();
     if (!this._eligible() || !player || this.state.ui?.docked) return fail('Services need a live ship in flight.');
     if (!this._row.owned) return fail('Recover and claim Morrowlight first.');
-    if (!this._sameSector() || !body || distance(player.pos, body.pos) > C.serviceRange) return fail('Come within 100 wu of Morrowlight.');
+    if (!this._sameSector() || !body || distance(player.pos, body.pos) > C.serviceRange) return fail('Come within 100 m of Morrowlight.');
     if (!this.physical.nativeReady(body) || !this.physical.nativeReady(player)) return fail('Waiting for the physical berth to reconnect.');
     if (this._row.physical.mode !== 'secured') return fail('Secure Morrowlight before using the workshop.');
     if (!allowDisabled && (this._row.physical.disabled || body.hull < C.serviceHullFloor)) return fail('Morrowlight needs a hull patch before its machinery can work.');
-    if (Math.hypot(player.vel.x - body.vel.x, player.vel.z - body.vel.z) > C.serviceSpeed || speed(body) > C.serviceSpeed) return fail('Match the berth’s speed below 8 wu/s.');
+    if (Math.hypot(player.vel.x - body.vel.x, player.vel.z - body.vel.z) > C.serviceSpeed || speed(body) > C.serviceSpeed) return fail('Match the berth’s speed below 8 m/s.');
     return { ok: true, body, player };
   },
   _remember(kind, text) {
@@ -215,7 +215,7 @@ export const salvageTender = {
     let detail = `${stateWord} · hull ${hull}. ${row.lastStatus}`;
     const gate = this._serviceGate();
     if (!row.owned && this._page !== 'cargo') {
-      detail = `A stranded repair barge with an intact fuel pump. Tow this original hull 60 wu clear into its marked berth, slow below 8 wu/s, then claim it with 1 salvage electronics or 45 cr. Tap thrust gently: the tender keeps coasting after you brake. The emergency locker contains enough parts; inspection costs nothing. ${availableLabel(tenderCostQuote(this.state, TENDER_STAGES[1].cost))}`;
+      detail = `A stranded repair barge with an intact fuel pump. Tow this original hull 60 m clear into its marked berth, slow below 8 m/s, then claim it with 1 salvage electronics or 45 cr. Tap thrust gently: the tender keeps coasting after you brake. The emergency locker contains enough parts; inspection costs nothing. ${availableLabel(tenderCostQuote(this.state, TENDER_STAGES[1].cost))}`;
       if (!row.rescueAccepted) choices.push(choice('accept', 'Take the recovery line'));
       else {
         choices.push(choice('tow', 'Connect / resume Massline tow'));
@@ -259,7 +259,7 @@ export const salvageTender = {
       choices.push(choice('return_home', 'Mark actual Morrowlight · no autopilot', { action: 'supply_return_course' }));
       choices.push(choice('return_cargo', 'Back to the original lockers', { action: 'menu', page: 'cargo' }));
     } else if (this._page === 'service') {
-      detail = `Supplies come from your existing hold. One fuel cell pumps up to ${C.fuelPerCell} fuel; one scrap restores up to ${C.repairPerScrap} hull/armor. Keep within 100 wu at matched speed. Leaving pauses prepaid work.`;
+      detail = `Supplies come from your existing hold. One fuel cell pumps up to ${C.fuelPerCell} fuel; one scrap restores up to ${C.repairPerScrap} hull/armor. Keep within 100 m at matched speed. Leaving pauses prepaid work.`;
       if (row.service) {
         detail += ` Booked ${row.service.type}: ${row.service.delivered.toFixed(1)}/${row.service.requested.toFixed(1)} delivered. ${row.service.paused ? row.service.pauseReason : 'Machinery is working.'}`;
         if (row.service.type === 'repair') {
@@ -293,7 +293,7 @@ export const salvageTender = {
         choices.push(choice('restore_cash', `Buy installation supplies · ${next.cost.credits} cr`, { action: 'restore', payment: 'credits' }, gate.ok && q.canUseCredits, gate.reason || 'Insufficient credits.'));
       }
     } else if (this._page === 'cargo') {
-      detail = `Match a pod’s speed within 75 wu to take supplies${row.owned ? '; empty pods can be repacked' : ''}.`;
+      detail = `Match a pod’s speed within 75 m to take supplies${row.owned ? '; empty pods can be repacked' : ''}.`;
       const nearby = this.physical.recoveryBodies(row).filter(e => this.physical.canUnload(row, e.id).ok)
         .sort((a, b) => distance(this._player()?.pos, a.pos) - distance(this._player()?.pos, b.pos) || a.id - b.id)[0];
       // The pod that yields take-one buttons needs no second row of the deck.
@@ -326,7 +326,7 @@ export const salvageTender = {
       if (row.stage >= 3) {
         const target = this._rackCandidate();
         if (row.physical.rackId) choices.push(choice('release', 'Release the original rack pod', { bodyId: target?.id }));
-        else choices.push(choice('stow', 'Clamp nearest supply pod into rack', { bodyId: target?.id }, !!target && gate.ok, 'Bring one stocked original slowly within 95 wu.'));
+        else choices.push(choice('stow', 'Clamp nearest supply pod into rack', { bodyId: target?.id }, !!target && gate.ok, 'Bring one stocked original slowly within 95 m.'));
       }
     } else if (this._page === 'packing') {
       const target = this._packingTarget, e = this.state.entities.get(target?.bodyId);
@@ -346,7 +346,7 @@ export const salvageTender = {
       }
       choices.push(choice('pods', 'Choose another original pod', { action: 'menu', page: 'restock' }));
     } else if (this._page === 'navigation') {
-      detail = 'Relocation moves this hull and its clamped cargo with your actual Massline. Release costs one scrap for the mooring brake; resuming an interrupted tow is free. Stop below 8 wu/s to secure the new berth; scan the hull to inspect it at any time. Intersector relocation is not offered.';
+      detail = 'Relocation moves this hull and its clamped cargo with your actual Massline. Release costs one scrap for the mooring brake; resuming an interrupted tow is free. Stop below 8 m/s to secure the new berth; scan the hull to inspect it at any time. Intersector relocation is not offered.';
       choices.push(choice('course', 'Mark Morrowlight on the chart', { destination: 'home' }));
       choices.push(choice('relocate', row.physical.mode === 'released' ? 'Resume the same tow · no extra cost' : 'Release & tow · 1 scrap', {}, this._near(TENDER_PHYSICAL.towRange)));
       choices.push(choice('secure', 'Secure at this physical location', {}, row.physical.mode === 'released' && this.physical.canSecure(row).ok));

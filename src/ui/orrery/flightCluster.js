@@ -19,12 +19,12 @@
 import { svg, arcD, polar, circularText, ticksD } from './svg.js';
 import { arcGauge, orbitRing, ring } from './instruments.js';
 import { createSpring } from './motion.js';
-import { createCounter } from './text.js';
 import { createSpeedDial, SPEED_DIAL } from './speedDial.js';
 import { hullPosterUrl } from '../hullPosters.js';
 import { nextFlightDecision, NEXT_DECISION_CLASS } from './nextDecision.js';
 import { ringLegendText } from './ringLegend.js';
 import { arsenalIcon } from './arsenalGlyphs.js';
+import { createVisorReadouts } from './visorInstruments.js';
 import { dpIcon } from '../deckplate/icons.js';
 
 // The colour phase is decided by the displayed reading (speedDial.js owns it; the contract is pinned here).
@@ -33,26 +33,25 @@ export { speedPhase } from './speedDial.js';
 const STYLE_ID = 'sf-orrery-cluster-style';
 const ICON_ROOT = new URL('../../../assets/ui/kit/icons/48/', import.meta.url).href;
 
-const W = 760;
-const H = 540;
-const P = Object.freeze({ x: 250, y: 350 });
+const W = 648;
+const H = 502;
+const P = Object.freeze({ x: 226, y: 309 });
 const R = Object.freeze({
   hull: 104, armor: 113, shield: 123, orbit: 145, heading: 154, flank: 170, rim: 177,
-  crescent: 262, payload: 318,
+  crescent: 218, payload: 282,
 });
 // The Speed Dial's pivot: the upper-left of the canvas, clear of the ring stack and the tether.
-const DIAL_AT = Object.freeze({ x: 122, y: 134 });
+const DIAL_AT = Object.freeze({ x: 122, y: 140 });
 const GAUGE_FROM = 225;
 const GAUGE_TO = 495;
-const KEY_R = 20;
+const KEY_R = 24;
 // A single non-word, non-space character: a bare punctuation key label (`, ', /, ...).
 const GLYPH_KEY = /^[^\w\s]$/;
-// A collapsed node carries the same authored glyph as an unfolded key, so it must be big enough to read at
-// the Cluster's smallest live scale (.6): 16 → a 32 px socket holding a 22 px mark.
-const NODE_R = 16;
-const STEP_KEY = 14;
-const STEP_NODE = 12;
-const CRESCENT_START = 34;
+const NODE_R = 22;
+const STEP_KEY = 15;
+const STEP_NODE = 13;
+const CRESCENT_START = 35;
+export const FLIGHT_CLUSTER_SIZE = Object.freeze({ width: W, height: H });
 
 const CSS = `
 .orr-cluster { position:relative; width:${W}px; height:${H}px; pointer-events:none; color:var(--dp-ink, #e8e2d4);
@@ -86,12 +85,14 @@ const CSS = `
 .orr-cluster__next { position:absolute; top:${P.y + 146}px; width:214px; margin:0;
   left: calc(${P.x - 62 + 36}px - (12px / var(--orr-cluster-scale, 1) - 12px) * 5);
   font-family:var(--dp-face-label, inherit); font-weight:560; line-height:1.25;
-  font-size:max(12px, calc(13px * var(--sf-text-scale, 1))); color:var(--dp-danger, #ff5038);
+  font-size:max(12px, calc(13px * var(--sf-text-scale, 1))); color:#ff8a70;
+  /* HUD-2: a warning line over the world needs its own backing to stay legible on any scene. */
+  width:max-content; max-width:240px; padding:2px 8px; background:rgb(8 14 20 / .78); border-left:2px solid #ff644c;
   pointer-events:none; animation:none !important; }
 .orr-cluster__next[hidden] { display:none !important; }
 .orr-cluster__read { position:absolute; display:flex; flex-direction:column; gap:3px; }
 .orr-cluster__read .orr-value { font-size:15px; }
-.orr-cluster__key { position:absolute; width:48px; height:48px; margin:-24px 0 0 -24px;
+.orr-cluster__key { position:absolute; width:48px; height:48px; margin:-24px 0 0 -24px; border-radius:50%;
   /* the one part of the Cluster that answers the cursor: a verb key is hoverable and focusable so
      its tier-2 [data-why] reveal can fire (shared whyReveal.js mechanism). A click fires nothing —
      the press is the key — so the click still falls through to the flight input underneath. */
@@ -100,9 +101,9 @@ const CSS = `
 /* the words and the count only LABEL the socket: they never take the cursor, so a click past the socket's own
    48 px box is the pilot firing, whatever the label's reach */
 .orr-cluster__keytag, .orr-cluster__count { pointer-events:none; }
-.orr-cluster__icon { position:absolute; left:50%; top:50%; width:22px; height:22px; margin:-11px 0 0 -11px; background:currentColor;
+.orr-cluster__icon { position:absolute; left:50%; top:50%; width:40px; height:40px; margin:-20px 0 0 -20px; background:currentColor;
   -webkit-mask:var(--orr-icon) center / contain no-repeat; mask:var(--orr-icon) center / contain no-repeat; color:var(--dp-ink, #e8e2d4); opacity:1.0; }
-.orr-cluster__key.is-node .orr-cluster__icon { width:22px; height:22px; margin:-11px 0 0 -11px; opacity:.88; }
+.orr-cluster__key.is-node .orr-cluster__icon { opacity:.88; }
 /* a generic FAMILY mark (no authored drawing for this item) is dashed and dimmer: a kind of equipment, not this item's own face */
 .orr-cluster__icon[data-glyph-source="family"] { opacity:.5; }
 /* The five powers (owner 2026-10-22): one tint per power so a glance tells them apart. Declared
@@ -111,10 +112,11 @@ const CSS = `
 .orr-cluster__key[data-power="shove"] .orr-cluster__icon { color:var(--orr-power-shove, #ff6b5a); }
 .orr-cluster__key[data-power="pin"] .orr-cluster__icon { color:var(--orr-power-pin, #78a6ff); }
 .orr-cluster__key[data-power="bomb"] .orr-cluster__icon { color:var(--orr-power-bomb, #ff8a3d); }
-.orr-cluster__key[data-power="rig"] .orr-cluster__icon { color:var(--orr-power-rig, #eef2f4); }
+.orr-cluster__key[data-power="rig"] .orr-cluster__icon,
+.orr-cluster__key[data-power="plow"] .orr-cluster__icon { color:var(--orr-power-rig, #eef2f4); }
 .orr-cluster__key[data-power="line"] .orr-cluster__icon { color:var(--orr-power-line, #5fd6e8); }
 .orr-cluster__icon.has-arsenal { background:none; -webkit-mask:none; mask:none; }
-.orr-cluster__icon.has-arsenal svg { display:block; width:100%; height:100%; stroke-width:1.9; }
+.orr-cluster__icon.has-arsenal svg { display:block; width:100%; height:100%; stroke-width:1.7; }
 .orr-cluster__key.is-armed .orr-cluster__icon { color:var(--dp-hand-hot, #ffd98c); opacity:1; }
 /* Verbs that feel loaded: armed key exhales a slow transform-only breath */
 .orr-cluster__key.is-armed { animation: orr-key-armed-breath 2.4s ease-in-out infinite; will-change:transform; }
@@ -128,8 +130,8 @@ const CSS = `
 .orr-cluster__key.is-locked .orr-cluster__icon, .orr-cluster__key.is-empty .orr-cluster__icon { opacity:.24; }
 /* labels hold a 12 px floor on screen whatever the cluster's scale */
 .orr-cluster__keytag { position:absolute; top:50%; transform:translateY(-50%); white-space:nowrap; font-size:max(12px, calc(12px / var(--orr-cluster-scale, 1))); font-weight:500; }
-.orr-cluster__key:not(.is-node) .orr-cluster__keytag { left:${24 + KEY_R + 10}px; color:rgb(232 226 212 / .88); }
-.orr-cluster__key.is-node .orr-cluster__keytag { left:${24 + NODE_R + 9}px; color:rgb(232 226 212 / .92); }
+.orr-cluster__key:not(.is-node) .orr-cluster__keytag { left:${24 + KEY_R + 6}px; color:rgb(232 226 212 / .88); }
+.orr-cluster__key.is-node .orr-cluster__keytag { left:${24 + NODE_R + 6}px; color:rgb(232 226 212 / .92); }
 /* a bare punctuation key (a backtick or an apostrophe) is unreadable as a stray mark at 12 px:
    it takes the key-cap frame so the hint reads as a key at a glance; the accessible name keeps
    the exact key */
@@ -139,17 +141,15 @@ const CSS = `
 .orr-cluster__key.is-node .orr-cluster__keytag b { font-weight:500; color:rgb(232 226 212 / .88); }
 /* Inactive sockets keep their authored mark and live binding; the shared tip still carries the
    effective verb and its state. The unfolded choice and armed sockets keep their full words. */
-.orr-cluster__key.is-node:not(.is-armed) .orr-cluster__keyword { display:none; }
+.orr-cluster__key.is-node:not(.is-armed):not([data-power="rig"]):not([data-power="plow"]) .orr-cluster__keyword { display:none; }
 .orr-cluster__keyshort { display:none; }
-.orr-cluster__key.is-node:not(.is-armed) .orr-cluster__keytag b:not(.is-glyph) {
+.orr-cluster__key.is-node:not(.is-armed):not([data-power="rig"]):not([data-power="plow"]) .orr-cluster__keytag b:not(.is-glyph) {
   margin-left:0; padding-left:0; border-left:0; }
 
 .orr-cluster__key.is-armed .orr-cluster__keytag { color:var(--dp-hand, #f2b950); font-weight:600; }
 .orr-cluster__key.is-armed .orr-cluster__keytag b { color:var(--dp-hand-hot, #ffd98c); font-weight:700; }
 .orr-cluster__key.is-locked .orr-cluster__keytag, .orr-cluster__key.is-empty .orr-cluster__keytag { opacity:.55; }
 @media (max-width: 1400px) {
-  .orr-cluster__key:not(.is-node) .orr-cluster__keytag { left:${24 + KEY_R + 6}px; }
-  .orr-cluster__key.is-node .orr-cluster__keytag { left:${24 + NODE_R + 5}px; }
   .orr-cluster__keytag::before { inset:-2px -5px; }
 }
 /* A phone keeps the pressable key in view even when a live verb gains an equipment/state
@@ -164,7 +164,7 @@ const CSS = `
      frame; the full sentence stays on the socket's accessible name and tip. */
   .orr-cluster__key.is-node:not(.is-armed) .orr-cluster__keytag .orr-cluster__keyword { display:none; }
   .orr-cluster__key:is(.is-armed,:not(.is-node)) .orr-cluster__keyword { display:none; }
-  .orr-cluster__key:is(.is-armed,:not(.is-node)) .orr-cluster__keyshort {
+  .orr-cluster__key:is(.is-armed,:not(.is-node),[data-power="rig"],[data-power="plow"]) .orr-cluster__keyshort {
     display:inline; min-width:0; overflow:hidden; text-overflow:ellipsis; }
   /* The next-decision line sits left of the key column on a phone — 250px of
      artboard width would run its tail under the keytags. Wrap it in the lane. */
@@ -179,7 +179,7 @@ const CSS = `
   .orr-cluster__legend svg { width:14px; }
   .orr-cluster__legend .orr-label { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 }
-.orr-cluster__count { position:absolute; left:50%; top:50%; transform:translate(17px, 11px); font-family:var(--dp-face-numeral); font-weight:700; font-size: 12px; color:var(--dp-phos, #dfeeff); }
+.orr-cluster__count { position:absolute; left:50%; top:50%; transform:translate(17px, 11px); font-family:var(--dp-face-read, "Instrument Sans", sans-serif); font-variant-numeric:tabular-nums; font-weight:700; font-size: 12px; color:var(--dp-phos, #dfeeff); }
 /* S12 — the two-slot Swarm perk loadout, two lit chips riding the ring's open flank. A trigger
    pulse replays through the is-pulse class; reduced-motion CSS kills the keyframe, the chip stays. */
 .orr-cluster__perks { position:absolute; display:flex; flex-direction:column; gap:8px; pointer-events:none; }
@@ -192,14 +192,16 @@ const CSS = `
    a faceful of labels. When the adapter marks the cluster is-ship-under the text ghosts back —
    sockets, rings, dial and the Hand keep full strength, so the rail still reads at a glance. */
 .orr-cluster__keytag, .orr-cluster__count, .orr-cluster__next, .orr-cluster__payload { transition:opacity .28s ease; }
-.orr-cluster.is-ship-under .orr-cluster__keytag,
+.orr-cluster.is-ship-under .orr-cluster__keytag { opacity:.65; }
+.orr-cluster.is-ship-under .orr-cluster__key:is(:hover,:focus-visible,.is-active,.is-armed) .orr-cluster__keytag { opacity:1; }
 .orr-cluster.is-ship-under .orr-cluster__count,
 .orr-cluster.is-ship-under .orr-cluster__next,
 .orr-cluster.is-ship-under .orr-cluster__payload { opacity:.16; }
 .orr-cluster__payload { position:absolute; display:flex; flex-direction:column; gap:3px; white-space:nowrap; }
-/* X3 Adventure glass: the line's beam and strain dial stay; its "Body · on the line" / tonnage /
-   strain words are telemetry for the details surfaces, not the flight glass. */
+/* The beam and the strain dial stay. The words are one weight: Light or Heavy. Swarm hides them. */
 .orr-cluster__payload.is-quiet { display:none; }
+.orr-cluster__weight { font-family:var(--dp-face-read, "Instrument Sans", system-ui, sans-serif);
+  font-weight:650; font-size:14px; letter-spacing:.04em; text-transform:none; color:var(--dp-ink, #e8e2d4); }
 .orr-cluster__payload .orr-counter { font-family:var(--dp-face-numeral); font-weight:320; font-size:26px; color:var(--dp-phos, #dfeeff); }
 .orr-cluster__payload small { font-family:var(--dp-face-label); font-stretch:112%; font-weight:600; font-size: 12px; letter-spacing:.12em; color:var(--dp-ink-dim, #b7b4a6); }
 .orr-cluster__beam { stroke-dasharray:1 5; }
@@ -219,29 +221,17 @@ const CSS = `
 .orr-cluster__key[data-power="shove"] { --orr-power-col: var(--dp-shove, #ffd470); }
 .orr-power-pin, .orr-cluster__key[data-power="pin"] { --orr-power-col: var(--dp-pin, #b29eff); }
 .orr-cluster__key[data-power="bomb"] { --orr-power-col: var(--dp-bomb, #ff7a6b); }
-.orr-cluster__key[data-power="rig"] { --orr-power-col: var(--dp-rig, #5beba0); }
+.orr-cluster__key[data-power="rig"], .orr-cluster__key[data-power="plow"] { --orr-power-col: var(--dp-rig, #5beba0); }
 .orr-cluster__key[data-power="line"] { --orr-power-col: var(--dp-line, #8be9fd); }
 .orr-cluster__key[data-power="gyre"] { --orr-power-col: var(--dp-gyre, #e0a3ff); }
 .orr-cluster__key[data-power="cloak"] { --orr-power-col: var(--dp-cloak, #a8c0ff); }
 
-.orr-cluster__key.is-active,
-.orr-cluster__key.is-held,
-.orr-cluster__key.is-firing {
-  filter: drop-shadow(0 0 10px var(--orr-power-col, var(--dp-hand, #f2b950)));
+.orr-cluster__key:is(.is-active,.is-held,.is-firing) .orr-cluster__icon {
+  color:var(--orr-power-col, var(--dp-hand, #f2b950));
 }
-.orr-cluster__key.is-active .orr-cluster__icon,
-.orr-cluster__key.is-held .orr-cluster__icon,
-.orr-cluster__key.is-firing .orr-cluster__icon {
-  background-color: var(--orr-power-col, var(--dp-hand, #f2b950)) !important;
-  box-shadow: 0 0 14px var(--orr-power-col, var(--dp-hand, #f2b950));
-}
-.orr-cluster__key.is-active .orr-cluster__keytag b,
-.orr-cluster__key.is-held .orr-cluster__keytag b,
-.orr-cluster__key.is-firing .orr-cluster__keytag b {
+.orr-cluster__key:is(.is-active,.is-held,.is-firing) .orr-cluster__keytag b {
   border-color: var(--orr-power-col, var(--dp-hand, #f2b950));
-  color: #fff;
-  background: rgba(242, 185, 80, 0.28);
-  box-shadow: 0 0 10px var(--orr-power-col, var(--dp-hand, #f2b950));
+  color:#fff;
 }
 .orr-cluster__key.is-firing {
   animation: orr-key-firing-burst 0.35s cubic-bezier(0.1, 0.9, 0.2, 1) forwards;
@@ -321,9 +311,10 @@ const f1 = (n) => n.toFixed(1);
  * @param {object} o
  * @param {{name:string, icon:string, slots:{key:string,name:string,icon:string}[]}[]} o.groups
  */
-export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', classLine = 'Kestrel class · starter', groups = [], restSlot = null, onActivateSocket = null } = {}) {
+export function createFlightCluster({ shipId = 'ship_kestrel', variantId = null, name = 'Hitch', classLine = 'Kestrel class · starter', groups = [], restSlot = null, onActivateSocket = null, onOpenMore = null, layout = 'orrery' } = {}) {
   injectStyle();
-  const root = el('section', 'orr-cluster');
+  const visor = layout === 'visor';
+  const root = el('section', visor ? 'orr-cluster orr-cluster--visor' : 'orr-cluster');
   root.setAttribute('aria-label', 'Ship status');
   const s = svg('svg', { class: 'orr-svg', viewBox: `0 0 ${W} ${H}`, 'aria-hidden': 'true' });
   root.appendChild(s);
@@ -395,7 +386,7 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
   // ---- the hull at the pivot ----------------------------------------------------------------------
   const glyphUrl = hullPosterUrl(shipId, 'holo');
   let glyphImage = null;
-  if (glyphUrl) {
+  if (glyphUrl && !visor) {
     glyphImage = svg('image', { class: 'orr-cluster__glyph', href: glyphUrl, x: P.x - 82, y: P.y - 96, width: 164, height: 164, preserveAspectRatio: 'xMidYMid meet' });
     s.appendChild(glyphImage);
   }
@@ -405,14 +396,16 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
   const energy = arcGauge({ cx: P.x, cy: P.y, r: R.flank, from: 238, to: 274, width: 3, tone: 'phos', ghost: false });
   s.append(heat.el, energy.el);
   const energyRead = el('div', 'orr-cluster__read orr-cluster__fade orr-soft');
+  const energyLabel = el('span', 'orr-label', 'Energy');
   const energyVal = el('b', 'orr-value');
-  energyRead.append(el('span', 'orr-label', 'Energy'), energyVal);
+  energyRead.append(energyLabel, energyVal);
   const [enx, eny] = at(R.flank + 12, 274);
   // seated just under the energy arc's lower end, so the label never touches the arc
   place(energyRead, 22, eny - 17);
   const heatRead = el('div', 'orr-cluster__read orr-cluster__fade orr-soft');
+  const heatLabel = el('span', 'orr-label', 'Heat');
   const heatVal = el('b', 'orr-value');
-  heatRead.append(el('span', 'orr-label', 'Heat'), heatVal);
+  heatRead.append(heatLabel, heatVal);
   const [htx, hty] = at(R.flank + 12, 198);
   place(heatRead, htx - 70, hty - 14);
 
@@ -421,8 +414,8 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
   // numeral, the reference gate, the needle and the boost charge arc; its tint is the speed's colour
   // story (ORRERY §3.3): bone asleep, phos reading, ice at the gate, blue-shift above it. Red stays
   // threat-only and amber stays the Hand's.
-  const dial = createSpeedDial();
-  place(dial.el, DIAL_AT.x - SPEED_DIAL.size / 2, DIAL_AT.y - SPEED_DIAL.size / 2);
+  const dial = createSpeedDial({ visor });
+  if (!visor) place(dial.el, DIAL_AT.x - SPEED_DIAL.size / 2, DIAL_AT.y - SPEED_DIAL.size / 2);
 
   // ---- legend in the gap ---------------------------------------------------------------------------
   const legend = el('div', 'orr-cluster__legend orr-cluster__fade');
@@ -484,8 +477,60 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
     weightDot.setAttribute('cy', f1(g0y));
   } });
 
-  const keyLayer = el('div');
+  const keyLayer = el('div', 'orr-cluster__keys');
+  keyLayer.setAttribute('role', 'group');
+  keyLayer.setAttribute('aria-label', 'Ship powers');
   root.appendChild(keyLayer);
+
+  let moreBtn = null;
+  let moreKeyEl = null;
+  if (visor) {
+    moreBtn = el('button', 'orr-visor__more');
+    moreBtn.type = 'button';
+    moreBtn.setAttribute('aria-label', 'More actions, key Q');
+    moreBtn.setAttribute('data-why', 'More actions — open the context wheel (Q)');
+    moreBtn.setAttribute('data-why-brief', 'More · Q\nOpen the context wheel for brake, scan, mine, and drive controls');
+    moreKeyEl = el('b', null, 'Q');
+    const moreLabel = el('span', null, 'More');
+    moreBtn.append(moreKeyEl, moreLabel);
+    moreBtn.addEventListener('click', (ev) => {
+      if (typeof onOpenMore === 'function') onOpenMore();
+      if (ev && ev.detail > 0) { try { moreBtn.blur(); } catch (_) {} }
+    });
+  }
+
+  let captionEl = null;
+  let captionNameEl = null;
+  let captionTextEl = null;
+  let lastCaptionSig = '';
+  if (visor) {
+    captionEl = el('div', 'orr-visor__caption');
+    captionEl.setAttribute('role', 'status');
+    captionEl.setAttribute('aria-live', 'polite');
+    captionEl.hidden = true;
+    captionNameEl = el('b', 'orr-visor__caption-name');
+    captionTextEl = el('span', 'orr-visor__caption-text');
+    captionEl.append(captionNameEl, captionTextEl);
+  }
+  function setPowerCaption(cap) {
+    if (!captionEl) return;
+    const nameStr = cap && typeof cap === 'object' ? String(cap.name || '') : '';
+    const textStr = typeof cap === 'string' ? cap : (cap && typeof cap === 'object' ? String(cap.text || '') : '');
+    const sig = `${nameStr}|${textStr}`;
+    if (sig === lastCaptionSig) return;
+    lastCaptionSig = sig;
+    if (!textStr) {
+      captionEl.hidden = true;
+      captionNameEl.textContent = '';
+      captionTextEl.textContent = '';
+      return;
+    }
+    captionNameEl.textContent = nameStr;
+    captionNameEl.hidden = !nameStr;
+    captionTextEl.textContent = textStr;
+    captionEl.hidden = false;
+  }
+
   const sockets = [];
   // A socket is a hoverable, focusable readout of one verb (not a button: the press is the key, a
   // click fires nothing). `tip` is the tier-2 [data-why] phrase composed by the rail model — the
@@ -535,29 +580,36 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
     const armed = svg('circle', { r: r0, class: 'orr-core orr-hand', 'stroke-width': 1.5, fill: 'none', opacity: 0 });
     ks.append(bloomTwin, pulseRing, coreCircle, cd, armedB, armed);
     k.appendChild(ks);
+    const activeRing = visor ? el('span', 'orr-cluster__ring') : null;
+    if (activeRing) { activeRing.setAttribute('aria-hidden', 'true'); k.appendChild(activeRing); }
     const ic = el('span', 'orr-cluster__icon');
     ic.style.setProperty('--orr-icon', `url("${ICON_ROOT}icon-${icon}.svg")`);
     k.appendChild(ic);
+    const cdWipe = visor ? el('span', 'orr-cluster__cdwipe') : null;
+    const cdNum = visor ? el('span', 'orr-cluster__cdnum') : null;
+    if (cdWipe) { cdWipe.setAttribute('aria-hidden', 'true'); k.appendChild(cdWipe); }
+    if (cdNum) { cdNum.setAttribute('aria-hidden', 'true'); k.appendChild(cdNum); }
     const tag = el('span', 'orr-label orr-cluster__keytag');
-    // The words live in their own span so a verb whose meaning changes ("Rig · Cone" → "Rig · Scoop")
-    // rewrites only them, never the key beside them.
+    // The words live in their own span so a verb whose meaning changes ("Bomb" → "Detonate",
+    // "Plow" → "Launch") rewrites only them, never the key beside them.
     const labelNode = el('span', 'orr-cluster__keyword', label);
     tag.appendChild(labelNode);
     const shortLabelNode = el('span', 'orr-cluster__keyshort', label);
     tag.appendChild(shortLabelNode);
     // A bare punctuation binding reads as a stray mark, not a key: it takes the key-cap frame
     // (the em dash is the UNBOUND placeholder, never a key — it stays bare).
-    const keyNode = sub && sub !== '—' && GLYPH_KEY.test(sub) ? el('b', 'is-glyph', sub) : el('b', null, sub);
+    const keyText = visor ? (sub === '—' ? '' : String(sub || '').replace(/^Tap\s+/i, '')) : sub;
+    const keyNode = keyText && keyText !== '—' && GLYPH_KEY.test(keyText) ? el('b', 'is-glyph', keyText) : el('b', null, keyText);
     if (keyNode) tag.appendChild(keyNode);
     k.appendChild(tag);
     const count = el('span', 'orr-cluster__count');
     k.appendChild(count);
     keyLayer.appendChild(k);
     const spring = createSpring({ value: 0, preset: 'settle', onUpdate: (v) => cd.setAttribute('stroke-dasharray', `${Math.max(0, Math.min(1, v))} 1`) });
-    return { el: k, armed, armedB, spring, count, label, tip, iconEl: ic, arsenalId: '', labelNode, shortLabelNode, keyNode, slot: slotRef, group: groupRef };
+    return { el: k, armed, armedB, spring, count, label, tip, iconEl: ic, cdWipe, cdNum, arsenalId: '', labelNode, shortLabelNode, keyNode, slot: slotRef, group: groupRef };
   };
 
-  let openGroup = -1;
+  let openGroup = null;
   let handSlot = restSlot != null ? String(restSlot) : null;
   let handPainted = false;
   // Groups the model marks hidden (a support verb the ship does not carry, e.g. no cloak fitted) take no seat.
@@ -571,11 +623,10 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
     let lastA = a;
     groups.forEach((group, gi) => {
       if (hiddenGroups.has(gi)) return;
-      if (gi === armedGroup) {
+      if (visor || gi === armedGroup) {
         group.slots.forEach((slot) => {
           const sk = mkSocket({ node: false, icon: slot.icon, label: slot.name, sub: slot.key, id: slot.id, power: slot.power || '', slotRef: slot });
-          const [x, y] = at(R.crescent, a);
-          place(sk.el, x, y);
+          if (!visor) place(sk.el, ...at(R.crescent, a));
           sockets.push({ ...sk, slot, angle: a });
           if (first == null) first = a;
           lastA = a;
@@ -584,14 +635,15 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
         a += 2;
       } else {
         const sk = mkSocket({ node: true, icon: group.icon, label: group.name, sub: group.slots.map((sl) => sl.key).join(' '), id: group.name, tip: group.tip || '', power: group.power || '', groupRef: group });
-        const [x, y] = at(R.crescent, a);
-        place(sk.el, x, y);
+        if (group.slots.length === 1) sk.el.setAttribute('data-slot', group.slots[0].id);
+        place(sk.el, ...at(R.crescent, a));
         sockets.push({ ...sk, group, angle: a });
         if (first == null) first = a;
         lastA = a;
         a += STEP_NODE;
       }
     });
+    if (moreBtn) keyLayer.appendChild(moreBtn);
     crescentTrack.setAttribute('d', arcD(P.x, P.y, R.crescent, (first ?? CRESCENT_START) - 10, lastA + 10));
     sockets.forEach((sk, i) => {
       sk.el.style.setProperty('--orr-key-x', sk.el.style.left);
@@ -600,17 +652,34 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
   }
 
   const payload = el('div', 'orr-cluster__payload orr-cluster__fade orr-soft');
-  const massEl = el('span');
-  const strainEl = el('small');
-  payload.append(el('span', 'orr-label', 'Body · on the line'), massEl, strainEl);
+  const weightEl = el('span', 'orr-cluster__weight');
+  payload.append(weightEl);
   place(payload, px + 36, py - 26);
   // hidden by visibility, not opacity: the arrival animation drives opacity and would flash it
   payload.style.visibility = 'hidden';
-  // An unweighed line prints the empty mark, never a number: the counter's own format owns
-  // the unknown reading so its digit layout still re-arms when the measurement lands.
-  const massCounter = createCounter(massEl, { format: (n) => (Number.isFinite(n) ? `${Math.round(n)} T` : '— T') });
 
-  root.append(dial.el, energyRead, heatRead, legend, nextEl, payload, perksWrap);
+  const readouts = visor ? createVisorReadouts(dial.el, shipId, variantId, name, [
+    ['hull', hullRow.lab, hullRow.val], ['shield', shieldRow.lab, shieldRow.val],
+    ['armor', armorRow.lab, armorRow.val], ['energy', energyLabel, energyVal], ['heat', heatLabel, heatVal],
+  ]) : null;
+  if (readouts) root.append(readouts.el, keyLayer, captionEl, nextEl, payload, perksWrap);
+  else root.append(dial.el, energyRead, heatRead, legend, nextEl, payload, perksWrap);
+
+  // The visor skin hides the field pill's cone label while the Rig socket is active. The page reads
+  // that from one attribute on <body>, written here when a socket's state actually changes: a
+  // body-level :has() rule made the browser re-scan the whole document on every HUD text write.
+  let rigMirrorDirty = true;
+  let rigMirror = false;
+  function syncRigMirror() {
+    if (!rigMirrorDirty) return;
+    rigMirrorDirty = false;
+    const on = visor && !!root.querySelector('[data-power="rig"].is-active,[data-power="plow"].is-active');
+    if (on === rigMirror) return;
+    rigMirror = on;
+    const body = typeof document !== 'undefined' ? document.body : null;
+    if (!body) return;
+    if (on) body.setAttribute('data-sf-rig-active', '1'); else body.removeAttribute('data-sf-rig-active');
+  }
 
   // ---- update --------------------------------------------------------------------------------------
   const last = {};
@@ -625,15 +694,41 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
       hullRow.val.innerHTML = `${Math.round(hullF * 100)}<i>%</i>`;
       hullRow.val.classList.toggle('is-critical', hullF < 0.3);
       hullRow.lab.classList.toggle('is-critical', hullF < 0.3);
+      // The visor reading turns its fill to danger with the value. A class on the reading, set here
+      // where the value changes: a :has() rule re-scanned the cluster on every text write.
+      const hullReading = typeof hullRow.val.closest === 'function' ? hullRow.val.closest('.orr-visor__reading') : null;
+      if (hullReading) hullReading.classList.toggle('has-critical', hullF < 0.3);
+      readouts?.setMeter('hull', hullF);
     }
     const shieldF = frac(d.shield, d.shieldMax);
-    if (changed('shield', Math.round(shieldF * 1000))) { shield.set(shieldF); shieldRow.val.textContent = String(Math.round(shieldF * 100)); }
+    if (changed('shield', Math.round(shieldF * 1000))) {
+      shield.set(shieldF);
+      shieldRow.val.textContent = String(Math.round(shieldF * 100));
+      readouts?.setMeter('shield', shieldF);
+    }
     const armorF = frac(d.armor, d.armorMax);
-    if (changed('armor', Math.round(armorF * 1000))) { armor.set(armorF); armorRow.val.textContent = String(Math.round(Number(d.armor) || 0)); }
+    if (changed('armor', Math.round(armorF * 1000))) {
+      armor.set(armorF);
+      armorRow.val.textContent = String(Math.round(Number(d.armor) || 0));
+      readouts?.setMeter('armor', armorF);
+    }
     const energyF = frac(d.energy, d.energyMax);
-    if (changed('energy', Math.round(energyF * 1000))) { energy.set(energyF); energyVal.textContent = String(Math.round(Number(d.energy) || 0)); }
+    if (changed('energy', Math.round(energyF * 1000))) {
+      energy.set(energyF);
+      energyVal.textContent = String(Math.round(Number(d.energy) || 0));
+      readouts?.setMeter('energy', energyF);
+    }
     const heatF = Math.max(0, Math.min(1, Number(d.heat) || 0));
-    if (changed('heat', Math.round(heatF * 1000))) { heat.set(heatF); heat.setTone(heatF > 0.75 ? 'threat' : 'hi'); heatVal.textContent = `${Math.round(heatF * 100)}%`; }
+    const heatLocked = d.heatLocked === true || d.heatOverheated === true;
+    const heatToneKey = heatLocked || heatF >= 0.99 ? 'threat' : (heatF >= 0.6 ? 'hand' : 'hi');
+    if (changed('heat', `${Math.round(heatF * 1000)}:${heatToneKey}`)) {
+      heat.set(heatF);
+      heat.setTone(heatToneKey);
+      heatVal.textContent = heatLocked && Number(d.heatLockRemainingS) > 0
+        ? `${Math.round(heatF * 100)}% (${Number(d.heatLockRemainingS).toFixed(1)}s)`
+        : `${Math.round(heatF * 100)}%`;
+      readouts?.setMeter('heat', heatF);
+    }
     // speed and boost live in the Speed Dial; it keeps its own change detection, so a settled frame
     // writes nothing. `speedMax` is the travel drive's ceiling (V-MAX), the dial's last blade.
     dial.update({
@@ -655,6 +750,8 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
         perksWrap.appendChild(chip);
         perkChips.set(pk.id, { node: chip, pulse: 0 });
       }
+      // The caption makes room for the chips; the cluster says so itself (no :has()).
+      root.classList.toggle('has-perk', perkChips.size > 0);
     }
     const perkPulses = d.perkPulses && typeof d.perkPulses === 'object' ? d.perkPulses : {};
     for (const [id, chip] of perkChips) {
@@ -688,10 +785,17 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
       }
     }
     // A support verb the ship does not carry takes no seat on the crescent.
+    // On the six-tile visor bar, slots 0 (travel), 7 (gyre), and 8 (cloak) never take a seat;
+    // any absent/unowned power in 1..6 is also hidden so no empty socket ever appears.
     let nextHiddenSig = '';
     const nextHidden = new Set();
     groups.forEach((g, gi) => {
-      if (g.slots.length && g.slots.every((sl) => (slotStates[sid(sl)] || {}).hidden === true)) { nextHidden.add(gi); nextHiddenSig += `${gi},`; }
+      if (g.slots.length && g.slots.every((sl) => {
+        const id = Number(sid(sl));
+        const slot = slotStates[sid(sl)] || {};
+        const visorExcluded = visor && (id === 0 || id >= 7);
+        return slot.hidden === true || visorExcluded;
+      })) { nextHidden.add(gi); nextHiddenSig += `${gi},`; }
     });
     if (nextHiddenSig !== hiddenSig) { hiddenSig = nextHiddenSig; hiddenGroups = nextHidden; keysChanged = true; }
     let activeGroup = -1;
@@ -708,7 +812,9 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
     }));
     let openTo = activeGroup >= 0 ? activeGroup : armedGroup;
     if (openTo < 0) openTo = Math.max(0, groups.findIndex((g) => g.slots.some((sl) => sid(sl) === handSlot)));
-    if (openTo !== openGroup || keysChanged) { openGroup = openTo; layoutCrescent(openTo); }
+    // Only groups with a choice of powers unfold. Single powers change state in place.
+    if (visor || groups[openTo]?.slots.length === 1) openTo = -1;
+    if (openTo !== openGroup || keysChanged) { openGroup = openTo; layoutCrescent(openTo); rigMirrorDirty = true; }
     let handAngle = null;
     let handArmed = false;
     // One paint for every socket that speaks for ONE verb: an unfolded key, or a collapsed node whose band
@@ -719,57 +825,97 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
       const state = st.state || 'ready';
       const live = st.live === true;
       const active = st.active === true;
+      const running = st.running === true;
+      const detonate = st.detonate === true;
       const firing = st.firing === true;
       const held = st.held === true;
       const arsenalId = st.arsenalId || '';
       if (sk.arsenalId !== arsenalId) {
         sk.arsenalId = arsenalId;
-        const markup = arsenalIcon(arsenalId, 24);
+        const markup = arsenalIcon(arsenalId, 24, '', visor);
         sk.iconEl.innerHTML = markup;
         const authored = markup.length > 0;
         sk.iconEl.classList.toggle('has-arsenal', authored);
         // With no authored drawing the socket keeps the generic kit mark and SAYS so (dim, family).
         sk.iconEl.setAttribute('data-glyph-source', authored ? 'authored' : 'family');
       }
-      if (sk.state !== state || sk.live !== live || sk.active !== active || sk.firing !== firing || sk.held !== held) {
+      if (sk.state !== state || sk.live !== live || sk.active !== active || sk.running !== running
+        || sk.detonate !== detonate || sk.firing !== firing || sk.held !== held) {
         sk.state = state;
         sk.live = live;
         sk.active = active;
+        sk.running = running;
+        sk.detonate = detonate;
         sk.firing = firing;
         sk.held = held;
-        sk.el.className = `orr-cluster__key${node ? ' is-node' : ''} is-${state}${live ? ' is-live' : ''}${active ? ' is-active' : ''}${held ? ' is-held' : ''}${firing ? ' is-firing' : ''}`;
-        sk.armed.setAttribute('opacity', (state === 'armed' || active || firing) ? '1' : '0');
-        sk.armedB.setAttribute('opacity', (state === 'armed' || active || firing) ? '.34' : '0');
-        sk.el.setAttribute('aria-pressed', (state === 'armed' || active || firing) ? 'true' : 'false');
+        sk.el.className = `orr-cluster__key${node ? ' is-node' : ''} is-${state}${live ? ' is-live' : ''}${active ? ' is-active' : ''}${running ? ' is-running' : ''}${detonate ? ' is-detonate' : ''}${held ? ' is-held' : ''}${firing ? ' is-firing' : ''}`;
+        rigMirrorDirty = true;
+        const lit = state === 'armed' || active || running || detonate || firing;
+        sk.armed.setAttribute('opacity', lit ? '1' : '0');
+        sk.armedB.setAttribute('opacity', lit ? '.34' : '0');
+        sk.el.setAttribute('aria-pressed', lit ? 'true' : 'false');
       }
-      sk.spring.set(state === 'cooldown' ? Number(st.cooldown) || 0 : 0);
-      const countText = Number.isFinite(st.count) ? `×${st.count}` : '';
-      if (sk.countText !== countText) { sk.countText = countText; sk.count.textContent = countText; }
-      // The verb's EFFECTIVE name ("Rig · Scoop", "Bomb · Frag ×4 · drop") — never the band's fixed word.
+      const cdFrac = state === 'cooldown' ? Math.max(0, Math.min(1, Number(st.cooldown) || 0)) : 0;
+      sk.spring.set(cdFrac);
+      if (sk.cdWipe) {
+        const rem = state === 'cooldown' ? Math.max(0, Math.min(1, 1 - cdFrac)) : 0;
+        const remStr = rem.toFixed(3);
+        if (sk.cdRem !== remStr) {
+          sk.cdRem = remStr;
+          sk.cdWipe.style.setProperty('--cd-rem', remStr);
+        }
+      }
+      if (sk.cdNum) {
+        const secText = state === 'cooldown' && Number(st.cooldownSec) > 0 ? `${Math.ceil(Number(st.cooldownSec))}s` : '';
+        if (sk.cdSecText !== secText) {
+          sk.cdSecText = secText;
+          sk.cdNum.textContent = secText;
+        }
+      }
+      const plowLoaded = Number.isFinite(st.plowCount) && st.plowCount > 0;
+      const countText = plowLoaded ? String(st.plowCount) : (Number.isFinite(st.count) ? `×${st.count}` : '');
+      if (sk.countText !== countText || sk.plowLoaded !== plowLoaded) {
+        sk.countText = countText;
+        sk.plowLoaded = plowLoaded;
+        sk.count.textContent = countText;
+        sk.count.classList.toggle('is-plow-count', plowLoaded);
+      }
+      // The verb's EFFECTIVE name ("Bomb" → "Detonate", "Plow" → "Launch").
       const label = typeof st.label === 'string' && st.label ? st.label : (node ? sk.group.name : slot.name);
       if (sk.labelText !== label && sk.labelNode) {
         sk.labelText = label;
-        // S5: icon-only sockets (the Swarm bar) draw no word — the name stays on aria + tip.
-        const shown = st.iconOnly ? '' : label;
+        const shown = visor ? label.split(' · ')[0].replace(/\s+×\d+.*$|\s+(?:ON|OFF)$/i, '') : (st.iconOnly ? '' : label);
         sk.labelNode.textContent = shown;
-        // Keep the action on narrow screens; counts and secondary effects remain in the full tip.
-        sk.shortLabelNode.textContent = shown.replace(/\s+\+\s+.*$/, '').replace(/\s+×\d+.*$/, '')
-          .replace(/^Shove · Pushes away\b/i, 'Shove · Push away');
+        sk.shortLabelNode.textContent = st.iconOnly ? '' : (st.shortLabel || shown.replace(/\s+\+\s+.*$/, '').replace(/\s+×\d+.*$/, '')
+          .replace(/^Shove · Pushes away\b/i, 'Shove · Push away'));
       }
       // The verb's reveal phrase moves with its state ("Ready" → "Recharging — 3s"), so it is
       // rewritten only when the words change: a settled frame still writes nothing.
       const tip = st.tip || (node ? sk.group.tip || '' : '');
-      if (sk.tip !== tip || sk.tipActive !== active || sk.tipFiring !== firing) {
+      const brief = visor ? (st.briefTip || '') : '';
+      if (sk.tip !== tip || sk.tipBrief !== brief || sk.tipActive !== active || sk.tipFiring !== firing) {
         sk.tip = tip;
+        sk.tipBrief = brief;
         sk.tipActive = active;
         sk.tipFiring = firing;
         if (tip) sk.el.setAttribute('data-why', tip);
         else sk.el.removeAttribute('data-why');
-        const statusPhrase = firing ? 'Activating. ' : (active ? 'Active. ' : '');
+        if (brief) sk.el.setAttribute('data-why-brief', brief);
+        else if (visor) sk.el.removeAttribute('data-why-brief');
+        const statusPhrase = firing ? 'Activating. ' : (detonate ? 'Armed to detonate. ' : (active || running ? 'Active. ' : ''));
         sk.el.setAttribute('aria-label', `${statusPhrase}${tip ? tip.replace(/\n/g, '. ') : `${sk.label}`}`);
       }
       return state;
     };
+    if (moreKeyEl && typeof d.moreKey === 'string' && d.moreKey && changed('moreKey', d.moreKey)) {
+      moreKeyEl.textContent = d.moreKey;
+      moreBtn.setAttribute('aria-label', `More actions, key ${d.moreKey}`);
+      moreBtn.setAttribute('data-why', `More actions — open the context wheel (${d.moreKey})`);
+      moreBtn.setAttribute('data-why-brief', `More · ${d.moreKey}\nOpen the context wheel for brake, scan, mine, and drive controls`);
+    }
+    if (Object.prototype.hasOwnProperty.call(d, 'powerCaption')) {
+      setPowerCaption(d.powerCaption);
+    }
     for (const sk of sockets) {
       if (sk.slot) {
         const state = paintSocket(sk, sk.slot, false);
@@ -804,32 +950,38 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
       armBloom.setAttribute('opacity', handArmed ? '.34' : '0');
       armPip.setAttribute('opacity', handArmed ? '1' : '.7');
     }
+    syncRigMirror();
     // tether
     const t = d.tether || null;
-    // X3 Adventure glass: the payload readout is mass/strain prose. The beam, the strain dial
-    // and the target still draw; only the words retire.
+    // Swarm hides the weight word. Adventure shows Light or Heavy — never tonnes or a strain percent.
+    // The beam and the strain dial still draw; the cable's colour is the strain.
     const quietPayload = d.quietTelemetry === true;
     if (changed('quietPayload', quietPayload)) payload.classList.toggle('is-quiet', quietPayload);
-    // The instrument answers the line, not the scale: tonnage is earned by the loaded
-    // dwell, so before the measurement the tether still draws and live strain still reads —
-    // only the mass numeral sits at the honest empty mark instead of a fabricated count.
     const tethered = !!(t && t.state && t.state !== 'Idle');
-    if (changed('tethered', tethered)) { tetherG.setAttribute('opacity', tethered ? '1' : '0'); tetherG.dataset.tethered = tethered ? '1' : '0'; payload.style.visibility = tethered ? 'visible' : 'hidden'; }
+    if (changed('tethered', tethered)) {
+      tetherG.setAttribute('opacity', tethered ? '1' : '0');
+      tetherG.dataset.tethered = tethered ? '1' : '0';
+    }
+    const weight = !quietPayload && tethered && (t.weight === 'Light' || t.weight === 'Heavy') ? t.weight : '';
+    if (changed('weight', weight)) {
+      weightEl.textContent = weight;
+      payload.style.visibility = weight ? 'visible' : 'hidden';
+    }
     if (tethered) {
       const st = Math.max(0, Math.min(1, Number(t.strain) || 0));
-      const massShown = Number(t.mass) > 0 ? Math.round(Number(t.mass)) : null;
-      if (changed('mass', massShown)) massCounter.set(massShown == null ? NaN : massShown);
       strain.set(st);
       if (changed('strain', Math.round(st * 100))) {
         setSag(st);
         strain.setTone(st > 0.85 ? 'threat' : 'phos');
-        strainEl.textContent = `STRAIN ${Math.round(st * 100)}%`;
       }
     }
-    const decision = nextFlightDecision(d);
+    const decision = nextFlightDecision(d, { swarm: d.swarm === true });
     if (changed('decision', decision)) {
       nextEl.textContent = decision;
       nextEl.hidden = decision === '';
+    }
+    if (readouts && typeof readouts.updateShipPanel === 'function' && d.shipStatus) {
+      readouts.updateShipPanel(d.shipStatus);
     }
   }
 
@@ -850,6 +1002,7 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
     ringLegendShown = text;
     const path = textPathOf(ringLegend);
     if (path) path.textContent = text;
+    readouts?.setName(next.customName || next.defName || name, text);
     return text;
   }
 
@@ -858,10 +1011,13 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
   // circuit skip the write when nothing actually changed.
   function setHull(next = {}) {
     const nextShipId = next.shipId != null ? next.shipId : shipId;
-    if (nextShipId !== shipId) {
+    const nextVariantId = next.variantId ?? null;
+    if (nextShipId !== shipId || nextVariantId !== variantId) {
       shipId = nextShipId;
+      variantId = nextVariantId;
       const url = hullPosterUrl(shipId, 'holo');
       if (glyphImage && url) glyphImage.setAttribute('href', url);
+      readouts?.setHull(shipId, variantId);
     }
     if (next.name != null) name = next.name;
     if (next.classLine != null) classLine = next.classLine;
@@ -874,7 +1030,10 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
     arrive,
     setRingLegend,
     setHull,
+    setPowerCaption,
     dispose() {
+      if (rigMirror && typeof document !== 'undefined' && document.body) document.body.removeAttribute('data-sf-rig-active');
+      rigMirror = false;
       for (const g of [shield, armor, hull, energy, heat, strain, dial]) g.dispose();
       handSpring.stop();
       for (const sk of sockets) sk.spring.stop();

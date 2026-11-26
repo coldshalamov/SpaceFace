@@ -90,7 +90,15 @@ const CORE_SECTORS = [
     palette: SECTOR_PALETTE_CLASSES.core,
     // Tutorial home sector: NO hostile spawns (enemyDensity 0). A brand-new pilot must not be
     // hunted before learning the ropes; danger ramps up only in neighbouring sectors.
-    trafficPerMin: 18, enemyDensity: 0, enemyLevel: [1, 2],
+    // CROWD-THIN: tpm 12 -> ambientCountForSector 4 (tpm/3 at the core floor), matching the
+    // authored activity cast so no filler top-up spawns onto the opening frame. 18 drew six-plus.
+    trafficPerMin: 12, enemyDensity: 0, enemyLevel: [1, 2],
+    // FIRST HOUR (world lead, 2026-11-21; R16): a new Adventure game opens in sight of the harbour.
+    // The pilot starts at rest on the station's south approach, nose to the berth: Helios Station
+    // (anchored at 1280,-420 in sectorAnchors.js) sits ~340 WU straight up-screen (+z is screen up),
+    // the Candle Fleet memorial glows ~400 WU off to one side, and the starter belt lies ~760 WU away.
+    // Only the live new-game route seats here; the deterministic harness keeps its origin spawn.
+    openingSeat: { x: 1280, z: -760, heading: Math.PI / 2 },
     neighbors: ['sector_ceres_belt', 'sector_tethys_junction', 'sector_vesta_forge'],
     stations: [
       { id: 'station_helios',     name: 'Helios Station',  type: 'trade_hub', factionId: 'faction_scn', size: 'L', services: ['trade','shipyard','refuel','repair','missions'],
@@ -143,7 +151,7 @@ const CORE_SECTORS = [
       { id: 'poi_vesper_rehearsal', type: 'anomaly', name: 'Vesper’s Rehearsal',
         pos: { ...VESPER.anchor }, runtimeOwner: 'vesper', scannerSignalKind: 'anomaly',
         discoveryPlate: { title: 'SV-3 / Kinetic Choir',
-          body: 'Three loose resonators and a moth-winged survey machine. Scan the conductor; Massline a bell, pull, and release. The chart marks the rehearsal site, not the moving band.' } },
+          body: 'Three loose resonators and a moth-winged survey machine. Scan the conductor; hook a bell on the Line, pull, and release. The chart marks the rehearsal site, not the moving band.' } },
       {
         id: 'poi_memorial',
         type: 'beacon',
@@ -408,9 +416,9 @@ const CORE_SECTORS = [
       // RU-7's empty work yard: actual encounter owns its two physical bodies.
       { id: 'poi_ruckus_work_yard', type: 'anomaly', name: 'RUCKUS · Open Work Order',
         pos: { x: 680, z: 640 }, runtimeOwner: 'ruckus', scannerSignalKind: 'anomaly', dressingExclusionRadius: 480,
-        chartNote: 'An old demolition retriever is keeping one pressure core. Scan to hail. Massline the core and throw it.',
+        chartNote: 'An old demolition retriever is keeping one pressure core. Scan to hail. Put the Line on the core and throw it.',
         discoveryPlate: { title: 'RU-7 / Open Work Order',
-          body: 'The crew clocks stopped. The retrieval service did not. Scan to wake RUCKUS; throw his caged core with the Massline. Three returns earn a pressure present. A held line pauses its countdown. Keep clear of the amber ring.' } },
+          body: 'The crew clocks stopped. The retrieval service did not. Scan to wake RUCKUS; throw his caged core with the Line. Three returns earn a pressure present. A held line pauses its countdown. Keep clear of the amber ring.' } },
       { id: 'world_site_ceres_second_measure', type: 'wreck', name: 'Second Measure Shipbreak',
         anchor: CERES_SECOND_MEASURE_LOCAL_POS, runtimeOwner: 'asteroidSites' },
       // The Kettle Line drift trail (src/data/kettleLine.js): three authored convoy pieces
@@ -666,7 +674,7 @@ const CORE_SECTORS = [
       // PQ-153.02 hero landmark (depth program C13e, lore `landmark_c13e_resonant_cathedral`).
       // Anchors zone_vesta_forge beside the foundry it was raised against: (-330,1060) sits ~350 WU
       // off station_forge with the f_vesta_3 crystal field's rim (~460 WU out, rocks to r360)
-      // composing its eastern sky (f_vesta_3 centres (120,980), due east of the cathedral;
+      // composing its western sky (f_vesta_3 centres (120,980), due west of the cathedral;
       // +z is north), clear of the vesta_storm_lane sheet at (680,320). The 2026-09-25
       // landmark still review parked at (-1050,1180) and framed nothing but black — the old spot was
       // 740 WU from the foundry and 1100+ WU from any field, a bare void the sector's dressing never

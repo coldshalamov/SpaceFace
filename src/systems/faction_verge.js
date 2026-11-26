@@ -51,6 +51,7 @@ import {
   VERGE_LINE_TRIAL,
   VERGE_BARKS,
 } from '../data/factions/vergelayers.js';
+import { MACHINE_SITES } from '../data/precursorMachines.js';
 import { rankForState } from './factions.js';
 import { strideDt } from '../core/catchupPolicy.js';
 import { openingQuiet } from '../onboarding/openingQuiet.js';
@@ -181,6 +182,15 @@ function vergeMachineKind(e) {
   return m && typeof m.kind === 'string' ? m.kind : null;
 }
 
+function passiveSurveySite(siteId, kind) {
+  return kind === 'surveyor_prism' && MACHINE_SITES[siteId]?.tease === true;
+}
+
+function isPassiveSurvey(e) {
+  const machine = e?.data?.machine;
+  return !!machine && passiveSurveySite(machine.siteId, machine.kind);
+}
+
 /** This file drives any body whose kind carries a working speed — the flat
  *  contract (data.machineKind) and the precursor contract (data.machine.kind)
  *  alike. The precursor kinematics loop yields a body while data.vergeDriven
@@ -188,7 +198,7 @@ function vergeMachineKind(e) {
  *  every close path. pursuitMobile === false stays an authored opt-out. */
 function vergeMachineIsMobile(e) {
   const d = e && e.data;
-  if (!d || d.pursuitMobile === false) return false;
+  if (!d || d.pursuitMobile === false || isPassiveSurvey(e)) return false;
   const kind = vergeMachineKind(e);
   const body = kind && VERGE_MACHINE_BODIES[kind];
   return !!(body && body.speed > 0);
@@ -218,7 +228,7 @@ function vergeEntityCurrent(state, id, gen) {
 /** A checkpoint ring record on an entity, or null when it posts none. */
 function vergeCheckpointFor(e) {
   const d = e && e.data;
-  if (!d || !e.pos) return null;
+  if (!d || !e.pos || isPassiveSurvey(e)) return null;
   const kind = vergeMachineKind(e);
   const authored = d.vergeCheckpoint && typeof d.vergeCheckpoint === 'object' ? d.vergeCheckpoint : null;
   if (authored && authored.enabled === false) return null;
@@ -427,7 +437,7 @@ export const vergeCourt = {
       if (typeof off === 'function') this._unsubs.push(off);
     };
     // A restore must never double-apply and must never trust stale shape.
-    on('save:loaded', () => ensureVergeState(this.state));
+    on('save:loaded', () => this._retirePassiveSurveyClaims(this.state, ensureVergeState(this.state)));
     // A dead warden cannot hold an escort or run a pursuit; the record closes honest.
     on('entity:killed', (p) => this._onEntityKilled(p));
     // The boundary: jumping with a live escort breaks it; jumping with a live
@@ -462,7 +472,28 @@ export const vergeCourt = {
     state.verge = (data && typeof data === 'object' && !Array.isArray(data)) ? data : null;
     // The same normalize the save:loaded listener re-runs on the restore seam —
     // absent, malformed or hostile input heals to the fresh record, never wedges.
-    return ensureVergeState(state);
+    const v = ensureVergeState(state);
+    this._retirePassiveSurveyClaims(state, v);
+    return v;
+  },
+
+  _retirePassiveSurveyClaims(state, v) {
+    // Old saves can name the survey's last occupant. The owed-post row records the
+    // original site even when the live machine will load under a different identity.
+    const passiveReturns = v.returns.filter(row => passiveSurveySite(row.siteId, row.kind));
+    for (const key of ['escort', 'pursuit']) {
+      const claim = v[key];
+      if (!claim) continue;
+      const machine = vergeEntityCurrent(state, claim.machineId, claim.gen);
+      if (isPassiveSurvey(machine)) {
+        vergeReleaseDrive(machine);
+        if (key === 'pursuit' && machine.data.pursuitId === claim.id) delete machine.data.pursuitId;
+      } else if (!passiveReturns.some(row => row.machineId === claim.machineId && row.gen === claim.gen)) {
+        continue;
+      }
+      v[key] = null;
+    }
+    if (passiveReturns.length) v.returns = v.returns.filter(row => !passiveSurveySite(row.siteId, row.kind));
   },
 
   // ── shared record helpers ─────────────────────────────────────────────────────
@@ -619,29 +650,26 @@ export const vergeCourt = {
     for (const m of state.entityList) {
       if (!m || m.alive === false || m.id === player.id) continue;
       const cp = vergeCheckpointFor(m);
-      if (!cp) continue;
+      if (!cp && !isPassiveSurvey(m)) continue;
       const d = m.data;
-      const inside = dist2(player.pos, m.pos) <= cp.radius * cp.radius;
+      const radius = cp?.radius ?? VERGE_BORDER.checkpointRadius;
+      const inside = m.pos && dist2(player.pos, m.pos) <= radius * radius;
       const wasInside = d.cpInside === true;
       if (inside && !wasInside) {
         d.cpInside = true;
-        this._checkpointEnter(state, v, m, d, cp, player, level);
+        if (cp) this._checkpointEnter(state, v, m, d, cp, player, level);
+        else this._weighHull(state, m, player);
       } else if (!inside && wasInside) {
         d.cpInside = false;
         d.escortDwell = 0;
-        this._checkpointRec(state, cp.key).lastAt = state.simTime;
+        if (cp) this._checkpointRec(state, cp.key).lastAt = state.simTime;
       }
       // Escort evaluation runs on dwell inside the ring, not on the edge.
-      if (inside) this._maybeEscort(state, v, m, d, player, level, dt);
+      if (cp && inside) this._maybeEscort(state, v, m, d, player, level, dt);
     }
   },
 
-  _checkpointEnter(state, v, m, d, cp, player, level) {
-    const rec = this._checkpointRec(state, cp.key);
-    rec.crossings += 1;
-    rec.lastAt = state.simTime;
-
-    // The ring weighs every hull that crosses — the same stamp the engines write.
+  _weighHull(state, m, player) {
     player.data = player.data || {};
     const priorMass = player.data.weighedMass;
     player.data.weighedMass = player.mass;
@@ -650,6 +678,16 @@ export const vergeCourt = {
     this.bus.emit('verge:massWeighed', {
       engineId: m.id, entityId: player.id, mass: player.mass, tick: state.tick,
     });
+    return priorMass;
+  },
+
+  _checkpointEnter(state, v, m, d, cp, player, level) {
+    const rec = this._checkpointRec(state, cp.key);
+    rec.crossings += 1;
+    rec.lastAt = state.simTime;
+
+    // The ring weighs every hull that crosses — the same stamp the engines write.
+    const priorMass = this._weighHull(state, m, player);
     // Mass that changed since the last weigh reads as an unlogged refit.
     if (Number.isFinite(priorMass) && Math.abs(player.mass - priorMass) > VERGE_BORDER.massDriftTolerance) {
       this._fileIncident(state, 'mass_drift', m,

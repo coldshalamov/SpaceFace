@@ -131,13 +131,16 @@ test('partial acceptance converts only the refused remainder', () => {
   });
 });
 
-test('overflow never touches ordinary ore, run wallets, non-ore loot, or the flag-off profile', () => {
+test('a refused pulled pickup becomes credits and never parks on the hull; run wallets and the flag-off profile are untouched', () => {
   withFlag(true, () => {
+    // Owner 2026-11-20: refused pickups stayed alive on a retry loop while the vacuum pressed them
+    // into the hull ("dots stuck to the front, back and sides of my ship"). Whatever the hold
+    // cannot take is paid out as credits and removed.
     const ordinary = harness({ pickupX: 10, pickupData: { kind: 'ore', commodityId: 'cmdty_scrap_metal', amount: 15 }, acceptUnits: 0 });
     ordinary.state.simTime = 1;
     mining.update(DT, ordinary.state);
-    assert.equal(ordinary.grants.length, 0, 'ordinary ore a full hold refuses stays for the pilot (a mined lot is the pilot\'s to haul)');
-    assert.equal(ordinary.pickup.alive, true);
+    assert.equal(ordinary.grants.length, 1, 'refused ore at the hull pays credits');
+    assert.equal(ordinary.pickup.alive, false, 'and is gone, not parked against the ship');
 
     const run = harness({ pickupX: 10, pickupData: COMBAT_ORE({ wallet: 'run' }), acceptUnits: 0 });
     run.state.simTime = 1;
@@ -150,6 +153,32 @@ test('overflow never touches ordinary ore, run wallets, non-ore loot, or the fla
     mining.update(DT, off.state);
     assert.equal(off.grants.length, 0, 'flag off: the old refuse-and-retry behaviour');
     assert.equal(off.pickup.alive, true);
+  });
+});
+
+test('a refused custody pod keeps its own rules: alive, unconverted, still retrying', () => {
+  withFlag(true, () => {
+    // A custody-annotated pod (a named owner on the cargo identity) is somebody's property —
+    // the claim-holder is flying to reach it. The arcade-loot overflow path must never launder
+    // it into silent player cash the way free ore converts.
+    const h = harness({
+      pickupX: 10,
+      pickupData: COMBAT_ORE({ cargoIdentity: { ownerId: 'npc_freighter_7' } }),
+      acceptUnits: 0,
+    });
+    h.state.simTime = 1;
+    mining.update(DT, h.state);
+    assert.equal(h.pickup.alive, true, 'the vacuum cannot destroy a pod it has no title to');
+    assert.equal(h.grants.length, 0, 'no silent credit conversion');
+    assert.equal(h.conversions.length, 0, 'no overflow conversion receipt');
+    assert.ok(Number.isFinite(h.pickup.data.pickupAcceptanceRetryAt),
+      'the refusal parks and retries on the custody/law adjudication instead');
+
+    // Later sweeps still leave it alone — the custody gate is not a one-tick accident.
+    h.state.simTime = 3;
+    for (let i = 0; i < 5; i++) mining.update(DT, h.state);
+    assert.equal(h.pickup.alive, true);
+    assert.equal(h.grants.length, 0);
   });
 });
 

@@ -175,22 +175,22 @@ test('production primary ticks iterate the combat queue, not calendar names', ()
     stub('physics', ran),
     stub('barkDirector', ran),
     stub('missions', ran),
-    stub('npcJobsRuntime', ran),
+    stub('scanner', ran),
   ];
   const partitions = partitionUpdateSystems(systems);
   const combatState = { runtime: { profileId: 'production' }, tick: 2, simCatchupIndex: 0 };
   const names = updateQueueForThisStep(partitions, combatState).map((s) => s.name);
-  assert.deepEqual(names, ['physics', 'npcJobsRuntime']);
+  assert.deepEqual(names, ['physics', 'scanner']);
   const calendarState = { runtime: { profileId: 'production' }, tick: 30, simCatchupIndex: 0 };
   assert.deepEqual(
     updateQueueForThisStep(partitions, calendarState).map((s) => s.name),
-    ['physics', 'barkDirector', 'missions', 'npcJobsRuntime'],
+    ['physics', 'barkDirector', 'missions', 'scanner'],
     'cohort-0 calendar owners run on tick%30===0',
   );
   const cohortOneState = { runtime: { profileId: 'production' }, tick: 40, simCatchupIndex: 0 };
   assert.deepEqual(
     updateQueueForThisStep(partitions, cohortOneState).map((s) => s.name),
-    ['physics', 'npcJobsRuntime'],
+    ['physics', 'scanner'],
     'no calendar cohort runs on tick%30===10 when every stub is cohort 0',
   );
   const straddled = partitionUpdateSystems([
@@ -237,7 +237,7 @@ test('production catch-up steps still fire every calendar owner on its authored 
     const systems = [
       stub('physics', ran),
       stub('weapons', ran),
-      stub('npcJobsRuntime', ran),
+      stub('scanner', ran),
       stub('masslineHud', ran),
       ...CALENDAR_CLOCK_IDS.map((id) => stub(id, ran)),
     ];
@@ -251,7 +251,7 @@ test('production catch-up steps still fire every calendar owner on its authored 
     const byName = (name) => ran.filter((row) => row.name === name);
     assert.equal(byName('physics').length, 600, `fps ${60 / stepsPerFrame}: table runs every fixed step`);
     assert.equal(byName('weapons').length, 600, `fps ${60 / stepsPerFrame}: table runs every fixed step`);
-    assert.equal(byName('npcJobsRuntime').length, 600 / stepsPerFrame, `fps ${60 / stepsPerFrame}: near owners run primary steps only`);
+    assert.equal(byName('scanner').length, 600 / stepsPerFrame, `fps ${60 / stepsPerFrame}: near owners run primary steps only`);
     assert.equal(byName('masslineHud').length, 600 / stepsPerFrame, `fps ${60 / stepsPerFrame}: glass owners run primary steps only`);
     for (const id of CALENDAR_CLOCK_IDS) {
       assert.equal(byName(id).length, 20, `fps ${60 / stepsPerFrame}: ${id} must fire once per 30-tick window even on catch-up steps`);
@@ -265,7 +265,7 @@ test('a jittered catch-up sequence lands every calendar phase exactly once, neve
   const ran = [];
   const systems = [
     stub('physics', ran),
-    stub('npcJobsRuntime', ran),
+    stub('scanner', ran),
     ...CALENDAR_CLOCK_IDS.map((id) => stub(id, ran)),
   ];
   const sim = createSimulation({ seed: 1, systems });
@@ -282,7 +282,7 @@ test('a jittered catch-up sequence lands every calendar phase exactly once, neve
   }
   const byName = (name) => ran.filter((row) => row.name === name);
   assert.equal(byName('physics').length, 600);
-  assert.equal(byName('npcJobsRuntime').length, 263, 'near owners run once per presented frame');
+  assert.equal(byName('scanner').length, 263, 'near owners run once per presented frame');
   for (const id of CALENDAR_CLOCK_IDS) {
     assert.equal(byName(id).length, 20, `${id} missed a phase or ran twice`);
   }
@@ -297,7 +297,7 @@ test('a due catch-up step preserves the original update order across table and c
       stub('physics', ran),
       stub('barkDirector', ran),
       stub('missions', ran),
-      stub('npcJobsRuntime', ran),
+      stub('scanner', ran),
     ],
   });
   sim.state.runtime = { profileId: 'production' };
@@ -390,4 +390,20 @@ test('legacy47a and unprofiled hosts still walk calendar every tick', () => {
     updateQueueForThisStep(partitions, legacyState).map((s) => s.name),
     ['physics', 'barkDirector'],
   );
+});
+
+// ENGINE job 6: cadenced owners run on a fixed phase of a fixed period, from the tick number
+// alone — never from load or catch-up — and receive the elapsed sim time since their last run.
+test('cadenced owners run on their fixed manifest phase and receive elapsed dt', () => {
+  const ran = [];
+  const systems = [stub('physics', ran), stub('npcJobsRuntime', ran), stub('lawSecurity', ran)];
+  const sim = createSimulation({ seed: 1, systems });
+  sim.state.runtime = { profileId: 'production' };
+  sim.state.tick = 60;
+  for (let i = 0; i < 600; i++) sim.step(1 / 60);
+  const byName = (name) => ran.filter((row) => row.name === name);
+  assert.equal(byName('physics').length, 600, 'physics runs every tick');
+  assert.equal(byName('npcJobsRuntime').length, 100, 'npcJobsRuntime runs at 10 Hz');
+  assert.equal(byName('lawSecurity').length, 100, 'lawSecurity runs at 10 Hz');
+  sim.dispose();
 });

@@ -77,6 +77,7 @@ export function hasCutMarker(cutHulls, hullKey) {
 }
 
 export const pl341RestringBuoys = {
+  modes: ['flight'],
   name: 'plantsPl341',
 
   init(ctx) {

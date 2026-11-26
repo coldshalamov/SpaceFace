@@ -71,6 +71,7 @@ export function classifyStashPod(podEntity, slatePos, playerId, tuning = WELDERS
 }
 
 export const weldersSparksPlant = {
+  modes: ['flight'],
   name: 'plants207',
 
   init(ctx) {

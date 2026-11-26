@@ -47,6 +47,12 @@ export function swarmOpticLayout(arenaId) {
       origin: { x: 0, z: 142 },
       heading: Math.PI / 2,
       cells: sortedCells(map),
+      // The two rear side lanes fit the whole fuse when room fixtures and retained
+      // wreckage fill the usual seats. The live clearance check still owns admission.
+      openingFallbackOffsets: [
+        { x: -5 * OPTIC_LATTICE_SPACING, z: 4 * OPTIC_LATTICE_SPACING },
+        { x: 5 * OPTIC_LATTICE_SPACING, z: 4 * OPTIC_LATTICE_SPACING },
+      ],
     };
   }
   if (arenaId === 'lagrange_crucible') {
@@ -104,5 +110,6 @@ export function compileSwarmOptic(arenaId) {
     origin: layout.origin,
     heading: layout.heading,
     bodies: compileOpticCells(layout.cells, OPTIC_LATTICE_SPACING, layout.heading),
+    ...(layout.openingFallbackOffsets ? { openingFallbackOffsets: layout.openingFallbackOffsets } : {}),
   };
 }

@@ -39,9 +39,9 @@ export function isShortageGateRepair(offer) {
 export function shortageGateRepairProse({ station, commodity, supplier, volume }) {
   return {
     title: `Shortage at the gate: restore ${station}'s ${commodity} stock`,
-    line: `${station}'s gate-side parts counter has run dry: deliver ${SHORTAGE_GATE_REPAIR.qty}u ${commodity}.`,
+    line: `${station}'s gate-side parts counter has run dry: deliver ${SHORTAGE_GATE_REPAIR.qty} units ${commodity}.`,
     brief: `Buy replacements at ${supplier}'s market, or cut equivalent parts from the marked approach wreck with a salvage-capable beam (fit a mining beam at Helios Station's outfitter if needed). `
-      + `The wreck is claimed: cutting or towing it can provoke the crew. Need ${volume}u cargo room and permission to dock at ${station}; no deposit or supplied cargo. `
+      + `The wreck is claimed: cutting or towing it can provoke the crew. Need ${volume} units of cargo room and permission to dock at ${station}; no deposit or supplied cargo. `
       + 'The public gate route stays open. Decline by leaving this offer; abort from the Mission Log. '
       + 'Wrong or short loads stay yours and the job stays open: replace lost parts, or finish sourcing the lot, then return. '
       + `Delivery restocks the listed parts counter and applies a ${SHORTAGE_GATE_REPAIR.correctionDurationS}s price correction.`,
@@ -93,7 +93,7 @@ export const WARM_CARGO_CONTRACT = Object.freeze({
   destStationId: 'station_ceres',
   destSectorId: 'sector_ceres_belt',
   distance: 8900,
-  boardText: 'Ice Volatiles for Ceres Refinery. Handling limit {limit}: a harder knock spoils units off the manifest. What arrives intact pays the posted price.',
+  boardText: 'Ice Volatiles for Ceres Refinery. Knock it harder than {limit} and you spoil the load. What lands whole gets paid in full.',
 });
 
 // ── C11 — heat × contracts (THE WORLD ANSWERS): the deniable job ─────────────────────────────
@@ -333,7 +333,7 @@ export const FIRST_TRADE_CONTRACT = Object.freeze({
   // flies, and priced it below the ~430 cr round-trip gate tolls — the teaching trade taught
   // that trade loses money.
   distance: 8900,
-  title: 'First trade: 8u Fuel Cells to Tethys',
+  title: 'First haul: 8 Fuel Cells to Tethys',
   brief: 'Sealed fuel for the Tethys Trade Hub. Gate tolls come out of the run — this pay clears them. Accept, hold the manifest, dock, collect.',
   reason: 'Helios logistics needs one reliable corridor haul — deliver sealed Fuel Cells to the Tethys Trade Hub so the first trade ledger closes cleanly.',
   preloadedCargo: true,
@@ -435,7 +435,7 @@ export function buildFirstTradeOffer(seed = 1, options = {}) {
       outcome: template.receipt.outcome,
       requiredFields: [...template.receipt.requiredFields],
     },
-    teach: 'Accept → hold sealed cargo → dock Ceres → collect receipt and payment.',
+    teach: 'Accept → keep the sealed cargo aboard → dock at the marked destination → collect payment.',
     storyTag: null,
     expiresAtEpoch: Number.isFinite(Number(options.expiresAtEpoch))
       ? Math.floor(Number(options.expiresAtEpoch))
@@ -461,7 +461,7 @@ export function fillCause(template, tokens) {
  * `rivalStillHungry` lets a refreshed row admit the other berth was fed. PURE.
  */
 export function starvedOfferProse({ qty, commodity, destName, rivalName = null, rivalStillHungry = true }) {
-  const amount = `${Math.max(1, Math.floor(Number(qty) || 1))}u ${commodity || 'cargo'}`;
+  const amount = `${Math.max(1, Math.floor(Number(qty) || 1))} units ${commodity || 'cargo'}`;
   if (rivalName) {
     const line = rivalStillHungry
       ? `${destName} and ${rivalName} are bidding on the same ${commodity} — one hold of `

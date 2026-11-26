@@ -53,6 +53,7 @@ export function bargePositionAt(nowS, tuning = FIGUREHEAD_TUNING) {
 }
 
 export const figureheadPlant = {
+  modes: ['swarm'],
   name: 'plants225',
 
   init(ctx) {

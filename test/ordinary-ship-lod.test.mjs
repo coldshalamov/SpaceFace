@@ -21,19 +21,34 @@ test('ship projection uses diameter and conservatively handles off-axis and near
   assert.equal(projectedShipDiameterPx({ x: 0, y: 0, z: -100 }, 10, ortho, viewport), 160);
 });
 
-test('ordinary ship policy dwells, uses hysteresis, and immediately restores protected or near hulls', () => {
+test('ordinary ship policy dwells ~0.5 s, uses hysteresis, and immediately restores protected or near hulls', () => {
   const lod = createShipLodState();
-  assert.equal(lod.resolve(80, 0), 'lod0');
-  assert.equal(lod.resolve(80, 1.4), 'lod0');
-  assert.equal(lod.resolve(80, 1.5), 'lod1');
-  assert.equal(lod.resolve(120, 2), 'lod1');
-  assert.equal(lod.resolve(20, 3), 'lod1');
-  assert.equal(lod.resolve(20, 4.5), 'lod2');
-  assert.equal(lod.resolve(50, 5), 'lod2');
-  assert.equal(lod.resolve(130, 5.1), 'lod0');
-  assert.equal(lod.resolve(20, 8), 'lod0');
-  assert.equal(lod.resolve(20, 9, true), 'lod0');
-  assert.equal(lod.resolve(Infinity, 10), 'lod0');
+  assert.equal(lod.resolve(200, 0), 'lod0');        // crossed into the lod1 band: dwell starts
+  assert.equal(lod.resolve(200, 0.49), 'lod0');     // still dwelling (~0.5 s required)
+  assert.equal(lod.resolve(200, 0.5), 'lod1');      // held the band -> presents lod1
+  assert.equal(lod.resolve(300, 1), 'lod1');        // inside the 240-400 dead band: holds
+  assert.equal(lod.resolve(200, 1.1), 'lod1');      // back under the demote boundary: stays
+  assert.equal(lod.resolve(70, 1.6), 'lod1');       // crossed into the lod2 band: dwell restarts
+  assert.equal(lod.resolve(70, 2.1), 'lod2');       // held -> lod2
+  // The swap cap counts non-lod0 transitions: two in the window already, so the lod2->lod1
+  // promotion past 190 px must wait for the window to roll even though the dwell elapsed.
+  assert.equal(lod.resolve(200, 3), 'lod2');
+  assert.equal(lod.resolve(200, 3.6), 'lod2', 'capped: two swaps inside 10 s');
+  assert.equal(lod.resolve(200, 11), 'lod1', 'oldest swap aged out of the window');
+  assert.equal(lod.resolve(450, 12), 'lod0');       // near: urgent promote past 400 px, no dwell
+  assert.equal(lod.resolve(70, 12.5, true), 'lod0');// protected body pins lod0 at once
+  assert.equal(lod.resolve(Infinity, 13), 'lod0');  // invalid projection: fail-safe lod0
+});
+
+test('a dead-band hover never moves the presented tier in either direction', () => {
+  const low = createShipLodState('lod1');
+  for (const px of [241, 270, 300, 345, 399]) assert.equal(low.resolve(px, px / 100), 'lod1');
+  const high = createShipLodState();
+  for (const px of [241, 270, 300, 345, 399]) assert.equal(high.resolve(px, px / 100 + 20), 'lod0');
+  const deep = createShipLodState('lod2');
+  assert.equal(deep.resolve(140, 1), 'lod2');       // inside the 110-190 band: holds lod2
+  assert.equal(deep.resolve(200, 1.1), 'lod2');     // crossed up: dwells before promoting
+  assert.equal(deep.resolve(200, 1.7), 'lod1');
 });
 
 test('only ordinary anonymous hostile ships are eligible and live loads require explicit controller ownership', () => {
@@ -72,17 +87,21 @@ test('first admission and prewarm use a fresh exact-family projection, and rejec
   const file = 'wholeships/wasp_production_v1_lod2.glb';
   assert.equal(initialWholeShipLodForBoundary(entity, boundary, 1100), 'lod2');
   assert.equal(initialWholeShipLodPublicationSafe(entity, boundary, 'lod2', file, 1100), true);
-  sample.px = 80;
+  sample.px = 150;
+  assert.equal(initialWholeShipLodForBoundary(entity, boundary, 1100), 'lod1',
+    'a 150 px contact admits the silhouette-preserving mid tier, not the full body');
+  sample.px = 280;
   assert.equal(initialWholeShipLodForBoundary(entity, boundary, 1100), 'lod0',
-    'top-down: a readable 80 px contact admits the full authored body, not LOD1');
+    'the 240-400 px dead band spawns at full detail — below the promote boundary but not small');
   sample.px = 24;
   const requests = authoredPrewarmRequestsForEntities([entity], { includeSpawnableArchetypes: false,
     initialLodForEntity: e => initialWholeShipLodForBoundary(e, boundary, 1100) });
   assert.ok(requests.some(r => r.slot === 'hull' && r.url.endsWith(file)));
   assert.equal(initialWholeShipLodForBoundary(entity, boundary, 1251), 'lod0');
   assert.equal(initialWholeShipLodPublicationSafe(entity, boundary, 'lod2', file, 1251), false);
-  sample.px = 57;
-  assert.equal(initialWholeShipLodPublicationSafe(entity, boundary, 'lod2', file, 1100), false);
+  sample.px = 200;
+  assert.equal(initialWholeShipLodPublicationSafe(entity, boundary, 'lod2', file, 1100), false,
+    'the ship grew past the lod2 promote band during admission — the stale pick must not publish');
   sample.px = Infinity;
   assert.equal(initialWholeShipLodForBoundary(entity, boundary, 1100), 'lod0');
   sample.px = 24;

@@ -1,8 +1,9 @@
 import { injectOrrery } from './tokens.js';
 
 // ui-polish-392: `.orr-logbook-recap` upgrades from an unbound Newgrounds plate
-// (glass-deep fill, no border / no radius) to the promise-scale hairline card
-// (1px bone ~18% / radius 10 / faint fill). Same family as #898–#903.
+// (glass-deep fill, no border / no radius) to the promise-scale hairline card.
+// Same family as #898–#903. The first alphas (.18/.025) vanished against the lit flight
+// world — the Records Wall finding — so the face sits on the house E0 tokens (bench 2026-11-15).
 const BONE = '236 230 216';
 
 export function injectLogbookLayouts(doc = globalThis.document) {
@@ -14,9 +15,10 @@ export function injectLogbookLayouts(doc = globalThis.document) {
     width:min(680px,calc(100vw - 48px)); max-height:72vh; overflow:auto; padding:24px;
     box-sizing:border-box;
     color:var(--dp-ink);
-    border:1px solid rgb(${BONE} / .18);
+    border:1px solid rgb(${BONE} / .3);
     border-radius:10px;
-    background:rgb(${BONE} / .025);
+    background:var(--sf-face, rgb(8 11 16 / .8));
+    box-shadow:var(--sf-edge, inset 0 1px 0 rgb(236 230 216 / .1), inset 0 -1px 0 rgb(0 0 0 / .5));
     pointer-events:auto; }
   .orr-logbook-recap[hidden] { display:none; }
   .orr-logbook-recap .k-eyebrow { color:var(--dp-hand); font:600 12px var(--dp-face-label); letter-spacing:.12em; }

@@ -22,8 +22,8 @@ const PAUSING_SCREENS = new Set([
   'pause', 'mainMenu', 'newGame', 'gameOver', 'settings', 'saveLoad', 'help', 'codex',
   'drill', 'base', 'station', 'sandbox',
   'ship', 'range', 'footprint',
-  'galaxyMap', 'starmap', 'localmap', 'missionLog', 'techTree', 'automation',
-  'crucible', 'crucibleDraft', 'crucibleRefit', 'crucibleFortify', 'crucibleResults',
+  'galaxyMap', 'starmap', 'localmap', 'missionLog', 'techTree', 'pilotTree', 'automation',
+  'crucible', 'crucibleDraft', 'crucibleRefit', 'crucibleFortify', 'crucibleResults', 'pilotCards',
 ]);
 const PAUSE_REQUEST = Object.freeze({ scale: 0 });
 
@@ -373,6 +373,9 @@ export function createScreenManager(ctx) {
     const topEl = topRec && topRec.el ? topRec.el : null;
     document.body.classList.toggle('k-screen-top', !!topEl && topEl.classList.contains('k-screen'));
     document.body.dataset.kScreen = topEl ? (topEl.dataset.screen || '') : '';
+    // <html> carries the same word for the rules that style the page root by top screen (a
+    // :has(> body[...]) rule there was re-checked on every DOM insertion in the document).
+    if (document.documentElement && document.documentElement.dataset) document.documentElement.dataset.kScreen = document.body.dataset.kScreen;
     // The shell ground (deckplate SHELL): in the menu, with no run in progress, a shell screen stands
     // on the title's world out of focus; in a run it keeps the held world. CSS reads the mode here.
     document.body.dataset.gameMode = String(effectiveMode() || '');
@@ -650,7 +653,14 @@ export function createScreenManager(ctx) {
     pushScreen(id);
   }
 
-  function closeAll() {
+  function closeAll({ keepTopId = null } = {}) {
+    if (keepTopId && top() === keepTopId) {
+      // The covered screens have already received onHide. Drop their stack
+      // entries and openers while keeping the live modal and its focus fence.
+      stack.splice(0, stack.length - 1);
+      focusStack.splice(0, focusStack.length, null);
+      return;
+    }
     while (stack.length) {
       const closing = activeDef();
       if (closing && closing.onHide) { try { closing.onHide(ctx); } catch (e) { console.error(e); } }

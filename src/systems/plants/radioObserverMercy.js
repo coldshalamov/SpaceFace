@@ -90,6 +90,7 @@ export const RADIO_MERCY_TUNING = Object.freeze({
 });
 
 export const radioObserverMercyPlant = {
+  modes: ['flight'],
   name: 'plantsRadioObserverMercy',
 
   init(ctx) {
@@ -331,7 +332,8 @@ export const radioObserverMercyPlant = {
     const s = this.state;
     if (!s || !payload) return;
     // A fresh unlock is the medal taken (a retroactive backfill is the archive's, not a deed).
-    if (payload.retroactive === true) return;
+    // A notice the ledger muted for a live fight stays off the radio too (DEMO-SWARM-UX-2).
+    if (payload.retroactive === true || payload.announce === false) return;
     this._emitDeed(RADIO_MERCY_MEDAL_NOTE_EVENT, { id: payload.id, t: this._now() });
   },
 

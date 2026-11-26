@@ -14,6 +14,8 @@
 // inside tick N must finish before tick N+1 applies input.
 
 import { createSimulation, SIM_DT } from '../../src/core/sim.js';
+import { pilotHas } from '../../src/data/pilotTree.js';
+import { TRADER_LONG_MEMORY_HISTORY } from '../../src/data/pilotWork.js';
 import { snapshotSimState } from '../../src/core/simSnapshot.js';
 import { createPresentationJournal, createPresentationJournalRecord, PRESENTATION_JOURNAL_KINDS } from '../../src/core/presentationJournal.js';
 import { scenarioRuntime } from '../../src/systems/scenarioRuntime.js';
@@ -27,6 +29,7 @@ import { readPhysicsTelemetry } from '../../src/core/physicsAuthority.js';
 import { combat } from '../../src/systems/combat.js';
 import { cargo } from '../../src/systems/cargo.js';
 import { economy } from '../../src/systems/economy.js';
+import { marketRowsFor, marketHistoryFor, marketRegimeStateFor } from '../../src/economy/marketModel.js';
 import { missions } from '../../src/systems/missions.js';
 import { story } from '../../src/systems/story.js';
 import { save } from '../../src/save/saveSystem.js';
@@ -123,7 +126,7 @@ const KIND_CODES = Object.freeze({
   [PRESENTATION_JOURNAL_KINDS.VISUAL]: 4,
 });
 
-function packJournalRange(journal, start, end, scratch, arena = null) {
+function packJournalRange(journal, start, end, scratch, arena = null, refreshVisualEntityId = null, visualEntities = null) {
   const count = Math.max(0, end - start);
   const alloc = sabPackAlloc(arena, count);
   const scalars = alloc ? alloc.scalars : new Float64Array(count * JOURNAL_SCALAR_STRIDE);
@@ -132,6 +135,8 @@ function packJournalRange(journal, start, end, scratch, arena = null) {
   const typeTable = [];
   const typeIds = new Map();
   const spawnEntityIds = [];
+  let refreshVisualEntity = false;
+  let refreshWeaponPadIds = null;
   let i = 0;
   journal.visitRange(start, end, scratch, (record) => {
     const o = i * JOURNAL_SCALAR_STRIDE;
@@ -163,8 +168,25 @@ function packJournalRange(journal, start, end, scratch, arena = null) {
     }
     typeIndex[i] = idx;
     if (record.kind === PRESENTATION_JOURNAL_KINDS.SPAWN) spawnEntityIds.push(record.entityId);
+    if (record.kind === PRESENTATION_JOURNAL_KINDS.VISUAL) {
+      if (record.entityId === refreshVisualEntityId) refreshVisualEntity = true;
+      if (record.entityType === 'pickup' && visualEntities) {
+        const pad = visualEntities.get(record.entityId);
+        const padKind = pad?.data?.swarmFloorPad?.kind;
+        if (pad && pad.alive !== false && (padKind === 'wall_gun' || padKind === 'crate' || padKind === 'tap' || padKind === 'forge')) {
+          (refreshWeaponPadIds ??= []).push(record.entityId);
+        }
+      }
+    }
     i++;
   });
+  // The local clock retains entity info with the journal. Refresh the existing player
+  // occupant after a fit or hull change so the HUD and model see the new loadout while paused.
+  if (refreshVisualEntity && !spawnEntityIds.includes(refreshVisualEntityId)) spawnEntityIds.push(refreshVisualEntityId);
+  // Weapon offers can change while the pad retains the same body.
+  if (refreshWeaponPadIds) for (const id of refreshWeaponPadIds) {
+    if (!spawnEntityIds.includes(id)) spawnEntityIds.push(id);
+  }
   return { count, scalars, kinds, typeIndex, typeTable, spawnEntityIds, start, end, sab: alloc != null, sabSlot: alloc ? alloc.slot : null };
 }
 
@@ -342,9 +364,28 @@ function mawPresentationRadius(e) {
 
 export function entityVitalsOf(e, krakenFrame = VITAL_SHADOW_MISSING, state = null) {
   const fields = {};
-  for (const k of VITAL_FIELDS) {
-    if (e[k] !== undefined) fields[k] = e[k];
-  }
+  if (e.hull !== undefined) fields.hull = e.hull;
+  if (e.hullMax !== undefined) fields.hullMax = e.hullMax;
+  if (e.shield !== undefined) fields.shield = e.shield;
+  if (e.shieldMax !== undefined) fields.shieldMax = e.shieldMax;
+  if (e.cap !== undefined) fields.cap = e.cap;
+  if (e.capMax !== undefined) fields.capMax = e.capMax;
+  if (e.fuel !== undefined) fields.fuel = e.fuel;
+  if (e.fuelMax !== undefined) fields.fuelMax = e.fuelMax;
+  if (e.heat !== undefined) fields.heat = e.heat;
+  if (e.heatMax !== undefined) fields.heatMax = e.heatMax;
+  if (e.rot !== undefined) fields.rot = e.rot;
+  if (e.bank !== undefined) fields.bank = e.bank;
+  if (e.pitch !== undefined) fields.pitch = e.pitch;
+  if (e.angVel !== undefined) fields.angVel = e.angVel;
+  if (e.radius !== undefined) fields.radius = e.radius;
+  if (e.mass !== undefined) fields.mass = e.mass;
+  if (e.team !== undefined) fields.team = e.team;
+  if (e.collides !== undefined) fields.collides = e.collides;
+  if (e.alive !== undefined) fields.alive = e.alive;
+  if (e.ttl !== undefined) fields.ttl = e.ttl;
+  if (e.isPlayer !== undefined) fields.isPlayer = e.isPlayer;
+  if (e.physicsSleeping !== undefined) fields.physicsSleeping = e.physicsSleeping;
   if (e.vel && typeof e.vel === 'object') {
     fields.vx = finite(e.vel.x);
     fields.vz = finite(e.vel.z);
@@ -353,96 +394,112 @@ export function entityVitalsOf(e, krakenFrame = VITAL_SHADOW_MISSING, state = nu
     if (e.boost.energy !== undefined) fields.boostEnergy = e.boost.energy;
     if (e.boost.max !== undefined) fields.boostMax = e.boost.max;
   }
-  const machine = e.data && e.data.machine;
-  if (machine) {
-    fields.machineRepairing = Boolean(machine.repairing);
-    fields.machineWorking = Boolean(machine.working);
+  const type = e.type;
+  const data = e.data && typeof e.data === 'object' ? e.data : null;
+  if (data) {
+    const machine = data.machine;
+    if (machine) {
+      fields.machineRepairing = Boolean(machine.repairing);
+      fields.machineWorking = Boolean(machine.working);
+    }
+    const machineLife = type === 'machine' && machine ? machineVisualLife(e) : null;
+    if (machineLife != null) {
+      fields.machineVisualLife = machineLife;
+      fields.machineVisualInterrogating = machine.interrogating === true;
+      fields.machineVisualAwakened = machine.awakened === true;
+      fields.machineVisualAwake = machine.awake === true;
+      fields.machineVisualScanning = machineVisualScanning(machine);
+      fields.machineVisualCollecting = machine.collectId != null;
+    }
+    if (type === 'mine') fields.mineArmed = data.armed === true;
+    if (type === 'projectile' && data.kind === 'missile') {
+      fields.seekerSourceGeneration = e.occupantGeneration ?? null;
+      fields.seekerTargetId = data.targetId ?? null;
+      fields.seekerTargetGeneration = data.targetGeneration ?? null;
+      fields.seekerTurnRate = Number.isFinite(data.turnRate) ? data.turnRate : 0;
+      fields.seekerDiverted = data.diverted === true;
+      fields.seekerGuidanceBroken = data.guidanceBroken === true;
+    }
+    const specialistFrame = (data.swarmSpecialist || data.lootTableId || data.enemyTypeId)
+      ? swarmSpecialistFrameValue(e) : VITAL_SHADOW_MISSING;
+    if (specialistFrame !== VITAL_SHADOW_MISSING) fields.swarmSpecialistFrame = specialistFrame;
+    const riderTell = (data.swarmAffix === 'rider' || data.swarmAffix2 === 'rider')
+      ? riderTellValue(e, state) : VITAL_SHADOW_MISSING;
+    if (riderTell !== VITAL_SHADOW_MISSING) fields.swarmRideTell = riderTell;
+    if (typeof data.scanLabel === 'string') fields.dataScanLabel = data.scanLabel;
+    // Wreck concealment reads data.scanned — it flips after spawn, so it rides vitals like scanLabel.
+    if (data.scanned !== undefined) fields.dataScanned = data.scanned === true;
+    if (type === 'beacon' && data.storyPropKind === 'claim_beacon' && Number.isFinite(data.expireAt)) {
+      fields.dataBeaconExpireAt = data.expireAt;
+    }
+    const ecology = data.ecology;
+    if (ecology) {
+      fields.ecologyName = data.name ?? null;
+      fields.ecologyScanLabel = data.scanLabel ?? null;
+      fields.ecologySignalKind = data.scannerSignalKind ?? null;
+      fields.ecologyDisguised = ecology.disguised === true;
+    }
+    const faunaLife = type === 'fauna' && ecology ? faunaVisualLife(e) : null;
+    if (faunaLife != null) {
+      fields.ecologyVisualLife = faunaLife;
+      fields.ecologyVisualSpeciesId = typeof ecology.speciesId === 'string' ? ecology.speciesId : null;
+      fields.ecologyVisualDriveState = typeof ecology.driveState === 'string' ? ecology.driveState : null;
+      fields.ecologyVisualNurseryMode = typeof ecology.nurseryMode === 'string' ? ecology.nurseryMode : null;
+      fields.ecologyVisualMembers = Number.isFinite(ecology.visibleMembers) ? ecology.visibleMembers : null;
+    }
+    if (data.nemesis) fields.nemesisLivingHullJson = livingHullWireRecord(data.livingHull);
+    const cm = data.cm;
+    if (cm) {
+      fields.cmEffectId = cm.effect ? countermeasureEffectId(cm.effect) : null;
+      fields.cmEffectKind = cm.effect?.cfg?.kind ?? null;
+      fields.cmEffectX = cm.effect?.originX ?? null;
+      fields.cmEffectZ = cm.effect?.originZ ?? null;
+      fields.cmEffectT = cm.effectT || 0;
+    }
+    const ai = data.ai;
+    if (ai && typeof ai === 'object') {
+      fields.aiFsm = typeof ai.fsm === 'string' && ai.fsm
+        ? ai.fsm
+        : (typeof ai.state === 'string' && ai.state ? ai.state : null);
+    }
+    if (type === 'ship' && data.activityActorSlotId === 'pallas_seam_miner' && hasPallasSeamWorkLight(e)) {
+      fields.pallasSeamCutting = data.minerShiftActive === true;
+      fields.pallasSeamStandbyTick = pallasSeamStandbyTick(e);
+    }
+    if (type === 'ship' && (data.activityActorSlotId === 'helios_seam_miner' || data.activityActorSlotId === 'helios_starter_cutter')) {
+      fields.heliosCuttingActive = heliosCuttingValue(e);
+      fields.heliosCuttingLife = e.occupantGeneration ?? null;
+      fields.heliosCuttingJobId = data.jobId ?? null;
+      fields.heliosCuttingRecordId = data.worldRecordId ?? null;
+      fields.heliosCuttingSlotId = data.activityActorSlotId;
+    }
+    const ninthLife = type === 'payload' && data.ninthMouthRole ? ninthMouthLightLife(e) : null;
+    if (ninthLife != null) {
+      for (let k = 0; k < NINTH_MOUTH_LIGHT_VITAL_KEYS.length; k++) {
+        const key = NINTH_MOUTH_LIGHT_VITAL_KEYS[k];
+        fields[key] = ninthMouthLightVitalValue(e, key, ninthLife);
+      }
+    }
+    const wardLife = data.lanternWardId != null ? lanternWardPresentationLife(e) : null;
+    if (wardLife != null) {
+      for (let k = 0; k < LANTERN_WARD_VITAL_KEYS.length; k++) {
+        const key = LANTERN_WARD_VITAL_KEYS[k];
+        fields[key] = lanternWardVitalValue(e, key, wardLife);
+      }
+    }
+    for (let k = 0; k < AUTHORED_MOTION_FRAME_FIELDS.length; k++) {
+      const key = AUTHORED_MOTION_FRAME_FIELDS[k];
+      const value = authoredMotionFrameValue(e, key);
+      if (value !== VITAL_SHADOW_MISSING) fields[key] = value;
+    }
+    const mawRadius = type === 'station' || data.mawWorksite != null || data.mawSlot != null
+      ? mawPresentationRadius(e) : VITAL_SHADOW_MISSING;
+    if (mawRadius !== VITAL_SHADOW_MISSING) fields.mawPresentationRadius = mawRadius;
+    const orchardPod = data.orchardKind === 'pod' ? orchardPodPublicValue(e) : VITAL_SHADOW_MISSING;
+    if (orchardPod !== VITAL_SHADOW_MISSING) fields.orchardPodPublic = orchardPod;
+  } else if (type === 'mine') {
+    fields.mineArmed = false;
   }
-  const machineLife = machineVisualLife(e);
-  if (machineLife != null) {
-    fields.machineVisualLife = machineLife;
-    fields.machineVisualInterrogating = machine.interrogating === true;
-    fields.machineVisualAwakened = machine.awakened === true;
-    fields.machineVisualAwake = machine.awake === true;
-    fields.machineVisualScanning = machineVisualScanning(machine);
-    fields.machineVisualCollecting = machine.collectId != null;
-  }
-  if (e.type === 'mine') fields.mineArmed = e.data?.armed === true;
-  if (e.type === 'projectile' && e.data?.kind === 'missile') {
-    fields.seekerSourceGeneration = e.occupantGeneration ?? null;
-    fields.seekerTargetId = e.data.targetId ?? null;
-    fields.seekerTargetGeneration = e.data.targetGeneration ?? null;
-    fields.seekerTurnRate = Number.isFinite(e.data.turnRate) ? e.data.turnRate : 0;
-    fields.seekerDiverted = e.data.diverted === true;
-    fields.seekerGuidanceBroken = e.data.guidanceBroken === true;
-  }
-  const specialistFrame = swarmSpecialistFrameValue(e);
-  if (specialistFrame !== VITAL_SHADOW_MISSING) fields.swarmSpecialistFrame = specialistFrame;
-  const riderTell = riderTellValue(e, state);
-  if (riderTell !== VITAL_SHADOW_MISSING) fields.swarmRideTell = riderTell;
-  if (typeof e.data?.scanLabel === 'string') fields.dataScanLabel = e.data.scanLabel;
-  // Wreck concealment reads data.scanned — it flips after spawn, so it rides vitals like scanLabel.
-  if (e.data && e.data.scanned !== undefined) fields.dataScanned = e.data.scanned === true;
-  if (e.type === 'beacon' && e.data?.storyPropKind === 'claim_beacon' && Number.isFinite(e.data.expireAt)) {
-    fields.dataBeaconExpireAt = e.data.expireAt;
-  }
-  const ecology = e.data && e.data.ecology;
-  if (ecology) {
-    fields.ecologyName = e.data.name ?? null;
-    fields.ecologyScanLabel = e.data.scanLabel ?? null;
-    fields.ecologySignalKind = e.data.scannerSignalKind ?? null;
-    fields.ecologyDisguised = ecology.disguised === true;
-  }
-  const faunaLife = faunaVisualLife(e);
-  if (faunaLife != null) {
-    fields.ecologyVisualLife = faunaLife;
-    fields.ecologyVisualSpeciesId = typeof ecology.speciesId === 'string' ? ecology.speciesId : null;
-    fields.ecologyVisualDriveState = typeof ecology.driveState === 'string' ? ecology.driveState : null;
-    fields.ecologyVisualNurseryMode = typeof ecology.nurseryMode === 'string' ? ecology.nurseryMode : null;
-    fields.ecologyVisualMembers = Number.isFinite(ecology.visibleMembers) ? ecology.visibleMembers : null;
-  }
-  if (e.data?.nemesis) fields.nemesisLivingHullJson = livingHullWireRecord(e.data.livingHull);
-  const cm = e.data && e.data.cm;
-  if (cm) {
-    fields.cmEffectId = cm.effect ? countermeasureEffectId(cm.effect) : null;
-    fields.cmEffectKind = cm.effect?.cfg?.kind ?? null;
-    fields.cmEffectX = cm.effect?.originX ?? null;
-    fields.cmEffectZ = cm.effect?.originZ ?? null;
-    fields.cmEffectT = cm.effectT || 0;
-  }
-  const ai = e.data && e.data.ai;
-  if (ai && typeof ai === 'object') {
-    fields.aiFsm = typeof ai.fsm === 'string' && ai.fsm
-      ? ai.fsm
-      : (typeof ai.state === 'string' && ai.state ? ai.state : null);
-  }
-  if (hasPallasSeamWorkLight(e)) {
-    fields.pallasSeamCutting = e.data.minerShiftActive === true;
-    fields.pallasSeamStandbyTick = pallasSeamStandbyTick(e);
-  }
-  if (hasHeliosCuttingLight(e)) {
-    fields.heliosCuttingActive = heliosCuttingValue(e);
-    fields.heliosCuttingLife = e.occupantGeneration ?? null;
-    fields.heliosCuttingJobId = e.data.jobId ?? null;
-    fields.heliosCuttingRecordId = e.data.worldRecordId ?? null;
-    fields.heliosCuttingSlotId = e.data.activityActorSlotId;
-  }
-  const ninthLife = ninthMouthLightLife(e);
-  if (ninthLife != null) {
-    for (const key of NINTH_MOUTH_LIGHT_VITAL_KEYS) fields[key] = ninthMouthLightVitalValue(e, key, ninthLife);
-  }
-  const wardLife = lanternWardPresentationLife(e);
-  if (wardLife != null) {
-    for (const key of LANTERN_WARD_VITAL_KEYS) fields[key] = lanternWardVitalValue(e, key, wardLife);
-  }
-  for (const key of AUTHORED_MOTION_FRAME_FIELDS) {
-    const value = authoredMotionFrameValue(e, key);
-    if (value !== VITAL_SHADOW_MISSING) fields[key] = value;
-  }
-  const mawRadius = mawPresentationRadius(e);
-  if (mawRadius !== VITAL_SHADOW_MISSING) fields.mawPresentationRadius = mawRadius;
-  const orchardPod = orchardPodPublicValue(e);
-  if (orchardPod !== VITAL_SHADOW_MISSING) fields.orchardPodPublic = orchardPod;
   if (krakenFrame !== VITAL_SHADOW_MISSING) fields.ironKrakenMotionFrame = krakenFrame;
   // R12 aim tag: posture and body mass ride the vitals diff with explicit clear values (false / 0), so a body
   // that turns dynamic again (the Orchard pod after release) stops reading ANCHOR on the main lane.
@@ -535,224 +592,280 @@ function krakenMotionFrame(state, e) {
       .map(p => ({ id: p.id, attached: p.attached !== false })) : [] });
 }
 
-function vitalShadowMatches(e, shadow, krakenFrame, state) {
-  if (!Array.isArray(shadow)) return false;
-  if (e.type === 'projectile' && e.data?.kind === 'missile') {
-    const data = e.data;
-    if (shadow.seekerSourceGeneration !== (e.occupantGeneration ?? null)
-      || shadow.seekerTargetId !== (data.targetId ?? null)
-      || shadow.seekerTargetGeneration !== (data.targetGeneration ?? null)
-      || shadow.seekerTurnRate !== (Number.isFinite(data.turnRate) ? data.turnRate : 0)
-      || shadow.seekerDiverted !== (data.diverted === true)
-      || shadow.seekerGuidanceBroken !== (data.guidanceBroken === true)) return false;
-  } else if (Object.hasOwn(shadow, 'seekerSourceGeneration')) return false;
-  // Moving actors commonly change velocity or heading each publish. Check those same
-  // canonical scalar tokens first; unchanged actors still compare every field below.
-  const vel = e.vel && typeof e.vel === 'object' ? e.vel : null;
-  if ((vel ? finite(vel.x) : VITAL_SHADOW_MISSING) !== shadow[VITAL_FIELDS.length]
-      || (vel ? finite(vel.z) : VITAL_SHADOW_MISSING) !== shadow[VITAL_FIELDS.length + 1]
-      || vitalShadowValue(e.rot) !== shadow[VITAL_ROT_INDEX]) return false;
-  const faunaLife = faunaVisualLife(e);
-  if (faunaLife != null) {
-    const ecology = e.data.ecology;
-    if (shadow.ecologyVisualLife !== faunaLife
-        || shadow.ecologyVisualSpeciesId !== (typeof ecology.speciesId === 'string' ? ecology.speciesId : null)
-        || shadow.ecologyVisualDriveState !== (typeof ecology.driveState === 'string' ? ecology.driveState : null)
-        || shadow.ecologyVisualNurseryMode !== (typeof ecology.nurseryMode === 'string' ? ecology.nurseryMode : null)
-        || shadow.ecologyVisualMembers !== (Number.isFinite(ecology.visibleMembers) ? ecology.visibleMembers : null)) return false;
-  } else if (Object.hasOwn(shadow, 'ecologyVisualLife')) return false;
-  const machineLife = machineVisualLife(e);
-  if (machineLife != null) {
-    const machine = e.data.machine;
-    if (shadow.machineVisualLife !== machineLife
-        || shadow.machineVisualInterrogating !== (machine.interrogating === true)
-        || shadow.machineVisualAwakened !== (machine.awakened === true)
-        || shadow.machineVisualAwake !== (machine.awake === true)
-        || shadow.machineVisualScanning !== machineVisualScanning(machine)
-        || shadow.machineVisualCollecting !== (machine.collectId != null)) return false;
-  } else if (Object.hasOwn(shadow, 'machineVisualLife')) return false;
-  const ninthLife = ninthMouthLightLife(e);
-  if (shadow.ninthMouthLightLife !== ninthLife
-    || shadow.ninthMouthLightIdentity !== (ninthLife == null ? null : e.data.ninthMouthIdentity)
-    || shadow.ninthMouthLightOn !== (ninthLife == null ? null : e.data.ninthMouthLight)) return false;
-  let i = 0;
-  for (const key of VITAL_FIELDS) {
-    if (vitalShadowValue(e[key]) !== shadow[i++]) return false;
+function syncVitalShadow(e, shadow, hasPrev, krakenFrame, state, metaMap, retired) {
+  let changed = !hasPrev;
+  retired.kraken = false;
+  retired.specialist = false;
+  retired.rider = false;
+  retired.maw = false;
+
+  const type = e.type;
+  const data = e.data && typeof e.data === 'object' ? e.data : null;
+  const faunaLife = type === 'fauna' && data && data.ecology ? faunaVisualLife(e) : null;
+  const machineLife = type === 'machine' && data && data.machine ? machineVisualLife(e) : null;
+  const isMissile = type === 'projectile' && data && data.kind === 'missile';
+  const ninthLife = type === 'payload' && data && data.ninthMouthRole ? ninthMouthLightLife(e) : null;
+
+  if (metaMap) {
+    let meta = metaMap.get(e.id) || null;
+    if (faunaLife != null || machineLife != null || isMissile || ninthLife != null) {
+      if (!meta) {
+        changed = true;
+        meta = {};
+        metaMap.set(e.id, meta);
+      }
+      if (isMissile) {
+        const sGen = e.occupantGeneration ?? null;
+        const sTgt = data.targetId ?? null;
+        const sTgtGen = data.targetGeneration ?? null;
+        const sTurn = Number.isFinite(data.turnRate) ? data.turnRate : 0;
+        const sDiv = data.diverted === true;
+        const sBrk = data.guidanceBroken === true;
+        if (meta.seekerSourceGeneration !== sGen || meta.seekerTargetId !== sTgt
+          || meta.seekerTargetGeneration !== sTgtGen || meta.seekerTurnRate !== sTurn
+          || meta.seekerDiverted !== sDiv || meta.seekerGuidanceBroken !== sBrk) {
+          changed = true;
+          meta.seekerSourceGeneration = sGen;
+          meta.seekerTargetId = sTgt;
+          meta.seekerTargetGeneration = sTgtGen;
+          meta.seekerTurnRate = sTurn;
+          meta.seekerDiverted = sDiv;
+          meta.seekerGuidanceBroken = sBrk;
+        }
+      } else if (meta.seekerSourceGeneration !== undefined) {
+        changed = true;
+        meta.seekerSourceGeneration = undefined;
+      }
+      if (faunaLife != null) {
+        const ecology = data.ecology;
+        const fSp = typeof ecology.speciesId === 'string' ? ecology.speciesId : null;
+        const fDr = typeof ecology.driveState === 'string' ? ecology.driveState : null;
+        const fNu = typeof ecology.nurseryMode === 'string' ? ecology.nurseryMode : null;
+        const fMb = Number.isFinite(ecology.visibleMembers) ? ecology.visibleMembers : null;
+        if (meta.ecologyVisualLife !== faunaLife || meta.ecologyVisualSpeciesId !== fSp
+          || meta.ecologyVisualDriveState !== fDr || meta.ecologyVisualNurseryMode !== fNu
+          || meta.ecologyVisualMembers !== fMb) {
+          changed = true;
+          meta.ecologyVisualLife = faunaLife;
+          meta.ecologyVisualSpeciesId = fSp;
+          meta.ecologyVisualDriveState = fDr;
+          meta.ecologyVisualNurseryMode = fNu;
+          meta.ecologyVisualMembers = fMb;
+        }
+      } else if (meta.ecologyVisualLife !== undefined) {
+        changed = true;
+        meta.ecologyVisualLife = undefined;
+      }
+      if (machineLife != null) {
+        const machine = data.machine;
+        const mInt = machine.interrogating === true;
+        const mAwkD = machine.awakened === true;
+        const mAwk = machine.awake === true;
+        const mScn = machineVisualScanning(machine);
+        const mCol = machine.collectId != null;
+        if (meta.machineVisualLife !== machineLife || meta.machineVisualInterrogating !== mInt
+          || meta.machineVisualAwakened !== mAwkD || meta.machineVisualAwake !== mAwk
+          || meta.machineVisualScanning !== mScn || meta.machineVisualCollecting !== mCol) {
+          changed = true;
+          meta.machineVisualLife = machineLife;
+          meta.machineVisualInterrogating = mInt;
+          meta.machineVisualAwakened = mAwkD;
+          meta.machineVisualAwake = mAwk;
+          meta.machineVisualScanning = mScn;
+          meta.machineVisualCollecting = mCol;
+        }
+      } else if (meta.machineVisualLife !== undefined) {
+        changed = true;
+        meta.machineVisualLife = undefined;
+      }
+      const nId = ninthLife == null ? null : data.ninthMouthIdentity;
+      const nOn = ninthLife == null ? null : data.ninthMouthLight;
+      if ((ninthLife != null || meta.ninthMouthLightLife != null)
+        && (meta.ninthMouthLightLife !== ninthLife || meta.ninthMouthLightIdentity !== nId
+          || meta.ninthMouthLightOn !== nOn)) {
+        changed = true;
+      }
+      meta.ninthMouthLightLife = ninthLife;
+      meta.ninthMouthLightIdentity = nId;
+      meta.ninthMouthLightOn = nOn;
+    } else if (meta) {
+      if (meta.seekerSourceGeneration !== undefined || meta.ecologyVisualLife !== undefined
+        || meta.machineVisualLife !== undefined || meta.ninthMouthLightLife != null) {
+        changed = true;
+      }
+      metaMap.delete(e.id);
+    }
   }
-  if ((vel ? finite(vel.x) : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
-  if ((vel ? finite(vel.z) : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
+
+  let i = 0;
+  let v;
+  v = vitalShadowValue(e.hull); if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = vitalShadowValue(e.hullMax); if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = vitalShadowValue(e.shield); if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = vitalShadowValue(e.shieldMax); if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = vitalShadowValue(e.cap); if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = vitalShadowValue(e.capMax); if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = vitalShadowValue(e.fuel); if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = vitalShadowValue(e.fuelMax); if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = vitalShadowValue(e.heat); if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = vitalShadowValue(e.heatMax); if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = vitalShadowValue(e.rot); if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = vitalShadowValue(e.bank); if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = vitalShadowValue(e.pitch); if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = vitalShadowValue(e.angVel); if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = vitalShadowValue(e.radius); if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = vitalShadowValue(e.mass); if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = vitalShadowValue(e.team); if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = vitalShadowValue(e.collides); if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = vitalShadowValue(e.alive); if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = vitalShadowValue(e.ttl); if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = vitalShadowValue(e.isPlayer); if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = vitalShadowValue(e.physicsSleeping); if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+
+  const vel = e.vel && typeof e.vel === 'object' ? e.vel : null;
+  v = vel ? finite(vel.x) : VITAL_SHADOW_MISSING; if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = vel ? finite(vel.z) : VITAL_SHADOW_MISSING; if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
   const boost = e.boost && typeof e.boost === 'object' ? e.boost : null;
-  if (vitalShadowValue(boost ? boost.energy : undefined) !== shadow[i++]) return false;
-  if (vitalShadowValue(boost ? boost.max : undefined) !== shadow[i++]) return false;
-  const machine = e.data && e.data.machine;
-  if ((machine ? Boolean(machine.repairing) : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
-  if ((machine ? Boolean(machine.working) : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
-  if ((e.type === 'mine' ? e.data?.armed === true : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
-  if (swarmSpecialistFrameValue(e) !== shadow[i++]) return false;
-  if (riderTellValue(e, state) !== shadow[i++]) return false;
-  if ((typeof e.data?.scanLabel === 'string' ? e.data.scanLabel : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
-  if ((e.data && e.data.scanned !== undefined ? e.data.scanned === true : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
-  if ((e.type === 'beacon' && e.data?.storyPropKind === 'claim_beacon' && Number.isFinite(e.data.expireAt)
-    ? e.data.expireAt : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
-  const ecology = e.data && e.data.ecology;
-  if ((ecology ? e.data.name ?? null : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
-  if ((ecology ? e.data.scanLabel ?? null : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
-  if ((ecology ? e.data.scannerSignalKind ?? null : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
-  if ((ecology ? ecology.disguised === true : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
-  if ((e.data?.nemesis ? livingHullWireRecord(e.data.livingHull) : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
-  const cm = e.data && e.data.cm;
-  if ((cm ? cm.effect || null : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
-  if ((cm ? cm.effect?.cfg?.kind ?? null : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
-  if ((cm ? cm.effect?.originX ?? null : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
-  if ((cm ? cm.effect?.originZ ?? null : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
-  if ((cm ? cm.effectT || 0 : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
-  const ai = e.data && e.data.ai;
-  const aiFsm = (ai && typeof ai === 'object')
+  v = vitalShadowValue(boost ? boost.energy : undefined); if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = vitalShadowValue(boost ? boost.max : undefined); if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+
+  if (!data) {
+    if (shadow[i] !== VITAL_SHADOW_MISSING) { shadow[i] = VITAL_SHADOW_MISSING; changed = true; } i++;
+    if (shadow[i] !== VITAL_SHADOW_MISSING) { shadow[i] = VITAL_SHADOW_MISSING; changed = true; } i++;
+    v = type === 'mine' ? false : VITAL_SHADOW_MISSING;
+    if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+    if (hasPrev && shadow[SWARM_SHADOW_INDEX] !== VITAL_SHADOW_MISSING) retired.specialist = true;
+    if (hasPrev && shadow[RIDER_SHADOW_INDEX] !== VITAL_SHADOW_MISSING) retired.rider = true;
+    for (let s = 0; s < 26; s++) {
+      if (shadow[i] !== VITAL_SHADOW_MISSING) { shadow[i] = VITAL_SHADOW_MISSING; changed = true; }
+      i++;
+    }
+    v = ropeFixedValue(e); if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+    v = ropeBodyMassValue(e); if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+    if (hasPrev && shadow[i] !== VITAL_SHADOW_MISSING) retired.maw = true;
+    if (shadow[i] !== VITAL_SHADOW_MISSING) { shadow[i] = VITAL_SHADOW_MISSING; changed = true; } i++;
+    if (shadow[i] !== VITAL_SHADOW_MISSING) { shadow[i] = VITAL_SHADOW_MISSING; changed = true; } i++;
+    if (hasPrev && shadow[i] !== VITAL_SHADOW_MISSING && krakenFrame === VITAL_SHADOW_MISSING) {
+      retired.kraken = true;
+    }
+    if (shadow[i] !== krakenFrame) { shadow[i] = krakenFrame; changed = true; } i++;
+    shadow.length = i;
+    return changed;
+  }
+
+  const machine = data.machine;
+  v = machine ? Boolean(machine.repairing) : VITAL_SHADOW_MISSING;
+  if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = machine ? Boolean(machine.working) : VITAL_SHADOW_MISSING;
+  if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = type === 'mine' ? data.armed === true : VITAL_SHADOW_MISSING;
+  if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  const specialistFrame = (data.swarmSpecialist || data.lootTableId || data.enemyTypeId)
+    ? swarmSpecialistFrameValue(e) : VITAL_SHADOW_MISSING;
+  if (hasPrev && shadow[i] !== VITAL_SHADOW_MISSING && specialistFrame === VITAL_SHADOW_MISSING) {
+    retired.specialist = true;
+  }
+  if (shadow[i] !== specialistFrame) { shadow[i] = specialistFrame; changed = true; } i++;
+  const riderTell = (data.swarmAffix === 'rider' || data.swarmAffix2 === 'rider')
+    ? riderTellValue(e, state) : VITAL_SHADOW_MISSING;
+  if (hasPrev && shadow[i] !== VITAL_SHADOW_MISSING && riderTell === VITAL_SHADOW_MISSING) {
+    retired.rider = true;
+  }
+  if (shadow[i] !== riderTell) { shadow[i] = riderTell; changed = true; } i++;
+  v = typeof data.scanLabel === 'string' ? data.scanLabel : VITAL_SHADOW_MISSING;
+  if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = data.scanned !== undefined ? data.scanned === true : VITAL_SHADOW_MISSING;
+  if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = type === 'beacon' && data.storyPropKind === 'claim_beacon' && Number.isFinite(data.expireAt)
+    ? data.expireAt : VITAL_SHADOW_MISSING;
+  if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  const ecology = data.ecology;
+  v = ecology ? data.name ?? null : VITAL_SHADOW_MISSING;
+  if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = ecology ? data.scanLabel ?? null : VITAL_SHADOW_MISSING;
+  if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = ecology ? data.scannerSignalKind ?? null : VITAL_SHADOW_MISSING;
+  if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = ecology ? ecology.disguised === true : VITAL_SHADOW_MISSING;
+  if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = data.nemesis ? livingHullWireRecord(data.livingHull) : VITAL_SHADOW_MISSING;
+  if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  const cm = data.cm;
+  v = cm ? cm.effect || null : VITAL_SHADOW_MISSING;
+  if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = cm ? cm.effect?.cfg?.kind ?? null : VITAL_SHADOW_MISSING;
+  if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = cm ? cm.effect?.originX ?? null : VITAL_SHADOW_MISSING;
+  if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = cm ? cm.effect?.originZ ?? null : VITAL_SHADOW_MISSING;
+  if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = cm ? cm.effectT || 0 : VITAL_SHADOW_MISSING;
+  if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  const ai = data.ai;
+  v = (ai && typeof ai === 'object')
     ? (typeof ai.fsm === 'string' && ai.fsm
       ? ai.fsm
       : (typeof ai.state === 'string' && ai.state ? ai.state : null))
     : VITAL_SHADOW_MISSING;
-  if (aiFsm !== shadow[i++]) return false;
-  const seam = hasPallasSeamWorkLight(e);
-  if ((seam ? e.data.minerShiftActive === true : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
-  if ((seam ? pallasSeamStandbyTick(e) : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
-  const helios = hasHeliosCuttingLight(e);
-  if ((helios ? heliosCuttingValue(e) : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
-  if ((helios ? e.occupantGeneration ?? null : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
-  if ((helios ? e.data.jobId ?? null : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
-  if ((helios ? e.data.worldRecordId ?? null : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
-  if ((helios ? e.data.activityActorSlotId : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
-  const wardLife = lanternWardPresentationLife(e);
-  const wardShadow = shadow[i++];
+  if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  const seam = type === 'ship' && data.activityActorSlotId === 'pallas_seam_miner' ? hasPallasSeamWorkLight(e) : false;
+  v = seam ? data.minerShiftActive === true : VITAL_SHADOW_MISSING;
+  if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = seam ? pallasSeamStandbyTick(e) : VITAL_SHADOW_MISSING;
+  if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  const helios = type === 'ship' && (data.activityActorSlotId === 'helios_seam_miner' || data.activityActorSlotId === 'helios_starter_cutter')
+    ? hasHeliosCuttingLight(e) : false;
+  v = helios ? heliosCuttingValue(e) : VITAL_SHADOW_MISSING;
+  if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = helios ? e.occupantGeneration ?? null : VITAL_SHADOW_MISSING;
+  if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = helios ? data.jobId ?? null : VITAL_SHADOW_MISSING;
+  if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = helios ? data.worldRecordId ?? null : VITAL_SHADOW_MISSING;
+  if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = helios ? data.activityActorSlotId : VITAL_SHADOW_MISSING;
+  if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  const wardLife = data.lanternWardId != null ? lanternWardPresentationLife(e) : null;
   if (wardLife == null) {
-    if (wardShadow !== VITAL_SHADOW_MISSING) return false;
+    if (shadow[i] !== VITAL_SHADOW_MISSING) { shadow[i] = VITAL_SHADOW_MISSING; changed = true; }
+    i++;
   } else {
-    if (!Array.isArray(wardShadow)) return false;
+    let wardShadow = shadow[i];
+    if (!Array.isArray(wardShadow)) {
+      wardShadow = [];
+      shadow[i] = wardShadow;
+      changed = true;
+    }
+    i++;
     for (let j = 0; j < LANTERN_WARD_VITAL_KEYS.length; j++) {
-      if (lanternWardVitalValue(e, LANTERN_WARD_VITAL_KEYS[j], wardLife) !== wardShadow[j]) return false;
+      const wv = lanternWardVitalValue(e, LANTERN_WARD_VITAL_KEYS[j], wardLife);
+      if (wardShadow[j] !== wv) { wardShadow[j] = wv; changed = true; }
     }
   }
-  for (const key of AUTHORED_MOTION_FRAME_FIELDS) {
-    if (authoredMotionFrameValue(e, key) !== shadow[i++]) return false;
+  for (let k = 0; k < AUTHORED_MOTION_FRAME_FIELDS.length; k++) {
+    v = authoredMotionFrameValue(e, AUTHORED_MOTION_FRAME_FIELDS[k]);
+    if (shadow[i] !== v) { shadow[i] = v; changed = true; }
+    i++;
   }
-  // Rope posture / body mass sit BEFORE the tail slots: collectEntityVitals reads the tail by length-relative index.
-  if (ropeFixedValue(e) !== shadow[i++]) return false;
-  if (ropeBodyMassValue(e) !== shadow[i++]) return false;
-  if (mawPresentationRadius(e) !== shadow[i++]) return false;
-  if (orchardPodPublicValue(e) !== shadow[i++]) return false;
-  if (krakenFrame !== shadow[i++]) return false;
-  return true;
+  v = ropeFixedValue(e); if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  v = ropeBodyMassValue(e); if (shadow[i] !== v) { shadow[i] = v; changed = true; } i++;
+  const mawRadius = type === 'station' || data.mawWorksite != null || data.mawSlot != null
+    ? mawPresentationRadius(e) : VITAL_SHADOW_MISSING;
+  if (hasPrev && shadow[i] !== VITAL_SHADOW_MISSING && mawRadius === VITAL_SHADOW_MISSING) {
+    retired.maw = true;
+  }
+  if (shadow[i] !== mawRadius) { shadow[i] = mawRadius; changed = true; } i++;
+  const orchardPod = data.orchardKind === 'pod' ? orchardPodPublicValue(e) : VITAL_SHADOW_MISSING;
+  if (shadow[i] !== orchardPod) { shadow[i] = orchardPod; changed = true; } i++;
+  if (hasPrev && shadow[i] !== VITAL_SHADOW_MISSING && krakenFrame === VITAL_SHADOW_MISSING) {
+    retired.kraken = true;
+  }
+  if (shadow[i] !== krakenFrame) { shadow[i] = krakenFrame; changed = true; } i++;
+  shadow.length = i;
+  return changed;
 }
 
-function writeVitalShadow(e, shadow, krakenFrame, state) {
-  // Named runtime-only slots preserve every existing positional/tail vital index.
-  const faunaLife = faunaVisualLife(e);
-  if (faunaLife != null) {
-    const ecology = e.data.ecology;
-    shadow.ecologyVisualLife = faunaLife;
-    shadow.ecologyVisualSpeciesId = typeof ecology.speciesId === 'string' ? ecology.speciesId : null;
-    shadow.ecologyVisualDriveState = typeof ecology.driveState === 'string' ? ecology.driveState : null;
-    shadow.ecologyVisualNurseryMode = typeof ecology.nurseryMode === 'string' ? ecology.nurseryMode : null;
-    shadow.ecologyVisualMembers = Number.isFinite(ecology.visibleMembers) ? ecology.visibleMembers : null;
-  } else if (Object.hasOwn(shadow, 'ecologyVisualLife')) {
-    delete shadow.ecologyVisualLife; delete shadow.ecologyVisualSpeciesId; delete shadow.ecologyVisualDriveState;
-    delete shadow.ecologyVisualNurseryMode; delete shadow.ecologyVisualMembers;
-  }
-  const machineLife = machineVisualLife(e);
-  if (machineLife != null) {
-    const machine = e.data.machine;
-    shadow.machineVisualLife = machineLife;
-    shadow.machineVisualInterrogating = machine.interrogating === true;
-    shadow.machineVisualAwakened = machine.awakened === true;
-    shadow.machineVisualAwake = machine.awake === true;
-    shadow.machineVisualScanning = machineVisualScanning(machine);
-    shadow.machineVisualCollecting = machine.collectId != null;
-  } else if (Object.hasOwn(shadow, 'machineVisualLife')) {
-    delete shadow.machineVisualLife; delete shadow.machineVisualInterrogating; delete shadow.machineVisualAwakened;
-    delete shadow.machineVisualAwake; delete shadow.machineVisualScanning; delete shadow.machineVisualCollecting;
-  }
-  if (e.type === 'projectile' && e.data?.kind === 'missile') {
-    shadow.seekerSourceGeneration = e.occupantGeneration ?? null;
-    shadow.seekerTargetId = e.data.targetId ?? null;
-    shadow.seekerTargetGeneration = e.data.targetGeneration ?? null;
-    shadow.seekerTurnRate = Number.isFinite(e.data.turnRate) ? e.data.turnRate : 0;
-    shadow.seekerDiverted = e.data.diverted === true;
-    shadow.seekerGuidanceBroken = e.data.guidanceBroken === true;
-  } else if (Object.hasOwn(shadow, 'seekerSourceGeneration')) {
-    delete shadow.seekerSourceGeneration; delete shadow.seekerTargetId;
-    delete shadow.seekerTargetGeneration; delete shadow.seekerTurnRate;
-    delete shadow.seekerDiverted; delete shadow.seekerGuidanceBroken;
-  }
-  const ninthLife = ninthMouthLightLife(e);
-  shadow.ninthMouthLightLife = ninthLife;
-  shadow.ninthMouthLightIdentity = ninthLife == null ? null : e.data.ninthMouthIdentity;
-  shadow.ninthMouthLightOn = ninthLife == null ? null : e.data.ninthMouthLight;
-  let i = 0;
-  for (const key of VITAL_FIELDS) shadow[i++] = vitalShadowValue(e[key]);
-  const vel = e.vel && typeof e.vel === 'object' ? e.vel : null;
-  shadow[i++] = vel ? finite(vel.x) : VITAL_SHADOW_MISSING;
-  shadow[i++] = vel ? finite(vel.z) : VITAL_SHADOW_MISSING;
-  const boost = e.boost && typeof e.boost === 'object' ? e.boost : null;
-  shadow[i++] = vitalShadowValue(boost ? boost.energy : undefined);
-  shadow[i++] = vitalShadowValue(boost ? boost.max : undefined);
-  const machine = e.data && e.data.machine;
-  shadow[i++] = machine ? Boolean(machine.repairing) : VITAL_SHADOW_MISSING;
-  shadow[i++] = machine ? Boolean(machine.working) : VITAL_SHADOW_MISSING;
-  shadow[i++] = e.type === 'mine' ? e.data?.armed === true : VITAL_SHADOW_MISSING;
-  shadow[i++] = swarmSpecialistFrameValue(e);
-  shadow[i++] = riderTellValue(e, state);
-  shadow[i++] = typeof e.data?.scanLabel === 'string' ? e.data.scanLabel : VITAL_SHADOW_MISSING;
-  shadow[i++] = e.data && e.data.scanned !== undefined ? e.data.scanned === true : VITAL_SHADOW_MISSING;
-  shadow[i++] = e.type === 'beacon' && e.data?.storyPropKind === 'claim_beacon' && Number.isFinite(e.data.expireAt)
-    ? e.data.expireAt : VITAL_SHADOW_MISSING;
-  const ecology = e.data && e.data.ecology;
-  shadow[i++] = ecology ? e.data.name ?? null : VITAL_SHADOW_MISSING;
-  shadow[i++] = ecology ? e.data.scanLabel ?? null : VITAL_SHADOW_MISSING;
-  shadow[i++] = ecology ? e.data.scannerSignalKind ?? null : VITAL_SHADOW_MISSING;
-  shadow[i++] = ecology ? ecology.disguised === true : VITAL_SHADOW_MISSING;
-  shadow[i++] = e.data?.nemesis ? livingHullWireRecord(e.data.livingHull) : VITAL_SHADOW_MISSING;
-  const cm = e.data && e.data.cm;
-  shadow[i++] = cm ? cm.effect || null : VITAL_SHADOW_MISSING;
-  shadow[i++] = cm ? cm.effect?.cfg?.kind ?? null : VITAL_SHADOW_MISSING;
-  shadow[i++] = cm ? cm.effect?.originX ?? null : VITAL_SHADOW_MISSING;
-  shadow[i++] = cm ? cm.effect?.originZ ?? null : VITAL_SHADOW_MISSING;
-  shadow[i++] = cm ? cm.effectT || 0 : VITAL_SHADOW_MISSING;
-  const ai = e.data && e.data.ai;
-  shadow[i++] = (ai && typeof ai === 'object')
-    ? (typeof ai.fsm === 'string' && ai.fsm
-      ? ai.fsm
-      : (typeof ai.state === 'string' && ai.state ? ai.state : null))
-    : VITAL_SHADOW_MISSING;
-  const seam = hasPallasSeamWorkLight(e);
-  shadow[i++] = seam ? e.data.minerShiftActive === true : VITAL_SHADOW_MISSING;
-  shadow[i++] = seam ? pallasSeamStandbyTick(e) : VITAL_SHADOW_MISSING;
-  const helios = hasHeliosCuttingLight(e);
-  shadow[i++] = helios ? heliosCuttingValue(e) : VITAL_SHADOW_MISSING;
-  shadow[i++] = helios ? e.occupantGeneration ?? null : VITAL_SHADOW_MISSING;
-  shadow[i++] = helios ? e.data.jobId ?? null : VITAL_SHADOW_MISSING;
-  shadow[i++] = helios ? e.data.worldRecordId ?? null : VITAL_SHADOW_MISSING;
-  shadow[i++] = helios ? e.data.activityActorSlotId : VITAL_SHADOW_MISSING;
-  const wardLife = lanternWardPresentationLife(e);
-  // One empty slot for all other entities; only the nine Ward occupants retain this tuple.
-  if (wardLife == null) shadow[i++] = VITAL_SHADOW_MISSING;
-  else {
-    const wardShadow = Array.isArray(shadow[i]) ? shadow[i] : [];
-    for (let j = 0; j < LANTERN_WARD_VITAL_KEYS.length; j++) {
-      wardShadow[j] = lanternWardVitalValue(e, LANTERN_WARD_VITAL_KEYS[j], wardLife);
-    }
-    shadow[i++] = wardShadow;
-  }
-  for (const key of AUTHORED_MOTION_FRAME_FIELDS) {
-    shadow[i++] = authoredMotionFrameValue(e, key);
-  }
-  shadow[i++] = ropeFixedValue(e);
-  shadow[i++] = ropeBodyMassValue(e);
-  shadow[i++] = mawPresentationRadius(e);
-  shadow[i++] = orchardPodPublicValue(e);
-  shadow[i++] = krakenFrame;
-  shadow.length = i;
-  return shadow;
-}
+const VITAL_RETIRED_SCRATCH = { kraken: false, specialist: false, rider: false, maw: false };
 
 function entityInfoBlock(state, entityId, host) {
   const e = resolveWorldPresentationEntity(state, entityId);
@@ -857,6 +970,7 @@ export function collectEntityVitals(state, vitalShadow, seenScratch = null, sepa
   const out = [];
   const seen = seenScratch || new Set();
   seen.clear();
+  const metaMap = vitalShadow._meta || (vitalShadow._meta = new Map());
   for (const e of state.entityList || []) {
     if (!e || !Number.isSafeInteger(e.id)) continue;
     // Meshless weapon trails never enter the journal. Their separate VFX lane
@@ -864,31 +978,26 @@ export function collectEntityVitals(state, vitalShadow, seenScratch = null, sepa
     if (separateWeaponVfx && e.type === 'projectile' && projectileSkipsVisualFactoryMesh(e)) continue;
     seen.add(e.id);
     const previous = vitalShadow.get(e.id);
+    const hasPrev = Array.isArray(previous);
+    const shadow = hasPrev ? previous : [];
     const krakenFrame = krakenMotionFrame(state, e);
-    if (!vitalShadowMatches(e, previous, krakenFrame, state)) {
-      const retiredKrakenFrame = krakenFrame === VITAL_SHADOW_MISSING
-        && Array.isArray(previous) && previous[previous.length - 1] !== VITAL_SHADOW_MISSING;
-      const retiredSpecialistFrame = swarmSpecialistFrameValue(e) === VITAL_SHADOW_MISSING
-        && Array.isArray(previous) && previous[SWARM_SHADOW_INDEX] !== VITAL_SHADOW_MISSING;
-      const retiredRiderTell = riderTellValue(e, state) === VITAL_SHADOW_MISSING
-        && Array.isArray(previous) && previous[RIDER_SHADOW_INDEX] !== VITAL_SHADOW_MISSING;
-      const retiredMawRadius = mawPresentationRadius(e) === VITAL_SHADOW_MISSING
-        && Array.isArray(previous) && previous[previous.length - 2] !== VITAL_SHADOW_MISSING;
-      const shadow = Array.isArray(previous) ? previous : [];
-      writeVitalShadow(e, shadow, krakenFrame, state);
-      vitalShadow.set(e.id, shadow);
-      const fields = entityVitalsOf(e, retiredKrakenFrame ? null : krakenFrame, state);
-      if (retiredSpecialistFrame) fields.swarmSpecialistFrame = null;
-      if (retiredRiderTell && Number.isSafeInteger(e.occupantGeneration) && e.occupantGeneration > 0) {
+    if (syncVitalShadow(e, shadow, hasPrev, krakenFrame, state, metaMap, VITAL_RETIRED_SCRATCH)) {
+      if (!hasPrev) vitalShadow.set(e.id, shadow);
+      const fields = entityVitalsOf(e, VITAL_RETIRED_SCRATCH.kraken ? null : krakenFrame, state);
+      if (VITAL_RETIRED_SCRATCH.specialist) fields.swarmSpecialistFrame = null;
+      if (VITAL_RETIRED_SCRATCH.rider && Number.isSafeInteger(e.occupantGeneration) && e.occupantGeneration > 0) {
         fields.swarmRideTell = -e.occupantGeneration;
       }
-      if (retiredMawRadius) fields.mawPresentationRadius = null;
+      if (VITAL_RETIRED_SCRATCH.maw) fields.mawPresentationRadius = null;
       out.push([e.id, fields]);
     }
   }
   if (vitalShadow.size > seen.size) {
     for (const id of vitalShadow.keys()) {
-      if (!seen.has(id)) vitalShadow.delete(id);
+      if (!seen.has(id)) {
+        vitalShadow.delete(id);
+        metaMap.delete(id);
+      }
     }
   }
   return out;
@@ -996,24 +1105,25 @@ const BRIDGE_EVENTS = [
   'scenario:factChanged', 'scenario:branchResolved', 'game:started',
   'presentation:vfxCue', 'presentation:audioCue', 'presentation:uiCue',
   'presentation:cameraCue', 'presentation:caption', 'audio:cue', 'alert',
-  'camera:shake', 'presentation:cueApplied', 'sector:enter', 'cargo:changed',
+  'camera:shake', 'presentation:cueApplied', 'sector:enter', 'swarm:arenaEntered', 'cargo:changed',
   'survivalArena:stormWarning', 'survivalArena:stormResolve', 'survivalArena:stormCancel',
   'automation:fleetChanged', 'combat:chainKill', 'comms:log', 'run:resultsReady',
   'breakwaterSpur:offer', 'breakwaterSpur:close', 'breakwaterSpur:receipt', 'breakwaterSpur:cue',
   'cinderglassJob:offer', 'cinderglassJob:view', 'cinderglassJob:servicePrompt', 'cinderglassJob:fact', 'cinderglassJob:refused', 'cinderglassJob:serviceEnd', 'cinderglassJob:close',
 ];
 
-export function createSimHost({ onAsyncSaveReady } = {}) {
+export function createSimHost({ onAsyncSaveReady, onStep, poseTableOwnsTransforms } = {}) {
   // The save system's synchronous localStorage contract runs against a staged
   // snapshot in worker realms (browser worker, node worker_threads): main
   // stages its sf.* keyspace on load/save forwards via stageLaneStorage, and
   // worker-side writes relay back through the tick reply's storageOps so
   // durable persistence stays main-owned.
   const pendingStorageOps = [];
-  installLaneStorage(globalThis, { onWrite: (op, key, value) => {
+  const onLaneStorageWrite = (op, key, value) => {
     pendingStorageOps.push({ op, key, value });
     if (op === 'check') onAsyncSaveReady?.();
-  } });
+  };
+  installLaneStorage(globalThis, { onWrite: onLaneStorageWrite });
   // Reply attachment for ANY reply kind — writes must not wait for the next
   // tickDone (init-ready/finalize/done/bye replies carry them too).
   const drainStorageOps = () => (pendingStorageOps.length ? pendingStorageOps.splice(0) : undefined);
@@ -1436,9 +1546,9 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
     // Authored/synthetic impacts still use normal entity-reference projection.
     if (nativeImpact !== undefined) event.nativeImpact = true;
     host.pendingEvents.push(event);
-    // Paused saves finish on later task turns, after the command's tick reply. Their real
-    // bytes and terminal event need a transport wake even when no sim timer is running.
-    if (type === 'save:completed' || type === 'save:loaded' || type === 'save:error' || type === 'save:durabilitySettled') onAsyncSaveReady?.();
+    // Paused saves and restores finish on later task turns, after the command's tick reply.
+    // Their real bytes and terminal events need a transport wake even when no sim timer is running.
+    if (type === 'save:completed' || type === 'save:loaded' || type === 'save:restoreCommitted' || type === 'save:error' || type === 'save:durabilitySettled') onAsyncSaveReady?.();
   }
 
   function installBridgeCapture(bus, captureAll) {
@@ -1463,9 +1573,7 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
     const offRunShopResults = runShopResultEvents.map((event) => bus.on(event, () => {
       if (host.state?.run?.kind === 'survival') host.domainDiffer?.invalidateSubtree('run');
     }));
-    // The event bus also carries unrelated run-wallet traffic. Admit only the
-    // exact shop/refit rejection and refund receipts that can alter the visible
-    // purchase state; never subscribe to award requests or ordinary awards.
+    // Only the shop/refit rejection and refund receipts can change a paused purchase.
     const offSpendRejected = bus.on('run:spendRejected', (payload) => {
       if (host.state?.run?.kind === 'survival'
           && (payload?.reason === 'crucible:purchase' || payload?.reason === 'crucible:draftReroll'
@@ -1473,17 +1581,28 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
         host.domainDiffer?.invalidateSubtree('run');
       }
     });
-    const offShopRefund = bus.on('run:awarded', (payload) => {
+    // Physical Swarm pickups and floor spends show only the new balance in the same reply.
+    const offRunAward = bus.on('run:awarded', (payload) => {
+      if (host.state?.run?.ruleset === 'swarm' && payload?.reason === 'chip_scooped') {
+        host.domainDiffer?.invalidateLeaf('run.credits');
+        return;
+      }
       if (host.state?.run?.kind === 'survival'
           && (payload?.reason === 'crucible:purchaseRefund' || payload?.reason === 'swarm:sellBack'
             || payload?.reason === 'partial_bank_refund')) {
         host.domainDiffer?.invalidateSubtree('run');
       }
     });
+    const offFloorSpend = bus.on('run:spent', (payload) => {
+      if (host.state?.run?.ruleset === 'swarm' && payload?.reason === 'swarm_floor_pad') {
+        host.domainDiffer?.invalidateLeaf('run.credits');
+      }
+    });
     host.runShopMirrorUnsubscribe = () => {
       for (const off of offRunShopResults) off();
       offSpendRejected();
-      offShopRefund();
+      offRunAward();
+      offFloorSpend();
       host.runShopMirrorUnsubscribe = null;
     };
     // Posted/withdrawn board rows must accompany their event/RPC even while the worker is
@@ -1519,6 +1638,14 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
       // Waiting for meta's cold mirror pass leaves the main Pause footer on the title seed.
       host.domainDiffer.invalidateLeaf('meta.seed');
     });
+    // Sector membership and discovery are throttled leaves (60 ticks once large). A sector
+    // enter, and especially a Swarm arena switch, must publish them in that same reply so
+    // main's visual profile is never read from the previous sector's mirror.
+    const offSectorIdentity = ['sector:enter', 'swarm:arenaEntered'].map(event => bus.on(event, () => {
+      host.domainDiffer.invalidateLeaf('world.sectors');
+      host.domainDiffer.invalidateLeaf('world.discovery');
+      host.domainDiffer.invalidateLeaf('world.activeSector');
+    }));
     // Successful outpost changes must reach the open panel in this reply, even
     // when the clock is paused or the list is on its ordinary cold cadence.
     const offOutpostsChanged = bus.on('automation:outpostsChanged', () => {
@@ -1560,6 +1687,7 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
       offCraftFitting(); offFitFitting();
       offUnfitFitting();
       offLedgerLoad();
+      for (const off of offSectorIdentity) off();
       offOutpostsChanged();
       offFleetChanged();
       offLotDeskAnswered();
@@ -1631,18 +1759,16 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
       ['inspectListing', (args) => {
         const e = registry.get('economy');
         const market = (state.economy.markets || {})[args.stationId] || null;
-        const pending = e && e._pendingMints ? e._pendingMints.get(args.stationId) : null;
-        const entry = (market && market[args.commodityId]) || (pending && pending.listings[args.commodityId]) || null;
-        const cycle = ((state.economy.cycles || {})[args.stationId] || {})[args.commodityId]
-          || (pending && pending.cycles[args.commodityId]) || null;
+        const entry = (market && market[args.commodityId]) || null;
+        const regime = marketRegimeStateFor(state, args.stationId, args.commodityId, state.simTime || 0);
         return {
           entry: entry ? {
             stock: entry.stock, equilibrium: entry.equilibrium, baseEq: entry.baseEq,
             role: entry.role, lastMid: entry.lastMid, lastBuy: entry.lastBuy, lastSell: entry.lastSell,
-            demandMult: entry.demandMult,
+            demandMult: entry.demandMult, dents: entry.dents,
           } : null,
-          cycle: cycle ? { regime: cycle.regime, startedAt: cycle.startedAt, phase: cycle.phase } : null,
-          pending: pending ? { market: !!pending.market, listings: Object.keys(pending.listings), cycles: Object.keys(pending.cycles) } : null,
+          cycle: regime ? { regime: regime.kind, startedAt: (state.simTime || 0) - regime.elapsed, phase: null } : null,
+          pending: null,
         };
       }],
       // Station market history — the render lane's on-demand backfill for the
@@ -1650,26 +1776,29 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
       // (stage-7 item B): iterate-all readers keep mid/buy/sell/stock on the
       // wire, the 64-point rings come through here only when a UI asks.
       ['marketHistory', (args) => {
-        const market = (state.economy.markets || {})[(args && args.stationId) || ''];
-        if (!market) return { stationId: args && args.stationId, histories: null };
+        const stationId = (args && args.stationId) || '';
+        const rows = marketRowsFor(state, stationId);
+        if (!rows || !Object.keys(rows).length) return { stationId, histories: null };
+        // Long Memory (Trading): a longer grid so the chart can show twice the history.
+        const historyOpts = pilotHas(state, 'trader_long_memory') ? TRADER_LONG_MEMORY_HISTORY : null;
         if (args && args.commodityId) {
-          const entry = market[args.commodityId];
-          return { stationId: args.stationId, commodityId: args.commodityId, history: (entry && entry.history) || null };
+          return { stationId, commodityId: args.commodityId,
+            history: marketHistoryFor(state, stationId, args.commodityId, historyOpts) };
         }
-        const result = { stationId: args.stationId };
+        const result = { stationId };
         if (args.includeObservedComparisons !== true) {
           const histories = {};
-          for (const cid of Object.keys(market)) histories[cid] = (market[cid] && market[cid].history) || null;
+          for (const cid of Object.keys(rows)) histories[cid] = marketHistoryFor(state, stationId, cid, historyOpts);
           result.histories = histories;
         }
         if (args.includeObservedComparisons === true && state.ui?.docked
           && state.ui.dockedStationId === args.stationId) {
           const now = Number(state.simTime) || 0;
           const comparisons = {};
-          for (const [cid, entry] of Object.entries(market)) {
-            if (!Number.isFinite(entry?.lastMid) || !Array.isArray(entry.history)) continue;
+          for (const [cid, entry] of Object.entries(rows)) {
+            if (!Number.isFinite(entry?.lastMid)) continue;
             let reference = null;
-            for (const point of entry.history) {
+            for (const point of (entry.history || [])) {
               if (point?.origin !== 'observed' || !Number.isFinite(point.t)
                 || !Number.isFinite(point.mid) || now - point.t < 120) continue;
               if (!reference || point.t > reference.t) reference = point;
@@ -1751,6 +1880,12 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
           // A completed boot must publish its seed before the loading acknowledgement,
           // even when meta's ordinary cold cadence has not reached its next slot.
           host.domainDiffer.invalidateLeaf('meta.seed');
+          // The new game may live in a different sector (or a Swarm arena whose sector is
+          // absent from the main mirror). Publish membership and discovery with the ack so
+          // the arena's sky/palette is resolved from this boot, not the previous sector.
+          host.domainDiffer.invalidateLeaf('world.sectors');
+          host.domainDiffer.invalidateLeaf('world.discovery');
+          host.domainDiffer.invalidateLeaf('world.activeSector');
           if (args?.opts?.crucibleLaunch === true) {
             const prepared = applyPreparedCrucibleSetup(
               { state, helpers: sim.helpers, registry, bus: host.bus },
@@ -1890,12 +2025,14 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
           buildModule: ['bodyId', 'modId'],
           specialize: ['bodyId', 'specId'],
           deliverToClaim: ['bodyId', 'goodId', 'qty'],
+          requestRelayDispatch: ['bodyId', 'expectedConvoySeq'],
           collectFromClaim: ['bodyId'],
           teleportFrom: ['bodyId'],
         };
         const signature = method && SIGNATURES[method];
         if (!signature || typeof c[method] !== 'function') return { ok: false, reason: 'unknown-claims-method' };
         const result = c[method](...signature.map((key) => args[key]));
+        if (method === 'requestRelayDispatch' && result === true) host.domainDiffer?.invalidateLeaf('claims');
         if (method === 'claim' && result === true) {
           const poi = args.poi || null;
           const body = ((state.claims && state.claims.bodies) || []).find((b) => b && b.poiId === (poi && poi.id)) || null;
@@ -1923,9 +2060,14 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
         const owner = registry.get('asteroidSites');
         if (!owner) return { ok: false, reason: 'asteroid-sites-system-unavailable' };
         const arities = {
-          installMachine: 1, removeMachine: 3, setOverlay: 6, setMachineMode: 3,
+          installMachine: 1, removeMachine: 3, setOverlay: 6, setMachineMode: 3, packFill: 1,
           setExportFlag: 3, setPodTarget: 2, setPodDestination: 2, transferGoods: 5,
-          tickWorkbench: 2,
+          tickWorkbench: 3,
+          setReserveFloor: 3, setSiteLink: 4, removeSiteLink: 3,
+          commissionFieldAsteroid: 2, deploySiteDefense: 2,
+          setSiteDirective: 2, commissionSiteDrone: 2, applySiteBlueprint: 5,
+          autoLinkSectorCluster: 1, unlockBeltDoctrine: 1, acceptBeltCharter: 1,
+          tapOrScanSiteAnomalies: 3,
         };
         const method = args?.method;
         const values = args?.args;
@@ -1935,7 +2077,13 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
         if (!Array.isArray(values) || values.length > arities[method]) {
           return { ok: false, reason: 'bad-asteroid-sites-args' };
         }
-        return { ok: true, result: owner[method](...values) };
+        const result = owner[method](...values);
+        if (method !== 'tickWorkbench' && host.domainDiffer && typeof host.domainDiffer.invalidateLeaf === 'function') {
+          host.domainDiffer.invalidateLeaf('sites.byId');
+          host.domainDiffer.invalidateLeaf('sites.order');
+          host.domainDiffer.invalidateLeaf('sites.empire');
+        }
+        return { ok: true, result };
       }],
       // Generic method passthroughs for facade coverage — the main side's
       // capability checks see the method names; the lane's folded ops (like
@@ -2054,6 +2202,10 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
         const telemetry = e ? readPhysicsTelemetry(e) : null;
         const stepperSystems = host.stepper && host.stepper.debugSystemNames ? host.stepper.debugSystemNames() : null;
         return {
+          journalRebuildReasons: { ...host.rebuildReasons },
+          committedJournalSequence: host.committedJournalSequence,
+          physicsDiag: (() => { try { const o = registry.get('physics')?._sg02; if (!o) return null; const d = o.diagnostics(); let sleeping = 0, dyn = 0; for (const rec of o.dynamicRecords || []) { dyn++; try { if (rec.body && rec.body.isSleeping()) sleeping++; } catch (_) {} } const pd = registry.get('physics')?._diag || {}; return { ...d, dynamicCount: dyn, sleepingCount: sleeping, impactReceiptsMaxPerTick: pd.impactReceiptsMaxPerTick ?? null, impactCarryMax: pd.impactCarryMax ?? null, impactCarriedTotal: pd.impactCarriedTotal ?? null }; } catch (e) { return String(e); } })(),
+          lifeLog: args && Array.isArray(args.lifeFor) ? (host.lifeLog || []).filter((r) => args.lifeFor.includes(r[1])) : undefined,
           tick: state.tick,
           seed: state.meta?.seed ?? null,
           runSeed: Number.isSafeInteger(state.run?.seed) ? state.run.seed : null,
@@ -2180,6 +2332,10 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
   // snapshot. The runner-facing surfaces — journal, aux, domains, commands,
   // replies — are identical to the legacy lane's.
   async function handleInitProduction(msg) {
+    const startingStorage = msg.initialRacingStorage
+      ? { ...msg.initialSharedStoreKeys, ...msg.initialRacingStorage }
+      : msg.initialSharedStoreKeys;
+    stageLaneStorage(startingStorage, pendingStorageOps);
     const seed = (Number(msg.seed) >>> 0) || 1;
     host.reloadAt = null;
     host.crashAt = Number.isSafeInteger(msg.crashAt) ? msg.crashAt : null;
@@ -2190,7 +2346,7 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
     const journalCapacity = Number.isSafeInteger(msg.journalCapacity) && msg.journalCapacity > 0
       ? msg.journalCapacity
       : undefined;
-    const journal = createPresentationJournal(journalCapacity, { isEntityJournaled: entityIsJournaled });
+    const journal = createPresentationJournal(journalCapacity, { isEntityJournaled: entityIsJournaled, suppressTransforms: poseTableOwnsTransforms, onLifeRecord: (kind, id, gen, seq, tick, occ, rebuilding) => { const log = host.lifeLog || (host.lifeLog = []); log.push([kind, id, gen, seq, tick, occ, rebuilding ? 1 : 0]); if (log.length > 6000) log.splice(0, 1000); } });
     host.journal = journal;
     host.scratch = createPresentationJournalRecord();
     host.suppressedSpawns = [];
@@ -2288,6 +2444,7 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
       core: runtime.getSystem('core'),
       postInputPartitions,
       getSystem: (name) => runtime.getSystem(name),
+      bus: host.bus,
     });
     // Wire-side input boundary: the worker captures the same fields the main
     // lane's inputCommandSnapshots ring captures when an observer requests them.
@@ -2377,7 +2534,7 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
     const journalCapacity = Number.isSafeInteger(msg.journalCapacity) && msg.journalCapacity > 0
       ? msg.journalCapacity
       : undefined;
-    const journal = createPresentationJournal(journalCapacity, { isEntityJournaled: entityIsJournaled });
+    const journal = createPresentationJournal(journalCapacity, { isEntityJournaled: entityIsJournaled, suppressTransforms: poseTableOwnsTransforms, onLifeRecord: (kind, id, gen, seq, tick, occ, rebuilding) => { const log = host.lifeLog || (host.lifeLog = []); log.push([kind, id, gen, seq, tick, occ, rebuilding ? 1 : 0]); if (log.length > 6000) log.splice(0, 1000); } });
     host.journal = journal;
     host.scratch = createPresentationJournalRecord(); // visitRange copies each record into this
 
@@ -2396,6 +2553,11 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
       return seq;
     };
     journal.recordTransformIfChanged = (tick, entity) => {
+      // NO-FREEZE: when the shared pose table carries every journaled body's pose each step, the
+      // journal carries only spawns, destroys and visual changes. Per-tick transform rows were ~95%
+      // of its volume; a presentation ACK lagging ~2 s overflowed the 16k ring into a full rebuild
+      // (measured: 3 overflow rebuilds in 45 s of busy Swarm), which re-mints every generation.
+      if (typeof poseTableOwnsTransforms === 'function' && poseTableOwnsTransforms()) return 0;
       const before = journal.getDiagnostics().identityErrorCount;
       const seq = origTransformIfChanged(tick, entity);
       const diag = journal.getDiagnostics();
@@ -2613,10 +2775,8 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
       },
       emitBusEvent: (type, payload) => {
         if (!host.bus || typeof host.bus.emit !== 'function' || typeof type !== 'string') return;
-        // Load/save events carry main's sf.* keyspace; stage it onto the lane
-        // storage shim first so save.load/save.save run their own slot logic
-        // against real bytes. Writes the worker staged but has not yet relayed
-        // main-side must survive the restage — the snapshot predates them.
+        // Load/save carries the main storage snapshot. Pending worker writes
+        // must survive the restage because the snapshot predates them.
         if ((type === 'game:load' || type === 'game:save') && payload && payload.__laneStorage) {
           stageLaneStorage(payload.__laneStorage, pendingStorageOps);
           host.lastStorageStage = { type, keys: Object.keys(payload.__laneStorage).length };
@@ -2712,6 +2872,11 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
       ? msg.workBudgetMs * 1e6
       : null;
     let stepsExecuted = 0;
+    // ENGINE slice 5: every worker step is a full step. Batching is a wall-clock accident (how
+    // many ticks one timer turn happened to owe); letting it mark steps 2..N as catch-up skipped
+    // tactical AI, NPC jobs, traffic and law on those ticks, so what the world did depended on
+    // machine load. A behind worker now dilates the world clock instead (wholeSimBrowserWorker).
+    if (production) state.simCatchupIndex = 0;
     for (let s = 0; s < steps; s++) {
       if (s > 0) reconcileLaneComponentSelection(state);
       if (production) {
@@ -2721,6 +2886,11 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
         sim.step(SIM_DT);
       }
       stepsExecuted++;
+      // Shared pose table (browser worker): publish this step's poses latest-wins, outside the
+      // reply journal. Read-only of sim state; production lane only.
+      if (production && typeof onStep === 'function') {
+        try { onStep(state, journal); } catch (_) { /* the picture feed never breaks a step */ }
+      }
       // Crash probe (--probe crash, init.crashAt): an unhandled step exception
       // must surface to the main lane as a rejected directive — the same
       // fail-closed shape a real worker throw produces.
@@ -2736,6 +2906,8 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
       if (workBudgetNs != null && s + 1 < steps
           && (nowNs() - workStart) >= workBudgetNs) break;
     }
+    // Between batches nothing is a catch-up step (save capture, RPCs, the reply tail).
+    if (production) state.simCatchupIndex = 0;
     // Churn probe (gate-c overflow exercise): spawn/destroy journaled entities to
     // drive non-coalescible append churn beyond ring capacity.
     // Aux-row probe (stage 3 gate exercise): scripted live→shelve→promote
@@ -2834,7 +3006,8 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
     let pack;
     try {
       pack = journalStart < journalEnd
-        ? packJournalRange(journal, journalStart, journalEnd, scratch, host.sabArena)
+        ? packJournalRange(journal, journalStart, journalEnd, scratch, host.sabArena,
+          production ? state.playerId : null, production ? state.entities : null)
         : { count: 0, scalars: new Float64Array(0), kinds: new Uint8Array(0), typeIndex: new Uint16Array(0), typeTable: [], spawnEntityIds: [], start: journalStart, end: journalEnd, sab: false, sabSlot: null };
     } catch (error) {
       const diag = journal.getDiagnostics ? journal.getDiagnostics() : {};
@@ -2865,15 +3038,18 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
         const snapshot = profiler.snapshot();
         systemProfile = {
           ...snapshot,
-          systems: snapshot.systems.slice(0, 40),
+          systems: snapshot.systems.slice(0, 120),
         };
         host.systemProfileReplyCountdown = 60;
       }
     }
 
     const events = drainEvents();
+    // A light directive (worker-local, replyDetail === false) defers the diff-based read-model
+    // detail to the next detail directive; nothing is lost, the shadows still hold the last sent.
+    const replyDetail = msg.replyDetail !== false;
     const entityVitals = production
-      ? collectEntityVitals(state, host.vitalShadow, host.vitalSeen, true)
+      ? (replyDetail ? collectEntityVitals(state, host.vitalShadow, host.vitalSeen, true) : [])
       : null;
     // This single authored body may become ready or fail without a normal vital
     // changing. Ship its complete vitals each existing packet so coalescing keeps
@@ -2927,7 +3103,9 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
     host.auxUpsertsTotal += aux.upserts.length;
     host.auxRemovalsTotal += aux.removals.length;
     const auxJournalBreaches = host.auxVerify ? verifyAuxJournal(state) : 0;
-    const domains = diffDomains(state, host.domainDiffSeq++);
+    const domains = replyDetail
+      ? diffDomains(state, host.domainDiffSeq++)
+      : { updates: [], probe: null, shipBytes: 0, marketShipBytes: 0, diffMs: 0 };
     const warmStubs = host.warmStubs.length ? host.warmStubs.splice(0) : null;
     const weaponVfxProjectiles = collectWeaponVfxProjectiles(state);
     const boundaryMs = Number(nowNs() - workStart) / 1e6;
@@ -3050,6 +3228,15 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
     host.draftReadUnsubscribe = null;
     host.playerTruthImpulseObserver?.dispose?.();
     host.playerTruthImpulseObserver = null;
+    // PRO-06 second route: on the worker lane `window`/`pagehide` is unreachable, so this
+    // shutdown IS the unload edge. The synchronous exit save stages its write into
+    // pendingStorageOps, which the 'bye' reply's drainStorageOps() carries to durable storage.
+    try {
+      const s = registry.get('save');
+      if (s && typeof s.requestExitAutosave === 'function' && s._suppressUnloadExitSave !== true) {
+        s.requestExitAutosave();
+      }
+    } catch (_) { /* a failed final save must not block the exit */ }
     try {
       if (host.runtime && typeof host.runtime.dispose === 'function') host.runtime.dispose();
       else if (host.sim && typeof host.sim.dispose === 'function') host.sim.dispose();
@@ -3073,6 +3260,12 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
     async finalize() { return handleFinalize(); },
     shutdown() { handleShutdown(); },
     drainStorageOps,
+    /** Take the realm's storage back after another host (the boot rehearsal) ran in this realm:
+     * its writes are cleared from the staged snapshot and this host's write relay is reinstalled. */
+    reclaimLaneStorage() {
+      stageLaneStorage({});
+      installLaneStorage(globalThis, { onWrite: onLaneStorageWrite });
+    },
     hasPendingDurable() { return pendingStorageOps.length > 0 || host.pendingEvents.length > 0; },
     applyPresentationTimeEffects,
     /** E2: the realm's per-system step profile (also rides the tick reply while enabled). */

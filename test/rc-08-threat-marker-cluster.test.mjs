@@ -45,24 +45,32 @@ function visibleArcs(mock) {
     (el) => String(el.className).includes('sf-threat-halo__slot--arc') && el.style.display === 'block');
 }
 
-/** The furniture footprint the halo mirrors — same published constants, independently written. */
+/** The visor power-bar footprint the halo mirrors (1280×720, 1366×650, 1920×1080, 1024×640). */
 function clusterRect(width, height) {
-  const edgeFit = (width <= 959 || height <= 599) ? 0.62
-    : (width <= 1099 || height <= 659) ? 0.75
-    : (width <= 1279 || height <= 719) ? 0.85 : 1;
-  const s = (width > 1700 ? 0.85 : (width > 1300 ? 0.7 : 0.6)) * edgeFit;
-  const left = width <= 1400 ? 8 : 18;
-  return { x: 0, y: height - 24 - 540 * s, width: left + 760 * s, height: 24 + 540 * s };
+  const safeInsetX = Math.max(0, (width - height * 16 / 9) / 2);
+  const safeFrameW = Math.max(320, width - 2 * safeInsetX);
+  const visorWidth = width <= 760
+    ? Math.max(280, width - 36)
+    : (width <= 1200 ? Math.min(width * 0.54, safeFrameW * 0.56) : Math.min(width * 0.49, safeFrameW * 0.54, 792));
+  const visorLeft = Math.max(12, Math.min(24, width * 0.01435)) + safeInsetX;
+  const visorBottom = Math.max(24, Math.min(43, height * 0.0436));
+  const visorHeight = width <= 1200 ? 182 : 244;
+  return { x: 0, y: height - visorBottom - visorHeight, width: visorLeft + visorWidth, height: visorBottom + visorHeight };
 }
 
 function dockRect(width, height) {
+  const safeInsetX = Math.max(0, (width - height * 16 / 9) / 2);
+  const safeFrameW = Math.max(320, width - 2 * safeInsetX);
   const edge = Math.min(32, Math.max(16, height * 0.024));
   const edgeFit = (width <= 959 || height <= 599) ? 0.62
     : (width <= 1099 || height <= 659) ? 0.75
     : (width <= 1279 || height <= 719) ? 0.85 : 1;
-  const dockW = (width <= 760 || height <= 620) ? 204 : ((width <= 900 || height <= 650) ? 220 : 256);
-  const w = edge + dockW * edgeFit;
-  return { x: width - w, y: height - Math.min((dockW + 110) * edgeFit + edge, height * 0.5), width: w, height: height };
+  const chartW = Math.min(Math.max(216, Math.min(462, width * 0.2763)), safeFrameW * 0.30);
+  const chartH = Math.max(112, Math.min(207, width * 0.1238)) + 64;
+  const dockW = Math.max(chartW, (width <= 760 || height <= 620) ? 204 : ((width <= 900 || height <= 650) ? 220 : 256));
+  const w = Math.max(edge + dockW * edgeFit, Math.max(12, Math.min(20, width * 0.012)) + chartW);
+  const h = Math.min(Math.max((dockW + 110) * edgeFit + edge, chartH + Math.max(16, Math.min(34, height * 0.0362))), height * 0.5);
+  return { x: width - safeInsetX - w, y: height - h, width: w, height: h };
 }
 
 function overlaps(a, b) {
@@ -71,14 +79,12 @@ function overlaps(a, b) {
 }
 
 function markerBox(slot) {
-  // Hostile arc: 54px along the edge, 18px across, centred on the translate3d point.
+  // Off-screen attacker chevron: 26x26px centred on the translate3d point.
   const m = /translate3d\((-?\d+(?:\.\d+)?)px,(-?\d+(?:\.\d+)?)px/.exec(slot.style.transform || '');
   assert.ok(m, 'the slot carries its edge transform');
-  const edge = slot.getAttribute('data-edge');
-  const horizontal = edge === 'top' || edge === 'bottom';
-  const halfW = (horizontal ? 54 : 18) / 2;
-  const halfH = (horizontal ? 18 : 54) / 2;
-  return { x: Number(m[1]) - halfW, y: Number(m[2]) - halfH, width: halfW * 2, height: halfH * 2 };
+  const halfW = 13;
+  const halfH = 13;
+  return { x: Number(m[1]) - halfW, y: Number(m[2]) - halfH, width: 26, height: 26 };
 }
 
 function boot(width, height) {
@@ -103,11 +109,10 @@ const LOWER_LEFT = (sx, sy) => (world, out) => {
   out.x = sx; out.y = sy; out.onScreen = false; out.behind = false; return out;
 };
 
-test('RC-08: a lower-left off-screen hostile parks beside the Cluster, never over it', () => {
-  // The furniture sweep: the shipped 1280x720 case, the 1920x1080 default bench, and a compact
-  // 1024x640 window — each changes the cluster scale step, so each is its own reservation.
+test('RC-08: a lower-left off-screen hostile parks beside the visor power bar, never over it', () => {
   for (const [w, h, px, py] of [
     [1280, 720, -150, 820],
+    [1366, 650, -160, 760],
     [1920, 1080, -200, 1260],
     [1024, 640, -120, 740],
   ]) {
@@ -115,41 +120,37 @@ test('RC-08: a lower-left off-screen hostile parks beside the Cluster, never ove
     try {
       f.halo.update(f.player, f.state, LOWER_LEFT(px, py));
       const marks = visibleArcs(f.mock);
-      assert.equal(marks.length, 1, `${w}x${h}: the shooter keeps its marker — nothing hid it`);
+      assert.equal(marks.length, 1, `${w}x${h}: the shooter keeps its chevron — nothing hid it`);
       const box = markerBox(marks[0]);
       const cluster = clusterRect(w, h);
       assert.ok(!overlaps(box, cluster),
-        `${w}x${h}: marker ${JSON.stringify(box)} must not overlap the Cluster ${JSON.stringify(cluster)}`);
+        `${w}x${h}: chevron ${JSON.stringify(box)} must not overlap the visor bar ${JSON.stringify(cluster)}`);
       assert.ok(!overlaps(box, dockRect(w, h)),
-        `${w}x${h}: the marker must not ride under the right dock either`);
-      // Beside, not banished: the mark stays on the edge the shooter bears to, inside the band.
+        `${w}x${h}: chevron must not ride under the right dock either`);
       const edge = marks[0].getAttribute('data-edge');
       assert.ok(edge === 'bottom' || edge === 'left', `${w}x${h}: a lower-left bearing stays low or left`);
       const cx = box.x + box.width / 2, cy = box.y + box.height / 2;
-      if (edge === 'bottom') assert.ok(Math.abs(cy - (h - 12)) < 0.2, 'pinned to the bottom edge band');
-      else assert.ok(Math.abs(cx - 12) < 0.2, 'pinned to the left edge band');
-      // And it must be VISIBLE beside the furniture — same size as any other mark, not shrunk.
-      assert.ok(box.width >= 18 && box.height >= 18, 'the marker was not shrunk to fit');
+      if (edge === 'bottom') assert.ok(Math.abs(cy - (h - 18)) < 0.2, 'pinned to the bottom edge band');
+      else assert.ok(Math.abs(cx - 18) < 0.2, 'pinned to the left edge band');
+      assert.ok(box.width >= 24 && box.height >= 24, 'chevron keeps full legible size');
     } finally {
       f.restore();
     }
   }
 });
 
-test('RC-08: a straight-down left-side hostile clears the left column and the Cluster', () => {
-  // A left-edge bearing lands between the comms/tracker column (top-left) and the Cluster —
-  // the one open band the left edge still owns. It must fit, not fail the solver.
+test('RC-08: a straight-down left-side hostile clears the left column and the visor bar', () => {
   const f = boot(1280, 720);
   try {
     f.halo.update(f.player, f.state, LOWER_LEFT(-300, 600));
     const marks = visibleArcs(f.mock);
-    assert.equal(marks.length, 1, 'the marker still publishes between the two reservations');
+    assert.equal(marks.length, 1, 'the chevron publishes between the two reservations');
     const box = markerBox(marks[0]);
-    assert.ok(!overlaps(box, clusterRect(1280, 720)), 'clear of the Cluster');
+    assert.ok(!overlaps(box, clusterRect(1280, 720)), 'clear of the visor bar');
     const edge = marks[0].getAttribute('data-edge');
     assert.equal(edge, 'left');
     const cx = box.x + box.width / 2;
-    assert.ok(Math.abs(cx - 12) < 0.2, 'still pinned to the left edge band');
+    assert.ok(Math.abs(cx - 18) < 0.2, 'still pinned to the left edge band');
   } finally {
     f.restore();
   }

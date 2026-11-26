@@ -494,7 +494,7 @@ export const ENTRIES_COMMS_B = [
     trigger: { type: 'hashDaily', chance: 0.14 },
     channel: 'comms',
     payload: {
-      from: 'station wire',
+      from: 'station comms',
       text: '"UNATTENDED CARGO, BAY 7. CLAIM OR IT DRILLS." Bay 7, the regulars will tell you, has been empty for nine years — which is exactly why the wire uses it: nothing in bay 7 has ever contradicted the wire yet. Nobody has ever found a pod there to claim, and the regulars take that as proof the wire is working.',
       ttl: 7,
     },

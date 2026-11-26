@@ -63,6 +63,7 @@ export function strikeTargetFor(playerSpeed, playerDistToCenter, tuning = STORM_
 }
 
 export const pl191StormLamps = {
+  modes: ['flight'],
   name: 'plantsPl191',
 
   init(ctx) {

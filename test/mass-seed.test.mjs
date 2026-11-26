@@ -49,7 +49,8 @@ const DT = SIM_DT;
 // Independent contract values (published in src/data/massSeed.js and on the HUD at deploy time):
 const TRAVEL_DISTANCE = 416; // 260 wu/s × 1.6 s — the HUD lock marker is published from this
 const SPAWN_OFFSET = 12 + MASS_SEED_DEF.radius + MASS_SEED_DEF.spawnGap; // player radius 12 → 22
-const TICKS = { travel: 96, locking: 18, warning: 360, anchor: 1800, collapse: 27, cooldown: 480 };
+// R17: the bolt flies at boltSpeed (900 wu/s) to the cursor; the 416 wu reach takes 0.462 s = 28 ticks.
+const TICKS = { travel: 28, locking: 18, warning: 360, anchor: 1800, collapse: 27, cooldown: 480 };
 
 const LIFECYCLE_EVENTS = [
   'massSeed:deployed', 'massSeed:locking', 'massSeed:locked', 'massSeed:warning',
@@ -219,8 +220,8 @@ test('pre-lock: seed is ineligible in travel AND locking; latch denied through t
     deployNow(t);
     const seedId = t.state.massSeed.seedId;
 
-    // Mid-travel, in tether range (seed ~126 wu out): the gate is eligibility, not distance.
-    runUntil(t, () => t.state.tick >= 30, 40);
+    // Mid-travel, in tether range (seed ~232 wu out): the gate is eligibility, not distance.
+    runUntil(t, () => t.state.tick >= 14, 20);
     let seed = seedEntity(t);
     assert.equal(t.state.massSeed.phase, 'travel');
     assert.equal(isMassSeedTetherEligible(seed), false, 'published eligibility false in travel');
@@ -327,10 +328,10 @@ test('determinism: lock position/timing exact across runs and independent of rng
   assert.deepEqual(a.deployed.lockPos, { x: 438, z: 0 }, 'lockPos = spawn(22,0) + dir×416');
   assert.deepEqual(a.entityPosAtLock, { x: 438, z: 0 }, 'frame lock lands EXACTLY on the published point');
   assert.deepEqual(a.velAtLock, { x: 0, z: 0, angVel: 0 }, 'velocity reconciled to zero at lock');
-  withinTick(a.lockingTick, a.deployed.lockAt, 'lock lands at the published time (deploy + 1.6s)');
+  withinTick(a.lockingTick, a.deployed.lockAt, 'lock lands at the published time (deploy + 416/900 s)');
   withinTick(a.activeTick, a.deployed.activeAt, 'anchor active after the 0.3s clamp spin-up');
   assert(a.lockingTick - 1 >= TICKS.travel - 1 && a.lockingTick - 1 <= TICKS.travel + 1,
-    'travel lasts 1.6s ± one tick of boundary quantization');
+    'R17 "a bolt that reaches the cursor in ≤ 0.5 s": travel lasts 416/900 s ± one tick');
 });
 
 // ── 5. one-seed cap / deterministic replacement ───────────────────────────────────────────
@@ -916,7 +917,7 @@ function makeFakeDom() {
   };
 }
 
-test('presentation: HUD seconds are the primary timing channel; state never color-only', () => {
+test('presentation: floating Pin status pill stays retired while world lock marker carries textual countdown', () => {
   const t = boot(9117);
   const { doc } = makeFakeDom();
   const hud = Object.create(massSeedHud);
@@ -934,9 +935,9 @@ test('presentation: HUD seconds are the primary timing channel; state never colo
     const dom = hud._dom;
     assert(dom, 'DOM built under the fake document');
 
-    // Travel: pill carries the lock countdown as TEXT; the world marker shows the future lock.
-    assert(/^SEED → LOCK \d+\.\ds$/.test(dom.pillText.textContent), `travel pill has seconds: "${dom.pillText.textContent}"`);
-    assert.equal(dom.pill.attrs['aria-label'], dom.pillText.textContent, 'aria channel mirrors the text');
+    // Travel: floating power status pill is retired (tile 3 Pin owns status); world lock marker carries countdown.
+    assert.equal(dom.pill.style.display, 'none', 'floating SEED -> LOCK pill stays hidden');
+    assert.equal(dom.pillText.textContent, '', 'floating pill prints no jargon text');
     assert.equal(dom.mark.style.display, 'block', 'lock marker visible during travel');
     assert(/^LOCK \d+\.\ds$/.test(dom.markLabel.textContent), `marker label has seconds: "${dom.markLabel.textContent}"`);
 
@@ -950,31 +951,26 @@ test('presentation: HUD seconds are the primary timing channel; state never colo
     assert.match(dom.mark.attrs['aria-label'], /offscreen left/);
     assert.match(dom.mark.style.transform, /^translate3d\(24px,/);
 
-    // Locking: state readout stays textual.
+    // Locking: floating pill stays retired.
     assert(runUntil(t, () => t.state.massSeed.phase === 'locking', TICKS.travel + 4));
     hud.update(DT, t.state);
-    assert(/FRAME LOCK/.test(dom.pillText.textContent));
+    assert.equal(dom.pill.style.display, 'none');
 
-    // Active: countdown text, NOT the warning class.
+    // Active: floating pill stays retired and lock marker retires once the anchor exists.
     assert(runUntil(t, () => t.state.massSeed.phase === 'active', TICKS.locking + 4));
     hud.update(DT, t.state);
-    assert(/^ANCHOR \d+s$/.test(dom.pillText.textContent), `active pill has seconds: "${dom.pillText.textContent}"`);
-    assert.equal(dom.pill.classList.contains('mseed-warning'), false, 'no warning styling while healthy');
+    assert.equal(dom.pill.style.display, 'none');
     assert.equal(dom.mark.style.display, 'none', 'lock marker retires once the anchor exists');
 
-    // Warning: text says COLLAPSE IN n s — readable without color; class only reinforces.
+    // Warning & collapse -> cooldown: floating pill remains retired (tile 3 carries cooldown seconds).
     assert(runUntil(t, () => t.state.massSeed.phase === 'warning', TICKS.anchor - TICKS.warning + 30));
     hud.update(DT, t.state);
-    assert(/^ANCHOR COLLAPSE IN \d+s$/.test(dom.pillText.textContent), `warning pill has seconds: "${dom.pillText.textContent}"`);
-    assert.equal(dom.pill.classList.contains('mseed-warning'), true, 'warning class reinforces (not primary)');
-
-    // Collapse → cooldown: the recharge is textual too.
+    assert.equal(dom.pill.style.display, 'none');
     assert(runUntil(t, () => t.state.massSeed.phase === 'idle', TICKS.warning + TICKS.collapse + 30));
     hud.update(DT, t.state);
-    assert(/^SEED READY IN \d+s$/.test(dom.pillText.textContent), `cooldown pill has seconds: "${dom.pillText.textContent}"`);
-    assert.equal(dom.pill.classList.contains('mseed-cooldown'), true);
+    assert.equal(dom.pill.style.display, 'none');
 
-    // Reduced motion: the root picks up the reduced class; timing stays textual (never motion-only).
+    // Reduced motion: the root picks up the reduced class.
     t.state.settings.video = { ...(t.state.settings.video || {}), motionReduce: true };
     hud.update(DT, t.state);
     assert.equal(dom.root.classList.contains('mseed-reduced-motion'), true, 'reduced-motion class applied');

@@ -830,7 +830,7 @@ export function installPlayerTruthReader(win, opts = {}) {
       if (enumerateCandidates) {
         // Opt-in diagnostic only: measure every listed draw independently at this same failing
         // sample so a weak first answer cannot leave the rest of an overlapping-effects case
-        // unexplored. The ordinary player-truth route retains its original eight-draw cap.
+        // unexplored. Larger diagnostic sets still use the bounded eight-draw search.
         receipt.individualDeltas = [];
         for (let index = 0; index < combat.length; index++) {
           const measured = measure([combat[index]]);
@@ -975,11 +975,10 @@ export function installPlayerTruthReader(win, opts = {}) {
     let attribution = null;
     const activePlay = SF.state.mode === 'flight'
       && (!(opts.rounds ?? (SF.state.run?.kind === 'survival')) || SF.state.run?.phase === 'active');
-    const attributionThreshold = opts.vfxAttribution === true ? 0.30 : 0;
-    if (activePlay && ct >= attributionThreshold && ct > 0 && !pxAttributionAttempted) {
+    if (opts.vfxAttribution === true && activePlay && ct >= 0.30 && !pxAttributionAttempted) {
       pxAttributionAttempted = true;
       attribution = attributeCombatSplit({ renderer, draw, combat, baseline: bufA, mask: cMask,
-        boxes: threatBoxes, threatSubjects, vw, vh, lum, boxFrac, expanded: opts.vfxAttribution === true });
+        boxes: threatBoxes, threatSubjects, vw, vh, lum, boxFrac, expanded: true });
     }
     const bodyOcclusion = bodies.length ? measurePlayerTruthBodyOcclusion({
       THREE, renderer, scene, camera: cam, playerMesh, bodies, playerBox, vw, vh,

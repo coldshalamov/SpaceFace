@@ -261,11 +261,13 @@ function installHarness({ state = makeState(), storage = createStorage(), worker
 
 // ── D1 ───────────────────────────────────────────────────────────────────────
 
-test('autosave transaction publishes a mirrorPatch delta, not a whole-corpus collect', () => {
+test('autosave transaction publishes a mirrorPatch delta, not a whole-corpus collect', async () => {
   const state = makeState();
   const harness = installHarness({ state });
   const mirrorCalls = [];
-  save._queueSharedStoreMirror = (patch) => { mirrorCalls.push(patch); };
+  // 0ac8af7b63: save:completed waits on the durability promise, so the stubbed mirror must
+  // report a landed write (the real function resolves true on success).
+  save._queueSharedStoreMirror = (patch) => { mirrorCalls.push(patch); return true; };
   try {
     // A valid previous generation so the transaction rotates a recovery copy —
     // the patch must carry both the new primary and the rotated bytes.
@@ -274,6 +276,7 @@ test('autosave transaction publishes a mirrorPatch delta, not a whole-corpus col
 
     assert.equal(save.requestAutosave('mirror_patch_regression', { force: true }), true);
     harness.drain();
+    await save._lastSaveDurability;
     const completed = harness.bus.events.find((entry) => entry.name === 'save:completed');
     assert.ok(completed, 'the autosave transaction must complete');
 

@@ -5,12 +5,14 @@
 // upload every authored triangle for a speck. Hysteresis stays in lod.js; spawn uses a one-shot
 // projected-pixel pick without hysteresis.
 
-import { LOD_THRESHOLDS } from './lod.js';
+import { SHIP_LOD_THRESHOLDS } from './lod.js';
 
-// The old blanket demotion was disabled after visible on-screen rebuilds and swap thrashing.
-// Bulk catalog warming remains off; the ordinary-ship controller requests exact siblings and
-// prepares each one before publication. Other body classes keep the previous policy.
-export const WHOLE_SHIP_LOD_RUNTIME_DEMOTION = false;
+// Runtime demotion is on for ordinary whole-ship families (DRAW-COST-1). The first rollout was
+// disabled in 9505170f18 after visible on-screen rebuilds: the selector demoted a presented body
+// before its sibling was resident, so ships played "box then ship" on the glass. The controller
+// now composes and compiles the sibling hidden and swaps in a single frame, so that failure mode
+// cannot recur — the flag records that the safe-swap machinery is the only path a demotion takes.
+export const WHOLE_SHIP_LOD_RUNTIME_DEMOTION = true;
 
 // Limit the first default rollout to anonymous hostile ships. Named, mission and interactive
 // hulls keep their close-detail presentation even if they share an ordinary family.
@@ -25,21 +27,21 @@ export function isOrdinaryLodShip(entity) {
     || flags.missionCritical || flags.interactive || flags.hero || flags.boss);
 }
 
-// A missing, stale or invalid projection must never choose a cheap initial body.
-//
-// Top-down camera: the player sees the whole engagement, so there is no distant-traffic band to
-// degrade. Only a true speck (< 32 CSS px) may start on the low-detail sibling to avoid uploading
-// a full hull nobody can read; everything else admits the authored LOD0 body. LOD1 is not selected
-// on the live route while runtime demotion is off — it exists for the authored family/tests.
+// A missing, stale or invalid projection must never choose a cheap initial body — the fail-safe
+// first admission is always LOD0. A ship that spawns small or far admits the tier the live
+// selector would put it on, so a speck never uploads full authored geometry nobody can read.
 export function initialShipLodFromProjection(px, protectedBody = false) {
   if (protectedBody || !Number.isFinite(px) || px <= 0) return 'lod0';
-  return px < 32 ? 'lod2' : 'lod0';
+  return selectSpawnLodLevel(px, SHIP_LOD_THRESHOLDS);
 }
 
+// Publish-time recheck for the initial pick: if the ship grew past the promote boundary while
+// admission ran, the cheap tier is stale — publishing it would resolve a promotion (and a wasted
+// load) on the ship's first visible frames.
 export function initialShipLodStillSafe(level, px, protectedBody = false) {
   if (level === 'lod0') return true;
   if (protectedBody || !Number.isFinite(px) || px <= 0) return false;
-  return level === 'lod2' ? px <= 56 : px <= 128;
+  return level === 'lod2' ? px <= SHIP_LOD_THRESHOLDS.LOD2_ABOVE : px <= SHIP_LOD_THRESHOLDS.LOD0_ABOVE;
 }
 
 export function normalizeRequestedLod(level) {
@@ -108,7 +110,7 @@ export function shouldCommitWholeShipLodLoad(pendingLevel, requestedLevel, attac
 }
 
 /** One-shot spawn/resident pick. Near contacts stay LOD0 so close quality does not change. */
-export function selectSpawnLodLevel(projectedPx, thresholds = LOD_THRESHOLDS) {
+export function selectSpawnLodLevel(projectedPx, thresholds = SHIP_LOD_THRESHOLDS) {
   const px = Number(projectedPx);
   if (!Number.isFinite(px) || px <= 0) return 'lod2';
   if (px < Number(thresholds.LOD2_BELOW)) return 'lod2';
@@ -117,14 +119,14 @@ export function selectSpawnLodLevel(projectedPx, thresholds = LOD_THRESHOLDS) {
 }
 
 /**
- * The level sector prewarm decodes for a live ship. Admission always builds LOD0 (its upgrade
- * options carry no lodLevel), so with runtime demotion off a prewarm that picked LOD2 for a far
- * hull decoded a file nobody would ever draw — and the LOD0 decode then ran late, inside the
- * serial admission lane, while the ship sat on the glass as a stand-in.
+ * The level sector prewarm decodes for a live ship: the tier admission will actually build for
+ * this projection. An unknown projection still decodes LOD0 — that is what the fail-safe initial
+ * pick admits — so a stale sample never pays a file nobody will draw.
  */
-export function selectPrewarmLodLevel(projectedPx, thresholds = LOD_THRESHOLDS) {
-  if (WHOLE_SHIP_LOD_RUNTIME_DEMOTION !== true) return 'lod0';
-  return selectSpawnLodLevel(projectedPx, thresholds);
+export function selectPrewarmLodLevel(projectedPx, thresholds = SHIP_LOD_THRESHOLDS) {
+  const px = Number(projectedPx);
+  if (WHOLE_SHIP_LOD_RUNTIME_DEMOTION !== true || !Number.isFinite(px) || px <= 0) return 'lod0';
+  return selectSpawnLodLevel(px, thresholds);
 }
 
 export function wholeShipFamilyDefIds(familyByDefId = {}) {

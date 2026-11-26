@@ -150,8 +150,11 @@ export function settingEffect(label, value = '', settings = {}) {
 const CSS = `
 .orr-set-preview { position:relative; min-width:0; min-height:0; display:grid; grid-template-rows:auto minmax(0, 1fr) auto; row-gap:16px;
   color:rgb(${BONE}); pointer-events:none; }
-/* promise-scale hairline card (ui-polish-399): one quiet edge round legend + instrument, no shade pool */
-.orr-set-preview { border:1px solid rgb(${BONE} / .18); border-radius:10px; background:rgb(${BONE} / .025); padding:16px 18px;
+/* promise-scale hairline card (ui-polish-399): one quiet edge round legend + instrument, no shade pool.
+   The first alphas (.18/.025) vanished against the lit backdrop — the Records Wall finding —
+   so the face sits on the house E0 tokens (bench 2026-11-15). */
+.orr-set-preview { border:1px solid rgb(${BONE} / .3); border-radius:10px; background:var(--sf-face, rgb(8 11 16 / .8)); padding:16px 18px;
+  box-shadow:var(--sf-edge, inset 0 1px 0 rgb(236 230 216 / .1), inset 0 -1px 0 rgb(0 0 0 / .5));
   box-sizing:border-box; isolation:isolate; }
 .orr-set-preview::before { content:none; display:none; }
 @media (max-width:820px), (max-height:460px), (max-width:760px) { .orr-set-preview { border-radius:8px; } }
@@ -446,7 +449,7 @@ function buildMixer(doc) {
       outNum.className = '';
       outNum.textContent = 'Muted';
       outUnit.hidden = true;
-      outLab.textContent = 'All held';
+      outLab.textContent = 'Sound off';
       return;
     }
     outUnit.hidden = false;
@@ -454,7 +457,8 @@ function buildMixer(doc) {
     if (!counter) counter = createCounter(outNum, { format: (n) => String(Math.round(n)) });
     counter.set(pctNow);
     const ch = MIXER_CHANNELS.find((c0) => c0.key === focusKey);
-    outLab.textContent = `${ch ? ch.label : 'Master'} · out`;
+    // The figure is what reaches the speakers (the channel times Master), said in plain words.
+    outLab.textContent = `${ch ? ch.label : 'Master'} · as heard`;
   };
   let liveTimer = 0;
   return {

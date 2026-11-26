@@ -61,13 +61,13 @@ export function createHudMeta(ctx) {
   document.getElementById('hud').appendChild(stableLoad);
   let stableLoadArmed = false;     // Phase 1+ has begun → the line exists
   let stableLoadHidden = false;    // player toggled it off (it returns)
+  // Always-the-same status lines ("CARGO: STABLE LOAD", "SYS: NOMINAL") are retired from the
+  // flight HUD. Keep the hidden elements so legacy DOM queries/teardown stay inert and safe.
   const showStableLoad = () => {
-    stableLoad.classList.add('sf-stableload--visible');
-    seatStableLoadClearOfSpeedDial(stableLoad, document);
+    stableLoad.classList.remove('sf-stableload--visible');
+    stableLoad.style.display = 'none';
   };
-  const onResize = () => {
-    if (stableLoad.classList.contains('sf-stableload--visible')) seatStableLoadClearOfSpeedDial(stableLoad, document);
-  };
+  const onResize = () => {};
   if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
     window.addEventListener('resize', onResize);
   }
@@ -167,37 +167,16 @@ export function createHudMeta(ctx) {
   }
 
   // ── hud:phase handler ─────────────────────────────────────────────────────────────────────
-  on('hud:phase', ({ phase, beat, lie }) => {
-    // Phase readout: Phase 1 = "NOMINAL" (the lie), Phase 2 = "OPTIMIZED", Phase 3 = "STABLE".
-    const phaseLabel = phase >= 3 ? 'STABLE' : (phase === 2 ? 'OPTIMIZED' : 'NOMINAL');
-    phaseValue.textContent = phaseLabel;
-    phaseReadout.classList.toggle('sf-hudphase--p2', phase === 2);
-    phaseReadout.classList.toggle('sf-hudphase--p3', phase >= 3);
-    phaseReadout.style.display = phase > 1 ? '' : 'none';
-
-    if (phase >= 1) {
-      stableLoadArmed = true;
-      if (!stableLoadHidden) showStableLoad();
-    }
-
-    // specific lies
-    if (lie === 'stable_load') {
-      // ensure the STABLE LOAD line is showing even if the player toggled it off earlier — the HUD
-      // re-asserts its courtesy. (The doc: "The line stays.")
-      stableLoadHidden = false;
-      showStableLoad();
-    }
-    if (lie === 'civilian_tag_flicker') {
-      // armed; the actual flicker fires on hud:tagFlicker (the kill)
-    }
-    if (lie === 'manifest_silent_correct') {
-      // armed; the ghost fires when cargo contents change (detected in tick)
-    }
+  // Always-the-same status lines ("SYS: NOMINAL", "CARGO: STABLE LOAD") stay off the flight HUD.
+  on('hud:phase', ({ phase, lie }) => {
+    phaseReadout.style.display = 'none';
+    stableLoad.classList.remove('sf-stableload--visible');
+    stableLoad.style.display = 'none';
     if (lie === 'phase3_freeze') {
-      // CONTRACT 47-A shows PENDING forever — surface a permanent HUD line.
       stableLoad.classList.add('sf-stableload--p3');
       stableLoad.querySelector('.sf-stableload__v').textContent = '47-A: PENDING';
     }
+    void phase;
   });
 
   // ── hud:tagFlicker handler (B2 kill) ──────────────────────────────────────────────────────
@@ -262,10 +241,9 @@ export function createHudMeta(ctx) {
 
   function setVisible(v) {
     metaVisible = !!v;
-    stableLoad.style.display = v ? '' : 'none';
+    stableLoad.style.display = 'none';
     tagFlicker.style.display = v ? '' : 'none';
-    const phase = (state.story && state.story.phase) || 1;
-    phaseReadout.style.display = (v && phase > 1) ? '' : 'none';
+    phaseReadout.style.display = 'none';
     manifestGhost.style.display = v ? '' : 'none';
     legacyReadout.style.display = v && legacyPresent ? '' : 'none';
   }

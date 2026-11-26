@@ -8,6 +8,7 @@ import { makeGpuQueuePacer } from '../src/render/gpuQueuePace.js';
 import { collectUniqueCompileSubjects, compileSubjectsAcrossPresents,
   shouldSliceFlightAdmission, postTaskAtBackgroundPriorityBounded } from '../src/render/compilePresentSlice.js';
 import { createPipelineAdmissionTracker, observePipelineAdmission } from '../src/render/pipelineReadiness.js';
+import { yieldToNextPresent } from '../src/render/startupGpuResidency.js';
 
 // Execute the live renderer admission owner without initializing a GPU. The real selector,
 // unique-subject collector, tracker, readiness batch and serial queue pacer retain their order.
@@ -68,7 +69,7 @@ test('real batched owner restores staged roots before another pending link issue
   roots.forEach(root => root.children.forEach(mesh => { mesh.geometry.dispose(); mesh.material.dispose(); }));
 });
 
-function fixture({ parallel = false, active = () => true, rejectIndex = -1, mode = 'flight', stampDelayMs = 0, stampGate = null, urgent = true, split = false, pendingLinks = false } = {}) {
+function fixture({ parallel = false, active = () => true, rejectIndex = -1, mode = 'flight', stampDelayMs = 0, stampGate = null, urgent = true, split = false, pendingLinks = false, issuePacing, now, onSubmit } = {}) {
   const state = { mode, render: { firstPlayableFrameAt: 1 } };
   const root = new THREE.Group();
   root.visible = false;
@@ -98,6 +99,7 @@ function fixture({ parallel = false, active = () => true, rejectIndex = -1, mode
       if (!node.isMesh) return;
       if (submissions.length === rejectIndex) throw fault;
       submissions.push(node.name); queued++; peak = Math.max(peak, queued);
+      onSubmit?.();
       materials.add(node.material);
     });
     return materials;
@@ -116,10 +118,71 @@ function fixture({ parallel = false, active = () => true, rejectIndex = -1, mode
     PACED_FRAME_BUDGET_MS: 4, notePacedFrameSpend: () => {} };
   const compile = new Function(...Object.keys(deps), `return (${body});`).call(
     { _shadowSettingOn: false, _shadowDepthEnabled: () => false, _selectPostRoute: () => 'fixture' }, ...Object.values(deps));
-  const tracker = createPipelineAdmissionTracker(compile, { maxSettlingLinks: split ? 2 : 1 });
+  const tracker = createPipelineAdmissionTracker(compile, { maxSettlingLinks: split ? 2 : 1, issuePacing, now });
   return { root, tracker, submissions, drains, fault, peak: () => peak, releaseLinks: () => { linked = true; },
     run: () => tracker.compile(root, { urgent, isActive: active }) };
 }
+
+test('revealed flight hands off spent issue work with its links still pending', async () => {
+  let frame = 1, clock = 0, retire = false;
+  const handoffs = [], order = [];
+  const h = fixture({ parallel: true, split: true, pendingLinks: true, now: () => clock,
+    onSubmit: () => { clock += 0.75; }, issuePacing: {
+      getFrame: () => frame, budgetMs: 4,
+      waitForPresent: () => yieldToNextPresent({
+        requestFrame: callback => handoffs.push(callback),
+        scheduleTask: callback => setImmediate(callback),
+      }),
+    } });
+  const submit = (label, options = {}) => {
+    const root = h.root.clone();
+    root.children.forEach(child => { child.name = label; });
+    return h.tracker.compile(root, { urgent: true, ...options }).then(receipt => {
+      order.push(label);
+      return receipt;
+    });
+  };
+  const first = submit('first');
+  const retired = submit('retired', { isActive: () => !retire });
+  const last = submit('last');
+  try {
+    await new Promise(resolve => setImmediate(resolve));
+    assert.deepEqual(h.submissions, Array(8).fill('first'), 'one full root issued before the paint handoff');
+    assert.equal(handoffs.length, 1, 'a queued root cannot start in the spent flight frame');
+    assert.deepEqual(order, [], 'yielding the CPU issue slot never completes a GPU admission');
+    retire = true;
+    frame++;
+    handoffs.shift()();
+    assert.equal(h.submissions.length, 8, 'the frame callback does not issue the next root');
+    await new Promise(resolve => setImmediate(resolve));
+    assert.deepEqual(h.submissions, [...Array(8).fill('first'), ...Array(8).fill('last')],
+      'a retired FIFO owner issues nothing and the next root can link alongside the first');
+    assert.deepEqual(order, ['retired']);
+  } finally {
+    h.releaseLinks();
+    for (const handoff of handoffs.splice(0)) handoff();
+    await Promise.allSettled([first, retired, last]);
+  }
+  assert.deepEqual(new Set(order), new Set(['retired', 'first', 'last']));
+});
+
+test('an unpaced startup queue issues overlapping whole roots without a paint dependency', async () => {
+  let clock = 0;
+  const h = fixture({ mode: 'loading', parallel: true, split: true, pendingLinks: true, now: () => clock,
+    onSubmit: () => { clock += 0.75; }, issuePacing: {
+      getFrame: () => null, budgetMs: 4,
+      waitForPresent: () => assert.fail('startup has no revealed-flight paint gate'),
+    } });
+  const first = h.run();
+  const next = h.tracker.compile(h.root.clone(), { urgent: true });
+  try {
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(h.submissions.length, 16, 'both roots issue even while the first GPU link is pending');
+  } finally {
+    h.releaseLinks();
+    await Promise.allSettled([first, next]);
+  }
+});
 
 test('sliced issue waits for delayed environment stamps before releasing its reservation', { timeout: 10_000 }, async () => {
   const stamps = [];

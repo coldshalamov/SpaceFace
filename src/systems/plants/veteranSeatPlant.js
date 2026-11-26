@@ -52,6 +52,7 @@ export function seatOffsetFor(seed, tuning = VETERAN_SEAT_TUNING) {
 }
 
 export const veteranSeatPlant = {
+  modes: ['swarm'],
   name: 'plants329',
 
   init(ctx) {

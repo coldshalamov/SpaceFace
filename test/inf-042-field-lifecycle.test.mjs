@@ -89,14 +89,15 @@ test('INF-042: the sampled hazard IS the published strength', () => {
   assert.ok(pull.ax < 0 && pull.az === 0, 'active pulls toward the center along the bearing');
 });
 
-test('INF-042: the pill words the enforced phase, never a fully-armed lie', () => {
+test('INF-042: fieldHud drops floating power pills (state lives on the power bar tiles)', () => {
   const now = 100;
   const word = (rec) => fieldHud._resolve({ active: [rec] }, now).text;
-  assert.match(word({ kind: 'well', expireAt: now + 8, engaged: true, phase: 'winding' }), /FORMING/);
-  assert.match(word({ kind: 'well', expireAt: now + 8, engaged: true, phase: 'dissipating' }), /FADING/);
-  assert.match(word({ kind: 'well', expireAt: now + 8, engaged: true }), /ENGAGED/, 'phaseless records read as before');
-  assert.match(word({ kind: 'well', expireAt: now + 8, engaged: false, phase: 'active' }), /ARMED/);
-  const repulsor = fieldHud._resolve({ active: [{ kind: 'repulsor', expireAt: now + 8, engaged: true, phase: 'active' }] }, now);
-  assert.match(repulsor.text, /REPULSOR/);
-  assert.equal(repulsor.cls, 'field-repulsor');
+  assert.equal(word({ kind: 'well', expireAt: now + 8, engaged: true, phase: 'winding' }), '');
+  assert.equal(word({ kind: 'well', expireAt: now + 8, engaged: true, phase: 'dissipating' }), '');
+  assert.equal(word({ kind: 'well', expireAt: now + 8, engaged: true }), '');
+  assert.equal(word({ kind: 'repulsor', expireAt: now + 8, engaged: true, phase: 'active' }), '');
+  assert.equal(fieldHud._resolve({ cooldowns: { well: now + 5 }, lastDenial: { kind: 'well', at: now, reason: 'cooldown', readyAt: now + 5 } }, now).text, '');
+  // Environmental timing corridors remain owned by fieldHud.
+  const sluice = fieldHud._resolve({}, now, { phase: 'surge', remainingS: 4 });
+  assert.equal(sluice.text, 'CINDER SLUICE — SURGE 4s');
 });

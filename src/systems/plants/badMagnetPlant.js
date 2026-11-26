@@ -60,6 +60,7 @@ export function nearestBarrel(candidates, pos, rangeWu = BAD_MAGNET_TUNING.barre
 }
 
 export const badMagnetPlant = {
+  modes: ['swarm'],
   name: 'plants137',
 
   init(ctx) {

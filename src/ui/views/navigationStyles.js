@@ -378,6 +378,7 @@ export const CSS = `
 #sf-galaxymap .gm-ins-presence-row > .gm-ins-row-val { flex: 0 0 auto; white-space: nowrap; }
 #sf-galaxymap .gm-fig { font-variant-numeric: tabular-nums; }
 #sf-galaxymap .gm-ins-note { font-size: var(--k-fs-data); color: var(--k-bone-38); max-width: var(--k-measure); }
+#sf-galaxymap #gm-jump-customs { color: var(--dp-warn, #f3c485); line-height: 1.4; }
 #sf-galaxymap .gm-ins-btn:not(.k-word), #sf-galaxymap .gm-place-btn, #sf-galaxymap .gm-tl-row, #sf-galaxymap .gm-site-row {
   appearance: none;
   background: none;

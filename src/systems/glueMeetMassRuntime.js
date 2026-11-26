@@ -3,8 +3,7 @@
 // shove the pair, or coat that hull and disable it with guns. A miss, a bare
 // kill, and a full hold move no pay and apply no film.
 import { ADHESIVE } from '../data/reactiveMatter/adhesive.js';
-import { COMMODITIES } from '../data/commodities.js';
-import { addCargo, removeCargo } from './cargo.js';
+import { addCargo, removeCargo, slotFitFor } from './cargo.js';
 import { installReactiveEntity } from './reactiveMatter.js';
 
 const PAY = 280;
@@ -17,18 +16,9 @@ const LIGHT_AHEAD = 16;
 const WRECK_GAP = 18;
 const ROCK_ASIDE = 56;
 
-function polymerVol() {
-  const row = COMMODITIES.find((entry) => entry.id === ADHESIVE.polymerId);
-  return row && row.volPerU > 0 ? row.volPerU : Infinity;
-}
-
 function polymerRoom(state) {
-  const cargo = state.player && state.player.cargo;
-  const vol = polymerVol();
-  if (!cargo || !Number.isFinite(vol)) return 0;
-  const free = cargo.capVolume - cargo.usedVolume;
-  if (!Number.isFinite(free)) return 0;
-  return Math.floor(free / vol);
+  // Slot law: the pour admits only while the bag can stack more units of the polymer.
+  return slotFitFor(state, ADHESIVE.polymerId);
 }
 
 function polymersOf(state) {

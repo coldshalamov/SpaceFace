@@ -103,6 +103,24 @@ export function cachedRelayDestination(body) {
   return body.linkedStationId || (body.spec && body.spec.destStationId) || null;
 }
 
+export function relayDispatchReadiness(body) {
+  const spec = body?.spec;
+  if (!spec || body.owned === false) return { state: 'uncommissioned' };
+  if (spec.id !== 'spec_relay') return { state: 'not-relay' };
+  if (spec.convoy) return { state: 'away' };
+  if (spec.status !== 'active') return { state: 'inactive' };
+
+  const { minLoadU, convoyLoadU } = BODY_SPECIALIZATION_BY_ID.get('spec_relay');
+  let goodId = null;
+  let available = 0;
+  for (const [id, count] of Object.entries(spec.store?.input || {})) {
+    const qty = Number(count);
+    if (Number.isFinite(qty) && qty > available) { goodId = id; available = qty; }
+  }
+  if (available < minLoadU) return { state: 'short', available, minLoadU };
+  return { state: 'ready', goodId, qty: Math.min(available, convoyLoadU) };
+}
+
 export const claimsReadMethods = {
   // Is the POI already claimed by the player?
   isClaimed(poiId) {

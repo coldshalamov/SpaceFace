@@ -23,7 +23,6 @@ const PLAYER_TRANSLATION_PROFILE_CACHE = new WeakMap();
 // Cruise-phase derivations are pure functions of the base profile; cached so the player's
 // flight tick does not allocate a fresh profile every step while cruising or stumbling.
 const CRUISE_PROFILE_CACHE = new WeakMap();
-const STUMBLE_PROFILE_CACHE = new WeakMap();
 
 /**
  * Player-only translation feel. The ship reaches its existing speed ceiling sooner and
@@ -476,7 +475,6 @@ export function resolvePropulsionProfile(entity, state = null) {
   if (state && entity && entity.id === state.playerId) {
     const c = state.player && state.player.cruise;
     if (c && c.phase === 'cruising') return cachedDerivedProfile(CRUISE_PROFILE_CACHE, profile, cruisingProfile);
-    if (c && Number.isFinite(c.stumbleT) && c.stumbleT > 0) return cachedDerivedProfile(STUMBLE_PROFILE_CACHE, profile, stumbleProfile);
   }
   return profile;
 }
@@ -499,15 +497,6 @@ function cruisingProfile(profile) {
     maxYawRate: Number.isFinite(profile.maxYawRate) ? profile.maxYawRate * 0.25 : profile.maxYawRate,
     yawAccel: Number.isFinite(profile.yawAccel) ? profile.yawAccel * 0.25 : profile.yawAccel,
     yawBrake: Number.isFinite(profile.yawBrake) ? profile.yawBrake * 0.25 : profile.yawBrake,
-  };
-}
-
-function stumbleProfile(profile) {
-  return {
-    ...profile,
-    maxYawRate: Number.isFinite(profile.maxYawRate) ? profile.maxYawRate * 0.4 : profile.maxYawRate,
-    yawAccel: Number.isFinite(profile.yawAccel) ? profile.yawAccel * 0.4 : profile.yawAccel,
-    yawBrake: Number.isFinite(profile.yawBrake) ? profile.yawBrake * 0.4 : profile.yawBrake,
   };
 }
 

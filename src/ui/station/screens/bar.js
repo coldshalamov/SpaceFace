@@ -40,8 +40,9 @@ import { mountContactPortrait } from '../../portraitArt.js';
 import { createWaveform, createVoiceArc, voiceEnvelope } from '../../orrery/waveform.js';
 import { createReplyDial } from '../../orrery/barReplyDial.js';
 import { injectOrreryStationBar } from '../../orrery/station-barLayouts.js';
+import { syncScrollExtent } from '../../orrery/scrollExtent.js';
 import { typewriter, decrypt } from '../../orrery/text.js';
-import { reducedMotion } from '../../orrery/motion.js';
+import { reducedMotion, stagger } from '../../orrery/motion.js';
 import { escapeHtml } from '../../comms.js';
 import { entitySpanHtml } from '../../entityResolver.js';
 import { BINDINGS } from '../../bindings.js';
@@ -111,7 +112,10 @@ function ensureBarStyle() {
 const fmt = (n) => Math.round(Number(n) || 0).toLocaleString('en-US');
 const roleLabel = (c) => {
   const authored = typeof c.roleLabel === 'string' ? c.roleLabel.trim() : '';
-  return authored || String(c.role || 'contact').replace(/_/g, ' ');
+  // A role read as an id ("barkeep", "pilot") beside authored titles ("Cargo Registrar"): it now
+  // opens with a capital like every other line on the rail.
+  const raw = authored || String(c.role || 'contact').replace(/_/g, ' ');
+  return raw.charAt(0).toUpperCase() + raw.slice(1);
 };
 const mid = (m) => (m && (m.id != null ? m.id : m.missionId));
 const rewardOf = (m) => Math.max(0, Math.round(Number(
@@ -163,6 +167,7 @@ export function createBarScreen(ctx) {
 
   let selectedId = null;
   let visible = false;
+  let arriving = false; // the room staggers in on show only (ORRERY §3.5); a re-render is silent
   let erisLocalVisitId = null;
   let erisLeftVisitId = null;
   let erisOpenAnnounced = false;
@@ -684,7 +689,7 @@ export function createBarScreen(ctx) {
         : `<p class="k-sentence sx-muted">No leads on the board${survey ? '' : ' and no survey data for sale here'}.</p>`) +
       // the board verb carries the board's count; the intel facts live on the Missions tab (the count is
       // the one that matters here, so it rides the verb instead of a block of its own)
-      `<ul class="k-words k-words--row sx-bar__foot"><li><button type="button" ${stationControlAttrs('open-board')} class="k-word k-word--fine sx-bar__log" data-log>${stationControlLabel('open-board')}${boardCount > 0 ? ` <small class="sx-bar__log-n">· ${boardCount}</small>` : ''}</button></li><li><button type="button" ${stationControlAttrs('play-manifest')} class="k-word k-word--fine" data-play-manifest>${stationControlLabel('play-manifest')}</button></li></ul>` +
+      `<ul class="k-words k-words--row sx-bar__foot"><li><button type="button" ${stationControlAttrs('open-board')} class="k-word k-word--fine sx-bar__log" data-log>${stationControlLabel('open-board')}${boardCount > 0 ? ` <small class="sx-bar__log-n">· ${boardCount}</small>` : ''}</button></li><li><button type="button" ${stationControlAttrs('play-manifest')} class="k-word k-word--fine" data-play-manifest aria-label="Play cards — Manifest">${stationControlLabel('play-manifest')}</button></li></ul>` +
       `<div class="sx-bar__intel" hidden><p class="k-caps sx-intel__head">Intel</p>${intelHtml}</div>`;
     dressLeads();
     leadsKeysHint();
@@ -723,6 +728,22 @@ export function createBarScreen(ctx) {
     if (ceresPending && (sid() !== CERES_RETURN_STATION || !state.ui?.docked)) clearCeresPending();
     renderRail(state); renderStage(state); renderLeads(state); seatSpine();
     if (typeof requestAnimationFrame === 'function') requestAnimationFrame(seatSpine);
+    // the hang is the tab body's scroll window: its fold and extent cursor follow every re-render's
+    // height, so the foot's board verbs dissolve under the rim ("more below") instead of standing
+    // there guillotined mid-glyph (bench 1440x900)
+    syncScrollExtent(railEl.closest('.sx-bar__hang') || railEl);
+    // Arrival (ORRERY §3.5): on show, the regulars file in and the conversation rises; a later
+    // refresh (a contact picked, a mission accepted) is silent. The rail's measured caps head and
+    // the leads' board key stay still so the spine seats on resting ink.
+    if (arriving && !reducedMotion()) {
+      arriving = false;
+      const units = [
+        ...railEl.querySelectorAll('.sx-bar__rows > li'),
+        ...stageEl.children,
+      ].filter(Boolean);
+      stagger(units, { base: 60, step: 40 });
+      for (const unit of units) unit.classList.add('orr-rise');
+    }
   }
 
   // ---------- interactions ----------
@@ -1181,7 +1202,9 @@ export function createBarScreen(ctx) {
     onShow(c) {
       if (!visible) enterErisVisit();
       visible = true;
+      arriving = true;
       renderAll((c || ctx).state || {});
+      arriving = false;
     },
     onHide() {
       visible = false;

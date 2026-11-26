@@ -330,13 +330,18 @@ function craftDistress(sectorId, wantKind) {
   ok('distress BAIT: springs on approach, hostile, broken receipt');
 }
 {
-  // IGNORE — the signal fades. No punishment, no receipt, silent resolution.
+  // IGNORE — the signal fades without a terminal announcement or penalty.
   const { sim, state, log } = boot(33, 'sector_ceres_belt', { x: 1900, z: 1900 }, { credits: 100 });
   const item = craftDistress('sector_ceres_belt', 'distress_genuine');
   const { id } = forceFire(sim, 'distress_call', 'sector_ceres_belt', { item });
   tickS(sim, 245);
-  assert(log.resolved.some((r) => r.encounterId === id && r.outcome === 'ignored'), 'ignored distress fades');
-  assert(!log.receipts.some((r) => r.encounterId === id), 'ignoring is silent — no receipt, no guilt-trip');
+  const resolutions = log.resolved.filter((r) => r.encounterId === id);
+  assert.deepEqual(resolutions.map((r) => r.outcome), ['ignored'], 'ignored distress fades');
+  const receipts = log.receipts.filter((r) => r.encounterId === id);
+  assert.deepEqual(receipts.map(({ outcome, text }) => ({ outcome, text })),
+    [{ outcome: 'ignored', text: null }], 'the ledger records one silent resolution');
+  assert(!log.voice.some((v) => v.encounterId === id && v.t >= resolutions[0].t),
+    'the expired distress call sends no follow-up message');
   assert.equal(state.player.credits, 100, 'ignoring costs nothing');
   ok('distress IGNORE: fades silently, unpunished');
 }
@@ -360,11 +365,15 @@ function craftDistress(sectorId, wantKind) {
   assert(first && /convoy|bulk haul|escorted train|Lane traffic|freighters rolling/i.test(first.text || ''),
     'departure announced on the ticker line');
   tickS(sim, 400);                                     // transit + arrival (physical run ≈360s)
-  const tp = log.pressure.filter((p) => p.stationId === 'st_tethys_hub');
-  assert.equal(tp.length, 1, 'arrival applies market pressure exactly once');
+  const cargoId = live.data.cargoId;
+  assert(CONVOY_CARGO.some((c) => c.commodityId === cargoId), 'convoy carries planned cargo');
+  const tp = log.pressure.filter((p) => p.stationId === 'st_tethys_hub' && p.good === cargoId);
+  assert.equal(tp.length, 1, 'convoy cargo applies market pressure exactly once');
   assert(tp[0].vol > 0 && tp[0].vol <= 12, `arrival pressure bounded (got ${tp[0].vol})`);
-  assert(CONVOY_CARGO.some((c) => c.commodityId === tp[0].good), 'pressure is the convoy\'s cargo');
-  assert(log.receipts.some((r) => r.encounterId === id && /CONVOY ARRIVED/.test(r.text)), 'arrival receipt');
+  const receipts = log.receipts.filter((r) => r.encounterId === id && /CONVOY ARRIVED/.test(r.text));
+  assert.equal(receipts.length, 1, 'convoy emits one arrival receipt');
+  const outcomes = log.resolved.filter((r) => r.encounterId === id).map((r) => r.outcome);
+  assert.deepEqual(outcomes, ['arrived'], 'convoy resolves arrived exactly once');
   ok('convoy ARRIVAL: scannable civilians, one bounded economy-pressure intent, ticker + receipt');
 }
 {

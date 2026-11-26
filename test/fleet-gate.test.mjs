@@ -17,7 +17,7 @@ function tempRoot(t) {
 
 function fixture(t) {
   const root = tempRoot(t);
-  return () => createSwarmBootStep(root);
+  return (candidateSource) => createSwarmBootStep(root, candidateSource);
 }
 
 test('the game lock still protects a live owner after thirty minutes', (t) => {
@@ -193,7 +193,9 @@ test('the next Swarm gate cannot use a prior successful boot', (t) => {
   writeVerdict(old, 'PASS');
   assert.equal(old.judge({ code: 0, out: '' }), null);
 
-  const fresh = createStep();
+  const candidateSource = '.devshots/source-baselines/working art.json.gz';
+  const fresh = createStep(candidateSource);
+  assert.ok(fresh.args.includes(`--candidate-source=${candidateSource}`));
   assert.notEqual(verdictPath(fresh), verdictPath(old));
   assert.match(fresh.judge({ code: 4, out: 'HARNESS ENVIRONMENT: assets stale vs HEAD' }), /assets stale/);
   assert.match(fresh.judge({ code: 0, out: '' }), /no readable verdict/);
@@ -236,6 +238,7 @@ function standaloneFixture(t) {
   copyFileSync(new URL('../scripts/fleet/gate.mjs', import.meta.url), gate);
   writeFileSync(join(root, 'package.json'), JSON.stringify({
     scripts: {
+      'check:src-syntax': 'node gate-child.cjs syntax-fixture',
       'check:src-imports': 'node gate-child.cjs import-fixture',
       'check:playable': 'node gate-child.cjs adventure-fixture',
       'player-truth': 'node gate-child.cjs swarm-fixture',
@@ -268,6 +271,7 @@ test('the standalone gate runs npm scripts without inheriting npm_execpath', (t)
   const gate = standaloneFixture(t);
   const child = gate.run();
   assert.equal(child.status, 0, child.error?.message || child.stderr);
+  assert.match(gate.output('gate-src-syntax.log'), /syntax-fixture/);
   assert.match(gate.output('gate-import-lint.log'), /import-fixture/);
   assert.match(gate.output('gate-boot-adventure.log'), /adventure-fixture/);
   assert.match(gate.output('gate-boot-swarm.log'), /swarm-fixture/);
@@ -284,7 +288,7 @@ test('a synchronous spawn error is recorded as a normal gate failure', (t) => {
   ].join('\n'));
   const child = gate.run('--require', preload);
   assert.equal(child.status, 1, child.error?.message || child.stderr);
-  assert.match(gate.output('gate-import-lint.log'), /spawn error: spawn EINVAL \(fixture\)/);
-  assert.match(gate.output('gate-last.txt'), /FAIL import-lint: spawn error: spawn EINVAL \(fixture\)/);
+  assert.match(gate.output('gate-src-syntax.log'), /spawn error: spawn EINVAL \(fixture\)/);
+  assert.match(gate.output('gate-last.txt'), /FAIL src-syntax: spawn error: spawn EINVAL \(fixture\)/);
   assert.match(gate.output('gate-last.txt'), /GATE FAIL/);
 });

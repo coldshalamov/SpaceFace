@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 import { createBus } from '../src/core/eventBus.js';
+import { beginBootWork, reportBootWork } from '../src/core/bootWork.js';
 import { save } from '../src/save/saveSystem.js';
 import { createLoadingPresenter } from '../src/ui/loadingPresenter.js';
 
@@ -37,9 +38,10 @@ test('loading presenter replaces a frozen route with stage progress and releases
   assert.equal(overlay.style.display, 'flex');
   assert.equal(overlay.attributes.get('aria-busy'), 'true');
   assert.equal(overlay.dataset.loadingStage, 'authored-visuals');
-  // doc 20: one short plain phrase per phase, no technical detail line
+  // doc 20's plain phrase stands; DEMO-LOAD-1 adds the stage's own plain detail so the line
+  // tells the player which piece of the phase is running instead of sitting blank.
   assert.equal(label.textContent, 'Building the scene');
-  assert.equal(detail.textContent, '');
+  assert.equal(detail.textContent, 'Loading only assets visible at launch');
   assert.equal(progress.style.width, '50%');
 
   bus.emit('mode:changed', { mode: 'loading', previousMode: 'menu' });
@@ -49,6 +51,40 @@ test('loading presenter replaces a frozen route with stage progress and releases
   bus.emit('mode:changed', { mode: 'flight', previousMode: 'loading' });
   assert.equal(overlay.classList.contains('hidden'), true);
   assert.equal(overlay.attributes.get('aria-busy'), 'false');
+  presenter.destroy();
+});
+
+test('counted renderer work paints a plain n-of-m detail under the stage label', async () => {
+  const bus = createBus();
+  const overlay = fakeElement();
+  const label = fakeElement();
+  const detail = fakeElement();
+  const document = {
+    getElementById(id) { return id === 'boot-overlay' ? overlay : null; },
+    querySelector(selector) {
+      return new Map([
+        ['[data-loading-label]', label],
+        ['[data-loading-detail]', detail],
+      ]).get(selector) || null;
+    },
+  };
+  overlay.classList.add('hidden');
+  overlay.style.display = 'none';
+  const rendererOwner = {};
+  const state = { render: rendererOwner, mode: 'loading' };
+  const presenter = createLoadingPresenter({ document, bus, state });
+  bus.emit('game:loadingProgress', {
+    id: 'render-pipelines', progress: 0.78, label: 'Preparing the visuals',
+  });
+  assert.equal(detail.textContent, '', 'a stage without detail still opens on a clean line');
+  const programs = beginBootWork(rendererOwner, 'programs', 40);
+  programs.update(12);
+  await new Promise((resolve) => setTimeout(resolve, 150));
+  assert.equal(detail.textContent, 'Compiling the shaders — 12 of 40');
+  programs.update(40);
+  reportBootWork(rendererOwner, { kind: 'cook-step', step: 'wait.prepareLiveSectorBeforeFlight', outcome: 'resolved' });
+  await new Promise((resolve) => setTimeout(resolve, 150));
+  assert.equal(detail.textContent, 'Warming up — step 1 done');
   presenter.destroy();
 });
 
@@ -170,7 +206,8 @@ test('canonical game shell and transition wire the shared staged loading present
   assert.match(html, /data-loading-progress/);
   assert.match(main, /createLoadingPresenter\(\{ document, bus, state \}\)/,
     'main wires the presenter with state so the flight handoff can wait for a real presented frame');
-  assert.match(main, /reportProgress:\s*\(stage\)\s*=>\s*bus\.emit\('game:loadingProgress'/);
+  assert.match(main, /reportProgress:\s*\(stage\)\s*=>[\s\S]{0,240}?bus\.emit\('game:loadingProgress'/,
+    'the New Game transition must report its stage publishes through game:loadingProgress');
   assert.match(main, /yieldForPresentation:\s*nextPaint/);
   assert.match(newGame, /createStageHull.*'\.\/stageHull\.js'/,
     'New Game must show the authored starter hull via the shared kit-stage mount');
@@ -252,6 +289,108 @@ test('flight handoff keeps the shell up until the renderer presents past the mod
   } finally {
     globalThis.requestAnimationFrame = prevRaf;
     globalThis.cancelAnimationFrame = prevCancel;
+  }
+});
+
+test('a mounted opening Swarm armory releases the veil without a world submission', () => {
+  const bus = createBus();
+  const overlay = fakeElement();
+  const frames = new Map();
+  let frameId = 0;
+  const pump = () => {
+    const queued = [...frames.values()];
+    frames.clear();
+    for (const callback of queued) callback(16.7);
+  };
+  const state = {
+    mode: 'loading',
+    run: { kind: 'survival', ruleset: 'swarm', phase: 'draft', wave: 0 },
+    render: { renderer: { info: { render: { frame: 10 } } }, firstPlayableFrameAt: null, worldSubmittedFrames: 0 },
+  };
+  let armory = null;
+  const document = {
+    defaultView: {
+      requestAnimationFrame(callback) { frames.set(++frameId, callback); return frameId; },
+      cancelAnimationFrame(id) { frames.delete(id); },
+    },
+    getElementById(id) { return id === 'boot-overlay' ? overlay : null; },
+    querySelector(selector) { return selector.includes('[data-screen="crucibleDraft"]') ? armory : null; },
+  };
+  const presenter = createLoadingPresenter({ document, bus, state });
+  try {
+    bus.emit('game:new', { crucibleLaunch: true });
+    bus.emit('game:loadingProgress', { id: 'entering-flight', progress: .96 });
+    bus.emit('mode:changed', { mode: 'flight', previousMode: 'loading' });
+    pump();
+    assert.equal(overlay.classList.contains('hidden'), false, 'stale flight edge cannot bypass loading');
+
+    state.mode = 'flight';
+    bus.emit('mode:changed', { mode: 'flight', previousMode: 'loading' });
+    pump();
+    assert.equal(overlay.classList.contains('hidden'), false, 'wait for the draft modal to mount');
+    assert.equal(state.render.flightVeilHoldsSim, true);
+
+    armory = { getClientRects: () => [{}] };
+    pump();
+    assert.equal(overlay.classList.contains('hidden'), true);
+    assert.equal(state.render.veilLiftReason, 'opening-armory');
+    assert.equal(state.render.firstPlayableFrameAt, null);
+    assert.equal(state.render.worldSubmittedFrames, 0);
+    assert.equal(state.render.flightVeilHoldsSim, false, 'the armory owns the pause once it is revealed');
+  } finally {
+    presenter.destroy();
+  }
+});
+
+test('Swarm reviews Equipment under the loading clock and re-covers on accepted Launch', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const bus = createBus();
+  const overlay = fakeElement();
+  const state = {
+    mode: 'loading',
+    run: { kind: 'survival', ruleset: 'swarm', phase: 'draft', wave: 0 },
+    render: { firstPlayableFrameAt: null, worldSubmittedFrames: 0 },
+  };
+  let armory = null;
+  let isCurrent = true;
+  const document = {
+    getElementById(id) { return id === 'boot-overlay' ? overlay : null; },
+    querySelector(selector) { return selector.includes('[data-screen="crucibleDraft"]') ? armory : null; },
+  };
+  const presenter = createLoadingPresenter({ document, bus, state });
+  const opened = [];
+  bus.on('ui:pushScreen', ({ id }) => opened.push(id));
+  try {
+    bus.emit('game:new', { crucibleLaunch: true });
+    bus.emit('game:loadingProgress', { id: 'preparing-run', progress: .08 });
+    const review = presenter.reviewOpeningArmory({ wave: 0, isCurrent: () => isCurrent });
+    assert.deepEqual(opened, ['crucibleDraft']);
+    assert.equal(overlay.classList.contains('hidden'), false, 'wait for the real Armory to mount');
+    armory = { getClientRects: () => [{}] };
+    t.mock.timers.tick(50);
+    assert.equal(overlay.classList.contains('hidden'), true);
+    assert.equal(state.mode, 'loading');
+    assert.equal(state.render.firstPlayableFrameAt, null);
+    bus.emit('game:loadingProgress', { id: 'preparing-run', progress: .08 });
+    bus.emit('run:draftPickRejected', { wave: 0, reason: 'circuit_choice_owed' });
+    bus.emit('run:draftResolved', { wave: 1, reason: 'skipped' });
+    assert.equal(overlay.classList.contains('hidden'), true);
+
+    armory = null;
+    bus.emit('run:draftResolved', { wave: 0, reason: 'skipped' });
+    assert.equal(await review, true);
+    assert.equal(overlay.classList.contains('hidden'), false, 'cover the pending world in the Launch receipt');
+    assert.equal(overlay.dataset.loadingStage, 'authored-library');
+    assert.equal(state.render.worldSubmittedFrames, 0);
+
+    // An old draft cannot clear a replacement launch or leave its startup waiting.
+    const cancelled = presenter.reviewOpeningArmory({ wave: 0, isCurrent: () => isCurrent });
+    isCurrent = false;
+    bus.emit('game:exitToMenu');
+    bus.emit('run:draftResolved', { wave: 0, reason: 'skipped' });
+    assert.equal(await cancelled, false);
+  } finally {
+    presenter.destroy();
   }
 });
 
@@ -566,9 +705,12 @@ test('startup failure stays visible through late progress, menu and save-error e
     assert.equal(f.overlay.getAttribute('aria-busy'), 'false');
     assert.equal(f.overlay.classList.contains('hidden'), false);
     assert.equal(f.lockup.style.display, 'none', 'busy logo and progress copy are removed');
-    assert.match(pane.querySelector('.sf-state__word').textContent, /GPU RESIDENCY UNAVAILABLE/);
-    assert.equal(pane.querySelector('.sf-state__fills').textContent, 'The launch stopped during gpu-resources.');
-    assert.equal(pane.querySelector('.sf-state__detail').textContent, '<img src=x onerror=alert(1)>');
+    assert.equal(pane.querySelector('.sf-state__word').textContent, 'LOADING INTERRUPTED');
+    assert.equal(pane.querySelector('.sf-state__fills').textContent,
+      'Retry to load this flight again, or return to the menu.');
+    assert.equal(pane.getAttribute('data-startup-code'), 'GPU_RESIDENCY_UNAVAILABLE');
+    assert.equal(pane.getAttribute('data-startup-stage'), 'gpu-resources');
+    assert.equal(pane.getAttribute('data-startup-diagnostic'), '<img src=x onerror=alert(1)>');
     assert.equal(pane.querySelectorAll('img').length, 0, 'untrusted error text is never parsed as markup');
 
     f.bus.emit('game:loadingProgress', { id: 'render-pipelines', generation: 3, progress: .99, label: 'Nearly ready' });
@@ -634,11 +776,14 @@ test('load_failed during the active loading shell becomes a startup failure; ord
   try {
     presenter.show({ id: 'restoring-save', progress: .4, label: 'Restoring save' });
     f.bus.emit('save:error', { reason: 'load_failed', slot: 'latest', error: 'save header checksum mismatch' });
-    assert.ok(f.overlay.querySelector('[data-startup-failure]'));
+    const pane = f.overlay.querySelector('[data-startup-failure]');
+    assert.ok(pane);
     assert.equal(startFailures.length, 1, 'retry ownership learns about pre-finalizer restore failure');
     assert.equal(startFailures[0].stage, 'save-restore');
     assert.equal(startFailures[0].code, 'SAVE_LOAD_FAILED');
-    assert.equal(f.overlay.querySelector('.sf-state__detail').textContent, 'save header checksum mismatch');
+    assert.equal(pane.getAttribute('data-startup-code'), 'SAVE_LOAD_FAILED');
+    assert.equal(pane.getAttribute('data-startup-stage'), 'save-restore');
+    assert.equal(pane.getAttribute('data-startup-diagnostic'), 'save header checksum mismatch');
   } finally {
     presenter.destroy(); globalThis.document = f.priorDocument;
   }
@@ -693,7 +838,8 @@ test('a restore that never rode game:load arms the slate honestly and names it o
     // An import / rollback / lane-sync restore emits no game:load and no envelopePrepared —
     // the slate must not keep showing the last trip's name while it works.
     f.bus.emit('save:restoring', { slot: 2, source: 'import' });
-    assert.equal(slate.textContent, 'Restoring destination');
+    // LOADING-02: the placeholder is the verb the player pressed, not a status phrase.
+    assert.equal(slate.textContent, 'Continue');
     f.state.world = {
       currentSectorId: 'sector_tethys_junction',
       sectors: { sector_tethys_junction: { name: 'Tethys Junction' } },

@@ -128,10 +128,16 @@ function attributionFixture({ extraCandidates = 0, frontVisible = true, unstable
   };
 }
 
-test('first-positive attribution finds the front contributor and excludes the behind-hull draw', () => {
-  const fixture = attributionFixture();
+test('the ordinary split keeps all scored measurements without attribution draws', () => {
+  const ordinary = attributionFixture();
+  const fixture = attributionFixture({ vfxAttribution: true });
   try {
-    const first = fixture.frame(); const diagnostic = first.px.attribution;
+    const defaultSample = ordinary.frame();
+    const first = fixture.frame();
+    const { attribution: diagnostic, ...scoredPixels } = first.px;
+    assert.equal(ordinary.draws.length, 3);
+    assert.deepEqual(defaultSample.px, scoredPixels);
+    assert.deepEqual(defaultSample.vfx, first.vfx);
     assert.equal(first.px.ct, 1, 'the original positive threat mask remains graded');
     assert.equal(diagnostic.status, 'contributor-found');
     assert.equal(diagnostic.contributor.name, 'FrontContact');
@@ -149,7 +155,7 @@ test('first-positive attribution finds the front contributor and excludes the be
     assert.equal(fixture.front.visible, true); assert.equal(fixture.behind.visible, true);
     assert.equal(fixture.renderer.getRenderTarget(), fixture.originalTarget);
     assert.deepEqual(fixture.renderer.info.render, { calls: 7, triangles: 99 });
-  } finally { fixture.dispose(); }
+  } finally { ordinary.dispose(); fixture.dispose(); }
 });
 
 test('opt-in attribution enumerates candidates at a threat-hidden sample and reports per-box deltas', () => {
@@ -176,7 +182,7 @@ test('opt-in attribution enumerates candidates at a threat-hidden sample and rep
 });
 
 test('depth-occluded and noncombat draws do not trigger positive attribution', () => {
-  const fixture = attributionFixture({ frontVisible: false });
+  const fixture = attributionFixture({ frontVisible: false, vfxAttribution: true });
   try {
     const sample = fixture.frame();
     assert.equal(sample.px.ct, 0); assert.equal(sample.px.attribution, undefined);
@@ -186,7 +192,7 @@ test('depth-occluded and noncombat draws do not trigger positive attribution', (
 });
 
 test('one-shot attribution reports an unstable baseline instead of blaming a draw', () => {
-  const fixture = attributionFixture({ unstable: true });
+  const fixture = attributionFixture({ unstable: true, vfxAttribution: true });
   try {
     const sample = fixture.frame();
     assert.equal(sample.px.ct, 1);
@@ -197,7 +203,7 @@ test('one-shot attribution reports an unstable baseline instead of blaming a dra
 });
 
 test('many candidates exhaust a strict eight-draw budget without claiming an owner', () => {
-  const fixture = attributionFixture({ extraCandidates: 255 });
+  const fixture = attributionFixture({ extraCandidates: 255, vfxAttribution: true });
   try {
     const sample = fixture.frame(); const diagnostic = sample.px.attribution;
     assert.equal(diagnostic.status, 'budget-exhausted');

@@ -41,6 +41,9 @@ const { installVisualOverrides } = await import('../src/render/visualOverrides.j
 const { makeRescueCastSpecs } = await import('../src/onboarding/rescueOpening.js');
 const { render: renderSystem, warmHullFilesForSpecs, disposeRendererOwnedResources } = await import('../src/render/renderer.js');
 const { scriptedOnboardingRosterRows } = await import('../src/render/saveEnvelopeSectorWarm.js');
+const { authoredPrewarmRequestsForEntities } = await import('../src/render/partsLibrary.js');
+const { SURVIVAL_ARENAS } = await import('../src/data/survivalArenas.js');
+const { planArenaInstall, SURVIVAL_ARENA_PHASES } = await import('../src/systems/survivalArena.js');
 
 const RENDERER_SOURCE = readFileSync(
   new URL('../src/render/renderer.js', import.meta.url), 'utf8',
@@ -328,6 +331,43 @@ test('the bounded warm decodes the rescue intro packaged bodies explicitly', () 
   assert.ok(releaseDef > finishDef);
   const finishBlock = RENDERER_SOURCE.slice(finishDef, releaseDef);
   assert.match(finishBlock, /rockSurfaceLibraryReady/);
+});
+
+test('Swarm arena warm leaves the campaign transit ring to its live admission owner', async (t) => {
+  const transitRing = 'places/place_gate_jump_ring.glb';
+  for (const arena of SURVIVAL_ARENAS) {
+    for (const arenaPhase of SURVIVAL_ARENA_PHASES) {
+      const plan = planArenaInstall({ arenaId: arena.id, arenaPhase, wave: 1, seed: 4242 });
+      for (const toy of plan.toys || []) {
+        assert.notEqual(toy.packagedPropFile, transitRing, `${arena.id}/${arenaPhase}`);
+      }
+    }
+  }
+
+  t.mock.method(globalThis, 'fetch', async () => { throw new Error('fixture does not decode GLBs'); });
+  async function decodeLabels(profile, ruleset) {
+    const owner = Object.assign(Object.create(renderSystem), {
+      scene: new THREE.Scene(), renderer: { extensions: { has: () => false } }, vf: { build: () => null },
+      state: { mode: 'loading', render: {}, run: ruleset ? { kind: 'survival', ruleset, phase: 'draft', wave: 0 } : null },
+      _rosterPrewarmRoots: [], _rosterPrewarmPending: new Set(), _rosterPrewarmPendingLabels: new WeakMap(),
+    });
+    const warm = owner._beginCrucibleBoundedRosterWarm({ profile, yieldToMain: async () => {} });
+    assert.ok(warm);
+    const labels = new Set(warm.decodes.map(promise => owner._rosterPrewarmPendingLabels.get(promise)));
+    await Promise.allSettled([warm.buildsReady, ...warm.decodes]);
+    return labels;
+  }
+
+  const swarm = await decodeLabels('crucible', 'swarm');
+  assert.ok(!swarm.has(`decode:${transitRing}`));
+  assert.ok(swarm.has('decode:pods/pod_cargo_container.glb'));
+  const opening = await decodeLabels('opening');
+  assert.ok(opening.has(`decode:${transitRing}`));
+  const circuit = await decodeLabels('crucible', 'boss_circuit');
+  assert.ok(circuit.has(`decode:${transitRing}`));
+  const gate = { id: 1, type: 'station', alive: true, data: { isGate: true } };
+  const demand = authoredPrewarmRequestsForEntities([gate], { includeSpawnableArchetypes: false });
+  assert.ok(demand.some(request => request.slot === 'place' && request.url.endsWith(transitRing)));
 });
 
 test('wreck and asteroid exemplar helpers still cover the intro bodies', () => {

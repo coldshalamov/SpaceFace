@@ -16,9 +16,8 @@ entries. Tiers by role; a script belongs to exactly one tier by its prefix.
 
 ## Tier 1 — program doors (autonomous work)
 
-`program-dispatch` (next unit), `board-chunks` (open seams), `agent-checkpoint` (NOW protocol),
-`agent-loop` (fast plan/sim/ui proof batches), `inference:*` (only under an owner INFERENCE
-instruction), `campaign:*`, `factory:*`, `jules:*`.
+`agent-checkpoint` (NOW protocol), `agent-loop` (fast plan/sim/ui proof batches), `inference:*`
+(only under an owner INFERENCE instruction), `campaign:*`, `factory:*`.
 
 ## Tier 2 — validation gates (`check:*`, ~570 scripts)
 

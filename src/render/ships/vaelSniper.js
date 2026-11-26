@@ -59,20 +59,21 @@ export function buildVaelSniper(entity) {
   const shellDarkMat = kit.pbrHullMaterial({ hull: COLOR.shellDark, accent: COLOR.teal, seed: seed + 2, panelCount: 6, metalness: 0.30, roughness: 0.40, emissive: COLOR.teal });
   shellDarkMat.name = 'Vael_ShellDark';
   const voidMat = kit.standardMaterial(COLOR.void, 1.0, 0.0); voidMat.name = 'Vael_Void'; // pure black cavity
-  const veinMat = kit.emissiveMaterial(COLOR.glow, 2.8); veinMat.name = 'Vael_Vein';
-  const coreMat = kit.emissiveMaterial(COLOR.driveCore, 4.0); coreMat.name = 'Vael_Core';
+  const veinMat = kit.shadedSignal(COLOR.glow, 0.72); veinMat.name = 'Vael_Vein';
+  const coreMat = kit.shadedSignal(COLOR.driveCore, 0.85); coreMat.name = 'Vael_Core';
 
   // ---- faceted crystalline hull: a LOW-RADIAL hex-prism loft (§8.7) ----
   // radialSegments=6 produces flat hex facets — the read is "crystalline/mineral," not "machined."
   // Tapered BOTH ends (ambiguous front, §8.7) — you can't tell nose from tail until it moves.
-  const pressureHull = kit.addMesh(hull, kit.loftXGeometry([
+  const VAEL_SECTIONS = [
+    { x: -11.5, halfY: 0.2, halfZ: 0.5 },
     { x: -8.5, halfY: 0.6,  halfZ: 1.6 },
     { x: -3.0, halfY: 1.4,  halfZ: 2.2 },
     { x: 3.0,  halfY: 1.4,  halfZ: 2.2 },
     { x: 8.5,  halfY: 0.6,  halfZ: 1.6 },
     { x: 11.5, halfY: 0.2,  halfZ: 0.5 },
-    { x: -11.5, halfY: 0.2, halfZ: 0.5 },
-  ], 6), shellMat, 'Vael_Pressure_Hull');
+  ];
+  const pressureHull = kit.addMesh(hull, kit.loftXGeometry(VAEL_SECTIONS, 6), shellMat, 'Vael_Pressure_Hull');
   pressureHull.castShadow = true;
 
   // ---- emissive signal veins built into the facets (structure = signal, §8.7) ----
@@ -80,15 +81,17 @@ export function buildVaelSniper(entity) {
   // not from lamps. These double as the damage-fail group (flicker at critical).
   const veins = [];
   for (let i = 0; i < 5; i++) {
-    const x = -7.0 + i * 3.5;
-    // a ridge along each of the 6 facet edges at this station — reads as an energy lattice
-    const ridge = kit.addBox(hull, veinMat, `Vael_Vein_${i}`, [0.18, 0.08, 4.0], [x, 1.2, 0]);
-    ridge.rotation.y = (i * Math.PI) / 6; // slight twist per station (non-human repetition, §8.7)
+    const x = -6.2 + i * 3.0;
+    const sec = kit.sectionAt(VAEL_SECTIONS, x);
+    // Ridge length and height follow this station. A fixed 4 m bar skewers out of the taper.
+    const len = sec.halfZ * 1.25;
+    const y = sec.halfY * 0.72;
+    const ridge = kit.addBox(hull, veinMat, `Vael_Vein_${i}`, [0.1, 0.045, len], [x, y, 0]);
+    ridge.rotation.y = i * 0.08;
     ridge.userData.damageRole = 'navLight'; ridge.userData.keepSeparate = true;
     veins.push(ridge);
-    // mirror ridge below
-    const ridge2 = kit.addBox(hull, veinMat, `Vael_Vein_${i}_V`, [0.18, 0.08, 4.0], [x, -1.2, 0]);
-    ridge2.rotation.y = (i * Math.PI) / 6; ridge2.userData.damageRole = 'navLight'; ridge2.userData.keepSeparate = true;
+    const ridge2 = kit.addBox(hull, veinMat, `Vael_Vein_${i}_V`, [0.1, 0.045, len], [x, -y, 0]);
+    ridge2.rotation.y = i * 0.08; ridge2.userData.damageRole = 'navLight'; ridge2.userData.keepSeparate = true;
     veins.push(ridge2);
   }
   const navLightBase = veins.map((m) => m.material.emissiveIntensity);
@@ -100,21 +103,24 @@ export function buildVaelSniper(entity) {
   cavity.userData.keepSeparate = true;
 
   // ---- a facet plate that can shed at critical (§9.11 asymmetric debris) ----
-  const facetPlate = kit.addBox(hull, shellDarkMat, 'Vael_Facet_Plate', [2.5, 0.15, 2.0], [4.0, 1.35, 0]);
-  facetPlate.rotation.y = 0.4;
+  const plateSec = kit.sectionAt(VAEL_SECTIONS, 3.6);
+  const facetPlate = kit.addBox(hull, shellDarkMat, 'Vael_Facet_Plate', [1.35, 0.07, plateSec.halfZ * 0.62], [3.6, plateSec.halfY - 0.04, 0]);
+  facetPlate.rotation.y = 0.1;
   facetPlate.userData.damageRole = 'secondary';
   facetPlate.userData.keepSeparate = true;
 
   // ---- resonant alien drive: NO NOZZLE, just a glowing facet (§8.7 ambiguous) ----
   // No housing, no turbine fan, no metal nozzle — the drive is a pure resonant glow on the aft facet.
   // This deliberately breaks the human assumption that a drive is a recognizable machine part.
-  const driveCore = kit.addMesh(hull, new THREE.CircleGeometry(1.4, 6), coreMat, 'Vael_Drive_Resonator', [-10.5, 0, 0], [0, -Math.PI / 2, 0]);
+  // Aft-facing disks are edge-on from the chase camera and wider than the tail.
+  // A short hex cap uses the tail's own cross-section and shows a facet from above.
+  const tail = kit.sectionAt(VAEL_SECTIONS, -10.4);
+  const tailR = Math.min(tail.halfY, tail.halfZ) * 0.9;
+  const driveCore = kit.addCylinderX(hull, coreMat, 'Vael_Drive_Resonator', tailR, 0.55, [-10.6, 0, 0], 6);
   driveCore.userData.keepSeparate = true; driveCore.userData.damageRole = 'driveCore';
-  const drivePlume = kit.addMesh(hull, new THREE.CircleGeometry(2.0, 6), kit.glowMaterial(COLOR.drive, 0.4), 'Vael_Drive_Plume', [-10.8, 0, 0], [0, -Math.PI / 2, 0]);
+  const drivePlume = kit.addCylinderX(hull, kit.glowMaterial(COLOR.drive, 0.32), 'Vael_Drive_Plume', tailR * 0.72, 0.4, [-11.05, 0, 0], 6);
   drivePlume.userData.keepSeparate = true; drivePlume.userData.damageRole = 'plume'; drivePlume.renderOrder = 2;
-  // a fake "fan" stub so finalizeShip's drive micro-motion path has a spinner to drive (here: a slow
-  // resonant pulse rather than a spin, since there's no turbine)
-  const resonator = kit.addMesh(hull, new THREE.CircleGeometry(0.9, 6), veinMat, 'Vael_Drive_Pulse', [-10.2, 0, 0], [0, -Math.PI / 2, 0]);
+  const resonator = kit.addCylinderX(hull, veinMat, 'Vael_Drive_Pulse', tailR * 0.45, 0.12, [-10.25, 0, 0], 6);
   resonator.userData.keepSeparate = true;
 
   const driveParts = {

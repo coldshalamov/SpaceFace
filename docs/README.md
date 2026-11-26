@@ -9,13 +9,11 @@ This is the navigation front door for engineering and world-content documentatio
 |---|---|
 | Orient in the repo / "what is this game / how does it work" | [`ORIENTATION.md`](./ORIENTATION.md) — repo map, reading ladder, planner route |
 | Named campaign / symptom door | [`TASK_ROUTER.md`](./TASK_ROUTER.md) |
-| Full working agreement (finish rules, `NOW.md` locks, `check:playable`, reporting) | [`AGENT_OPERATIONS.md`](./AGENT_OPERATIONS.md) |
+| Shared-checkout work, validation, and reporting | [`AGENT_OPERATIONS.md`](./AGENT_OPERATIONS.md) |
 | Owner preferences and verified workspace facts | [`AGENT_LESSONS.md`](./AGENT_LESSONS.md) |
-| Active game-finishing work | [`../design/program/finish/MASTER_PLAN.md`](../design/program/finish/MASTER_PLAN.md) → [`MASTER_LANES.md`](../design/program/finish/MASTER_LANES.md); build-map rows are specification detail, not a queue |
+| Playable flight, freezes, hitches, or frame rate | [`design/overhaul/10_ENGINE.md`](../design/overhaul/10_ENGINE.md) |
+| Game-finishing status | [`design/overhaul/12_PIPELINE.md`](../design/overhaul/12_PIPELINE.md) |
 | Technical invariants and ownership | [`../ARCHITECTURE.md`](../ARCHITECTURE.md) |
-| Active work and lane ownership | [`../design/program/finish/MASTER_LANES.md`](../design/program/finish/MASTER_LANES.md) + [`EXECUTION_STATUS`](../design/program/finish/EXECUTION_STATUS_2026-11-06.md); use [`../design/program/NOW.md`](../design/program/NOW.md) for current write claims |
-| Current work packet | The ordered campaign on [`MASTER_PLAN.md`](../design/program/finish/MASTER_PLAN.md); exact owned paths come from `NOW.md` |
-| Finish Program review and verification | [`../design/program/finish/README.md`](../design/program/finish/README.md) §§5.2–5.4; other work follows its selected packet and applicable verification route |
 | Find the module that owns behavior | [`MODULE_MAP.md`](./MODULE_MAP.md), then the nearest `src/**/AGENTS.md` |
 | Diagnose a recurring failure | [`COMMON_BUGS.md`](./COMMON_BUGS.md) |
 | Choose focused, lab, broker, and player-route validation | [`VALIDATION_WORKFLOW.md`](./VALIDATION_WORKFLOW.md) |
@@ -33,12 +31,12 @@ This is the navigation front door for engineering and world-content documentatio
 
 ## Documentation classes
 
-- **Authority:** root `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `design/program/finish/MASTER_PLAN.md`, and the selected campaign.
-- **Current status:** `design/program/finish/EXECUTION_STATUS_2026-11-06.md` owns the campaign matrix; `design/program/NOW.md` is the volatile write-claim board.
+- **Authority:** root `AGENTS.md`, `ARCHITECTURE.md`, `design/game/`, and `design/overhaul/`.
+- **Current status:** the live board, [`design/overhaul/12_PIPELINE.md`](../design/overhaul/12_PIPELINE.md).
 - **Navigation/reference:** `MODULE_MAP.md`, `COMMON_BUGS.md`, and `SEARCH_CONTEXT.md`.
 - **Generated indexes:** `EVENT_ROUTING.md` and `SYSTEM_REGISTRY.md`; regenerate with `npm run build:indexes`.
 - **Historical evidence:** handoffs, reviews, old audit reports, and captures. They explain; they do not dispatch.
 
 ## Maintenance
 
-Read [`AGENTS.md`](./AGENTS.md) before changing this tree. Prefer durable paths/symbols over dates, line numbers, file sizes, or copied status. Run `node scripts/check-program-docs.mjs` after changing program-facing links or policy lifetimes.
+Read [`AGENTS.md`](./AGENTS.md) before changing this tree. Prefer durable paths/symbols over dates, line numbers, file sizes, or copied status. After changing links in this tree, check that the changed Markdown links resolve.

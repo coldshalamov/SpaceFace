@@ -10,9 +10,9 @@
 
 /** Named chain tiers (§5.1). Order matters: ascending. */
 export const SWARM_CHAIN_TIERS = Object.freeze([
-  { at: 10, id: 'ignition', name: 'IGNITION' },
-  { at: 25, id: 'flare', name: 'FLARE' },
-  { at: 50, id: 'nova', name: 'NOVA' },
+  { at: 10, id: 'ignition', name: 'STREAK ×10' },
+  { at: 25, id: 'flare', name: 'STREAK ×25' },
+  { at: 50, id: 'nova', name: 'STREAK ×50' },
   { at: 100, id: 'supernova', name: 'SUPERNOVA' },
   { at: 200, id: 'singularity', name: 'SINGULARITY' },
 ]);
@@ -181,34 +181,6 @@ export const SWARM_REVENGE_WINDOW_S = 8;
 /** A kill this close to the wave clear is the round's LAST ONE. */
 export const SWARM_LAST_ONE_WINDOW_S = 1.0;
 
-// --- Hit-stop (§5.4) -----------------------------------------------------------------
-
-export const SWARM_HITSTOP_MIN_S = 0.04;
-export const SWARM_HITSTOP_MAX_S = 0.08;
-/** The slow the world dips to — deep enough to read as a beat, shallow enough to not stall. */
-export const SWARM_HITSTOP_SCALE = 0.35;
-/** The time-effects source id the juice layer requests with. */
-export const SWARM_HITSTOP_SOURCE = 'swarm:juice-hitstop';
-
-/** Heavy mass kills may stretch the dip past the chain cap — a thrown boulder lands harder. */
-export const SWARM_HITSTOP_MASS_MAX_S = 0.14;
-/** Victim-mass units at which the mass term saturates (a T3 boulder, not a mite). */
-export const SWARM_HITSTOP_MASS_REF = 2200;
-
-/**
- * Hit-stop seconds for a kill at this chain: 40 ms + 10 ms per chain tier reached, ≤ 80 ms.
- * Row 487: the dip is also scaled by the victim's mass — chain tier sets the base, then up to
- * +60 ms as victim mass approaches SWARM_HITSTOP_MASS_REF, capped at SWARM_HITSTOP_MASS_MAX_S.
- */
-export function swarmHitStopSeconds(chain, victimMass = 0) {
-  const index = swarmChainTierIndex(swarmChainTier(chain));
-  // The chain base still honours its own ≤80 ms bound; only the mass term reaches past it.
-  const s = Math.min(SWARM_HITSTOP_MAX_S, SWARM_HITSTOP_MIN_S + Math.max(0, index + 1) * 0.01);
-  const massFrac = Math.max(0, Math.min(1, (Number(victimMass) || 0) / SWARM_HITSTOP_MASS_REF));
-  const massTerm = massFrac * (SWARM_HITSTOP_MASS_MAX_S - SWARM_HITSTOP_MAX_S);
-  return Math.min(SWARM_HITSTOP_MASS_MAX_S, Math.max(SWARM_HITSTOP_MIN_S, s + massTerm));
-}
-
 // --- Round clear tally (§5.5) ---------------------------------------------------------
 
 /** A wave resolved faster than this (sim seconds) earns the SPEED CLEAR line. */
@@ -225,14 +197,15 @@ export const SWARM_SPEED_CLEAR_S = 30;
  */
 export function swarmRoundTally({ flawless = false, durationS = null, kills = 0, bestChain = 0 } = {}) {
   const rows = [];
-  if (flawless === true) rows.push({ id: 'flawless', label: 'FLAWLESS', value: 'NO HULL LOST' });
+  if (flawless === true) rows.push({ id: 'flawless', label: 'Flawless', value: 'no hull lost' });
   if (Number.isFinite(durationS) && durationS <= SWARM_SPEED_CLEAR_S) {
-    rows.push({ id: 'speed', label: 'SPEED CLEAR', value: `${Math.max(0, Math.round(durationS))}s` });
+    rows.push({ id: 'speed', label: 'Cleared in', value: `${Math.max(0, Math.round(durationS))} s` });
   }
   const n = Number.isFinite(kills) ? Math.trunc(kills) : 0;
-  if (n > 0) rows.push({ id: 'kills', label: 'ROOM KILLS', value: `×${n}` });
+  // A count reads as a count (DEMO-SWARM-UX-2): '×' belongs to multipliers only.
+  if (n > 0) rows.push({ id: 'kills', label: 'Room kills', value: `${n}` });
   const chain = Number.isFinite(bestChain) ? Math.trunc(bestChain) : 0;
-  if (chain > 0) rows.push({ id: 'chain', label: 'BEST CHAIN', value: `×${chain}` });
+  if (chain > 0) rows.push({ id: 'chain', label: 'Best chain', value: `${chain}` });
   return rows;
 }
 

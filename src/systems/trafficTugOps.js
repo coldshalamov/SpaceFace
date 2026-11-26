@@ -84,7 +84,8 @@ export const trafficTugOps = {
     const ang = ((hash32((this.state.meta && this.state.meta.seed) || 1, 'yard_tug_spawn', sectorId, seq) >>> 0)
       / 0xffffffff) * Math.PI * 2;
     const r = 110 + (seq % 3) * 24;
-    const pos = { x: home.pos.x + Math.cos(ang) * r, z: home.pos.z + Math.sin(ang) * r };
+    // R16: a yard hull launches from the station apron the pilot is not sitting on.
+    const pos = this._apronSeatAwayFromPlayer(home.pos, ang, r);
     const spec = makeShipEntitySpec(factionHullFor(def.ship, controllingFaction, () => 0.5), {
       team: def.team,
       factionId: controllingFaction,
@@ -95,6 +96,7 @@ export const trafficTugOps = {
         spawnContext: 'convoy_civilian',
       },
     });
+    this._resolveSpawnClearance(spec);
     const ent = this.helpers.spawnEntity(spec);
     if (!ent) return null;
     this._stampTrafficDurableIdentity(ent, sectorId, 'tug', def, 900 + (seq | 0));

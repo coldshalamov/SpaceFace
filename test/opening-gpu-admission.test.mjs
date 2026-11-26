@@ -184,6 +184,77 @@ test('unique admission units keep one subject per material and per geometry', ()
   assert.equal(materialHasCompiledProgram(shared, () => ({})), false);
 });
 
+test('unique admission units preserve draw-variant siblings and check target/instancing readiness', () => {
+  const shared = new THREE.MeshStandardMaterial();
+  const geo = new THREE.BoxGeometry();
+  const directA = new THREE.Mesh(geo, shared);
+  const directB = new THREE.Mesh(geo, shared);
+  const instPlain = new THREE.InstancedMesh(geo, shared, 1);
+  const instColored = new THREE.InstancedMesh(geo, shared, 1);
+  instColored.setColorAt(0, new THREE.Color(0xffffff));
+
+  const units = uniqueAdmissionUnits([directA, directB, instPlain, instColored]);
+  assert.equal(units.materialCount, 1);
+  assert.deepEqual(units.programSubjects, [directA, instPlain, instColored]);
+
+  const seenMaterials = new Set();
+  const seenGeometries = new Set();
+  const partA = uniqueAdmissionUnits([directA, instPlain], {
+    start: 0, end: 2, seenMaterials, seenGeometries,
+  });
+  const partB = uniqueAdmissionUnits([directB, instColored], {
+    start: 0, end: 2, seenMaterials, seenGeometries,
+  });
+  assert.equal(seenMaterials.size, 1);
+  assert.deepEqual(partA.programSubjects, [directA, instPlain]);
+  assert.deepEqual(partB.programSubjects, [instColored]);
+
+  assert.equal(materialHasCompiledProgram(shared, () => ({
+    currentProgram: { id: 1 },
+    instancing: false,
+    instancingColor: false,
+    instancingMorph: false,
+    outputColorSpace: 'srgb-linear',
+    toneMapping: 0,
+  }), instPlain, { linearTarget: true }), false);
+
+  assert.equal(materialHasCompiledProgram(shared, () => ({
+    currentProgram: { id: 1 },
+    instancing: true,
+    instancingColor: false,
+    instancingMorph: false,
+    outputColorSpace: 'srgb-linear',
+    toneMapping: 0,
+  }), instColored, { linearTarget: true }), false);
+
+  assert.equal(materialHasCompiledProgram(shared, () => ({
+    currentProgram: { id: 1 },
+    instancing: true,
+    instancingColor: true,
+    instancingMorph: false,
+    outputColorSpace: 'srgb',
+    toneMapping: 0,
+  }), instColored, { linearTarget: true }), false);
+
+  assert.equal(materialHasCompiledProgram(shared, () => ({
+    currentProgram: { id: 1 },
+    instancing: true,
+    instancingColor: true,
+    instancingMorph: false,
+    outputColorSpace: 'srgb-linear',
+    toneMapping: 4,
+  }), instColored, { linearTarget: true }), false);
+
+  assert.equal(materialHasCompiledProgram(shared, () => ({
+    currentProgram: { id: 1 },
+    instancing: true,
+    instancingColor: true,
+    instancingMorph: false,
+    outputColorSpace: 'srgb-linear',
+    toneMapping: 0,
+  }), instColored, { linearTarget: true }), true);
+});
+
 test('opening GPU admission compiles and touches one unique subject per yield', async () => {
   const order = [];
   const a = { id: 'a', material: { uuid: 'ma' }, geometry: { uuid: 'ga' } };

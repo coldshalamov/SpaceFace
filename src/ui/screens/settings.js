@@ -1,4 +1,5 @@
 import { paneBuilder } from '../views/settingsControls.js';
+import { preferredSteeringView } from '../../systems/racingSteer.js';
 export { bindCommittedRange } from '../views/settingsControls.js';
 // Settings — Field Hardware BENCH (P04/P37). World held behind smoked glass; section keys on the
 // left; the live section as engraved rows on one plate. Toggles are machined switches, numbers are
@@ -14,6 +15,7 @@ import { injectDeckplate } from '../deckplate/index.js';
 import {
   DEFAULTS as INPUT_DEFAULTS,
   formatBindingCode,
+  resolveActionCodes,
 } from '../../systems/input.js';
 import {
   findGamepadBindConflict,
@@ -253,21 +255,21 @@ export const REBINDABLE = ['forward', 'reverse', 'yawLeft', 'yawRight', 'strafeL
 export const REBIND_LABELS = {
   forward: 'Throttle up',
   reverse: 'Throttle down (reverse)',
-  yawLeft: 'Steer left (Classic scheme)',
-  yawRight: 'Steer right (Classic scheme)',
+  yawLeft: 'Steer left (turn)',
+  yawRight: 'Steer right (turn)',
   strafeLeft: 'Lateral thrust left',
   strafeRight: 'Lateral thrust right',
   boost: 'Boost / dash',
   autoFire: 'Toggle auto-target / draw-to-fly',
   brake: 'Brake / full stop (wheel latch by default)',
   siteBeam: 'World Site beam (selected target)',
-  tether: 'Massline / the Line (RMB by default): tap latch/cut; hold line control',
+  tether: 'Line · tap to latch or cut, hold for line controls',
   contextWheel: 'Context wheel: hold, aim a slice, release to choose',
   pull: 'Pull: gravity well at your aim',
-  shove: 'Shove: outward blast + set off armed ordnance',
-  pin: 'Pin: anchor seed for the Line',
+  shove: 'Shove: tap for outward blast + detonate armed explosives',
+  pin: 'Pin: drops an anchor for the Line',
   bomb: 'Bomb: sticky charge, or the chosen drift bomb',
-  rig: 'Rig: clearing cone / skim scoop',
+  rig: 'Plow: tap to turn the clearing wedge on or off',
   scanPulse: 'Scanner pulse',
   cruise: 'Cruise drive (charge/drop)',
   reelIn: 'Tether winch in',
@@ -276,14 +278,15 @@ export const REBIND_LABELS = {
   cloak: 'Cloak toggle',
   // W1-5. A latch that is rebindable in data but has no row here is not rebindable to a player.
   travelBurn: 'Travel drive (burn latch)',
-  // The Gyre Snare is a held verb: grip to beam/hold, release to bowl the clump.
-  gyreSnare: 'Gyre Snare: hold to lash, release to bowl',
+  // The Gather is a held verb: grip to beam/hold, release to throw the clump.
+  gyreSnare: 'Gather: hold to gather, release to throw',
   deployShieldPylon: 'Shield pylons: place, link, or recall (needs a Pylon Projector)',
   cycleBomb: 'Ordnance: cycle (sticky charge, then bombs)',
   // Labels mirror the pad grid's names for the same verbs (one verb, one name across devices).
   countermeasure: 'Countermeasure',
   deployBeacon: 'Nav beacon: deploy',
   jettisonLot: 'Cargo: jettison lot',
+  cargo: 'Cargo bag (open/close)',
 };
 
 // PQ-164.01 pad remap. Every gamepad action is rebindable; labels describe the verb, not the
@@ -295,14 +298,14 @@ export const GAMEPAD_REBINDABLE = [
   'cycleTarget', 'autoTarget',
   'map', 'codex', 'pause', 'countermeasure', 'travelBurn', 'bomb', 'cycleBomb', 'tabPrev', 'tabNext',
   'scanPulse', 'cruise', 'bulletTime', 'cloak', 'siteBeam', 'pin', 'pull',
-  'rig', 'deployBeacon', 'jettisonLot', 'gyreSnare', 'steeringView', 'deployShieldPylon',
+  'rig', 'deployBeacon', 'jettisonLot', 'gyreSnare', 'steeringView', 'deployShieldPylon', 'cargo',
 ];
 export const GAMEPAD_REBIND_LABELS = {
   accept: 'Accept',
   dock: 'Dock (when prompted)',
-  shove: 'Shove: outward blast + set off armed ordnance',
+  shove: 'Shove: tap for outward blast + detonate armed explosives',
   cancel: 'Back / cancel',
-  massline: 'Massline / the Line: tap latch/cut; hold line control',
+  massline: 'Line: hook, swing, throw',
   contextWheel: 'Context wheel: hold, aim a slice, release to choose',
   fire: 'Fire',
   mine: 'Mine beam (wheel latch by default)',
@@ -320,25 +323,25 @@ export const GAMEPAD_REBIND_LABELS = {
   tabNext: 'Station tab: next',
   bomb: 'Bomb: sticky charge, or the chosen drift bomb',
   cycleBomb: 'Ordnance: cycle (sticky charge, then bombs)',
-  // FB-003 chord layer — stock seats live on LB (survey/deploy) and RB (combat-state) chords.
+  // CONTROLLER-1 shift layer — hold LB and the face/view buttons take their second seat.
   scanPulse: 'Scanner pulse',
   cruise: 'Cruise drive (charge/drop)',
   bulletTime: 'Bullet time (hold)',
   cloak: 'Cloak toggle',
   siteBeam: 'World Site beam (selected target)',
-  pin: 'Pin: anchor seed for the Line',
+  pin: 'Pin: drops an anchor for the Line',
   pull: 'Pull: gravity well at your aim',
-  rig: 'Rig: clearing cone / skim scoop',
+  rig: 'Plow: tap to turn the clearing wedge on or off',
   deployBeacon: 'Nav beacon: deploy',
   jettisonLot: 'Cargo: jettison lot',
-  gyreSnare: 'Gyre Snare: hold to lash, release to bowl',
+  gyreSnare: 'Gather: hold to gather, release to throw',
   deployShieldPylon: 'Shield pylons: place, link, or recall',
 };
 
 function controlSchemeFor(settings) {
-  const scheme = settings && settings.gameplay && settings.gameplay.controlScheme || 'pilot';
+  const scheme = settings && settings.gameplay && settings.gameplay.controlScheme || 'helm-assist';
   const schemes = INPUT_DEFAULTS.SCHEMES || {};
-  return schemes[scheme] ? scheme : 'pilot';
+  return schemes[scheme] ? scheme : 'helm-assist';
 }
 
 function schemeBindingsFor(settings) {
@@ -353,6 +356,7 @@ function mergedBindingsFor(settings) {
   for (const action of keys) live[action] = ((base && base[action]) || DEFAULT_BINDINGS[action] || []).slice();
   const custom = settings && settings.controls && settings.controls.bindings;
   if (custom) for (const action in custom) live[action] = (custom[action] || []).slice();
+  for (const action of ['boost', 'tether']) live[action] = resolveActionCodes({ settings }, action).slice();
   return { base, live };
 }
 
@@ -562,8 +566,8 @@ const RESET_SKIP = Object.freeze({
 // fallback explicitly is what returns a stored profile to it (a profile merge cannot delete a key).
 const RESET_FALLBACKS = Object.freeze({
   gameplay: Object.freeze({
-    steeringView: 'overhead', racingDistance: 58, racingHeight: 22, racingLookAhead: 36,
-    velocityVectoring: true, damageNumbers: true, powerFire: 'hold',
+    steeringView: 'auto', racingDistance: 80, racingHeight: 42, racingLookAhead: 24,
+    velocityVectoring: true, damageNumbers: false, powerFire: 'press', pilotPickAtOnce: false,
   }),
   accessibility: Object.freeze({ textScale: 1 }),
 });
@@ -975,6 +979,11 @@ export const settingsScreen = {
       } else {
         build.note('Modified — the video rows differ from every preset. Pick a quality mode to re-pin them.');
       }
+      // DEMO-SWARM-UX-2: the integrated-GPU fact lives here, once, in Settings — never as a toast
+      // over the first fight beat. It names the picture policy and the row that changes it.
+      if (ctx.state && ctx.state.render && ctx.state.render.gpu && ctx.state.render.gpu.tier === 'integrated') {
+        build.note('Integrated graphics: this machine runs best on the High performance picture. Change it with Quality mode.');
+      }
       // The hardware bundles keep their own row: named pictures for a known machine class,
       // applied by the same applyQualityPreset contract. To leave one, pick a quality mode.
       rowSelect('Hardware preset',
@@ -1089,8 +1098,15 @@ export const settingsScreen = {
       rowToggle('Pause when the window loses focus', () => g.pauseOnFocusLoss !== false, (v) => this._set(ctx, 'gameplay', 'pauseOnFocusLoss', v));
       rowSelect('Stunt moments', () => g.stuntMoments || 'cinematic', [['cinematic', 'Cinematic · brief slowdown'], ['flow', 'Flow · continuous play']], (v) => this._set(ctx, 'gameplay', 'stuntMoments', v));
       rowSelect('Game speed', () => String(g.gameSpeed ?? 1), [['1', '100% · full speed'], ['0.9', '90%'], ['0.8', '80%'], ['0.7', '70% · assisted']], (v) => this._set(ctx, 'gameplay', 'gameSpeed', Number(v)));
-      rowSelect('Flight model', () => s.controls.flightMode || 'assisted', [['assisted', 'Assisted'], ['drift', 'Drift'], ['newtonian', 'Newtonian']], (v) => this._set(ctx, 'controls', 'flightMode', v));
-      rowSelect('Massline orbit assist', () => g.orbitAssistStrength || 'standard', [
+      // OVH-01b: when a level-up's cards appear. Absent = at the round's end (the shipped default).
+      rowToggle('Pick level-ups at once', () => g.pilotPickAtOnce === true, (v) => this._set(ctx, 'gameplay', 'pilotPickAtOnce', v === true));
+      build.note('Off: level-up cards wait for the end of the round. On: the cards appear the moment you level up and the fight slows to 15 % until you choose.');
+      rowSelect('Flight model', () => s.controls.flightMode || 'assisted', [
+        ['assisted', 'Assisted · easier to stop'],
+        ['drift', 'Drift · slides farther'],
+        ['newtonian', 'Newtonian · keeps turning after release'],
+      ], (v) => this._set(ctx, 'controls', 'flightMode', v));
+      rowSelect('Line orbit assist', () => g.orbitAssistStrength || 'standard', [
         ['full', 'Full'],
         ['standard', 'Standard'],
         ['light', 'Light'],
@@ -1100,32 +1116,28 @@ export const settingsScreen = {
       // holds a bearing/range slot off a locked moving target; it composes with, and sits
       // beside, the orbit-assist row above.
       rowToggle('Pursuit slot assist', () => g.pursuitSlotAssist === true, (v) => this._set(ctx, 'gameplay', 'pursuitSlotAssist', v));
-      rowSelect('Steering view', () => g.steeringView || 'overhead', [
-        ['overhead', 'Overhead'],
-        ['racing', 'Racing — stern camera'],
-        ['auto', 'Auto — stern on any race'],
-      ], (v) => this._set(ctx, 'gameplay', 'steeringView', v));
+      rowSelect('Camera view', () => preferredSteeringView({ gameplay: g }), [
+        ['auto', 'Auto: third person in races and timed runs'],
+        ['overhead', 'Overhead always'],
+        ['racing', 'Third person always'],
+      ], (v) => { this._set(ctx, 'gameplay', 'steeringViewChosen', true); this._set(ctx, 'gameplay', 'steeringView', v); });
       build.note('Backslash toggles chase / overhead during flight; LB + View does the same on a controller and can be rebound under Controls. The View button works on touch. Mission camera locks release automatically. Reduced motion keeps the horizon steady.');
-      rowSlider('Racing camera distance', () => g.racingDistance == null ? 58 : g.racingDistance, 24, 140, 1, (x) => Math.round(x) + '', (v, persist) => this._set(ctx, 'gameplay', 'racingDistance', v, persist));
-      rowSlider('Racing camera height', () => g.racingHeight == null ? 22 : g.racingHeight, 6, 64, 1, (x) => Math.round(x) + '', (v, persist) => this._set(ctx, 'gameplay', 'racingHeight', v, persist));
-      rowSlider('Racing look-ahead', () => g.racingLookAhead == null ? 36 : g.racingLookAhead, 0, 120, 1, (x) => Math.round(x) + '', (v, persist) => this._set(ctx, 'gameplay', 'racingLookAhead', v, persist));
+      rowSlider('Racing camera distance', () => g.racingDistance == null ? 80 : g.racingDistance, 24, 140, 1, (x) => Math.round(x) + '', (v, persist) => this._set(ctx, 'gameplay', 'racingDistance', v, persist));
+      rowSlider('Racing camera height', () => g.racingHeight == null ? 42 : g.racingHeight, 6, 64, 1, (x) => Math.round(x) + '', (v, persist) => this._set(ctx, 'gameplay', 'racingHeight', v, persist));
+      rowSlider('Racing look-ahead', () => g.racingLookAhead == null ? 24 : g.racingLookAhead, 0, 120, 1, (x) => Math.round(x) + '', (v, persist) => this._set(ctx, 'gameplay', 'racingLookAhead', v, persist));
       rowSelect('Auto-target assist', () => g.targetAssistStrength || 'full', [
         ['full', 'Full'],
         ['standard', 'Standard'],
         ['light', 'Light'],
         ['off', 'Off'],
       ], (v) => this._set(ctx, 'gameplay', 'targetAssistStrength', v));
-      // Row 493: the five powers preview while held. Absent = hold (the shipped default);
-      // powerVerbs.powersFireOnPress reads only 'press'.
-      rowSelect('Powers', () => (g.powerFire === 'press' ? 'press' : 'hold'), [
-        ['hold', 'Hold to preview'],
-        ['press', 'Use on press'],
-      ], (v) => this._set(ctx, 'gameplay', 'powerFire', v));
-      build.note('Hold to preview: while you hold a power key (1–5), every body it will move is outlined with where it will go, and letting go uses it; a quick tap still uses it at once.');
+      // Only aimed powers use this preference. Pulse/toggle gestures stay immediate.
+      rowToggle('Powers: aim first', () => g.powerFire === 'aim', (v) => this._set(ctx, 'gameplay', 'powerFire', v ? 'aim' : 'press'));
+      build.note('Off: every power acts the moment you press its key, at the cursor. On: hold Pull, Pin or Bomb to see what it will move, and let go to use it. Shove and Plow always act on the press.');
       rowToggle('Velocity vectoring assist', () => g.velocityVectoring !== false, (v) => this._set(ctx, 'gameplay', 'velocityVectoring', v));
       build.note('Turn your drift toward the nose while thrusting. Off leaves momentum unassisted.');
       const masslineFamilyOn = massline2Flag('enabled');
-      const releaseRow = rowSelect('Massline release assist', () => g.masslineReleaseAssist || 'arm', [
+      const releaseRow = rowSelect('Line release assist', () => g.masslineReleaseAssist || 'arm', [
         ['arm', 'Auto-release on solution (default)'],
         ['snap', 'Snap window on manual release'],
         ['off', 'Off — raw physics'],
@@ -1136,17 +1148,15 @@ export const settingsScreen = {
           releaseSelect.disabled = true;
           releaseSelect.setAttribute('aria-disabled', 'true');
         }
-        build.note('Massline release assist is unavailable because the Massline family is off.');
+        build.note('Line release assist is unavailable because the Line family is off.');
       } else {
         build.note('The release marker reads RELEASE when the timing window opens; motion and color are optional reinforcement.');
       }
       rowSelect('Autosave', () => String(g.autosaveIntervalS), [['0', 'Off'], ['60', '60s'], ['120', '120s'], ['300', '300s']], (v) => this._set(ctx, 'gameplay', 'autosaveIntervalS', parseInt(v, 10)));
       rowToggle('Tutorial hints', () => g.tutorialHints, (v) => this._set(ctx, 'gameplay', 'tutorialHints', v));
-      // `!== false`, not `!!`: gameplay.damageNumbers is ABSENT from the shipped defaults (gameState.js
-      // carries root showDamageNumbers, which nothing reads), and floatingText suppresses numbers
-      // only on `=== false`. So the old `!!` read showed Off on a fresh profile while damage
-      // numbers were on — the toggle contradicted the game.
-      rowToggle('Damage numbers', () => g.damageNumbers !== false, (v) => this._set(ctx, 'gameplay', 'damageNumbers', v));
+      // OVH-06a / R10: damage numbers default OFF (gameState.js carries gameplay.damageNumbers:
+      // false) and floatingText suppresses them on `=== false`, so the toggle reads `=== true`.
+      rowToggle('Damage numbers', () => g.damageNumbers === true, (v) => this._set(ctx, 'gameplay', 'damageNumbers', v));
       // Installed content packs (PQ-172.00): JSON the loader validated at boot. Content is
       // read-only here — mods are installed by dropping files into the content directory.
       const mods = listUserMods();
@@ -1255,6 +1265,12 @@ export const settingsScreen = {
           this._set(ctx, 'accessibility', 'textScale', value, persist);
           applyTextScaleFromSettings(s);
         });
+      // CONTROLLER-1: the one-tap handheld switch — same textScale channel, pinned to 130%.
+      rowToggle('Large text', () => Number(ac.textScale) >= 1.2, (v) => {
+        this._set(ctx, 'accessibility', 'textScale', v ? 1.3 : 1);
+        applyTextScaleFromSettings(s);
+        this._render(ctx);
+      });
       // FB-005: rumble has its own axis — it is haptic substitution, not motion. A calmer screen
       // often wants MORE rumble, so this never follows the reduce-motion choice.
       rowSelect('Controller rumble', () => ac.haptics || 'full',
@@ -1267,8 +1283,8 @@ export const settingsScreen = {
         ['boost', 'Boost / dash'],
         ['brake', 'Brake / reverse'],
         ['bulletTime', 'Bullet time'],
-        ['gyreSnare', 'Gyre Snare lash'],
-        ['massline', 'Massline hold'],
+        ['gyreSnare', 'Gather (hold to gather)'],
+        ['massline', 'Line hold'],
         ['reelIn', 'Tether reel in'],
         ['reelOut', 'Tether reel out'],
       ];
@@ -1294,8 +1310,8 @@ export const settingsScreen = {
       uiScaleRow(build, s, true, (section, key, value, persist) => this._set(ctx, section, key, value, persist));
       build.note('Colorblind mode also recolors radar blips and adds redundant shapes.');
     } else if (refs.active === 'Controls') {
-      rowSelect('Control Scheme', () => s.gameplay.controlScheme || 'pilot',
-        [['pilot', 'Pilot (keyboard steers, mouse aims)'], ['helm-assist', 'Helm Assist (mouse steering)'], ['classic', 'Classic Throttle']],
+      rowSelect('Control Scheme', () => s.gameplay.controlScheme || 'helm-assist',
+        [['helm-assist', 'Standard (ship faces the cursor, A/D strafe)'], ['pilot', 'Pilot (A/D turn the ship, mouse aims the guns)'], ['classic', 'Classic Throttle']],
         (v) => {
           this._set(ctx, 'gameplay', 'controlScheme', v);
           // Explicit choice: stop the one-time pilot migration (saveSystem) from overriding it.
@@ -1335,11 +1351,18 @@ export const settingsScreen = {
     build.toggle('Gamepad enabled', () => !!gp().enabled, (v) => this._set(ctx, 'controls', 'gamepad', { ...gp(), enabled: v }));
     build.slider('Stick deadzone', () => gp().deadzone, 0, 0.5, 0.01, (x) => Math.round(x * 100) + '%', (v, persist) => this._set(ctx, 'controls', 'gamepad', { ...gp(), deadzone: v }, persist));
     build.toggle('Invert right-stick Y', () => !!gp().invertY, (v) => this._set(ctx, 'controls', 'gamepad', { ...gp(), invertY: v }));
+    // CONTROLLER-1: flight assists own the scheme choice and the aim aid — everything here
+    // shapes what the sticks mean, not what the buttons do.
+    build.header('Flight assists');
     // PQ-164.04: the twin-stick scheme — left stick drives in screen space, right stick aims
     // and steers the nose. 'Drive' keeps the wheel map (left stick yaw + throttle).
     build.select('Flight scheme', () => gp().scheme === 'twinstick' ? 'twinstick' : 'drive',
       [['drive', 'Drive — left stick steers and throttles'], ['twinstick', 'Twin-stick — left stick drives, right stick aims']],
       (v) => this._set(ctx, 'controls', 'gamepad', { ...gp(), scheme: v }));
+    // CONTROLLER-1: the soft pull toward a hostile inside the aim cone — a near-miss aid,
+    // never a lock. Twin-stick only.
+    build.toggle('Stick aim assist', () => gp().stickAimAssist !== false,
+      (v) => this._set(ctx, 'controls', 'gamepad', { ...gp(), stickAimAssist: v }));
     // FB-004: response tuning. The right stick's deadzone is its own axis — aim jitter should
     // never force the fly hand wider. 'Expo' softens the stick's center while the edge still
     // reaches full deflection; the sensitivities scale derived intent, never the raw axes.
@@ -1374,15 +1397,15 @@ export const settingsScreen = {
       (v, persist) => this._set(ctx, 'controls', 'mouse', { ...mo(), sensitivity: v }, persist));
     build.toggle('Invert mouse Y (aim)', () => !!mo().invertY,
       (v) => this._set(ctx, 'controls', 'mouse', { ...mo(), invertY: v }));
-    // Matches src/systems/gamepad.js ACTION_MAP + UI route: Start/menu → pause only;
-    // Mission Log is chosen from the Pause menu (no direct gamepad missionLog action).
-    // LB is the survey/deploy chord layer, RB the combat-state layer — every row below shows
-    // the live seat, including 'LB + D-Pad Up' style chords.
-    build.note('Default layout: left stick fly, right stick aim, RT fire, LT mine, RB boost, LB brake, Y shove, R3 countermeasure, A/Cross Massline, B dock when prompted, X/Square target, D-pad up auto-target, D-pad right bomb, D-pad left cycle bombs, View star map, Start → Pause → Mission Log. Hold LB or RB and tap a second button for scanner, fields, cloak and cruise.');
+    // Matches src/systems/gamepad.js GAMEPAD_DEFAULT_BINDINGS + UI route: Start/menu → pause
+    // only; Mission Log is chosen from the Pause menu (no direct gamepad missionLog action).
+    // LB is the shift bumper — every row below shows the live seat, 'LB + X' chords included.
+    build.note('Default layout: left stick drives, right stick aims, RT fire, LT the Line, RB boost, L3 brake, R3 cycle target. Powers under the thumb — A shove, Y pull, B bomb — with LB+X pin, LB+Y rig, LB+A countermeasure and LB+B scanner on the shift layer, and RB+Y the Gyre Snare. X docks when the prompt is up, D-pad left runs the mining beam, D-pad up toggles auto-target, hold D-pad down opens the wheel, View star map, Start → Pause → Mission Log.');
 
     // PQ-164.01 pad remap: capture-on-press rows, same grammar as the flight keys above — press
     // a word, then press the pad button. Conflict detection honours the designed context shares
-    // (A/Cross accept+Massline, LB brake+tab, RB boost+tab); same-context doubles are denied.
+    // (A/Cross accept+Shove, B cancel+Bomb, LB tabPrev+chord modifier, RB boost+tabNext);
+    // same-context doubles are denied.
     build.header('Gamepad Buttons');
     const padMap = resolveGamepadBindings(s);
     GAMEPAD_REBINDABLE.forEach((action) => {

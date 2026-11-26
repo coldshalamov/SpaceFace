@@ -87,10 +87,27 @@ export const RUN_PHASE_TRANSITIONS = Object.freeze({
   ]),
 });
 
-// Run levelling (CRU-014). XP per level grows linearly so ten waves of authored rewards land a
-// player around level 6-8 without a curve table nobody can read. Pure: no state, no RNG.
-export const RUN_XP_LEVEL_BASE = 100;
-export const RUN_XP_LEVEL_STEP = 60;
+// Run levelling (CRU-014, retuned OVH-01a / design/overhaul/04_SWARM.md §3 and 06 §2.3). XP per
+// level grows linearly — no curve table nobody can read. The constants are sized against the LIVE
+// award sites, not the older design figures: a Swarm kill pays 3 XP (`killXpFor(1)` in
+// survivalRewards) and a wave clear pays 64 + 14 × the wave (swarmRewards). With those payouts a
+// typical paced run reaches level 2 ≈25 s into round 1, level 6 at the end of round 3 and level 14
+// at the end of round 10 (04_SWARM §3), as pinned in test/ovh-01a-pilot-tree.test.mjs. Pure: no
+// state, no RNG.
+export const RUN_XP_LEVEL_BASE = 24;
+export const RUN_XP_LEVEL_STEP = 22;
+
+// The XP sources 04_SWARM.md §3 names, as one figure each (starting values; tune by play). The
+// award sites (kills, chains, round clears, bosses) wire these in the node-effects packets; the
+// run wallet itself stays integer, so fractional sources (the room kill's 2.5) round at the
+// award call, never inside the curve. The nth chain link pays CHAIN_LINK_STEP × n ("+0.5 rising").
+export const RUN_XP_SOURCES = Object.freeze({
+  GUN_KILL: 1,
+  ROOM_KILL: 2.5,
+  CHAIN_LINK_STEP: 0.5,
+  ROUND_CLEAR_PER_ROUND: 10,
+  BOSS: 100,
+});
 
 /** Total XP required to have REACHED `level`. Level 1 costs nothing. */
 export function runXpForLevel(level) {
@@ -122,6 +139,15 @@ export function runLevelForXp(xp) {
     while (level + 1 !== level && runXpForLevel(level + 1) <= total) level += 1;
   }
   return level;
+}
+
+// The run-local Pilot Tree record (OVH-01a / design/overhaul/06 §2). Absent on the fresh
+// adventure envelope createRunState() builds; runSession.begin() stamps it onto every
+// non-adventure run, so a run's tree never outlives the run. `points` is sparse — a branch
+// appears when it first holds a point. `offer` is the live three-card draw (null when none is
+// on the table); `rerolls` counts the Scrap-paid redraws of the current offer.
+export function createPilotProgress() {
+  return { points: {}, nodes: [], banked: 0, offer: null };
 }
 
 export function createRunState({ kind = 'adventure', ruleset = null, seed = 0 } = {}) {
@@ -163,6 +189,10 @@ export function createRunState({ kind = 'adventure', ruleset = null, seed = 0 } 
 // caller's run and its nested history still need to be validated in full.
 const REQUIRED_RUN_KEYS = Object.keys(createRunState());
 const REQUIRED_RUN_KEY_SET = new Set(REQUIRED_RUN_KEYS);
+// OVH-01a: the pilot record is optional (absent on adventure/inactive envelopes and on runs
+// begun before the tree existed) but never unknown.
+const OPTIONAL_RUN_KEY_SET = new Set(['pilot']);
+const PILOT_KEY_SET = new Set(['points', 'nodes', 'banked', 'offer']);
 
 export function validateRunState(run) {
   try {
@@ -172,7 +202,34 @@ export function validateRunState(run) {
   }
 }
 
-function validateRunStateInner(run) {
+// Per-tick read-path validation. The live-run gates (liveSwarmRun on projectile,
+// propulsion and attrition paths) paid the full schema + non-JSON walk every
+// query — dozens of times per tick over the same run object. The schema/type
+// pass is cheap and runs on every call, so a write that corrupts the run inside
+// a tick is seen by the next reader; only the deep non-JSON walk is memoized
+// per (run object, tick). The cache keys on object identity, so a freshly
+// committed run never sees a predecessor's verdict, and writer-side calls (a
+// candidate `next` before commit) keep validateRunState unchanged. Callers
+// without a finite tick fall through to the full check.
+const RUN_STATE_TICK_CACHE = new WeakMap();
+export function validateRunStateForTick(run, tick) {
+  if (!run || typeof run !== 'object' || !Number.isFinite(tick)) return validateRunState(run);
+  const t = tick | 0;
+  const shallow = validateRunStateInner(run, { skipNonJson: true });
+  if (!shallow.ok) return shallow;
+  const cached = RUN_STATE_TICK_CACHE.get(run);
+  let deepIssues;
+  if (cached && cached.tick === t) {
+    deepIssues = cached.deepIssues;
+  } else {
+    deepIssues = [];
+    collectNonJsonIssues(run, deepIssues, [], []);
+    RUN_STATE_TICK_CACHE.set(run, { tick: t, deepIssues });
+  }
+  return deepIssues.length ? { ok: false, issues: deepIssues.slice() } : shallow;
+}
+
+function validateRunStateInner(run, opts = {}) {
   const issues = [];
   if (!run || typeof run !== 'object' || Array.isArray(run)) {
     return { ok: false, issues: ['(root): expected object'] };
@@ -183,7 +240,7 @@ function validateRunStateInner(run) {
     }
   }
   for (const key of Object.keys(run)) {
-    if (!REQUIRED_RUN_KEY_SET.has(key)) issues.push(`${key}: unknown`);
+    if (!REQUIRED_RUN_KEY_SET.has(key) && !OPTIONAL_RUN_KEY_SET.has(key)) issues.push(`${key}: unknown`);
   }
 
   if (Object.prototype.hasOwnProperty.call(run, 'schemaVersion')
@@ -245,8 +302,52 @@ function validateRunStateInner(run) {
       issues.push('telemetry: expected object');
     }
   }
+  if (Object.prototype.hasOwnProperty.call(run, 'pilot')) {
+    const pilot = run.pilot;
+    if (!pilot || typeof pilot !== 'object' || Array.isArray(pilot)) {
+      issues.push('pilot: expected object');
+    } else {
+      for (const key of Object.keys(pilot)) {
+        if (!PILOT_KEY_SET.has(key)) issues.push(`pilot.${key}: unknown`);
+      }
+      if (!pilot.points || typeof pilot.points !== 'object' || Array.isArray(pilot.points)) {
+        issues.push('pilot.points: expected object');
+      } else {
+        for (const [branch, value] of Object.entries(pilot.points)) {
+          if (!branch) issues.push('pilot.points: expected branch keys');
+          if (!Number.isInteger(value) || value < 0) {
+            issues.push(`pilot.points.${branch}: expected non-negative integer`);
+          }
+        }
+      }
+      if (!Array.isArray(pilot.nodes)) {
+        issues.push('pilot.nodes: expected array');
+      } else {
+        for (const id of pilot.nodes) {
+          if (typeof id !== 'string' || !id) { issues.push('pilot.nodes: expected string ids'); break; }
+        }
+      }
+      if (!Number.isInteger(pilot.banked) || pilot.banked < 0) {
+        issues.push('pilot.banked: expected non-negative integer');
+      }
+      if (pilot.offer !== null && typeof pilot.offer === 'object' && !Array.isArray(pilot.offer)) {
+        if (!Array.isArray(pilot.offer.cards) || pilot.offer.cards.length > 3) {
+          issues.push('pilot.offer.cards: expected at most three ids');
+        } else {
+          for (const id of pilot.offer.cards) {
+            if (typeof id !== 'string' || !id) { issues.push('pilot.offer.cards: expected string ids'); break; }
+          }
+        }
+        if (!Number.isInteger(pilot.offer.rerolls) || pilot.offer.rerolls < 0) {
+          issues.push('pilot.offer.rerolls: expected non-negative integer');
+        }
+      } else if (pilot.offer !== null) {
+        issues.push('pilot.offer: expected object or null');
+      }
+    }
+  }
 
-  collectNonJsonIssues(run, issues, [], new WeakSet());
+  if (!opts || opts.skipNonJson !== true) collectNonJsonIssues(run, issues, [], []);
   return { ok: issues.length === 0, issues };
 }
 
@@ -339,14 +440,14 @@ function isJsonScalar(value) {
   return value === null || typeof value === 'string' || typeof value === 'boolean' || Number.isFinite(value);
 }
 
-function collectNonJsonIssues(value, issues, path, visited) {
+function collectNonJsonIssues(value, issues, path, ancestors) {
   if (value === null) return;
   const type = typeof value;
   if (type !== 'object') {
     issues.push(`${nonJsonPath(path)}: ${value === undefined ? 'undefined' : `non-json ${type}`}`);
     return;
   }
-  if (visited.has(value)) {
+  if (ancestors.includes(value)) {
     issues.push(`${nonJsonPath(path)}: circular`);
     return;
   }
@@ -354,7 +455,9 @@ function collectNonJsonIssues(value, issues, path, visited) {
     issues.push(`${nonJsonPath(path)}: too deep`);
     return;
   }
-  visited.add(value);
+  // The depth cap keeps this scan short. Reusing the ancestry stack avoids
+  // constructing a WeakSet each time an active-wave reader validates the run.
+  ancestors.push(value);
   try {
     if (value instanceof Map || value instanceof Set) {
       issues.push(`${nonJsonPath(path)}: ${value.constructor.name}`);
@@ -365,7 +468,7 @@ function collectNonJsonIssues(value, issues, path, visited) {
         const child = value[i];
         if (isJsonScalar(child)) continue;
         path.push(i);
-        collectNonJsonIssues(child, issues, path, visited);
+        collectNonJsonIssues(child, issues, path, ancestors);
         path.pop();
       }
       return;
@@ -379,13 +482,12 @@ function collectNonJsonIssues(value, issues, path, visited) {
       const child = value[key];
       if (isJsonScalar(child)) continue;
       path.push(key);
-      collectNonJsonIssues(child, issues, path, visited);
+      collectNonJsonIssues(child, issues, path, ancestors);
       path.pop();
     }
   } finally {
-    // `visited` tracks the current ancestry, not every object seen. Reusing a JSON object in two
-    // fields is valid; only an edge back into the active ancestry is a circular reference.
-    visited.delete(value);
+    // Siblings may share an object. Only the current ancestry can form a cycle.
+    ancestors.pop();
   }
 }
 

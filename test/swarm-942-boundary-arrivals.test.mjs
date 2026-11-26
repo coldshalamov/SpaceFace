@@ -69,7 +69,7 @@ test('seed7 round6 Jackal admits at the strict screen boundary, deterministicall
     assert.deepEqual(h.player.pos, before, 'placement does not move the pilot');
     assert.equal(h.budget.current(), 1);
     assert.equal(entity.data.runWave, 6);
-    assert.equal(entity.data.ai.swarmFireHoldUntil, 2.5);
+    assert.equal(entity.data.ai.swarmFireHoldUntil, undefined, 'arrivals carry no fire-hold timer');
     poses.push(entity.pos);
   }
   assert.deepEqual(poses[0], poses[1]); assert.deepEqual(poses[1], poses[2]);

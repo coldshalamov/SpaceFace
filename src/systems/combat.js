@@ -24,7 +24,9 @@ import { queryPhysicalBodies } from '../combat/physicalEffects.js';
 import { hasBlockingPanels, interceptSegment, acceptIntercept, PYLON_CONTACT } from '../combat/pylonShieldQuery.js';
 import { occupantGenerationOf } from '../core/entity.js';
 import { isEnvironmentalBody } from '../core/physicalResponse.js';
+import { forEachDressingRow } from '../world/dressingTable.js';
 import { WPN } from './enemySpawnSpec.js';
+import { clearanceFootprint, findSwarmLocalSeat, sweptDiscsOverlap } from './swarmSafety.js';
 export { makeEnemySpawnSpec, scaleCombatant, readEnemySpawnRepeatWork, resetEnemySpawnRepeatWork } from './enemySpawnSpec.js';
 
 // Massline whip damage (rung 14, flag combat.whipDamage): a solid/crushing whip-impact routes
@@ -99,6 +101,7 @@ const CHARGE_CELL_MASS = 20;
 const CHARGE_CELL_LIFETIME_S = 30;
 const CHARGE_CELL_COLLECTION_GRACE_S = 0.25;
 const CHARGE_CELL_THROW_GRACE_S = 0.5;
+const CHARGE_CELL_DROP_CLEARANCE_WU = 0.25;
 const MAX_CHARGE_CELLS = 24;
 const BROOD_REMAINS_LIFETIME_S = 45;
 const MAX_BROOD_REMAINS = 16;
@@ -110,6 +113,21 @@ function chargeCellData(entity) {
     || !Number.isFinite(cell.collectAfter) || cell.collectAfter < 0
     || !Number.isFinite(entity.data.despawnAt) || entity.data.despawnAt < 0) return null;
   return cell;
+}
+
+function chargeCellDropPos(state, player, pos) {
+  const sweep = { horizon: CHARGE_CELL_COLLECTION_GRACE_S, clearance: CHARGE_CELL_DROP_CLEARANCE_WU };
+  if (!sweptDiscsOverlap(pos, CHARGE_CELL_RADIUS_WU, player, sweep)) return pos;
+
+  // A close kill can leave the cell in the pilot's immediate path during its pickup grace.
+  // Place it clear of that path and nearby solids without changing the drop or pickup clock.
+  const sector = state.world?.currentSectorId;
+  const reserved = [];
+  forEachDressingRow(state, row => {
+    if (row.collides && (!row.homeSectorId || !sector || row.homeSectorId === sector)) reserved.push(row);
+  });
+  return findSwarmLocalSeat(state, pos, CHARGE_CELL_RADIUS_WU, { ...sweep, reserved,
+    reach: 2 * (clearanceFootprint(player) + CHARGE_CELL_RADIUS_WU) }) ?? pos;
 }
 
 function isChargeCellKill(payload, victim, state) {
@@ -270,6 +288,12 @@ function killImpactorId(lethal) {
   const packet = lethal && lethal.packet && typeof lethal.packet === 'object' ? lethal.packet : null;
   const collision = collisionPresentationProvenance(lethal, packet);
   return collision && collision.otherId != null ? collision.otherId : null;
+}
+
+function killImpactorGeneration(lethal) {
+  const packet = lethal && lethal.packet && typeof lethal.packet === 'object' ? lethal.packet : null;
+  const collision = collisionPresentationProvenance(lethal, packet);
+  return collision && collision.otherGeneration != null ? collision.otherGeneration : null;
 }
 
 function collisionPresentationProvenance(lethal, packet) {
@@ -602,7 +626,7 @@ export const combat = {
       type: 'payload', alive: true, collides: true,
       radius: CHARGE_CELL_RADIUS_WU, mass: CHARGE_CELL_MASS,
       physicsBody: { dynamic: true, mass: CHARGE_CELL_MASS },
-      pos: { x: payload.pos.x, z: payload.pos.z }, vel: { x: 0, z: 0 },
+      pos: chargeCellDropPos(state, player, { x: payload.pos.x, z: payload.pos.z }), vel: { x: 0, z: 0 },
       hull: 20, hullMax: 20,
       data: {
         kind: 'payload', payloadType: 'charge_cell', name: 'Charge cell',
@@ -684,7 +708,7 @@ export const combat = {
       }
     }
     if (result.ok && targetId === this.state.playerId) {
-      this.bus.emit('camera:shake', { amount: result.shieldBroke ? 0.4 : 0.2 });
+      this.bus.emit('camera:shake', { amount: result.shieldBroke ? 0.4 : 0.2, cause: 'hullHitEvent' });
     }
     return result;
   },
@@ -832,6 +856,7 @@ export const combat = {
         : killEndLabelFor(lethal) ? { cause: killEndLabelFor(lethal) } : {}),
       // The collision partner — law's witness sightline must not let it occlude its own kill.
       impactorId: killImpactorId(lethal),
+      impactorGeneration: killImpactorGeneration(lethal),
       ...(lethal?.origin?.kind === 'collision' && lethal?.packet?.source?.chainWitness
         ? { chainWitness: lethal.packet.source.chainWitness } : {}),
       presentation,
@@ -855,7 +880,7 @@ export const combat = {
     // the player's camera at full 0.5 trauma for a kill anywhere in the sector — three times the
     // amplitude of the destruction-VFX shake. The neighbouring emitters in this file are all
     // player-scoped by construction (player hit, player death, respawn) and correctly send none.
-    bus.emit('camera:shake', { amount: 0.5, position: { x: t.pos.x, z: t.pos.z } });
+    bus.emit('camera:shake', { amount: 0.5, position: { x: t.pos.x, z: t.pos.z }, cause: 'kill' });
     const bounty = Math.max(0, Math.round(d.bountyCr || 0));
     if (bounty > 0 && authoredRewardEligible && !shardsOwnKillBurst) {
       bus.emit('economy:grantCredits', { amount: bounty, reason: 'bounty' });
@@ -1073,7 +1098,7 @@ export const combat = {
         source: payload.source || 'after_action',
       };
       this.bus.emit('player:respawn', recoveryReceipt);
-      this.bus.emit('camera:shake', { amount: 0.45 });
+      this.bus.emit('camera:shake', { amount: 0.45, cause: 'respawn' });
       return { ok: true, ...recoveryReceipt };
     } catch (err) {
       console.error('[combat] player recovery failed', err);
@@ -1141,6 +1166,9 @@ export const combat = {
     const currentSectorId = currentWorld?.currentSectorId;
     if (plan && plan.sectorId && plan.sectorId !== currentSectorId) {
       const world = this.registry && typeof this.registry.get === 'function' ? this.registry.get('world') : null;
+      // Sync lane by contract: recovery fires from the after-action flow with no
+      // charge/tunnel window to drain under, and the berth commit below needs the
+      // entered bag this same call — the whole enter lands bounded on this tick.
       const entered = world?.enterSector?.(plan.sectorId, {
         via: 'recovery',
         fromSectorId: currentSectorId || null,

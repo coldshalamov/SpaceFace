@@ -188,12 +188,54 @@ function findOffSeamContactAngle(ast) {
   const seams = ast.data.seams.map((seam) => seamWorldPoint(ast, seam));
   for (let i = 0; i < 48; i++) {
     const angle = (i / 48) * TAU;
-    const px = ast.pos.x + Math.cos(angle) * ast.radius;
-    const pz = ast.pos.z + Math.sin(angle) * ast.radius;
-    const minDist = Math.min(...seams.map((p) => Math.hypot(px - p.x, pz - p.z)));
-    if (minDist > 16) return angle;
+    const nx = -Math.sin(angle);
+    const nz = Math.cos(angle);
+    const minDist = Math.min(...seams.map((p) => Math.abs((p.x - ast.pos.x) * nx + (p.z - ast.pos.z) * nz)));
+    if (minDist > ast.radius * 0.24) return angle;
   }
   throw new Error('could not find off-seam contact angle');
+}
+
+function checkPrecisionCut() {
+  const { sim, state, player } = boot(2210);
+  const ast = spawnAsteroid(sim, {
+    radius: 60, hp: 1000, isChunk: true,
+    seams: [{ localOffset: { x: 15, z: 25 } }],
+  });
+  const ticks = [];
+  sim.bus.on('mining:tick', (p) => ticks.push(p));
+  state.input.aimIntentActive = true;
+  ast.rot = Math.PI / 2;
+  const seam = seamWorldPoint(ast, ast.data.seams[0]);
+  const aim = (p) => {
+    state.input.aimWorld = p;
+    state.input.aimAngle = Math.atan2(p.z - player.pos.z, p.x - player.pos.x);
+  };
+
+  aim(seam);
+  mineForTicks(sim, state, 120, () => true);
+  assert.deepEqual(ticks[0].contactPos, seam, 'the cut lands on the visible mark inside a big rotating body');
+  assert.equal(ticks[0].seamGradePct, 100);
+  assert.ok(ticks.at(-1).cutBonusPct >= 3, 'continuous contact builds a cutting bonus');
+  const knownHp = ast.data.oreHP;
+  aim(ast.pos);
+  mineForTicks(sim, state, 1, () => true);
+  assert.equal(ticks.at(-1).seamGradePct, 35, 'aiming beside the seam reaches the shell');
+  assert.ok(ast.data.oreHP < knownHp, 'shell skimming is still available');
+  aim(seam);
+  mineForTicks(sim, state, 1, () => true);
+  assert.equal(ticks.at(-1).cutBonusPct, 0, 'reacquiring begins a new cut');
+
+  state.input.aimFromStick = true;
+  mineForTicks(sim, state, 1, () => true);
+  assert.equal(ticks.at(-1).seamGradePct, 100, 'direction-only aim can also reach the mark');
+
+  const next = spawnAsteroid(sim, { pos: { x: 155, z: 95 }, hp: 200, isChunk: true });
+  state.input.actions = { aimedMine: true };
+  state.input.aimFromStick = false;
+  aim(next.pos);
+  mineForTicks(sim, state, 1, () => true);
+  assert.equal(ticks.at(-1).targetId, next.id, 'a new explicit cursor pick replaces the old wheel lock');
 }
 
 // Seams pay ORE, not just time. The constant has always been NAMED a yield fraction; it used to be
@@ -568,6 +610,7 @@ function checkYieldFloatingTextNamesCommodity() {
 checkWorldSpawnSeams();
 checkPulverizerRareOreChance();
 checkSeamYield();
+checkPrecisionCut();
 checkBeamHeatPegsAndKeepsMining();
 checkVentBonusPaysRealOre();
 checkNoLockoutSuite();

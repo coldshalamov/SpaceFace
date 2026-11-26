@@ -21,10 +21,12 @@ import { createLiveGeometryAdmissionQueue } from '../src/render/liveGeometryAdmi
 import { createPipelineAdmissionTracker } from '../src/render/pipelineReadiness.js';
 import {
   compilePipelineSubject,
+  counterweightGeometryDeadline,
   hoistDeadlineGlassMeshBuilds,
   preparePipelineSubjectResidency,
   promoteOnGlassPipelineLatch,
   render,
+  serviceCounterweightGeometryPreparation,
 } from '../src/render/renderer.js';
 import * as partsLibrary from '../src/render/partsLibrary.js';
 import { PRESENTATION_TIER } from '../src/world/activityClassification.js';
@@ -34,6 +36,41 @@ import { collectJournalPresentationEntities } from '../src/world/presentationSou
 const R0 = PRESENTATION_TIER.R0_GLASS;
 const R1 = PRESENTATION_TIER.R1_RUNWAY;
 const R3 = PRESENTATION_TIER.R3_UNLOADED;
+
+test('Counterweight urgently uploads only the exact mounted authored preparation cohort', () => {
+  const sector = 'sector_pallas_drift';
+  const file = 'places/place_ceres_section_cradle.glb';
+  const r = { parent: {}, userData: { geometryPending: true, authoredAssetState: 'authored',
+    authoredPackageUrl: `assets/ships/release/parts/${file}` } };
+  const e = { id: 13, occupantGeneration: 22, homeSectorId: sector, mesh: r,
+    data: { counterweightAttempt: 4, packagedPropFile: file } };
+  const state = { mode: 'flight', world: { currentSectorId: sector }, render: { firstPlayableFrameAt: 0 },
+    entities: new Map([[e.id, e]]), counterweightCircuitView: { phase: 'staged', attemptId: 4,
+      admission: { generation: 3, bodies: [{ id: e.id, generation: 22, file }] } } };
+  const uploads = [];
+  const owner = { state, _liveGeometryAdmissions: { enqueue: (entity, root) => uploads.push([entity, root]) } };
+  assert.equal(counterweightGeometryDeadline(state, e, r), true);
+  serviceCounterweightGeometryPreparation(owner);
+  assert.deepEqual(uploads, [[e, r]]);
+  assert.equal(r.userData.geometryPending, true, 'only the real upload owner clears the latch');
+
+  const deny = (label, object, key, value) => {
+    const saved = object[key];
+    object[key] = value;
+    assert.equal(counterweightGeometryDeadline(state, e, r), false, label);
+    serviceCounterweightGeometryPreparation(owner);
+    object[key] = saved;
+  };
+  deny('ordinary distant root', e.data, 'counterweightAttempt', null);
+  deny('wrong world', state.world, 'currentSectorId', 'sector_ceres_belt');
+  deny('wrong home sector', e, 'homeSectorId', 'sector_ceres_belt');
+  deny('retired life', e, 'alive', false);
+  deny('recycled body', e, 'occupantGeneration', 23);
+  deny('different installed package', r.userData, 'authoredPackageUrl', 'places/other.glb');
+  deny('unauthored root', r.userData, 'authoredAssetState', 'unavailable');
+  deny('preparation ended', state.counterweightCircuitView, 'admission', null);
+  assert.equal(uploads.length, 1);
+});
 
 function makeTracker() {
   const order = [];

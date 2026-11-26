@@ -27,7 +27,10 @@ function bootBeam() {
     id: 2, type: 'asteroid', alive: true,
     pos: { x: 60, z: 0 }, vel: { x: 0, z: 0 }, rot: 0, radius: 8, mass: 400,
     hull: 140, hullMax: 140,
-    data: { typeId: 'ast_common_rock', oreHP: 900, oreHPMax: 900, commodityId: 'cmdty_silicate' },
+    data: {
+      typeId: 'ast_common_rock', oreHP: 900, oreHPMax: 900, commodityId: 'cmdty_silicate',
+      seams: [{ localOffset: { x: -5, z: 0 } }],
+    },
   };
   const state = {
     mode: 'flight', playerId: player.id, simTime: 0, tick: 0,
@@ -97,12 +100,13 @@ test('X-07 the peg stops accrual but never shrinks the bank', () => {
 test('X-07 pegged extraction keeps full rate', () => {
   const h = bootBeam();
   const ast = h.asteroid;
-  step(h, 60);
+  const beam = h.player.data.miningBeam;
+  for (let i = 0; i < 600 && !(beam.heat >= 92); i++) step(h);
   const hpA = ast.data.oreHP;
   step(h, 10);
   const hpB = ast.data.oreHP;
   const prePegDelta = (hpA - hpB) / 10;
-  step(h, 600);
+  for (let i = 0; i < 600 && beam.heat < beam.heatMax; i++) step(h);
   assert.ok(h.player.data.miningBeam.heat >= h.player.data.miningBeam.heatMax);
   const hpC = ast.data.oreHP;
   step(h, 10);
@@ -136,6 +140,7 @@ test('X-07 clean is 0.85 depth with zero pegged seconds', () => {
 
   // Shallow release: not clean.
   const h3 = bootBeam();
+  h3.asteroid.data.yieldU = 260;
   const beam3 = h3.player.data.miningBeam;
   const target3 = beam3.heatMax * (BEAM_VENT_BAND_LO + 0.05);
   for (let i = 0; i < 600 && !(beam3.heat >= target3); i++) step(h3, 1);
@@ -213,6 +218,9 @@ test('X-07 the two vent lessons each speak once and stay silent on the rail', ()
   h.bus.emit('mining:ventBonus', { clean: true, peggedS: 0 });
   assert.equal(h.hints.filter((e) => e.verbId === 'miningCleanCut').length, 1, 'once only');
   h.bus.emit('mining:ventBonus', { clean: false, peggedS: 2 });
+  assert.equal(h.hints.filter((e) => e.verbId === 'miningPegged').length, 0, 'waits for the clean-cut lesson');
+  h.state.simTime += 8;
+  onboarding._drainHintQueue();
   assert.equal(h.hints.filter((e) => e.verbId === 'miningPegged').length, 1);
   h.bus.emit('mining:ventBonus', { clean: false, peggedS: 0.5 });
   assert.equal(h.hints.filter((e) => e.verbId === 'miningPegged').length, 1, 'sub-second peg does not teach');

@@ -3,6 +3,13 @@ import { resolveWorldPresentationEntity } from '../world/presentationSources.js'
 import { entityVisualCullRadius } from './visualCullRadius.js';
 import { indexedWorldRecordEntity } from '../world/livingWorldViews.js';
 import { presentationAllowsPlayerFacingAction } from '../core/presentationAdmission.js';
+import { frameCostFixOn } from './frameCostSwitches.js';
+
+// A root's node list and reach are re-verified at least this often even when the cursor is
+// nowhere near it (see pick()).
+const ENVELOPE_RECHECK_MS = 500;
+// Slack on a reach that may be up to ENVELOPE_RECHECK_MS old: a part that swung outward since.
+const STALE_REACH_PAD = 1.15;
 
 const FORGIVE_PX = 6;
 const TINY_BODY_PX = 12;
@@ -258,6 +265,9 @@ export function createWorldObjectPicker(env) {
   }
   const boxRec = { distance: 0, point: null };
   const leafCache = new WeakMap();
+  // Millisecond clock for the verification cadence (tests inject one).
+  const clockNow = typeof env.now === 'function' ? env.now
+    : () => (typeof performance !== 'undefined' && typeof performance.now === 'function' ? performance.now() : Date.now());
   const result = { entity: null, leaf: null, distance: 0, point: null, approx: false };
   const bestRec = { entity: null, leaf: null, distance: 0, point: null };
 
@@ -363,14 +373,30 @@ export function createWorldObjectPicker(env) {
 
   function entryFor(root) {
     let entry = leafCache.get(root);
+    const now = clockNow();
     if (!entry) {
-      entry = { nodes: [], recs: [], maxReachLocal: 0 };
+      entry = { nodes: [], recs: [], maxReachLocal: 0, checkedAt: now };
       leafCache.set(root, entry);
       rebuildRoot(entry, root);
+    } else if (root.userData?.sfMatrixFrozen === true && (now - (entry.checkedAt || 0)) < 250) {
+      return entry;
     } else if (signatureDirty(entry)) {
       rebuildRoot(entry, root);
+      entry.checkedAt = now;
+    } else {
+      entry.checkedAt = now;
     }
     return entry;
+  }
+
+  // The entry as last verified, without walking the root's nodes again. Every selectable root on
+  // screen used to pay a full signature walk (ten compares per node; a Swarm hull is ~85 nodes
+  // and its moving parts made the signature dirty, so most paid a whole rebuild too) on every
+  // frame, before the ray had rejected anything. The envelope test only needs the reach.
+  function recentEntryFor(root, now) {
+    const entry = leafCache.get(root);
+    if (entry && (now - (entry.checkedAt || 0)) < ENVELOPE_RECHECK_MS) return entry;
+    return entryFor(root);
   }
 
   function presentedStaticBatch(nodes, root) {
@@ -413,6 +439,9 @@ export function createWorldObjectPicker(env) {
     const rd = raycaster.ray.direction;
 
     candCount = 0;
+    // ?rfx=-pickEnvelope restores the per-root verification on every pick.
+    const lazyVerify = frameCostFixOn('pickEnvelope');
+    const pickNow = clockNow();
     meshes.forEach((root, id) => {
       if (!root || !rootPresented(root)) return;
       const entity = resolveWorldPresentationEntity(state, id);
@@ -422,10 +451,11 @@ export function createWorldObjectPicker(env) {
       // with the root's measured leaf reach (root-local reach x world scale).
       // A ray that misses the union misses every leaf; the approx path forgives
       // FORGIVE_PX for tiny bodies, and exceeding it proves no leaf can qualify.
-      const nodesEntry = entryFor(root);
+      let nodesEntry = lazyVerify ? recentEntryFor(root, pickNow) : entryFor(root);
       const cullR = Math.max(
         entityVisualCullRadius(entity, root),
-        nodesEntry.maxReachLocal * (root.matrixWorld.getMaxScaleOnAxis() || 1),
+        nodesEntry.maxReachLocal * (lazyVerify ? STALE_REACH_PAD : 1)
+          * (root.matrixWorld.getMaxScaleOnAxis() || 1),
       );
       if (cullR > 0) {
         tmpV.setFromMatrixPosition(root.matrixWorld);
@@ -439,6 +469,8 @@ export function createWorldObjectPicker(env) {
           if (!(envOverhang * pxScaleMin <= FORGIVE_PX)) return;
         }
       }
+      // The ray reaches this root's envelope: its leaves are tested against the verified list.
+      if (lazyVerify) nodesEntry = entryFor(root);
       const nodes = nodesEntry.nodes;
       const batchPresented = presentedStaticBatch(nodes, root);
       for (let i = 0; i < nodes.length; i++) {

@@ -12,12 +12,15 @@
 // counting entities.
 
 import { mulberry32 } from '../core/rng.js';
-import { findSwarmArrival, SWARM_ARRIVAL_GRACE_S } from './swarmSafety.js';
+import { findSwarmArrival } from './swarmSafety.js';
+import { findClearSpawnPoint } from './spawnClearance.js';
 import { makeEnemySpawnSpec } from './enemySpawnSpec.js';
 import { swarmDoctrineStamp, SWARM_MIN_ARRIVAL_WU } from '../data/swarmMode.js';
 import { swarmCharacterFor } from '../data/swarmCharacter.js';
 import { swarmFeel, SWARM_FEEL_STAMP } from '../data/swarmFeelProfile.js';
 import { swarmFortifyCorridorForGate } from '../data/swarmFortify.js';
+import { contextualAttachmentWorlds } from './tetherGameplay.js';
+import { isMasslineObstructed } from '../world/asteroidField.js';
 import { CINDER_BOSS_ROLE } from './cinderSluiceArena.js';
 import { LAGRANGE_BOSS_ROLE } from './lagrangeCrucible.js';
 import { CRYO_BOSS_ROLE } from './cryoDriftArena.js';
@@ -365,21 +368,46 @@ export function materializeWaveBatch(ctx, request) {
           z: anchor.z + Math.sin(angle) * radius,
         };
       }
-      if (req.swarm !== true) clearOfRocks(ctx && ctx.state, pos);
       const spec = makeEnemySpawnSpec(req.enemyId, level, pos);
       if (!spec) continue;
+      if (req.swarm !== true && !pinned) {
+        // R11 shared admission: live bodies + dormant field rocks + 2 s paths, then a
+        // bounded deterministic walk through the batch stream. The legacy shove stays as
+        // the exhaustion fallback — it is never a worse seat than the one it replaces.
+        const clear = findClearSpawnPoint(ctx && ctx.state, {
+          x: pos.x, z: pos.z,
+          radius: Number.isFinite(spec.radius) ? spec.radius : 10,
+          vel: spec.vel || null,
+          rng,
+        });
+        if (clear) {
+          spec.pos.x = clear.x;
+          spec.pos.z = clear.z;
+        } else {
+          clearOfRocks(ctx && ctx.state, spec.pos);
+        }
+      }
       if (pinned && (Number.isFinite(pinned.vx) || Number.isFinite(pinned.vz))) {
         spec.vel = { x: Number.isFinite(pinned.vx) ? pinned.vx : 0, z: Number.isFinite(pinned.vz) ? pinned.vz : 0 };
       }
       if (feel) applySwarmFeelSpec(spec, req.enemyId, feel);
       if (req.swarm === true && !pinned) {
+        const player = ctx.state?.entities?.get?.(ctx.state?.playerId);
+        // The one reserve for Iron Maw's first warning must admit an ordinary line.
+        // Reject blocked approaches in the same swept gate search that seats stock arrivals.
+        const lineTarget = req.requireClearMassline && player?.pos ? { ...spec } : null;
+        const require = lineTarget ? (candidate) => {
+          if (Math.hypot(candidate.x - player.pos.x, candidate.z - player.pos.z) < SWARM_MIN_ARRIVAL_WU) return false;
+          lineTarget.pos = candidate;
+          return !isMasslineObstructed({ state: ctx.state, player, target: lineTarget,
+            ...contextualAttachmentWorlds(player, lineTarget, candidate) });
+        } : null;
         const open = findSwarmArrival(ctx.state, pos, Number.isFinite(spec.radius) ? spec.radius : 10,
           { anchor, velocity: spec.vel, reserved, clusterCenter: clumped ? { x: clumpX, z: clumpZ } : null,
-            clusterRadius: SWARM_CLUMP_RADIUS_WU });
+            clusterRadius: SWARM_CLUMP_RADIUS_WU, require });
         // E4: the blocked-arrival search may legally settle closer than the materialisation
         // line (its own floor is hull-clearance, not the screen). A slot that cannot offer a
         // spot outside the line defers — the batch retries next window, it does not pop in.
-        const player = ctx.state?.entities?.get?.(ctx.state?.playerId);
         if (!open || (player && player.pos
           && Math.hypot(open.x - player.pos.x, open.z - player.pos.z) < SWARM_MIN_ARRIVAL_WU)) {
           deferred++;
@@ -392,13 +420,17 @@ export function materializeWaveBatch(ctx, request) {
       // forward, without a runtime transform correction fighting the native helm.
       if (spec.data.ironKraken) spec.rot = Math.atan2(anchor.z - spec.pos.z, anchor.x - spec.pos.x);
       spec.data.ai = spec.data.ai || {};
-      spec.data.ai.spawnContext = 'encounter';
-      // Admission owns the initial hold: the AI may run before the next wave update.
-      if (req.swarm === true) {
-        const now = Number.isFinite(ctx.state?.simTime) ? ctx.state.simTime : 0;
-        spec.data.ai.swarmArmedAt = now + SWARM_ARRIVAL_GRACE_S;
-        spec.data.ai.swarmFireHoldUntil = spec.data.ai.swarmArmedAt;
+      // CW-AI item 6 — a Swarm gate group fights as a flight, not twenty soloists. A lightweight
+      // wing id lets the existing auto-squad recipes split the group into four-ship frames.
+      // Role-problem clusters keep their authored squadId (autoSquadKeyFor prefers it) and fodder
+      // cohorts keep their recipe grouping (gatherCohorts reads squadId, not wingId).
+      if (req.swarm === true && !spec.data.ai.wingId) {
+        const flightGroup = typeof ingressGroup === 'string' && ingressGroup ? ingressGroup : 'gate';
+        spec.data.ai.wingId = `swarm:${Number.isInteger(req.wave) ? req.wave : 0}:${flightGroup}`;
       }
+      spec.data.ai.spawnContext = 'encounter';
+      // No arrival fire hold: an arrival enters outside the materialisation line through a visible
+      // gate, and its own tell is what announces its first shot.
       // A run cohort hunts the pilot until the round resolves. Adventure surrender,
       // pirate morale and a spawn-point leash otherwise strand the final few enemies.
       const playerId = ctx.state?.playerId;
@@ -456,6 +488,9 @@ export function materializeWaveBatch(ctx, request) {
         spec.data.contractTargetId = playerId ?? null;
       }
       spec.data.runWave = Number.isInteger(req.wave) ? req.wave : 0;
+      if (req.swarm === true && req.enemyId === 'warden_escort' && Number.isInteger(req.wardenPair)) {
+        spec.data.swarmWardPair = req.wardenPair;
+      }
       if (req.swarm === true && typeof req.gateGroup === 'string' && GATE_BEARINGS[req.gateGroup]) {
         spec.data.swarmGateGroup = fortifiedIngress ? ingressGroup : req.gateGroup;
         if (fortifiedIngress) {

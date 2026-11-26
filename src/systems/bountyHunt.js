@@ -81,7 +81,9 @@ export const bountyHunt = {
     this._scanQuarries = [];
     ensureState(this.state);
     this._listen('entity:killed', (p) => this._onEntityKilled(p));
-    this._listen('entity:spawned', (p) => this._onEntitySpawned(p));
+    // Hunter arrivals are a wake latch, not per-entity work: one coalesced batch
+    // scan replaces a per-entity dispatch for the same quiet release.
+    this._listen('entity:spawnedBatch', (p) => this._onEntitySpawnedBatch(p));
     this._listen('combat:damage', (p) => this._onDamage(p));
   },
 
@@ -91,10 +93,14 @@ export const bountyHunt = {
     this._huntersQuiet = null;
   },
 
-  _onEntitySpawned(payload) {
-    const entity = payload && payload.entity;
-    if (!isBountyHunter(entity)) return;
-    this.noteHunterWake();
+  _onEntitySpawnedBatch(payload) {
+    const receipts = payload && payload.receipts;
+    if (!Array.isArray(receipts)) return;
+    const entities = this.state && this.state.entities;
+    for (const receipt of receipts) {
+      const entity = receipt && (receipt.entity || (entities && entities.get && entities.get(receipt.id)));
+      if (isBountyHunter(entity)) { this.noteHunterWake(); return; }
+    }
   },
 
   // Shooting the victim voids their gratitude. The save still records, but the
@@ -252,7 +258,7 @@ export const bountyHunt = {
       if (typeof state.rng !== 'function' || state.rng() < 0.5) return false;
       tow.phase = 'approach';
       emit(this.bus, 'toast', { kind: 'warn', ttl: 4,
-        text: `${data.name || 'A rival hunter'} is closing on your prize. Keep clear of their Massline.` });
+        text: `${data.name || 'A rival hunter'} is closing on your prize. Keep clear of their line.` });
     }
     // Flight V3 consumes these navigation axes. Passive excludes this temporarily
     // owned hull from the tactical motor planner, so two pilots never fight its helm.

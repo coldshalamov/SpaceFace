@@ -149,8 +149,9 @@ function rescueActor(h, slot) {
   return id == null ? null : h.state.entities.get(id);
 }
 
-// Production route order (onboarding.js BEATS): the tether attach leads; the movement
-// drills follow it. Raid/claimed sit between disengage and seam for the full-route tests.
+// Production route order (onboarding.js BEATS, demo route 2026-11-23): the rope leads, the
+// berth follows the first throw, then the story (raid, claimed, seam, the sample dock); the
+// movement and gun drills wait behind that dock. The drill driver walks the flight beats only.
 const DRILL_KEYS = ['tether', 'raid', 'claimed', 'thrust', 'brake', 'marker', 'focus', 'burst', 'disengage'];
 function driveDrillTo(h, beatKey) {
   const st = h.state;
@@ -330,11 +331,22 @@ function launchToSwing(h) {
   assert.equal(h.state.onboarding.rescue.current, 'swing');
 }
 
+// The berth follows the first throw: the pilot docks at Helios, and the story resumes on leaving.
+function completeBerth(h) {
+  const ob = h.state.onboarding;
+  assert.equal(ROUTE_BEATS[ob.currentBeat].key, 'berth', 'the berth follows the first throw');
+  h.bus.emit('dock:docked', { stationId: 'station_helios' });
+  assert.ok(ob.beatDoneAt.berth != null, 'docking at Helios completes the berth');
+  advanceTime(h);
+  tick(h);
+}
+
 function launchToRaid(h) {
   launchToSwing(h);
   completeSwing(h);
   advanceTime(h);
   tick(h);
+  completeBerth(h);
   assert.equal(ROUTE_BEATS[h.state.onboarding.currentBeat].key, 'raid');
 }
 
@@ -375,7 +387,10 @@ function rescueLines(h) {
 }
 
 test('tracker maps every authored beat exactly once, monotonically, with docking at step six', () => {
-  assert.equal(pace.ONBOARDING_TRACKER_STEP_COUNT, 7);
+  // latch, berth, raid, claimed, seam, dock, the fight drills, the job choice.
+  assert.equal(pace.ONBOARDING_TRACKER_STEP_COUNT, 8);
+  assert.equal(pace.trackerStepIndexForBeat('tether'), 0, 'the rope is the first step');
+  assert.equal(pace.trackerStepIndexForBeat('berth'), 1, 'the berth follows the first throw');
   const indices = ROUTE_BEATS.map((b) => pace.trackerStepIndexForBeat(b.key));
   assert.ok(indices.every((n, i) => n >= 0 && (i === 0 || n >= indices[i - 1])));
   assert.deepEqual(pace.ONBOARDING_TRACKER_STEPS.flatMap((s) => s.beats), ROUTE_BEATS.map((b) => b.key));
@@ -389,50 +404,130 @@ test('tracker maps every authored beat exactly once, monotonically, with docking
   assert.equal(pace.trackerStepDone(ob, 3), false);
 });
 
-test('seed 4242 route reaches dock in six tracker steps, folds proven flying and preserves all verbs and Range', () => {
+// The seam mines the staged rock (no 47-A contract in this harness), then the sample dock.
+function completeSeamAndDock(h) {
+  const st = h.state;
+  const ob = st.onboarding;
+  const player = st.entities.get(st.playerId);
+  assert.equal(ROUTE_BEATS[ob.currentBeat].key, 'seam', 'the seam follows the claimed salvage');
+  const rock = st.entities.get(h.sys._miningRockId);
+  assert.ok(rock, 'the seam stages its rock');
+  rock.data.scanHighlightUntil = st.simTime + 5;
+  h.bus.emit('scan:completed', { found: { asteroids: 1, wrecks: 0, anomalies: 0 } });
+  h.bus.emit('mining:yield', { minerId: player.id, asteroidId: rock.id, commodityId: 'cmdty_ore_iron', qty: 3, pos: { ...rock.pos } });
+  tick(h); advanceTime(h); tick(h);
+  assert.equal(ROUTE_BEATS[ob.currentBeat].key, 'dock');
+  h.bus.emit('dock:docked', { stationId: 'station_helios' });
+  assert.ok(ob.beatDoneAt.dock != null, 'the sample dock resolves at the berth');
+}
+
+test('seed 4242 route: rope and throw, berth, raid, claimed, seam and dock in six tracker steps; flying folds and every verb and the Range survive', () => {
   const h = boot(); h.steps = [];
   launchToSwing(h);
   assert.equal(resolveRescueEntryRung(h.state), 2);
+  const ob = h.state.onboarding;
+  // One voice: the throw lands before the berth is asked for.
+  advanceTime(h, 30); tick(h);
+  assert.equal(ROUTE_BEATS[ob.currentBeat].key, 'tether', 'the swing holds the berth until the throw');
   completeSwing(h);
   advanceTime(h); tick(h);
+  completeBerth(h);
   const player = h.state.entities.get(h.state.playerId);
   player.vel.x = 60; tick(h);
   completeRaid(h);
   player.vel.x = 0; tick(h);
   completeClaimed(h);
   advanceTime(h); tick(h);
+  assert.equal(h.sys._countEl.textContent, '5 / 8');
+  completeSeamAndDock(h);
+  assert.ok(h.steps.every((n, i) => i === 0 || n >= h.steps[i - 1]));
+  assert.equal(Math.max(...h.steps), 6);
+  assert.deepEqual([...new Set(h.steps)], [1, 2, 3, 4, 5, 6]);
+  // Behind the dock: proven flying folds the speed drills silently, the gun drills run.
+  advanceTime(h); tick(h);
+  assert.deepEqual(ob.pace.folded, { thrust: 'flown', brake: 'flown' });
+  assert.equal(h.seen.folded.length, 2);
+  assert.ok(!tutorialLines(h).includes('Thrust until speed passes forty.'));
+  assert.ok(!tutorialLines(h).includes('Brake below ten.'));
   driveDrillTo(h, 'burst');
   const actor = h.sys._trainingActor();
   const dx = actor.pos.x - player.pos.x, dz = actor.pos.z - player.pos.z;
   assert.ok(actor.vel.x * dx + actor.vel.z * dz > 0, 'burst sends the wingman away');
   assert.ok(Math.hypot(actor.vel.x, actor.vel.z) >= 100);
   const scout = rescueActor(h, 'scout');
-  h.bus.emit('tether:whipImpact', { targetId: h.state.onboarding.rescue.ids.rock, victimId: scout.id, relSpeed: 24 });
+  h.bus.emit('tether:whipImpact', { targetId: ob.rescue.ids.rock, victimId: scout.id, relSpeed: 24 });
   tick(h); advanceTime(h); tick(h);
   driveDrillTo(h, 'disengage');
   completeGrab(h);
   completeFiveVerbs(h);
-  const rock = h.state.entities.get(h.sys._miningRockId);
-  assert.ok(rock, 'seam stages after the five verbs');
-  rock.data.scanHighlightUntil = h.state.simTime + 5;
-  h.bus.emit('scan:completed', { found: { asteroids: 1, wrecks: 0, anomalies: 0 } });
-  h.bus.emit('mining:yield', { minerId: player.id, asteroidId: rock.id, commodityId: 'cmdty_ore_iron', qty: 3, pos: { ...rock.pos } });
-  tick(h); advanceTime(h); tick(h);
-  const ob = h.state.onboarding;
-  assert.equal(ROUTE_BEATS[ob.currentBeat].key, 'dock');
-  assert.equal(h.sys._countEl.textContent, '6 / 7');
-  h.bus.emit('dock:docked', { stationId: 'station_helios' });
-  assert.ok(ob.beatDoneAt.dock != null);
-  assert.ok(h.steps.every((n, i) => i === 0 || n >= h.steps[i - 1]));
-  assert.equal(Math.max(...h.steps), 6);
-  assert.deepEqual([...new Set(h.steps)], [1, 2, 3, 4, 5, 6]);
-  assert.deepEqual(ob.pace.folded, { thrust: 'flown', brake: 'flown' });
-  assert.equal(h.seen.folded.length, 2);
-  assert.ok(!tutorialLines(h).includes('Thrust until speed passes forty.'));
-  assert.ok(!tutorialLines(h).includes('Brake below ten.'));
   assert.equal(ob.rescue.completed, true);
-  assert.deepEqual(rescueLines(h), ['swing', 'shove', 'grab'].map(rescueBeatLine));
+  // The swing speaks as the throw cue on the held rock (its words follow the device), so the
+  // log proves it by state; the shove and the grab speak their authored lines.
+  assert.equal(h.state.onboarding.rescue.beats.swing.state, 'done');
+  assert.deepEqual(rescueLines(h), ['shove', 'grab'].map(rescueBeatLine));
   assert.equal(h.seen.rangePrompt[0].text, RANGE_POINTER_LINE);
+});
+
+test('the E course to the berth is spent once docked, so the raid instruction takes the tracker after undocking', () => {
+  const h = boot();
+  launchToSwing(h);
+  completeSwing(h);
+  advanceTime(h); tick(h);
+  const st = h.state;
+  const helios = makeEntity({ type: 'station', pos: { x: 0, z: 340 }, radius: 100, data: { stationId: 'station_helios' } });
+  helios.id = 500; st.entities.set(500, helios); st.entityList.push(helios);
+  st.nav.waypoint = { kind: 'local', pos: { x: 0, z: 340 }, targetEntityId: 500, label: 'Helios Station' };
+  completeBerth(h);
+  assert.equal(st.nav.waypoint?.kind === 'local' && st.nav.waypoint?.targetEntityId === 500, false,
+    'the arrived course no longer reads as the pilot\'s plan');
+  advanceTime(h); tick(h);
+  assert.equal(ROUTE_BEATS[st.onboarding.currentBeat].key, 'raid');
+  assert.equal(st.nav.waypoint && st.nav.waypoint.markerId, 'onboarding:raid', 'the raid owns the objective');
+});
+
+test('an arrived berth course that lost its target bind is still retired by its position', () => {
+  const h = boot();
+  launchToSwing(h);
+  completeSwing(h);
+  advanceTime(h); tick(h);
+  const st = h.state;
+  const helios = makeEntity({ type: 'station', pos: { x: 0, z: 340 }, radius: 100, data: { stationId: 'station_helios' } });
+  helios.id = 501; st.entities.set(501, helios); st.entityList.push(helios);
+  st.nav.waypoint = { kind: 'local', pos: { x: 120, z: 300 }, label: 'Helios Station' };
+  completeBerth(h);
+  advanceTime(h); tick(h);
+  assert.equal(st.nav.waypoint && st.nav.waypoint.markerId, 'onboarding:raid');
+  // A course somewhere else is the pilot's own plan and stays.
+  st.nav.waypoint = { kind: 'local', pos: { x: 3000, z: 3000 }, label: 'Somewhere' };
+  h.bus.emit('dock:docked', { stationId: 'station_helios' });
+  assert.equal(st.nav.waypoint.label, 'Somewhere');
+});
+
+test('a save from the berth-first build resumes on the rope; one that already docked keeps its berth', () => {
+  const h = boot();
+  const base = { version: 2, mainRailActive: true, active: true, finished: false, beatDoneAt: {},
+    firedFollowups: {}, beatAction: 'Dock at Helios Station.' };
+  h.sys.deserialize({ ...base, currentBeatKey: 'berth' });
+  assert.equal(ROUTE_BEATS[h.state.onboarding.currentBeat].key, 'tether', 'the rope comes first now');
+  assert.equal(h.state.onboarding.beatAction, '', 'the stale berth line is not respoken');
+  h.sys.deserialize({ ...base, currentBeatKey: 'tether', beatDoneAt: { berth: 12 }, beatAction: 'Latch the loose rock.' });
+  assert.equal(ROUTE_BEATS[h.state.onboarding.currentBeat].key, 'tether');
+  assert.equal(h.state.onboarding.beatDoneAt.berth, 12, 'the berth already reached stays done');
+  h.sys.deserialize({ ...base, currentBeatKey: 'berth', beatDoneAt: { tether: 5 } });
+  assert.equal(ROUTE_BEATS[h.state.onboarding.currentBeat].key, 'berth', 'a rope already thrown leaves the berth current');
+});
+
+test('a pilot who docks before the berth is asked for is never sent back to it', () => {
+  const h = boot();
+  launchToSwing(h);
+  const ob = h.state.onboarding;
+  h.bus.emit('dock:docked', { stationId: 'station_helios' });
+  assert.ok(ob.beatDoneAt.berth != null, 'the early dock counts as the berth');
+  assert.equal(ROUTE_BEATS[ob.currentBeat].key, 'tether', 'the current lesson is not skipped');
+  completeSwing(h);
+  advanceTime(h); tick(h);
+  assert.equal(ROUTE_BEATS[ob.currentBeat].key, 'raid', 'the rail passes over the berth it already has');
+  assert.ok(!tutorialLines(h).includes(taughtVerbLine(h.state, 'berth', 'Dock at Helios Station.')));
 });
 
 test('deterministic 60 Hz follower meets latch and raid budgets on seed 4242', (t) => {
@@ -452,6 +547,7 @@ test('deterministic 60 Hz follower meets latch and raid budgets on seed 4242', (
       h.bus.emit('tether:reel', { targetId, before: 80, after: 58 });
       h.bus.emit('tether:released', { targetId });
     } else if (key === 'swing' && ob.rescue.beats.swing.state !== 'done') completeSwing(h);
+    else if (key === 'berth' && ob.beatDoneAt.berth == null) h.bus.emit('dock:docked', { stationId: 'station_helios' });
     else if (key === 'raid' && ob.beatDoneAt.raid == null) {
       const targetId = ob.raid.ids.raider;
       h.bus.emit('tether:latched', { targetId });
@@ -472,12 +568,13 @@ test('spoken lessons keep four seconds of silence while silently folded drills a
   const h = boot(); launchDefaultRoute(h);
   const ob = h.state.onboarding;
   ob.rescue = null; ob.missingThree = null;
-  ob.currentBeat = ROUTE_BEATS.findIndex((b) => b.key === 'claimed');
-  ob.beatDoneAt.claimed = 10;
+  // The speed drills sit behind the sample dock; leaving the berth is where they fold.
+  ob.currentBeat = ROUTE_BEATS.findIndex((b) => b.key === 'dock');
+  ob.beatDoneAt.dock = 10;
   ob.pace.fastAtS = 2; ob.pace.slowAtS = 3;
   h.sys._lastTextAtS = 10;
   h.state.simTime = 13.999; h.sys._tryAdvanceBeat();
-  assert.equal(ROUTE_BEATS[ob.currentBeat].key, 'claimed', 'DONE alone does not advance a spoken predecessor');
+  assert.equal(ROUTE_BEATS[ob.currentBeat].key, 'dock', 'DONE alone does not advance a spoken predecessor');
   h.state.simTime = 14; h.sys._tryAdvanceBeat();
   assert.equal(ROUTE_BEATS[ob.currentBeat].key, 'marker', 'both silent folds and marker enter the same tick');
   assert.deepEqual(ob.pace.folded, { thrust: 'flown', brake: 'flown' });
@@ -492,7 +589,7 @@ test('spoken lessons keep four seconds of silence while silently folded drills a
   assert.equal(ROUTE_BEATS[ob.currentBeat].key, 'focus');
 });
 
-function missSwing(h, lesson) {
+function missSwing(h, lesson, afterRelease) {
   const ob = h.state.onboarding;
   const targetId = lesson === 'raid' ? ob.raid.ids.raider : ob.rescue.ids.rock;
   h.bus.emit('tether:latched', { targetId });
@@ -500,6 +597,7 @@ function missSwing(h, lesson) {
   else h.state.entities.get(targetId).vel.x = 200;
   h.bus.emit('tether:cut', { targetId });
   h.bus.emit('tether:released', { targetId }); // duplicate production receipt must count only once
+  afterRelease?.();
   for (let i = 0; i < 25; i++) { advanceTime(h, 0.25); tick(h); }
 }
 
@@ -512,7 +610,7 @@ test('three raid swing misses open one closer clinic, keep the Range, and still 
   const ob = h.state.onboarding;
   assert.equal(h.seen.clinic.length, 1);
   assert.equal(h.seen.clinic[0].lesson, 'raid');
-  assert.equal(tutorialLines(h).filter((s) => s === pace.SWING_CLINIC_LINE).length, 1);
+  assert.equal(tutorialLines(h).filter((s) => /^Swing Clinic\..*lit throw cue/.test(s)).length, 1);
   assert.equal(ob.rangePromptRungId, pace.SWING_CLINIC_RUNG_ID);
   assert.equal(resolveRescueEntryRung(h.state), 2);
   const raider = h.sys._raidActor('raider');
@@ -522,9 +620,27 @@ test('three raid swing misses open one closer clinic, keep the Range, and still 
   assert.ok(Math.abs(Math.hypot(rock.pos.x - raider.pos.x, rock.pos.z - raider.pos.z) - 110) <= 1);
   missSwing(h, 'raid');
   assert.equal(h.seen.clinic.length, 1);
-  assert.equal(tutorialLines(h).filter((s) => s === pace.SWING_CLINIC_LINE).length, 1);
+  assert.equal(tutorialLines(h).filter((s) => /^Swing Clinic\..*lit throw cue/.test(s)).length, 1);
   h.bus.emit('tether:whipImpact', { targetId: ob.raid.ids.raider, victimId: ob.raid.ids.throwRock, rating: 'solid' });
   assert.ok(ob.beatDoneAt.raid != null);
+});
+
+test('raid clinic due after reacquiring the Raider keeps the live cast and line', () => {
+  const h = boot(); launchToRaid(h);
+  missSwing(h, 'raid');
+  missSwing(h, 'raid');
+  const raider = h.sys._raidActor('raider');
+  const rock = h.sys._raidActor('throwRock');
+  missSwing(h, 'raid', () => {
+    h.state.player.tether = { active: true, targetId: raider.id };
+    h.bus.emit('tether:latched', { targetId: raider.id });
+  });
+  assert.equal(h.seen.clinic.length, 1);
+  assert.equal(h.seen.clinic[0].lesson, 'raid');
+  assert.equal(h.sys._raidActor('raider'), raider);
+  assert.equal(h.sys._raidActor('throwRock'), rock);
+  assert.equal(h.state.player.tether.targetId, raider.id);
+  assert.equal(h.state.onboarding.beatDoneAt.raid, undefined);
 });
 
 test('three rescue swing misses restage the rock and open the rescue clinic once', () => {
@@ -548,6 +664,7 @@ test('misses accumulate across rescue and raid while successful releases do not 
   missSwing(h, 'rescue'); missSwing(h, 'rescue');
   completeSwing(h);
   advanceTime(h); tick(h);
+  completeBerth(h);
   assert.equal(h.state.onboarding.pace.swing.misses, 2);
   missSwing(h, 'raid');
   assert.equal(h.seen.clinic.length, 1);
@@ -559,7 +676,9 @@ test('flown-before folds exactly four drills at rest, preserves rescue, and roun
   launchToSwing(h);
   assert.equal(h.state.onboarding.pace.flownBefore, true);
   completeSwing(h); advanceTime(h); tick(h);
+  completeBerth(h);
   completeRaid(h); completeClaimed(h); advanceTime(h); tick(h);
+  completeSeamAndDock(h); advanceTime(h); tick(h);
   const ob = h.state.onboarding;
   assert.deepEqual(ob.pace.folded, Object.fromEntries(pace.FLOWN_BEFORE_BEATS.map((b) => [b, 'flownBefore'])));
   assert.equal(ROUTE_BEATS[ob.currentBeat].key, 'burst');
@@ -570,7 +689,10 @@ test('flown-before folds exactly four drills at rest, preserves rescue, and roun
   h.bus.emit('tether:whipImpact', { targetId: ob.rescue.ids.rock, victimId: scout.id, relSpeed: 24 });
   tick(h); advanceTime(h); tick(h);
   driveDrillTo(h, 'disengage'); completeGrab(h);
-  assert.deepEqual(rescueLines(h), ['swing', 'shove', 'grab'].map(rescueBeatLine));
+  // The swing speaks as the throw cue on the held rock (its words follow the device), so the
+  // log proves it by state; the shove and the grab speak their authored lines.
+  assert.equal(h.state.onboarding.rescue.beats.swing.state, 'done');
+  assert.deepEqual(rescueLines(h), ['shove', 'grab'].map(rescueBeatLine));
   assert.ok(ob.beatDoneAt.burst != null && ob.beatDoneAt.disengage != null);
   assert.equal(ob.missingThree.current, 'boost');
   const saved = JSON.parse(JSON.stringify(h.sys.serialize()));
@@ -660,7 +782,8 @@ test('first three choice contracts and recommended delivery name their destinati
   const firstTrade = buildFirstTradeOffer(4242);
   const recommendedTag = firstHourOfferDestinationTag(h.state, firstTrade);
   assert.ok(recommendedTag.startsWith('→ '));
-  assert.ok(recommendedTag.includes('Ceres'));
+  // The first trade runs Fuel Cells to the Tethys Trade Hub (economyContractTemplates.js).
+  assert.ok(recommendedTag.includes('Tethys'));
   assert.deepEqual(firstHourBoardOfferPresentation(h.state, firstTrade), { label: 'RECOMMENDED', rank: -1, kind: 'recommended' });
   const choices = h.missions.ensureOnboardingChoiceOffers('station_helios');
   assert.equal(choices.length, 3);

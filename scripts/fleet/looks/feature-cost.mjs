@@ -6,7 +6,9 @@
 //
 //   SF_LOCK_URGENT=1 node scripts/fleet/game-lock.mjs run -- node scripts/fleet/looks/feature-cost.mjs [outJson] [round] [windowSeconds]
 //
-import { chromium } from 'playwright';
+import { chromium as rawChromium } from 'playwright';
+import { quietChromium } from '../../lib/quietLaunch.mjs';
+const chromium = quietChromium(rawChromium);
 import { spawn } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';

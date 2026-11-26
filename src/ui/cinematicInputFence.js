@@ -5,6 +5,68 @@
 // cannot leak into the newly focused Main Menu. This module is DOM-light so chord, blur, teardown,
 // and pointer/timer races stay behaviorally testable outside the browser.
 
+const SPLASH_FALLBACK_MS = 4500;
+const RECOVERED_FILM_WINDOW_MS = 1500;
+
+/** Keep the short poster fallback, with one grace window if the film delivers a late first frame. */
+export function armCinematicAutoDismiss({ video, canPresent, onElapsed, host = globalThis }) {
+  const now = () => host.performance.now();
+  const fallbackAt = now() + SPLASH_FALLBACK_MS;
+  let active = true;
+  let presented = false;
+  let frame = null;
+  let listening = false;
+  let timer = host.setTimeout(elapse, SPLASH_FALLBACK_MS);
+
+  function stopProof() {
+    if (frame !== null) video.cancelVideoFrameCallback?.(frame);
+    frame = null;
+    if (listening) video.removeEventListener('playing', noteFirstFrame);
+    listening = false;
+  }
+
+  function cancel() {
+    if (!active) return;
+    active = false;
+    host.clearTimeout(timer);
+    stopProof();
+  }
+
+  function elapse() {
+    if (!active) return;
+    cancel();
+    onElapsed();
+  }
+
+  function noteFirstFrame(_time, metadata) {
+    if (!active || presented || !canPresent() || video.paused || video.readyState < 2) return;
+    const current = now();
+    const firstFrameAt = Math.min(current, metadata?.presentationTime ?? current);
+    if (firstFrameAt > fallbackAt) return;
+    presented = true;
+    stopProof();
+    const end = firstFrameAt + RECOVERED_FILM_WINDOW_MS;
+    if (end > fallbackAt) {
+      host.clearTimeout(timer);
+      timer = host.setTimeout(elapse, Math.max(0, end - current));
+    }
+  }
+
+  function observeFrame(time, metadata) {
+    frame = null;
+    noteFirstFrame(time, metadata);
+    if (active && !presented && now() < fallbackAt) frame = video.requestVideoFrameCallback(observeFrame);
+  }
+
+  if (typeof video?.requestVideoFrameCallback === 'function') {
+    frame = video.requestVideoFrameCallback(observeFrame);
+  } else if (video) {
+    listening = true;
+    video.addEventListener('playing', noteFirstFrame);
+  }
+  return cancel;
+}
+
 export function createCinematicInputFence({
   keyboardTarget = globalThis,
   visibilityTarget = globalThis.document,

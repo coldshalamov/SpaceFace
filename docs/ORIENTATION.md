@@ -1,11 +1,9 @@
 <!-- LIFETIME: STABLE -->
 # SpaceFace orientation
 
-This is a short map of the game and repository. Root [`AGENTS.md`](../AGENTS.md) is the front door;
-the current game-finishing work lives in
-[`design/program/finish/MASTER_PLAN.md`](../design/program/finish/MASTER_PLAN.md), its dispatch in
-[`MASTER_LANES.md`](../design/program/finish/MASTER_LANES.md), and live outcome state in
-[`EXECUTION_STATUS_2026-11-06.md`](../design/program/finish/EXECUTION_STATUS_2026-11-06.md).
+This is a short map of the game and repository. Start at root [`AGENTS.md`](../AGENTS.md); the live
+status board is [`design/overhaul/12_PIPELINE.md`](../design/overhaul/12_PIPELINE.md). For flight
+stability and performance start at [10 Engine](../design/overhaul/10_ENGINE.md).
 [`TASK_ROUTER.md`](./TASK_ROUTER.md) points to named workflows. These documents route work; they do
 not duplicate volatile status.
 
@@ -36,7 +34,7 @@ for generated indexes.
 | `src/data/`, `src/world/`, `src/story/` | Catalogs, world state, and narrative systems. |
 | `assets/` | Authored ships, places, props, portraits, and art; start at `assets/AGENTS.md` and the asset docs. |
 | `design/` | Product intent and selected design specifications. Read only the section activated by the task. |
-| `design/program/finish/` | Current campaigns, lane dispatch, exact path ownership and acceptance criteria. |
+| `design/program/fleet/` | The retired fleet queue and its packets — history. |
 | `docs/` | Engineering navigation, contracts, validation, and historical context. See `docs/README.md`. |
 | `test/`, `scripts/`, `tools/` | Tests, checks, and production tooling; read the nearest `AGENTS.md`. |
 | `styles/`, `electron/`, `schemas/` | Styling, desktop shell, and data schemas. |
@@ -46,7 +44,7 @@ for generated indexes.
 
 | Need | Read |
 |---|---|
-| Finish Program assignment | Finish README → owning lane board → the selected task's referenced spec/source owner |
+| Current work and where things stand | [Root `AGENTS.md`](../AGENTS.md) → [`design/overhaul/12_PIPELINE.md`](../design/overhaul/12_PIPELINE.md) |
 | Find a code owner | [`MODULE_MAP.md`](./MODULE_MAP.md) → nearest `AGENTS.md` |
 | Trace state or update order | `ARCHITECTURE.md` → generated `SYSTEM_REGISTRY.md` / `EVENT_ROUTING.md` |
 | Diagnose a recurring defect | [`COMMON_BUGS.md`](./COMMON_BUGS.md) and the live owner |
@@ -56,4 +54,4 @@ for generated indexes.
 
 Large references are section-addressable: read the section the active task names, not the entire
 file. Historical plans, reviews, captures, and agent notes explain prior decisions; they do not
-replace current user direction, Finish assignments, live source, or relevant behavior checks.
+replace current user direction, live source, or relevant behavior checks.

@@ -7,6 +7,7 @@ import test from 'node:test';
 
 import { buildLocalModel, commitCoursePayload, galaxyMapScreen, galaxyPresenceInspectorHtml,
   mapSearchTargetPriority } from '../src/ui/galaxyMap.js';
+import { createMapCamera, screenToGlobal } from '../src/ui/map/mapCamera.js';
 import { SECTORS } from '../src/data/sectors.js';
 import { REGIONAL_ECONOMY_PROFILES } from '../src/data/regionalEconomyProfiles.js';
 
@@ -117,38 +118,47 @@ test('a closed gate refuses out loud and arms nothing', () => {
   assert.ok(toast && toast.payload.text, 'the refusal is voiced');
 });
 
-test('LOCAL wheel zooms (cam.zoom moves) and the world point under the cursor stays put', () => {
+test('LOCAL wheel keeps its scale and world point under the cursor through System', () => {
   const { chart } = headlessChart(chartState());
   const field = { x: 0, y: 0, width: 800, height: 600 };
-  const cam = { cx: 500, cy: -300, zoom: 1.5 };
+  const camera = createMapCamera({ focusGlobal: { x: 500, z: -300 }, spanWU: 7100 });
   Object.assign(chart, {
     _hub: null,
-    _zoom: 4,
-    _targetZoom: 4,
-    _cams: { galaxy: { cx: 0, cy: 0, zoom: 1 }, system: { cx: 0, cy: 0, zoom: 1.5 }, local: cam },
-    _view: { level: 'local', baseScale: 0.4 },
+    _camera: camera,
     _canvas: { getBoundingClientRect: () => ({ left: 0, top: 0, width: 800, height: 600 }) },
-    _activeLevel: () => 'local',
     _clearField: () => field,
     _syncScaleButtons: () => {},
     _triggerIris: () => {},
   });
-  const baseScale = 0.4;
-  const fieldCx = 400, fieldCy = 300;
-  // Inverse of _drawLocal's sx/sz: screen -> world.
-  const worldAt = (mx, my) => ({
-    x: cam.cx - (mx - fieldCx) / (baseScale * cam.zoom),
-    z: cam.cy - (my - fieldCy) / (baseScale * cam.zoom),
-  });
-  const mx = 610, my = 170;
-  const before = worldAt(mx, my);
-  chart._onWheel({ preventDefault() {}, clientX: mx, clientY: my, deltaY: -100 });
-  assert.ok(Math.abs(cam.zoom - 1.5 * 1.15) < 1e-9, `cam.zoom must scale with the notch (got ${cam.zoom})`);
-  const after = worldAt(mx, my);
-  assert.ok(Math.abs(after.x - before.x) < 1e-6 && Math.abs(after.z - before.z) < 1e-6,
-    'cursor-anchored: the point under the cursor does not slide');
-  chart._onWheel({ preventDefault() {}, clientX: mx, clientY: my, deltaY: 100 });
-  assert.ok(Math.abs(cam.zoom - 1.5) < 1e-9, 'a notch back restores the scale');
+  const cursor = { x: 610, y: 170 };
+  const before = screenToGlobal(camera, cursor, field);
+  chart._onWheel({ preventDefault() {}, clientX: cursor.x, clientY: cursor.y, deltaY: 100 });
+  assert.equal(chart._activeLevel(), 'system');
+  assert.ok(Math.abs(chart._camera.spanWU - 7100 * 1.15) < 1e-9);
+  const after = screenToGlobal(chart._camera, cursor, field);
+  assert.ok(Math.abs(after.x - before.x) < 1e-6 && Math.abs(after.z - before.z) < 1e-6);
+  chart._onWheel({ preventDefault() {}, clientX: cursor.x, clientY: cursor.y, deltaY: -100 });
+  assert.equal(chart._activeLevel(), 'local');
+  assert.ok(Math.abs(chart._camera.spanWU - 7100) < 1e-9);
+});
+
+test('a charted berth remains visible while the live ship return is obscured', () => {
+  const state = chartState();
+  const player = state.entities.get(1);
+  const ship = { id: 2, type: 'ship', alive: true, pos: { x: 2400, z: 0 }, data: { name: 'Patrol' } };
+  const station = { id: 3, type: 'station', alive: true, pos: { x: 2400, z: 50 }, data: { stationId: 'market' } };
+  state.entityList.push(ship, station);
+  state.entities.set(2, ship);
+  state.entities.set(3, station);
+  state.ui = { radarRange: 4000 };
+  const contacts = () => buildLocalModel(state, () => true).contacts.map(c => c.id);
+  assert.deepEqual(contacts(), [2, 3]);
+  state.ui.hazardRead = { type: 'nebula' };
+  assert.deepEqual(contacts(), [3]);
+  ship.pos.x = 1100;
+  assert.deepEqual(contacts(), [2, 3]);
+  state.combat = { entities: { [player.id]: { capabilities: { sensor: false } } } };
+  assert.deepEqual(contacts(), [3]);
 });
 
 test('a remote trade-lane row plots the destination sector, keeps nav.route, and stays on the chart', () => {

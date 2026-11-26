@@ -179,17 +179,19 @@ test('the stake purse lands in the run wallet before the opening armory', () => 
   assert.equal(run.phase, 'loadout');
   assert.equal(run.telemetry.swarmStake, 'exhibition');
   landPurse(h, 'exhibition');
-  // The wallet speaks pre-armory: the loadout phase still stands when the purse lands.
-  // (runSession commits a fresh run object on every award — always read state.run again.)
-  assert.equal(h.state.run.credits, 2400);
+  // Tests follow 6726efe18b: every Swarm run starts at zero — no stake purse reaches the run,
+  // so an Exhibition walk-in lands nothing and the armory opens on what the pilot has earned.
+  assert.equal(h.state.run.credits, 0, 'the stake purse no longer funds the run');
   assert.equal(h.state.run.phase, 'loadout');
-  // The armory opens on it: walk loadout → draft and the shop sees the whole purse.
+  // The armory still opens on it: walk loadout → draft and the shelf reads the whole wallet.
+  h.bus.emit('run:awardRequested', { credits: 2400, reason: 'round_loot' });
+  assert.equal(h.state.run.credits, 2400, 'round loot is the wallet');
   transition(h, 'loadout', 'draft');
   assert.equal(h.state.run.phase, 'draft');
   const offers = survivalDraft.currentOffers();
   assert.ok(offers.length > 40, 'the swarm shelf is wide');
   const affordable = offers.filter((o) => o.available);
-  assert.ok(affordable.length > 0, 'a 2400 cr purse can buy');
+  assert.ok(affordable.length > 0, 'a 2400 Scrap wallet can buy');
 });
 
 test('an ironbound run opens with nothing but the hull', () => {
@@ -301,9 +303,13 @@ test('swarm events validate, draw deterministically, and leave boss rounds to th
     const draw = swarmEventFor({ arenaId: 'helios_core', wave, seed: SEED });
     // G08-02 — a course round's twistId deals its own card through the same consult; band
     // rounds serve it at the minor voice instead, so they stay out of the major column.
+    // Tests follow e43158f938 (C01-05): a twistId that names a shipped ROOM mechanic (lights_out,
+    // the_law, the_yardmaster, everything_must_go, quiet, delivery …) owns its round with no event
+    // card at all — the room is the event. Only a twist with a card of its own deals one.
     const course = swarmCourseFor(wave);
+    const twistCard = course && course.twistId ? SWARM_EVENT_BY_ID[course.twistId] : null;
     const majors = (wave > 30 && wave % 10 === 5)
-      || Boolean(course && course.twistId && !isSwarmMinorEventWave(wave));
+      || Boolean(twistCard && !isSwarmMinorEventWave(wave));
     if (!majors) {
       assert.equal(draw, null, `wave ${wave} has no major event round`);
     } else {
@@ -313,10 +319,20 @@ test('swarm events validate, draw deterministically, and leave boss rounds to th
     }
     const minor = swarmMinorEventFor({ arenaId: 'helios_core', wave, seed: SEED });
     if (isSwarmMinorEventWave(wave)) {
-      assert.ok(minor && SWARM_EVENT_BY_ID[minor.id], `wave ${wave} draws a real minor card`);
-      // Same inputs, same card — a ghost replay and a share code see the same room.
-      const again = swarmMinorEventFor({ arenaId: 'helios_core', wave, seed: SEED });
-      assert.equal(again.id, minor.id, `wave ${wave} is seeded-stable`);
+      // Tests follow e43158f938 (C01-05): a course twist that names a shipped room mechanic owns
+      // its band round instead of dealing a second card on top of it — round 12 rides the freight,
+      // 18 is Highway Robbery, 22 the chain gang, 28 Black Friday. Those rounds deal no minor card.
+      const course = swarmCourseFor(wave);
+      const roomOwnsTheRound = Boolean(course && course.twistId
+        && !SWARM_EVENT_BY_ID[course.twistId]);
+      if (roomOwnsTheRound) {
+        assert.equal(minor, null, `wave ${wave} is the ${course.twistId} room, which deals no second card`);
+      } else {
+        assert.ok(minor && SWARM_EVENT_BY_ID[minor.id], `wave ${wave} draws a real minor card`);
+        // Same inputs, same card — a ghost replay and a share code see the same room.
+        const again = swarmMinorEventFor({ arenaId: 'helios_core', wave, seed: SEED });
+        assert.equal(again.id, minor.id, `wave ${wave} is seeded-stable`);
+      }
     } else {
       assert.equal(minor, null, `wave ${wave} is not a minor round`);
     }
@@ -324,10 +340,13 @@ test('swarm events validate, draw deterministically, and leave boss rounds to th
   // The minor band deals only from the arena's authored pool: every draw lands inside it,
   // the room's own trick deals its share, and the shared pods out-deal it (helios's mix
   // is one own card against the two shared ones).
+  // Tests follow e43158f938 (C01-05): a course round whose twist names a shipped mechanic deals
+  // ONLY that card (wave 8 is mine_drift, always), so the authored 1:2 mix is read on a plain
+  // band round — wave 32 has no course twist and draws the open pool.
   const pool = new Set(swarmMinorEventPool('helios_core'));
   const counts = {};
   for (let seed = 1; seed <= 40; seed++) {
-    const draw = swarmMinorEventFor({ arenaId: 'helios_core', wave: 2, seed });
+    const draw = swarmMinorEventFor({ arenaId: 'helios_core', wave: 32, seed });
     assert.ok(draw, 'the minor round always deals');
     assert.ok(pool.has(draw.id), 'every draw lands inside the authored minor pool');
     counts[draw.id] = (counts[draw.id] || 0) + 1;
@@ -339,34 +358,58 @@ test('swarm events validate, draw deterministically, and leave boss rounds to th
 
 // ── S6.7 — demo flies one round; buying keeps it ─────────────────────────────
 
-test('a demo strips at the next armory; the bought copy stays fitted', () => {
+test('Expert can borrow a gun without credits and the loan ends at the next armory', () => {
   const h = boot();
-  beginSwarm(h, { stake: 'exhibition' });
-  landPurse(h, 'exhibition');
+  beginSwarm(h, { stake: 'ironbound' });
+  landPurse(h, 'ironbound');
   transition(h, 'loadout', 'draft');
   const offers = survivalDraft.currentOffers();
-  const demoable = offers.find((o) =>
-    Number.isInteger(o.slotIndex) && typeof o.defId === 'string' && o.kind === 'number');
-  assert.ok(demoable, 'the shelf has a fittable card to demo');
+  const demoable = offers.find((o) => o.borrowAvailable);
+  assert.ok(demoable && !demoable.available, 'a compatible gun can be borrowed when it cannot be bought');
   const { slotIndex, defId } = demoable;
   // Demo it — free fit for the round.
   h.bus.emit('run:draftPickRequested', { offerId: demoable.id, demo: true });
   assert.equal(activeFittings(h)[slotIndex], defId, 'the demo is fitted');
+  assert.equal(h.state.run.credits, 0);
   // Launch: resolve, walk the round, come back through cleanup to the next armory.
   h.bus.emit('run:draftPickRequested', { offerId: null });
-  h.state.run.wave = 1;
+  h.state.run.wave = 10; // the Bench: the equipment stop opens every tenth round (04_SWARM.md §2)
   transition(h, 'draft', 'wave_intro');
   transition(h, 'wave_intro', 'active');
   transition(h, 'active', 'cleanup');
   transition(h, 'cleanup', 'draft');
   assert.equal(activeFittings(h)[slotIndex] === defId, false,
     'the demo copy is stripped when the next armory opens');
+  assert.equal(survivalDraft.currentOffers().some(offer => offer.borrowAvailable), false);
+});
+
+test('a stale installation quote spends nothing and the current quote installs exactly once', () => {
+  const h = boot();
+  beginSwarm(h, { stake: 'exhibition' });
+  landPurse(h, 'exhibition');
+  // Tests follow 6726efe18b: the wallet is banked round loot, never a stake purse.
+  h.bus.emit('run:awardRequested', { credits: 2400, reason: 'round_loot' });
+  transition(h, 'loadout', 'draft');
+  const offer = survivalDraft.currentOffers().find(item => item.available && Number.isInteger(item.slotIndex));
+  assert.ok(offer);
+  const before = h.state.run.credits;
+  const quote = { price: offer.price, slotIndex: offer.slotIndex, replaces: offer.replaces, replacesTrial: offer.replacesTrial };
+  const pick = { offerId: offer.id, quote: { ...quote, slotIndex: quote.slotIndex + 1 } };
+  h.bus.emit('run:draftPickRequested', pick);
+  assert.equal(h.state.run.credits, before);
+  assert.match(survivalDraft.lastNotice(), /target slot changed/);
+  assert.notEqual(activeFittings(h)[offer.slotIndex], offer.defId);
+  h.bus.emit('run:draftPickRequested', { offerId: offer.id, quote });
+  assert.equal(h.state.run.credits, before - offer.price);
+  assert.equal(activeFittings(h)[offer.slotIndex], offer.defId);
 });
 
 test('buying the demoed slot retires the trial — the run keeps it', () => {
   const h = boot();
   beginSwarm(h, { stake: 'exhibition' });
   landPurse(h, 'exhibition');
+  // Tests follow 6726efe18b: no stake purse funds a run, so the wallet is banked round loot.
+  h.bus.emit('run:awardRequested', { credits: 2400, reason: 'round_loot' });
   transition(h, 'loadout', 'draft');
   const offers = survivalDraft.currentOffers();
   // The keep-path is a weapon: swarm re-offers guns already mounted (battery building is legal),
@@ -374,7 +417,7 @@ test('buying the demoed slot retires the trial — the run keeps it', () => {
   const buyable = offers.find((o) =>
     Number.isInteger(o.slotIndex) && o.available && o.kind === 'number'
     && WEAPONS.some((w) => w.id === o.defId));
-  assert.ok(buyable, 'a 2400 cr purse makes a gun buyable');
+  assert.ok(buyable, 'a 2400 Scrap wallet makes a gun buyable');
   const { defId } = buyable;
   h.bus.emit('run:draftPickRequested', { offerId: buyable.id, demo: true });
   assert.ok(activeFittings(h).includes(defId), 'the demo copy is fitted');
@@ -384,7 +427,7 @@ test('buying the demoed slot retires the trial — the run keeps it', () => {
   assert.ok(beforeWalk >= 1, 'the bought copy is fitted');
   // Walk to the next armory — the demo copy strips, the paid copy stays. Exactly one remains.
   h.bus.emit('run:draftPickRequested', { offerId: null });
-  h.state.run.wave = 1;
+  h.state.run.wave = 10; // the Bench: the equipment stop opens every tenth round (04_SWARM.md §2)
   transition(h, 'draft', 'wave_intro');
   transition(h, 'wave_intro', 'active');
   transition(h, 'active', 'cleanup');
@@ -451,7 +494,7 @@ test('buying a hull retires the demos on the hull you are leaving', () => {
   // Foreign hulls go on sale once the run has begun — the opening armory fits the door's
   // free pick, so the buy under test happens at the round-1 shelf.
   h.bus.emit('run:draftPickRequested', { offerId: null });
-  h.state.run.wave = 1;
+  h.state.run.wave = 10; // the Bench: the equipment stop opens every tenth round (04_SWARM.md §2)
   transition(h, 'draft', 'wave_intro');
   transition(h, 'wave_intro', 'active');
   transition(h, 'active', 'cleanup');
@@ -461,7 +504,7 @@ test('buying a hull retires the demos on the hull you are leaving', () => {
     Number.isInteger(o.slotIndex) && typeof o.defId === 'string' && o.kind === 'number');
   const hullOffer = shelf.find((o) =>
     o.kind === 'hull' && o.available && o.defId !== 'ship_hornet');
-  assert.ok(demoable && hullOffer, 'a demoable card and a foreign hull are on the round-1 shelf');
+  assert.ok(demoable && hullOffer, 'a demoable card and a foreign hull are on the round-5 shelf');
   h.bus.emit('run:draftPickRequested', { offerId: demoable.id, demo: true });
   const oldHull = h.state.player.ownedShips[h.state.player.activeShipIndex];
   assert.ok(oldHull.fittings.includes(demoable.defId), 'the demo is bolted on');
@@ -504,7 +547,7 @@ test('an owned hull switches back for free and stays switchable', () => {
   assert.equal(ownedRow.price, 0, 'an owned hull is never priced again');
   // Foreign hulls go on sale once the run has begun — walk to the round-1 shelf for the buy.
   h.bus.emit('run:draftPickRequested', { offerId: null });
-  h.state.run.wave = 1;
+  h.state.run.wave = 10; // the Bench: the equipment stop opens every tenth round (04_SWARM.md §2)
   transition(h, 'draft', 'wave_intro');
   transition(h, 'wave_intro', 'active');
   transition(h, 'active', 'cleanup');
@@ -512,7 +555,7 @@ test('an owned hull switches back for free and stays switchable', () => {
   // Buy a foreign hull — the swap lands; the hornet leaves the cradle but not the manifest.
   const foreign = survivalDraft.currentOffers().find((o) =>
     o.kind === 'hull' && o.available && o.defId !== 'ship_hornet');
-  assert.ok(foreign, 'a foreign hull is on the round-1 shelf');
+  assert.ok(foreign, 'a foreign hull is on the round-5 shelf');
   h.bus.emit('run:draftPickRequested', { offerId: foreign.id });
   const player = h.state.player;
   assert.equal(player.ownedShips[player.activeShipIndex].defId, foreign.defId, 'the bought hull flies');
@@ -551,7 +594,7 @@ test('an unearned crossover hull is a locked goal on the shelf, never a sale', (
   landPurse(h, 'exhibition');
   transition(h, 'loadout', 'draft');
   h.bus.emit('run:draftPickRequested', { offerId: null });
-  h.state.run.wave = 1;
+  h.state.run.wave = 10; // the Bench: the equipment stop opens every tenth round (04_SWARM.md §2)
   transition(h, 'draft', 'wave_intro');
   transition(h, 'wave_intro', 'active');
   transition(h, 'active', 'cleanup');
@@ -571,8 +614,12 @@ test('a catalog gun carries its figures; a stake tile carries its yield', () => 
   const gun = WEAPONS.find((w) => Number.isFinite(w.dps) && Number.isFinite(w.impulsePerHit));
   assert.ok(gun, 'a figured gun exists to shelf');
   const blurb = catalogBlurbFor(gun);
-  assert.ok(blurb.includes('dps'), 'sustained fire reads on the row');
-  assert.ok(blurb.includes('impulse'), 'shove reads on the row');
+  assert.ok(blurb.includes('fire'), 'sustained fire reads on the row');
+  assert.ok(blurb.includes('impact'), 'shove reads on the row');
+  assert.ok(!/\bdps\b|impulse/i.test(blurb), 'no jargon on the row');
+  // An authored sentence that only SAYS fire ("Fire-and-forget hunters…") still shows its figures.
+  const rack = WEAPONS.find((w) => w.id === 'wpn_missile_rack_m');
+  assert.match(catalogBlurbFor(rack), /fire \d+ · impact \d+\.$/, 'Missile Rack M keeps its figures');
   const rig = MODULES.find((m) => m.slotType === 'utility');
   assert.equal(catalogBlurbFor(rig).includes('dps'), false, 'a rig keeps its sentence');
   for (const stake of SWARM_STAKES) {
@@ -584,6 +631,8 @@ test('a demoed module stays buyable — the trial is not a lock', () => {
   const h = boot();
   beginSwarm(h, { stake: 'exhibition' });
   landPurse(h, 'exhibition');
+  // Tests follow 6726efe18b: the wallet is banked round loot, never a stake purse.
+  h.bus.emit('run:awardRequested', { credits: 2400, reason: 'round_loot' });
   transition(h, 'loadout', 'draft');
   const card = survivalDraft.currentOffers().find((o) =>
     Number.isInteger(o.slotIndex) && o.kind === 'number'
@@ -598,7 +647,7 @@ test('a demoed module stays buyable — the trial is not a lock', () => {
   assert.equal(activeFittings(h)[card.slotIndex], card.defId, 'the paid copy is on the slot');
   // Walk to the next armory — a paid copy was never a trial, so nothing strips.
   h.bus.emit('run:draftPickRequested', { offerId: null });
-  h.state.run.wave = 1;
+  h.state.run.wave = 10; // the Bench: the equipment stop opens every tenth round (04_SWARM.md §2)
   transition(h, 'draft', 'wave_intro');
   transition(h, 'wave_intro', 'active');
   transition(h, 'active', 'cleanup');
@@ -621,19 +670,20 @@ test('a surge overdrive rides the per-tick write for its whole window', () => {
   const director = createSwarmEventDirector({ state: h.state, bus: h.bus, helpers: {}, registry });
   director.init();
   // C01-01: majors are dead inside the course — sling_gust is the minor band's
-  // install-free surge, dealt on lagrange's wave-12 minor round at seed 1.
-  const seed = 1;
+  // install-free surge. Tests follow e43158f938 (C01-05): round 12 is the Delivery room now and
+  // deals no second card, so the surge is read on wave 32 (a plain band round) at seed 6.
+  const seed = 6;
   assert.equal(
-    swarmMinorEventFor({ arenaId: 'lagrange_crucible', wave: 12, seed })?.id,
+    swarmMinorEventFor({ arenaId: 'lagrange_crucible', wave: 32, seed })?.id,
     'sling_gust',
     'the seeded draw lands the minor surge',
   );
   h.state.run.seed = seed;
   h.state.run.arenaId = 'lagrange_crucible';
-  h.state.run.wave = 12;
-  director.setFrame(swarmEventFrame({ at: { x: 0, z: 0 }, laneGate: null, seed, wave: 12 }));
+  h.state.run.wave = 32;
+  director.setFrame(swarmEventFrame({ at: { x: 0, z: 0 }, laneGate: null, seed, wave: 32 }));
   director.setInstalledFields([{ id: 'survival_arena_field_a', strength: 40 }]);
-  h.bus.emit('run:waveStarted', { wave: 12 });
+  h.bus.emit('run:waveStarted', { wave: 32 });
   // Past the windup: the overdrive is live, and the per-tick write must carry it.
   h.state.simTime += 10;
   director.update(0.016, h.state);
@@ -688,9 +738,15 @@ test('a pod a drone ate pays nobody — the collector gate mirrors the repair ce
   const awards = () => named(h.emitted, 'run:awardRequested')
     .filter((e) => e.payload && e.payload.reason === 'swarm:supplyPod');
   director._pods.set(77, 60);
+  // Tests follow 20b2c694af: a drone's or NPC's touch is REFUSED on the receipt, so the pod is
+  // not eaten and no wallet is written — it stays on the field for the pilot to collect.
   h.bus.emit('pickup:collected', { pickupId: 77, collectorId: 40 });
-  assert.equal(awards().length, 0, 'an NPC collector consumes but never pays');
-  assert.ok(!director._pods.has(77), 'the pod is still spent');
+  assert.equal(awards().length, 0, 'an NPC collector never pays the pilot');
+  assert.ok(director._pods.has(77), 'the refused pod stays on the field for the pilot');
+  // The pilot's own scoop then pays once and spends the pod.
+  h.bus.emit('pickup:collected', { pickupId: 77, collectorId: 9 });
+  assert.equal(awards().length, 1, 'the pilot collects the same pod and is paid once');
+  assert.ok(!director._pods.has(77), 'the pod is spent by its real collector');
   // Absent claims (the publishers disagree on payload shape); the player's id claims.
   for (const collectorId of [undefined, 9]) {
     director._pods.set(88, 60);

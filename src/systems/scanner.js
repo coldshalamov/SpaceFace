@@ -621,7 +621,7 @@ function anomalyTriangulationDetail(result, config) {
   const baseline = Math.round(Number(config && config.minBaselineWu) || ANOMALY_TRIANGULATION_MIN_BASELINE_WU);
   const bearingDelta = Math.round(Number(config && config.minBearingDeltaDeg) || ANOMALY_TRIANGULATION_MIN_BEARING_DEG);
   if (result.reason === 'baseline_short') {
-    return `Baseline too short (${Math.round(result.baselineWu || 0)} WU). Move at least ${baseline} WU laterally, then pulse again.`;
+    return `Baseline too short (${Math.round(result.baselineWu || 0)} m). Move at least ${baseline} m laterally, then pulse again.`;
   }
   if (result.reason === 'bearing_too_similar') {
     return `Bearing unchanged. Move laterally until the return shifts by at least ${bearingDelta}°, then pulse again.`;

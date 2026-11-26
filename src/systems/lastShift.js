@@ -252,7 +252,7 @@ export const lastShift = {
       || distance(player.pos, LAST_SHIFT_POS) > C.discoveryRangeWu || this.state.simTime < this._nextCueAt) return;
     let cue = null;
     if (!this._row.surfaced) {
-      cue = { id: `${C.siteId}:approach`, text: `LAST SHIFT — optional wreckage beside the working seam: bearing ${bearingTo(player.pos, LAST_SHIFT_POS)}°, ${Math.round(distance(player.pos, LAST_SHIFT_POS))} WU. Select a source and pulse scan within 320 WU, or keep mining.` };
+      cue = { id: `${C.siteId}:approach`, text: `LAST SHIFT — optional wreckage beside the working seam: bearing ${bearingTo(player.pos, LAST_SHIFT_POS)}°, ${Math.round(distance(player.pos, LAST_SHIFT_POS))} m. Select a source and pulse scan within 320 m, or keep mining.` };
     } else if (this._revisitPending) {
       const filed = this._row.receipts.at(-1);
       if (filed && filed.id !== this._row.lastRevisitReceiptId) cue = { id: filed.id,
@@ -340,10 +340,10 @@ export const lastShift = {
     if (!receiver) return `No live archive berth is currently available. ${method}`;
     const { station, anchor, range } = receiver;
     const name = station.data.name || station.data.label || station.data.stationId;
-    const speed = Number.isFinite(anchor.speedGate) ? ` Approach at or below ${anchor.speedGate} WU/s.` : '';
+    const speed = Number.isFinite(anchor.speedGate) ? ` Approach at or below ${anchor.speedGate} m/s.` : '';
     const player = this.state.entities.get(this.state.playerId);
     const bearing = bearingTo(player.pos, anchor);
-    return `${name}: ${anchor.kind || 'berth'} bearing ${bearing}°, ${Math.round(range)} WU at this reading.${speed} ${method}`;
+    return `${name}: ${anchor.kind || 'berth'} bearing ${bearing}°, ${Math.round(range)} m at this reading.${speed} ${method}`;
   },
   // Presentation-only: evidence knowledge unlocks directions, never hardware or custody.
   _recorderRecovery(gate) {

@@ -22,6 +22,7 @@
 import { runHiddenKeepalive, shouldSkipFullTickSystems } from './presentationFreeze.js';
 import { updateQueueForThisStep } from './catchupPolicy.js';
 import { getSimStepProfiler, nowNs } from './simStepProfiler.js';
+import { advanceCollisionProxyResolveEpoch } from '../data/collisionProxyManifests.js';
 
 export function createAuthoritativeStepper({
   state,
@@ -29,6 +30,7 @@ export function createAuthoritativeStepper({
   core,
   postInputPartitions,
   getSystem = null,
+  bus = null,
 }) {
   const byName = typeof getSystem === 'function' ? getSystem : () => null;
   // E2: the permanent per-system profiler. `active` is false by default, so the production
@@ -53,6 +55,12 @@ export function createAuthoritativeStepper({
     keepalive,
 
     step(dt, tickBoundary = null) {
+      // Open the spawn-batch window for the whole step: this stepper does not call
+      // bus.beginStep (registry-only hook), so entity:spawned receipts emit inside
+      // the step would otherwise batch per-emit. The close lands in finally, after
+      // lifetimeSweep — the same tail position registry's endStep dispatches it.
+      if (bus && typeof bus.beginSpawnedBatchWindow === 'function') bus.beginSpawnedBatchWindow();
+      try {
       if (shouldSkipFullTickSystems(state)) {
         try {
           keepalive(dt);
@@ -64,6 +72,7 @@ export function createAuthoritativeStepper({
         }
         return;
       }
+      advanceCollisionProxyResolveEpoch();
       if (profiler.active) {
         // Begin the measured tick before the pre-step so the ranking includes the ~2 ms of
         // step preamble it used to omit: core.preStep, input.update and the input-command
@@ -89,11 +98,14 @@ export function createAuthoritativeStepper({
           postInputPartitions.drainStep(dt, state);
           profiler.record('core.tickDrains', nowNs() - t0);
         }
+        const queue = updateQueueForThisStep(postInputPartitions, state);
+        const updateDt = postInputPartitions.updateDt;
         // Sampled path: one clock pair per executed system. Same queue, same order, same
         // updateDt arguments — profiling must not change what the step computes.
-        for (const s of updateQueueForThisStep(postInputPartitions, state)) {
+        for (let i = 0; i < queue.length; i++) {
+          const s = queue[i];
           const t0 = nowNs();
-          s.update(postInputPartitions.updateDt(s, dt, state), state);
+          s.update(updateDt(s, dt, state), state);
           profiler.record(s.name, nowNs() - t0);
         }
         if (core && typeof core.lifetimeSweep === 'function') {
@@ -107,10 +119,19 @@ export function createAuthoritativeStepper({
         if (input && input.update) input.update(dt, state);
         publishBoundary(tickBoundary);
         postInputPartitions.drainStep(dt, state);
-        for (const s of updateQueueForThisStep(postInputPartitions, state)) {
-          s.update(postInputPartitions.updateDt(s, dt, state), state);
+        const queue = updateQueueForThisStep(postInputPartitions, state);
+        const updateDt = postInputPartitions.updateDt;
+        for (let i = 0; i < queue.length; i++) {
+          const s = queue[i];
+          s.update(updateDt(s, dt, state), state);
         }
         if (core && typeof core.lifetimeSweep === 'function') core.lifetimeSweep(dt, state);
+      }
+      // Between steps (RPCs, saves, a sector materialising) the resolve cache starts a fresh
+      // epoch, so an edit made there is checked in full on its first read.
+      advanceCollisionProxyResolveEpoch();
+      } finally {
+        if (bus && typeof bus.endSpawnedBatchWindow === 'function') bus.endSpawnedBatchWindow();
       }
     },
 

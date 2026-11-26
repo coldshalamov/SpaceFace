@@ -11,7 +11,7 @@ import { freezeDeep, hullActor, ballast, sector, lane, ring, packet, beat, score
 export const TENDRIL = freezeDeep({
   id: 'capital_boss_tendril',
   shape: { situation: 'set_piece', place: 'arena_ring', twist: 'named', actor: 'brood_tendril' },
-  placeName: 'Crucible coil field',
+  placeName: 'Pit coil field',
   twist: 'The weave is committed before it starts. The body behind it is the second hazard — break a link and the chain hunts on its own.',
   subsystemRoles: SUBSYSTEM_ROLES,
   actors: [hullActor({ label: 'THE TENDRIL', archetype: 'brood_tendril', hull: 640,

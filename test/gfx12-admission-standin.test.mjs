@@ -83,7 +83,9 @@ test('a pending ship uses the coarsest resident tier, not the LOD0 primitive pil
   const boundary = factory.build({ ...ENTITY, id: 502 });
   const standIn = substrateOf(boundary).userData.resolvingMarker;
   const names = [];
-  standIn.traverse((object) => { if (object.isMesh) names.push(object.name); });
+  // A ship stand-in merges its leaves per flat material (rfx standInMerge); each merged mesh names
+  // the leaves it carries.
+  standIn.traverse((object) => { if (object.isMesh) names.push(...(object.userData.standInLeaves || [object.name])); });
   assert.deepEqual(names.sort(), ['StandIn_LOD2_Beacon', 'StandIn_LOD2_Hull'].sort(),
     'the temporary stand-in draws only the coarse tier, never the LOD0 primitive pile');
 });
@@ -100,9 +102,12 @@ test('a resident record substitutes the ship\'s own lod2 silhouette for the octa
 
   const meshes = [];
   standIn.traverse((object) => { if (object.isMesh) meshes.push(object); });
-  assert.equal(meshes.length, 2);
-  assert.equal(meshes[0].geometry, record.primitives[0].geometry,
-    'stand-in shares record geometry — no buffer clone');
+  assert.equal(meshes.length, 2, 'one merged draw per flat stand-in material (hull, glow)');
+  // New rule (render frame cost, 2026-11-23): a ship stand-in no longer draws the record's leaves
+  // one by one; its leaves are merged once per record and material, and every stand-in of that
+  // record shares the merged buffer, so a crowd of pending wasps costs ~6 draws each, not ~20.
+  assert.equal(meshes[0].geometry.userData.standInMerged, true, 'merged per record and material');
+  assert.equal(meshes[0].geometry.userData.spacefaceSharedAsset, true, 'shared: teardown never disposes it');
   for (const mesh of meshes) {
     assert.equal(mesh.material.isMeshStandardMaterial, true, 'plain warm Standard family');
     assert.equal(mesh.material.transparent, false, 'opaque — no blending variant');
@@ -126,6 +131,7 @@ test('a resident record substitutes the ship\'s own lod2 silhouette for the octa
   substrateOf(boundary2).userData.resolvingMarker
     .traverse((object) => { if (object.isMesh) meshes2.push(object); });
   assert.equal(meshes2[0].material, meshes[0].material, 'stand-in materials are cached per colour');
+  assert.equal(meshes2[0].geometry, meshes[0].geometry, 'every stand-in of one record shares the merged buffer');
 });
 
 test('no resident record keeps the shared octahedron and counts the fallback', () => {
@@ -180,7 +186,7 @@ test('a substrate built before the record was resident upgrades while still pend
   assert.equal(boundary.userData.admissionStandInPending, false);
   const meshes = [];
   standIn.traverse((object) => { if (object.isMesh) meshes.push(object); });
-  assert.equal(meshes[0].geometry, record.primitives[0].geometry);
+  assert.equal(meshes[0].geometry.userData.standInMerged, true, 'the upgraded stand-in draws the merged record silhouette');
   assert.equal(resolvingMarkerFallbackCount(), before - 1,
     'a landed stand-in releases the outstanding octahedron count');
 });

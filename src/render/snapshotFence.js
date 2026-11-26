@@ -7,9 +7,51 @@ import { createPresentationSnapshot, SNAPSHOT_COLUMNS } from './presentationSnap
 // jitter (worker replies at 2–10 Hz under load) lands inside history instead of on the
 // drawn frame. 18 buffers ≈ 300 ms of packs at pack-per-tick — the delay plus the
 // extrapolation window always have real history to interpolate against.
-export const SNAPSHOT_FENCE_BUFFERS = 18;
-/** Longest the presented moment may run past the latest completed pack (worker silence). */
-export const PRESENTATION_EXTRAPOLATION_S = 0.15;
+// ENGINE slice 1: 48 buffers (≈0.8 s at 60 fps, ≈1.4 s at 35 fps) so a bounded catch-up after a
+// burst always has recorded history to play instead of re-seating past it.
+export const SNAPSHOT_FENCE_BUFFERS = 48;
+/**
+ * Longest the presented moment may run past the latest completed pack (worker silence). Past the
+ * newest sample every body COASTS: its pair velocity decays with EXTRAPOLATION_DECAY_TAU_S, so a
+ * silence reads as bodies easing to a glide, never as a dead stop at a hard wall (ENGINE slice 1).
+ */
+export const PRESENTATION_EXTRAPOLATION_S = 1.0;
+/** Coast decay horizon: total coast travel is at most tau × the pair velocity. */
+export const EXTRAPOLATION_DECAY_TAU_S = 0.35;
+/**
+ * A forward gap re-seats only when it is larger than this (a true teleport-sized backlog or a hidden
+ * tab). Anything smaller is caught up by the rate servo at up to PLAYOUT_CATCHUP_RATE_MAX —
+ * a visible fast-forward of recorded history, never a one-frame leap.
+ */
+export const PLAYOUT_RESEAT_GAP_S = 2.0;
+/** A raw (unclamped) frame longer than this is a re-entered tab: re-seat instead of catching up. */
+export const PLAYOUT_RESEAT_FRAME_S = 1.0;
+/** Correction blending: discontinuities above JUMP heal over DECAY; above TELEPORT they snap. */
+export const BLEND_DECAY_S = 0.15;
+/** Critically damped heal rate (1/s): ~90 % of a correction heals in 0.3 s, starting at rest. */
+const BLEND_HEAL_OMEGA = 13;
+const BLEND_JUMP_WU = 0.05;
+const BLEND_TELEPORT_WU = 150;
+const BLEND_YAW_JUMP_RAD = 0.01;
+const BLEND_SETTLE_WU = 0.02;
+function wrapPi(angle) {
+  let a = (angle + Math.PI) % (Math.PI * 2);
+  if (a < 0) a += Math.PI * 2;
+  return a - Math.PI;
+}
+/** Fastest the presented clock may run while catching up a backlog. */
+export const PLAYOUT_CATCHUP_RATE_MAX = 2.0;
+/** Phase error at which catch-up starts to exceed the ordinary +20 % servo, and where it saturates. */
+const PLAYOUT_CATCHUP_START_S = 0.08;
+const PLAYOUT_CATCHUP_FULL_S = 0.4;
+/** The player's ship plays this far behind the stream's estimated now (one tick of reserve). */
+const PLAYER_LEAD_RESERVE_S = 1 / 60;
+/** How fast the widened catch-up/settle share may change (rate units per second). */
+const PLAYOUT_CATCHUP_SLEW_PER_S = 1.5;
+/** Ahead of target (after a coast), the clock may slow to this rate as the error grows to FULL. */
+const PLAYOUT_SETTLE_RATE_MIN = 0.5;
+/** A dry commit counts only when the clock overran the newest sample by less than this. */
+const PLAYOUT_DRY_DEPTH_S = 0.05;
 /**
  * Adaptive playout delay (33–100 ms, start 50 ms). The target moment is the newest pack's
  * sim time minus this delay; the delay grows when the buffer runs dry (the presented clock
@@ -37,15 +79,7 @@ const PLAYOUT_CONFIGURED_MS = Object.freeze({
 const PLAYOUT_DELAY_INTERVAL_MARGIN_S = 0.015;
 const PLAYOUT_DELAY_DYNAMIC_HEADROOM_S = 0.03;
 const PLAYOUT_INTERVAL_RING = 32;
-/**
- * Absolute floor for the worker-silence detector. A newest-pack delta is a forward gap only when
- * it exceeds this floor AND PLAYOUT_SILENCE_INTERVAL_FACTOR × the worst reply interval the ring
- * has learned: a steady 2–10 Hz cadence (400/500/600 ms) is the cadence the reserve is sized for,
- * not silence. The floor keeps a boot stream with no learned interval from treating a multi-second
- * gap as cadence.
- */
-export const PLAYOUT_MAX_GAP_S = 0.35;
-/** A forward gap is a delta beyond this multiple of the learned reply interval. */
+/** A forward gap is a delta beyond this multiple of the learned reply interval (and the re-seat floor). */
 const PLAYOUT_SILENCE_INTERVAL_FACTOR = 2.5;
 /**
  * Longest reply interval the interval ring learns as cadence rather than silence. Covers the
@@ -53,7 +87,7 @@ const PLAYOUT_SILENCE_INTERVAL_FACTOR = 2.5;
  * and therefore still re-seats.
  */
 const PLAYOUT_INTERVAL_LEARN_MAX_S = 0.7;
-/** Raw (unclamped) frame interval beyond which the present treats the tab as re-entered. */
+/** Raw (unclamped) frame interval beyond which a frame is not a cadence/rate sample. */
 const PLAYOUT_MAX_FRAME_GAP_S = 0.5;
 /**
  * Phase-correction horizon for the presented clock (the PLL's proportional band). A
@@ -73,15 +107,27 @@ const PLAYOUT_DELAY_TAU_S = 0.08;
  * in arrival jitter raises the delay without parking it at the 100 ms ceiling.
  */
 const PLAYOUT_DELAY_COMFORT_S = 0.055;
-/** Delay adjustments per commit: dry buffer +8 ms, comfortable history −2 ms. */
+/**
+ * Delay adjustments per commit: dry buffer +8 ms; comfortable history eases down by at least 2 ms
+ * or 10 % of the excess over the floor, so a delay that a burst pushed to 300 ms is back in the
+ * band within ~0.5 s instead of ~3 s of late, slow-motion picture (ENGINE slice 4).
+ */
 const PLAYOUT_DRY_STEP_S = 0.008;
 const PLAYOUT_HEALTHY_STEP_S = 0.002;
+const PLAYOUT_HEALTHY_STEP_SHARE = 0.1;
+/** The delay floor is sized from this quantile of recent pack intervals, not the single worst. */
+const PLAYOUT_INTERVAL_QUANTILE = 0.9;
 /**
- * Rate modulation: the presented clock slows proportionally once less than this much
- * runway (history + extrapolation) remains ahead of it, flooring at PLAYOUT_RATE_MIN.
+ * Rate modulation: approaching the newest sample the presented clock slows proportionally over
+ * the last PLAYOUT_RUNWAY_TARGET_S of runway (the original E1 approach). Past it — a worker silence
+ * — the clock keeps moving but eases off exponentially with COAST_CLOCK_TAU_S, so bodies glide to
+ * rest over about a second and the clock is never far from recorded history when replies resume
+ * (ENGINE slice 1; the old floor was a hard wall at newest + 150 ms).
  */
 const PLAYOUT_RUNWAY_TARGET_S = 0.2;
-const PLAYOUT_RATE_MIN = 0.15;
+const PLAYOUT_RUNWAY_EDGE_S = 0.15;
+const COAST_CLOCK_TAU_S = 0.3;
+const COAST_CLOCK_RATE_MIN = 0.05;
 /**
  * Sim-rate measurement window. A bursty worker (four ticks in one reply, then silence) must
  * not be mistaken for a fast clock: the EMA averages the sim-time the newest pack gained per
@@ -99,22 +145,19 @@ const PRESENTATION_FAST_RESEED_S = 0.2;
  * Reject only a hop that is itself teleport-sized, and clamp the extrapolation parameter
  * to the hop count the 150 ms window can reach (9 hops at 60 Hz, 12 gives headroom).
  */
-const EXTRAPOLATION_MAX_HOPS = 12;
-
-// E1 diagnostic kill-switch: `?playout=0` restores the pre-playout clock (chase the newest
-// pack, fixed 100 ms extrapolation cap, no delay, no rate modulation) so the SAME binary can
-// show the before/after of the stall pattern side by side. Diagnostic only; absent = playout on.
-function playoutDisabledByParam() {
-  try {
-    if (typeof globalThis.location === 'undefined') return false;
-    return new URLSearchParams(globalThis.location.search).get('playout') === '0';
-  } catch (_) {
-    return false;
-  }
+const EXTRAPOLATION_MAX_HOPS = 24;
+/**
+ * Coast parameter for a moment `extraS` past the newest pack whose pair spans `spanS`: the alpha
+ * that places a body at tau·(1 − e^(−extra/tau)) of its pair velocity past the newest pose. Equal to
+ * the linear alpha for small `extraS`, it flattens instead of running into a wall.
+ */
+export function coastAlpha(extraS, spanS) {
+  if (!(spanS > 0)) return 1;
+  const e = extraS > 0 ? extraS : 0;
+  const tau = EXTRAPOLATION_DECAY_TAU_S;
+  return 1 + (tau * (1 - Math.exp(-e / tau))) / spanS;
 }
-const PLAYOUT_DISABLED = playoutDisabledByParam();
-const LEGACY_EXTRAPOLATION_S = 0.1;
-const LEGACY_CATCHUP_GAIN = 0.25;
+
 
 /** Bytes written into the packed columns for one entity. All column kinds are 4-byte. */
 export const PACKED_BYTES_PER_ENTITY = Object.values(SNAPSHOT_COLUMNS)
@@ -314,6 +357,7 @@ export function createSnapshotFence(options = {}) {
   // allocated once at fence creation and only its fields move — the per-frame path must not
   // mint a bracket object per present.
   let playoutDelayS = PLAYOUT_DELAY_START_S;
+  let servoExtra = 0;                // slewed catch-up/settle share beyond the ordinary servo
   let playoutDelayTargetS = PLAYOUT_DELAY_START_S;
   const presentedPair = { a: -1, b: -1, alpha: 1 };
   let presentedValid = false;        // a presented sample has run at least once
@@ -349,6 +393,7 @@ export function createSnapshotFence(options = {}) {
   // the learned cadence the silence detector multiplies, so a steady 400/500/600 ms stream is
   // never mistaken for a worker silence.
   const packIntervalRing = new Float64Array(PLAYOUT_INTERVAL_RING);
+  const packIntervalSorted = new Float64Array(PLAYOUT_INTERVAL_RING);
   let packIntervalIndex = 0;
   let packIntervalCount = 0;
   let recentCadenceS = 0;
@@ -384,10 +429,13 @@ export function createSnapshotFence(options = {}) {
     packIntervalRing[packIntervalIndex] = deltaS;
     packIntervalIndex = (packIntervalIndex + 1) % PLAYOUT_INTERVAL_RING;
     if (packIntervalCount < PLAYOUT_INTERVAL_RING) packIntervalCount++;
-    let worst = 0;
-    for (let i = 0; i < packIntervalCount; i++) {
-      if (packIntervalRing[i] > worst) worst = packIntervalRing[i];
-    }
+    // p90 of the ring (ENGINE slice 4): one burst-sized delta (a main-thread stall that landed as
+    // one pack) is not the cadence; sizing the floor from it drew the whole picture 300+ ms late.
+    for (let i = 0; i < packIntervalCount; i++) packIntervalSorted[i] = packIntervalRing[i];
+    const sorted = packIntervalSorted.subarray(0, packIntervalCount);
+    sorted.sort();
+    const worst = sorted[Math.min(packIntervalCount - 1,
+      Math.floor(PLAYOUT_INTERVAL_QUANTILE * packIntervalCount))];
     // One p95+ interval of reserve keeps the presented moment inside recorded history even
     // at 12.3 fps; the configured 100 ms ceiling only holds while replies arrive at 60 Hz.
     effectiveDelayFloorS = Math.max(PLAYOUT_DELAY_MIN_S, worst + PLAYOUT_DELAY_INTERVAL_MARGIN_S);
@@ -462,19 +510,20 @@ export function createSnapshotFence(options = {}) {
     return snapshotIndexOf(buffer.published, entityId);
   }
 
-  function presentedPoseInto(entityId, out, slotHint = -1) {
-    if (!presentedValid || !presentedPair || presentedPair.b < 0) return null;
-    const b = buffers[presentedPair.b];
+  // Raw (uncorrected) pose of one body for a bracket pair {a, b, alpha}.
+  function rawPoseForPair(pair, entityId, out, slotHint = -1) {
+    if (!pair || pair.b < 0) return null;
+    const b = buffers[pair.b];
     if (!b || !b.sealed) return null;
-    const a = presentedPair.a >= 0 ? buffers[presentedPair.a] : null;
-    // The bracket resolver only ever pairs one pose stream; re-check here because the
-    // register is also written by the legacy clock and by callers that restore a pair.
+    const a = pair.a >= 0 ? buffers[pair.a] : null;
+    // The bracket resolver only ever pairs one pose stream; re-check here because callers can
+    // restore a pair.
     if (a && (!a.sealed || a.poseEpoch !== b.poseEpoch)) return null;
     const rowB = slotHint >= 0
       ? snapshotRowForSlot(b.published, slotHint, entityId)
       : presentedRowIndex(b, entityId);
     if (rowB < 0) return null;
-    const alpha = Number.isFinite(presentedPair.alpha) ? presentedPair.alpha : 1;
+    const alpha = Number.isFinite(pair.alpha) ? pair.alpha : 1;
     const rowA = a && alpha !== 1
       ? (slotHint >= 0
         ? snapshotRowForSlot(a.published, slotHint, entityId)
@@ -485,11 +534,235 @@ export function createSnapshotFence(options = {}) {
     );
     if (!pose) return null;
     pose.rot = -2 * Math.atan2(pose.qy, pose.qw);
+    return pose;
+  }
+
+  function presentedPoseInto(entityId, out, slotHint = -1) {
+    if (!presentedValid) return null;
+    const pose = rawPoseForPair(pairFor(entityId >>> 0), entityId, out, slotHint);
+    if (!pose) return null;
+    // The drawn pose carries this frame's correction offset (ENGINE slice 1), so every anchor
+    // (tether, beam, trail, VFX) and every "what the player saw" reader agrees with the mesh.
+    const rec = drawnRecords.get(entityId >>> 0);
+    if (rec && rec.frame >= blendFrame - 1 && (rec.ox !== 0 || rec.oz !== 0 || rec.oyaw !== 0)) {
+      pose.x += rec.ox;
+      pose.z += rec.oz;
+      if (rec.oyaw !== 0) {
+        pose.rot = wrapPi(pose.rot + rec.oyaw);
+        pose.qy = Math.sin(-pose.rot * 0.5);
+        pose.qw = Math.cos(-pose.rot * 0.5);
+      }
+    }
     pose.valid = true;
     return pose;
   }
 
+  /**
+   * Resolve the history pair bracketing `timeS` into `out` ({a, b, alpha}) and return the alpha.
+   * Pure with respect to fence state (it only reorders the scratch bracket list), so the blender
+   * can ask where a body WAS under the current history without moving the presented pair.
+   */
+  function resolveBracketInto(timeS, fallbackAlpha, out) {
+    const count = orderedSealedBuffers();
+    if (count === 0) {
+      out.a = -1; out.b = -1; out.alpha = 1;
+      return fallbackAlpha;
+    }
+    const newestIdx = bracketOrder[0];
+    const newest = buffers[newestIdx];
+    const epoch = newest.poseEpoch;
+    // A zero-step publication can replace data at the same moment. Keep the latest pack
+    // for that stamp, and find an earlier time for the velocity pair. Packs stamped ahead
+    // of the newest are a rewound/restarted stream, not history.
+    let priorOfNewest = -1;
+    for (let i = 1; i < count; i++) {
+      const idx = bracketOrder[i];
+      if (buffers[idx].poseEpoch !== epoch) break;
+      if (buffers[idx].simTime < newest.simTime) { priorOfNewest = idx; break; }
+    }
+    if (priorOfNewest < 0) {
+      // No blend source in this epoch (boot, or the first pack after a teleport):
+      // draw the arriving pose exactly instead of guessing.
+      out.a = -1; out.b = newestIdx; out.alpha = 1;
+      return 1;
+    }
+    if (!(timeS < newest.simTime)) {
+      // Extrapolation zone: the newest pair carries the freshest known velocity.
+      // Coast, not a straight line into a wall (ENGINE slice 1): the pair velocity decays.
+      const span = newest.simTime - buffers[priorOfNewest].simTime;
+      const alpha = span > 0 ? coastAlpha(timeS - newest.simTime, span) : 1;
+      out.a = priorOfNewest; out.b = newestIdx; out.alpha = alpha;
+      return alpha;
+    }
+    // Walk only within the newest epoch. The first older pack from another epoch ends the
+    // window: serving across it is exactly the old-sector ghost this contract forbids. A
+    // same-epoch pack stamped ahead of the newest belongs to a rewound stream — skip it.
+    let oldestSameEpoch = -1;
+    let previousIdx = newestIdx;
+    for (let i = 1; i < count; i++) {
+      const idx = bracketOrder[i];
+      if (buffers[idx].poseEpoch !== epoch) break;
+      const newerIdx = previousIdx;
+      const newer = buffers[newerIdx];
+      const older = buffers[idx];
+      if (!(older.simTime < newer.simTime)) continue;
+      oldestSameEpoch = idx;
+      if (timeS >= older.simTime && timeS <= newer.simTime) {
+        const span = newer.simTime - older.simTime;
+        const alpha = span > 0 ? (timeS - older.simTime) / span : 1;
+        out.a = idx; out.b = newerIdx; out.alpha = alpha;
+        // Guard the register: a must always be the older member (L4).
+        if (buffers[out.a].sequence >= buffers[out.b].sequence) {
+          out.a = -1;
+        }
+        return alpha;
+      }
+      previousIdx = idx;
+    }
+    // Behind all same-epoch history (clock lagged past the ring after a long hold): serve
+    // the oldest pack of THIS epoch at alpha 0; the servo re-seats without a rewind.
+    if (oldestSameEpoch >= 0) {
+      out.a = -1; out.b = oldestSameEpoch; out.alpha = 0;
+      return 0;
+    }
+    out.a = -1; out.b = newestIdx; out.alpha = 1;
+    return 1;
+}
+
+  // ---- Drawn-pose correction blending (ENGINE slice 1) -------------------------------------
+  // When new history lands, the pose it gives a body at the moment drawn LAST frame can differ from
+  // what was drawn (its coast guess was wrong, or a correction arrived). Drawing the new pose raw is
+  // the "blip". Instead each body keeps an offset: on a frame whose history changed, the offset
+  // absorbs exactly that discontinuity (new-history pose at last frame's presented time minus last
+  // frame's raw pose), so the drawn pose is continuous; the offset then decays over BLEND_DECAY_S.
+  // Ordinary interpolation, catch-up and coasting never trip it: they are continuous in time. A
+  // discontinuity beyond the teleport bar (respawn, dock, sector hop) snaps. Presentation only.
+  const drawnRecords = new Map();
+  let blendFrame = 0;
+  let blendDt = 0;
+  let blendPrevPresentedS = NaN;   // presented time of the previous drawn frame
+  let blendHistoryChanged = false; // a pack committed since the previous drawn frame
+  let blendSeenSequence = -1;
+  let blendPrevValid = false;
+  const blendPrevPair = { a: -1, b: -1, alpha: 1 };
+  // Player lead (ENGINE slice 3): the body the camera rides is drawn at the stream's estimated
+  // "now" instead of now − playout delay, so the ship and the view answer the stick a whole playout
+  // delay sooner. Every other body keeps the delayed, interpolated presentation.
+  let leadEntityId = -1;
+  let leadValid = false;
+  let leadTimeS = NaN;
+  let blendPrevLeadS = NaN;
+  let blendPrevLeadValid = false;
+  const leadPair = { a: -1, b: -1, alpha: 1 };
+  const blendPrevLeadPair = { a: -1, b: -1, alpha: 1 };
+  const pairFor = (id) => (leadValid && id === leadEntityId ? leadPair : presentedPair);
+  const blendScratch = { x: 0, y: 0, z: 0, qy: 0, qw: 1, rot: 0, t: 1, index: -1, prev: -1 };
+  function blendDrawnPoseInto(entityId, generation, x, z, yaw, out, slotHint) {
+    const id = entityId >>> 0;
+    const gen = Number.isInteger(generation) ? generation : -1;
+    let rec = drawnRecords.get(id);
+    const fresh = !rec || rec.gen !== gen || rec.frame < blendFrame - 1;
+    if (fresh) {
+      if (!rec) {
+        rec = { gen, frame: 0, rx: 0, rz: 0, ryaw: 0, ox: 0, oz: 0, oyaw: 0, wx: 0, wz: 0, wyaw: 0,
+          dx: 0, dz: 0, sx: 0, sz: 0, sv: false };
+        drawnRecords.set(id, rec);
+      }
+      rec.gen = gen; rec.ox = 0; rec.oz = 0; rec.oyaw = 0; rec.wx = 0; rec.wz = 0; rec.wyaw = 0;
+    } else if (rec.frame !== blendFrame) {
+      if (blendHistoryChanged && blendPrevValid) {
+        const was = id === leadEntityId
+          ? (blendPrevLeadValid ? rawPoseForPair(blendPrevLeadPair, id, blendScratch, slotHint) : null)
+          : rawPoseForPair(blendPrevPair, id, blendScratch, slotHint);
+        if (was) {
+          const dx = was.x - rec.rx;
+          const dz = was.z - rec.rz;
+          const jump = Math.hypot(dx, dz);
+          if (jump > BLEND_TELEPORT_WU) {
+            rec.ox = 0; rec.oz = 0; rec.oyaw = 0; rec.wx = 0; rec.wz = 0; rec.wyaw = 0;
+          } else if (jump > BLEND_JUMP_WU) {
+            rec.ox -= dx; rec.oz -= dz;
+            // Match velocity too (C1): the offset starts moving so the drawn body keeps last
+            // frame's speed, then the heal eases it onto the stream's own speed.
+            if (blendDt > 0 && rec.sv) {
+              rec.wx = (rec.sx - (x - was.x)) / blendDt;
+              rec.wz = (rec.sz - (z - was.z)) / blendDt;
+            }
+          }
+          const dyaw = wrapPi(was.rot - rec.ryaw);
+          if (Math.abs(dyaw) > BLEND_YAW_JUMP_RAD && Math.abs(dyaw) < Math.PI * 0.75) rec.oyaw = wrapPi(rec.oyaw - dyaw);
+        }
+      }
+      // Critically damped heal (exact step): the offset starts healing at zero speed and eases
+      // in and out, so absorbing a correction never adds a velocity step to the drawn pose.
+      if (blendDt > 0 && (rec.ox !== 0 || rec.oz !== 0 || rec.oyaw !== 0 || rec.wx !== 0 || rec.wz !== 0 || rec.wyaw !== 0)) {
+        const w = BLEND_HEAL_OMEGA;
+        const e = Math.exp(-w * blendDt);
+        const kx = rec.wx + w * rec.ox; const kz = rec.wz + w * rec.oz; const ky = rec.wyaw + w * rec.oyaw;
+        rec.ox = (rec.ox + kx * blendDt) * e; rec.wx = (rec.wx - w * kx * blendDt) * e;
+        rec.oz = (rec.oz + kz * blendDt) * e; rec.wz = (rec.wz - w * kz * blendDt) * e;
+        rec.oyaw = (rec.oyaw + ky * blendDt) * e; rec.wyaw = (rec.wyaw - w * ky * blendDt) * e;
+        if (Math.abs(rec.ox) + Math.abs(rec.oz) < BLEND_SETTLE_WU && Math.abs(rec.wx) + Math.abs(rec.wz) < BLEND_SETTLE_WU * 10) {
+          rec.ox = 0; rec.oz = 0; rec.wx = 0; rec.wz = 0;
+        }
+        if (Math.abs(rec.oyaw) < 1e-4 && Math.abs(rec.wyaw) < 1e-3) { rec.oyaw = 0; rec.wyaw = 0; }
+      }
+    }
+    const drawnX = x + rec.ox;
+    const drawnZ = z + rec.oz;
+    if (!fresh && rec.frame === blendFrame - 1 && blendDt > 0) {
+      rec.sx = drawnX - rec.dx; rec.sz = drawnZ - rec.dz; rec.sv = true;
+    } else if (fresh) {
+      rec.sv = false;
+    }
+    rec.dx = drawnX; rec.dz = drawnZ;
+    rec.rx = x; rec.rz = z; rec.ryaw = yaw; rec.frame = blendFrame;
+    out.x = drawnX; out.z = drawnZ; out.yaw = rec.oyaw === 0 ? yaw : wrapPi(yaw + rec.oyaw);
+    return out;
+  }
+
   const fence = {
+    /** Start one drawn frame for correction blending; `dt` is the presented frame delta (s). */
+    beginBlendFrame(dt) {
+      blendFrame++;
+      blendDt = Number.isFinite(dt) && dt > 0 ? Math.min(dt, 0.25) : 0;
+      // Where the history now says each body was at the previous drawn moment.
+      blendPrevValid = blendHistoryChanged && presentedValid && Number.isFinite(blendPrevPresentedS)
+        && resolveBracketInto(blendPrevPresentedS, 1, blendPrevPair) !== undefined
+        && blendPrevPair.b >= 0;
+      blendPrevLeadValid = blendHistoryChanged && leadValid && Number.isFinite(blendPrevLeadS)
+        && resolveBracketInto(blendPrevLeadS, 1, blendPrevLeadPair) !== undefined
+        && blendPrevLeadPair.b >= 0;
+      if ((blendFrame & 255) === 0) {
+        for (const [id, rec] of drawnRecords) if (rec.frame < blendFrame - 256) drawnRecords.delete(id);
+      }
+    },
+    /**
+     * Blend one body's raw presented pose (world x/z, yaw) into the pose to draw this frame.
+     * `out` receives {x, z, yaw}. Call once per drawn body per frame, after beginBlendFrame.
+     */
+    blendDrawnPose(entityId, generation, x, z, yaw, out = {}, slotHint = -1) {
+      return blendDrawnPoseInto(entityId, generation, x, z, yaw, out, slotHint);
+    },
+    /** The presented pose WITHOUT the correction offset — what applySnapshotPoseToMesh writes raw. */
+    presentedRawPose(entityId, out = {}, slotHint = -1) {
+      if (!presentedValid) return null;
+      const pose = rawPoseForPair(pairFor(entityId >>> 0), entityId, out, slotHint);
+      if (pose) pose.valid = true;
+      return pose;
+    },
+    /** The body drawn at the stream's "now" (the player's ship); -1 disables the lead. */
+    setLeadEntity(entityId) { leadEntityId = Number.isFinite(entityId) && entityId >= 0 ? (entityId >>> 0) : -1; },
+    get leadEntityId() { return leadEntityId; },
+    /** True when the lead body is drawn from the lead pair this frame. */
+    leadActive(entityId) { return leadValid && (entityId >>> 0) === leadEntityId; },
+    /** Forget every drawn record (epoch change, session reset). */
+    clearDrawnPoses() { drawnRecords.clear(); },
+    /** Current correction offset magnitude for an id (tests/probes). */
+    drawnOffset(entityId) {
+      const rec = drawnRecords.get(entityId >>> 0);
+      return rec ? Math.hypot(rec.ox, rec.oz) : 0;
+    },
     beginPack(expectedCount, simTime = 0, poseEpoch = 0, slotCapacity = 0) {
       const buffer = buffers[write];
       buffer.writable.beginFrame(expectedCount, slotCapacity);
@@ -550,7 +823,10 @@ export function createSnapshotFence(options = {}) {
         if (buffer.poseEpoch !== presentedEpoch) {
           clearPresentedPair();
         } else if (Number.isFinite(delayMinSinceCommitS)) {
-          if (Number.isFinite(packLagMinSinceCommitS) && packLagMinSinceCommitS <= 0.004) {
+          // A clock deep in coast (well past the newest pack) is riding out a silence, not
+          // arrival jitter; only a clock that just reached the newest sample prices a dry buffer.
+          if (Number.isFinite(packLagMinSinceCommitS) && packLagMinSinceCommitS <= 0.004
+            && packLagMinSinceCommitS > -PLAYOUT_DRY_DEPTH_S) {
             // The presented clock actually reached the newest sample before this reply: a dry
             // buffer, not the normal end-of-interval trough.
             playoutDryEvents++;
@@ -562,8 +838,10 @@ export function createSnapshotFence(options = {}) {
               effectiveDelayMaxS, playoutDelayTargetS + PLAYOUT_DRY_STEP_S,
             );
           } else if (delayMinSinceCommitS > PLAYOUT_DELAY_COMFORT_S) {
+            const excessS = Math.max(0, playoutDelayTargetS - effectiveDelayFloorS);
             playoutDelayTargetS = Math.max(
-              effectiveDelayFloorS, playoutDelayTargetS - PLAYOUT_HEALTHY_STEP_S,
+              effectiveDelayFloorS,
+              playoutDelayTargetS - Math.max(PLAYOUT_HEALTHY_STEP_S, excessS * PLAYOUT_HEALTHY_STEP_SHARE),
             );
           }
         }
@@ -648,6 +926,8 @@ export function createSnapshotFence(options = {}) {
      */
     presentedSampleToken(slot, entityId) {
       if (!presentedValid || !presentedPair || presentedPair.b < 0) return 0;
+      // The lead body moves on its own clock every frame: always re-pose it.
+      if (leadValid && (entityId >>> 0) === leadEntityId) return ((blendFrame * 2654435761) >>> 0) || 1;
       const b = buffers[presentedPair.b];
       if (!b || !b.sealed) return 0;
       const rowB = slot >= 0
@@ -663,6 +943,10 @@ export function createSnapshotFence(options = {}) {
         : -1;
       const moving = rowA >= 0
         && rowPoseDiffers(a.published.columns, rowA, b.published.columns, rowB);
+      // A row still healing a correction offset must be re-posed every frame until it settles.
+      const rec = drawnRecords.get(entityId >>> 0);
+      const healing = rec && (rec.ox !== 0 || rec.oz !== 0 || rec.oyaw !== 0);
+      if (healing) return (Math.imul(rowPoseHash(b.published.columns, rowB) ^ blendFrame, 16777619) >>> 0) || 1;
       if (!moving) return rowPoseHash(b.published.columns, rowB);
       let hash = Math.imul(rowPoseHash(a.published.columns, rowA), 16777619)
         ^ rowPoseHash(b.published.columns, rowB);
@@ -701,49 +985,10 @@ export function createSnapshotFence(options = {}) {
       const rawElapsed = Number.isFinite(elapsedS) ? Math.max(0, elapsedS) : 0;
       const elapsed = Math.min(rawElapsed, 0.25);
       const rawFrameElapsed = Number.isFinite(rawElapsedS) ? Math.max(0, rawElapsedS) : rawElapsed;
-      if (PLAYOUT_DISABLED) {
-        // Legacy clock (the "before"): chase newest.simTime + accumulator − fixedDt with the
-        // per-frame catch-up gain and a fixed 100 ms extrapolation cap. Present for the
-        // diagnostic comparison only.
-        const prior = this.previousSnapshot();
-        const span = prior ? current.simTime - prior.simTime : 0;
-        const raw = poseSpanAlpha(current, prior, accumulatorS, fixedDt, fallbackAlpha);
-        const target = span > 0 ? prior.simTime + span * raw : current.simTime;
-        const reset = presentedEpoch !== current.poseEpoch
-          || current.simTime < presentedSnapshotTime || !Number.isFinite(presentedTime);
-        if (reset) {
-          presentedTime = target;
-          presentationRate = 1;
-          rateWallS = 0;
-          rateSimS = 0;
-        } else {
-          rateWallS += elapsed;
-          rateSimS += current.simTime - presentedSnapshotTime;
-          if (rateWallS >= PRESENTATION_RATE_WINDOW_S) {
-            const sample = rateSimS / rateWallS;
-            presentationRate += (Math.max(0, Math.min(PRESENTATION_RATE_MAX, sample))
-              - presentationRate) * 0.5;
-            rateWallS = 0;
-            rateSimS = 0;
-          }
-          const cap = current.simTime + LEGACY_EXTRAPOLATION_S;
-          let next = presentedTime + elapsed * presentationRate;
-          if (target > next) next += (target - next) * LEGACY_CATCHUP_GAIN;
-          if (next > cap) next = cap;
-          presentedTime = Math.max(presentedTime, next);
-        }
-        presentedSequence = current.sequence;
-        presentedEpoch = current.poseEpoch;
-        presentedSnapshotTime = current.simTime;
-        presentedValid = true;
-        if (!(span > 0)) {
-          setPresentedPair(-1, latest, 1);
-          return 1;
-        }
-        const alpha = (presentedTime - prior.simTime) / span;
-        setPresentedPair(previous, latest, alpha < 0 ? 0 : alpha);
-        return alpha < 0 ? 0 : alpha;
-      }
+      // Blend bookkeeping: the moment drawn last frame, and whether history changed since.
+      blendPrevPresentedS = presentedValid ? presentedTime : NaN;
+      blendHistoryChanged = current.sequence !== blendSeenSequence;
+      blendSeenSequence = current.sequence;
       // Learn the reply cadence before the silence decision. A new commit's sim delta is the
       // cadence sample (not the presented-clock delta, which is 0 on frames between replies and
       // NaN before the first sample). Intervals up to the 2 Hz floor are cadence; a multi-second
@@ -829,12 +1074,15 @@ export function createSnapshotFence(options = {}) {
       // frame after a hidden/occluded interval. A steady 2–10 Hz cadence stays below the learned
       // threshold and is priced into the reserve instead of re-seating every reply. Replaying a
       // true silence is the 12–14 s recovery the reviewer measured; re-seat in one frame instead.
+      // ENGINE slice 1: only a teleport-sized backlog (> 2 s of sim) or a re-entered tab (> 1 s raw
+      // frame) re-seats. Smaller bursts stay inside the 48-pack history and the rate servo plays
+      // them out at up to 2x — the world fast-forwards for a moment instead of leaping in one frame.
       const silenceThresholdS = Math.max(
-        PLAYOUT_MAX_GAP_S, recentCadenceS * PLAYOUT_SILENCE_INTERVAL_FACTOR,
+        PLAYOUT_RESEAT_GAP_S, recentCadenceS * PLAYOUT_SILENCE_INTERVAL_FACTOR,
       );
       const gapReset = !reset && presentedValid && (
         (Number.isFinite(simDeltaS) && simDeltaS > silenceThresholdS)
-        || rawFrameElapsed > PLAYOUT_MAX_FRAME_GAP_S);
+        || rawFrameElapsed > PLAYOUT_RESEAT_FRAME_S);
       if (reset || gapReset) {
         if (gapReset) {
           gapResets++;
@@ -847,6 +1095,8 @@ export function createSnapshotFence(options = {}) {
         // the delayed target is behind the pose we already drew.
         const target = current.simTime - playoutDelayS;
         presentedTime = reset ? target : Math.max(presentedTime, target);
+        drawnRecords.clear();
+        blendPrevPresentedS = NaN;
         clearPresentedPair();
         rateWallS = 0;
         rateSimS = 0;
@@ -922,21 +1172,53 @@ export function createSnapshotFence(options = {}) {
         // arriving at a hard hold. A deep stall then reads as brief slow motion — never as a
         // frozen ship — and a healthy buffer plays at full rate. This is what lets a sub-gap
         // 400 ms burst ride out with zero held frames: the reserve+window stretches over ~1 s.
-        const runwayS = (current.simTime + PRESENTATION_EXTRAPOLATION_S) - presentedTime;
+        const runwayS = (current.simTime + PLAYOUT_RUNWAY_EDGE_S) - presentedTime;
+        const coastS = presentedTime - current.simTime;
+        const coastFactor = coastS > 0
+          ? Math.max(COAST_CLOCK_RATE_MIN, Math.exp(-coastS / COAST_CLOCK_TAU_S))
+          : 1;
         const runwayFactor = Number.isFinite(runwayS)
-          ? Math.max(PLAYOUT_RATE_MIN, Math.min(1, runwayS / PLAYOUT_RUNWAY_TARGET_S))
+          ? Math.max(coastFactor, Math.min(1, runwayS / PLAYOUT_RUNWAY_TARGET_S))
           : 1;
         // Symmetric bounded rate servo around the wall-paced target. Positive phase error
         // (behind) speeds the clock up; negative error (ahead) slows it down. It never
         // rewinds and never exceeds 1.2x / 0.8x of the measured sim rate, so the reserve
         // cannot collapse to a chase-the-newest clock, and a catch-up burst cannot jump.
+        // Never lag further behind recorded history than one playout delay: a clock that fell past
+        // the oldest same-epoch pack would serve that pack frozen at alpha 0 (a hold). With 48
+        // packs this only binds after a backlog longer than the history.
+        if (Number.isFinite(presentedTime) && presentedTime < oldestSameEpoch - playoutDelayS) {
+          presentedTime = oldestSameEpoch - playoutDelayS;
+        }
         const phaseErrorS = boundedTarget - presentedTime;
+        // Bounded catch-up: the ordinary +20 % ceiling widens smoothly to 2x as the clock falls
+        // further behind, so a burst plays out as a short fast-forward, never a one-frame leap.
+        const catchupShare = Number.isFinite(phaseErrorS)
+          ? Math.max(0, Math.min(1, (phaseErrorS - PLAYOUT_CATCHUP_START_S)
+            / (PLAYOUT_CATCHUP_FULL_S - PLAYOUT_CATCHUP_START_S)))
+          : 0;
+        const fastCeiling = (PLAYOUT_RATE_FAST - 1)
+          + (PLAYOUT_CATCHUP_RATE_MAX - PLAYOUT_RATE_FAST) * catchupShare;
+        // Symmetric for a clock that coasted ahead of the stream: settle back faster than the
+        // ordinary -20 % so the picture rejoins recorded history within a second or so.
+        const settleShare = Number.isFinite(phaseErrorS)
+          ? Math.max(0, Math.min(1, (-phaseErrorS - PLAYOUT_CATCHUP_START_S)
+            / (PLAYOUT_CATCHUP_FULL_S - PLAYOUT_CATCHUP_START_S)))
+          : 0;
+        const slowFloor = (1 - PLAYOUT_RATE_SLOW) + (PLAYOUT_RATE_SLOW - PLAYOUT_SETTLE_RATE_MIN) * settleShare;
         const correction = Number.isFinite(phaseErrorS)
-          ? Math.max(-(1 - PLAYOUT_RATE_SLOW), Math.min(PLAYOUT_RATE_FAST - 1,
+          ? Math.max(-slowFloor, Math.min(fastCeiling,
             phaseErrorS / PLAYOUT_CORRECTION_TAU_S))
           : 0;
+        // The widened catch-up/settle share beyond the ordinary ±20 % servo is slewed, so the
+        // presented clock changes speed smoothly instead of lurching into a fast-forward.
+        const ordinary = Math.max(-(1 - PLAYOUT_RATE_SLOW), Math.min(PLAYOUT_RATE_FAST - 1, correction));
+        const extraTarget = correction - ordinary;
+        const slew = PLAYOUT_CATCHUP_SLEW_PER_S * elapsed;
+        servoExtra += Math.max(-slew, Math.min(slew, extraTarget - servoExtra));
+        if (Math.sign(servoExtra) !== Math.sign(extraTarget) && extraTarget !== 0) servoExtra = 0;
         let next = presentedTime
-          + elapsed * presentationRate * (1 + correction) * runwayFactor;
+          + elapsed * presentationRate * (1 + ordinary + servoExtra) * runwayFactor;
         // Past the newest sample by more than the extrapolation window the clock holds; the
         // sim catches up to it. It never rewinds.
         const cap = current.simTime + PRESENTATION_EXTRAPOLATION_S;
@@ -958,6 +1240,31 @@ export function createSnapshotFence(options = {}) {
       presentedSnapshotTime = current.simTime;
       presentedValid = true;
       const alpha = this.resolvePresentedBracket(presentedTime, fallbackAlpha);
+      // Player lead: the wall-paced estimate of the newest moment, never behind the presented
+      // clock, never more than the coast window past the newest pack. Monotone: it never rewinds.
+      blendPrevLeadS = leadValid ? leadTimeS : NaN;
+      leadValid = false;
+      if (leadEntityId >= 0 && (reset || gapReset)) leadTimeS = NaN;
+      if (leadEntityId >= 0 && Number.isFinite(presentedTime)) {
+        let target = estimatedSimNowS(current) - PLAYER_LEAD_RESERVE_S;
+        if (target < presentedTime) target = presentedTime;
+        const prevLead = Number.isFinite(leadTimeS) ? leadTimeS : target;
+        // Its own wall-paced clock: the measured stream rate with a bounded servo toward the target
+        // (0.5x..2x), so a reply landing early or late bends its speed instead of holding it.
+        const err = target - prevLead;
+        const corr = Math.max(-0.5, Math.min(1, err / PLAYOUT_CORRECTION_TAU_S));
+        // Past the newest pack the lead eases off exactly like the presented clock, so a long
+        // silence glides the ship to rest instead of running it into the coast cap and holding.
+        const leadCoastS = prevLead - current.simTime;
+        const leadEase = leadCoastS > 0 ? Math.max(COAST_CLOCK_RATE_MIN, Math.exp(-leadCoastS / COAST_CLOCK_TAU_S)) : 1;
+        let next = prevLead + elapsed * presentationRate * (1 + corr) * leadEase;
+        if (next < presentedTime) next = presentedTime;
+        if (next < prevLead) next = prevLead;
+        if (next > current.simTime + PRESENTATION_EXTRAPOLATION_S) next = Math.max(prevLead, current.simTime + PRESENTATION_EXTRAPOLATION_S);
+        leadTimeS = next;
+        resolveBracketInto(leadTimeS, 1, leadPair);
+        leadValid = leadPair.b >= 0;
+      }
       // The fence's sequence reads as the PRESENTED bracket's commit sequence while a
       // presented sample is active: the pose-apply compares this against the served
       // snapshot's sequence to choose the presented alpha (renderer contract, unchanged).
@@ -976,69 +1283,7 @@ export function createSnapshotFence(options = {}) {
      * with alpha > 1; behind the oldest same-epoch pack that pack serves at alpha 0.
      */
     resolvePresentedBracket(timeS, fallbackAlpha = 1) {
-      const count = orderedSealedBuffers();
-      if (count === 0) {
-        clearPresentedPair();
-        return fallbackAlpha;
-      }
-      const newestIdx = bracketOrder[0];
-      const newest = buffers[newestIdx];
-      const epoch = newest.poseEpoch;
-      // A zero-step publication can replace data at the same moment. Keep the latest pack
-      // for that stamp, and find an earlier time for the velocity pair. Packs stamped ahead
-      // of the newest are a rewound/restarted stream, not history.
-      let priorOfNewest = -1;
-      for (let i = 1; i < count; i++) {
-        const idx = bracketOrder[i];
-        if (buffers[idx].poseEpoch !== epoch) break;
-        if (buffers[idx].simTime < newest.simTime) { priorOfNewest = idx; break; }
-      }
-      if (priorOfNewest < 0) {
-        // No blend source in this epoch (boot, or the first pack after a teleport):
-        // draw the arriving pose exactly instead of guessing.
-        setPresentedPair(-1, newestIdx, 1);
-        return 1;
-      }
-      if (!(timeS < newest.simTime)) {
-        // Extrapolation zone: the newest pair carries the freshest known velocity.
-        const span = newest.simTime - buffers[priorOfNewest].simTime;
-        const alpha = span > 0 ? 1 + (timeS - newest.simTime) / span : 1;
-        setPresentedPair(priorOfNewest, newestIdx, alpha);
-        return alpha;
-      }
-      // Walk only within the newest epoch. The first older pack from another epoch ends the
-      // window: serving across it is exactly the old-sector ghost this contract forbids. A
-      // same-epoch pack stamped ahead of the newest belongs to a rewound stream — skip it.
-      let oldestSameEpoch = -1;
-      let previousIdx = newestIdx;
-      for (let i = 1; i < count; i++) {
-        const idx = bracketOrder[i];
-        if (buffers[idx].poseEpoch !== epoch) break;
-        const newerIdx = previousIdx;
-        const newer = buffers[newerIdx];
-        const older = buffers[idx];
-        if (!(older.simTime < newer.simTime)) continue;
-        oldestSameEpoch = idx;
-        if (timeS >= older.simTime && timeS <= newer.simTime) {
-          const span = newer.simTime - older.simTime;
-          const alpha = span > 0 ? (timeS - older.simTime) / span : 1;
-          setPresentedPair(idx, newerIdx, alpha);
-          // Guard the register: a must always be the older member (L4).
-          if (buffers[presentedPair.a].sequence >= buffers[presentedPair.b].sequence) {
-            presentedPair.a = -1;
-          }
-          return alpha;
-        }
-        previousIdx = idx;
-      }
-      // Behind all same-epoch history (clock lagged past the ring after a long hold): serve
-      // the oldest pack of THIS epoch at alpha 0; the servo re-seats without a rewind.
-      if (oldestSameEpoch >= 0) {
-        setPresentedPair(-1, oldestSameEpoch, 0);
-        return 0;
-      }
-      setPresentedPair(-1, newestIdx, 1);
-      return 1;
+      return resolveBracketInto(timeS, fallbackAlpha, presentedPair);
     },
   // E10 playout telemetry: the presented clock's latency behind the wall-paced sim moment,
   // the extrapolation past it, the depth of history under the presented moment, and the
@@ -1352,13 +1597,18 @@ function rowPoseHash(columns, row) {
  * row is absent. Generation-recycled rows fail closed to the latest pose exactly (never blend
  * a dead body's pose into the replacement).
  */
-function resolvePoseInto(snapshot, previous, entityId, alpha, slotHint, out, rowHint = -1, prevRowHint = -1) {
+function resolvePoseInto(snapshot, previous, entityId, alpha, slotHint, out, rowHint = -1, prevRowHint = -1,
+  expectedGeneration) {
   const index = rowHint >= 0
     ? rowHint
     : (slotHint >= 0
       ? snapshotRowForSlot(snapshot, slotHint, entityId)
       : snapshotIndexOf(snapshot, entityId));
   if (index < 0 || index >= (snapshot.count | 0)) return null;
+  if (Number.isInteger(expectedGeneration)) {
+    const generations = snapshot.columns.generation;
+    if (generations && generations[index] !== (expectedGeneration >>> 0)) return null;
+  }
   const p = index * 3;
   const q = index * 4;
   let x = snapshot.columns.position[p];
@@ -1406,10 +1656,11 @@ function resolvePoseInto(snapshot, previous, entityId, alpha, slotHint, out, row
   return out;
 }
 
-export function applySnapshotPoseToMesh(mesh, snapshot, entityId, origin, previous = null, alpha = 1, slotHint = -1) {
+export function applySnapshotPoseToMesh(mesh, snapshot, entityId, origin, previous = null, alpha = 1, slotHint = -1,
+  expectedGeneration) {
   if (!mesh || !mesh.position || !snapshot) return false;
   const pose = resolvePoseInto(
-    snapshot, previous, entityId, alpha, slotHint, _poseWriteScratch,
+    snapshot, previous, entityId, alpha, slotHint, _poseWriteScratch, -1, -1, expectedGeneration,
   );
   if (!pose) return false;
   const ox = origin && Number.isFinite(origin.x) ? origin.x : 0;

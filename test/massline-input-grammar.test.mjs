@@ -7,7 +7,9 @@ import {
   PROFILE_SETTINGS_KEY,
   bootstrapProfileSettingsBeforeRegistry,
 } from '../src/core/graphicsProfileBootstrap.js';
-import { input, DEFAULTS, domMouseDownEvent, domMouseUpEvent } from '../src/systems/input.js';
+import { save } from '../src/save/saveSystem.js';
+import { input, DEFAULTS, applyFlightKeyEvent, domMouseDownEvent, domMouseUpEvent } from '../src/systems/input.js';
+import { createGamepad } from '../src/systems/gamepad.js';
 import { createLaneTouchReducer } from '../src/systems/mobile/laneTouchReducer.js';
 
 const DT = 1 / 60;
@@ -74,21 +76,20 @@ function step(host, state, ticks = 1) {
   }
 }
 
-test('G18-02 new profiles: the Line is RMB, Space is the boost, and the defaults stay collision-free', () => {
+test('new profiles: F operates the Line, Shift boosts, and these defaults stay collision-free', () => {
   const fresh = createGameState(47);
   assert.equal(fresh.settings.controls.masslineBindingProfile, 'space-v1');
   for (const [schemeName, scheme] of Object.entries(DEFAULTS.SCHEMES)) {
-    // G18-02: the Line left the keyboard entirely (RMB in every door); Space is the boost.
-    assert.deepEqual(scheme.tether, [], `${schemeName} must expose no keyboard Line`);
-    assert.ok(scheme.boost.includes('Space'), `${schemeName} must seat boost on Space`);
+    assert.deepEqual(scheme.tether, ['KeyF'], `${schemeName} tether`);
+    assert.deepEqual(scheme.boost, ['ShiftLeft', 'ShiftRight'], `${schemeName} boost`);
     for (const [action, codes] of Object.entries(scheme)) {
-      if (action === 'boost' || !Array.isArray(codes)) continue;
-      assert.equal(codes.includes('Space'), false, `${schemeName}.${action} must not steal the Space boost`);
+      if (action !== 'boost') assert.ok(!codes.some(code => scheme.boost.includes(code)), `${schemeName}.${action} shares boost`);
+      if (action !== 'tether') assert.ok(!codes.includes('KeyF'), `${schemeName}.${action} shares tether`);
     }
   }
 });
 
-test('existing profiles migrate onto the unified table — the migration-written Space/F Line is stripped once', () => {
+test('existing profiles without overrides adopt the unified table', () => {
   const state = createGameState(47);
   const storage = {
     getItem(key) {
@@ -105,11 +106,75 @@ test('existing profiles migrate onto the unified table — the migration-written
 
   assert.equal(bootstrapProfileSettingsBeforeRegistry(state, storage), true);
   assert.equal(state.settings.controls.masslineBindingProfile, 'space-v1');
-  // G18-02: the one-set-of-keys pass runs after the legacy massline stamp and removes the
-  // migration-written tether override, so an untouched profile ends on "no overrides" —
-  // the new defaults (RMB Line, Space boost, wheel slices) apply.
   assert.equal(state.settings.controls.bindings, null);
   assert.equal(state.settings.controls.oneSetOfKeysVersion, 1);
+});
+
+function restoredInput(controls, route, ruleset) {
+  const settings = { gameplay: { controlScheme: 'pilot', controlSchemeV2: true }, controls };
+  const state = makeState();
+  if (ruleset) state.run = { kind: 'survival', phase: 'active', ruleset };
+  if (route === 'boot') {
+    bootstrapProfileSettingsBeforeRegistry(state, {
+      getItem: key => key === PROFILE_SETTINGS_KEY ? JSON.stringify({ version: 1, settings }) : null,
+    });
+  } else {
+    const owner = Object.create(save);
+    owner.state = state;
+    owner._readProfileSettings = () => route === 'profile' ? structuredClone(settings) : null;
+    const slot = route === 'profile'
+      ? { controls: { bindings: { boost: ['KeyZ'], tether: ['KeyX'] } } }
+      : settings;
+    owner._restoreSettings(slot);
+  }
+  const host = makeInput();
+  host.state = state;
+  return code => {
+    host.ingestLaneDomEvent({ type: 'keydown', code, pressed: true });
+    step(host, state);
+    const result = { boost: state.input.boost, latch: state.input.actions.massline.latch };
+    host.ingestLaneDomEvent({ type: 'keyup', code, pressed: false });
+    step(host, state);
+    return result;
+  };
+}
+
+test('old untouched keyboard profiles deliver Shift and F after boot or Continue', () => {
+  const oldDefaults = [
+    { bindings: null },
+    { masslineBindingProfile: 'space-v1', bindings: { tether: ['Space', 'KeyF'] } },
+    { masslineBindingProfile: 'space-v1', oneSetOfKeysVersion: 1, bindings: null },
+  ];
+  for (const ruleset of [null, 'swarm']) for (const route of ['boot', 'slot', 'profile']) {
+    for (const controls of oldDefaults) {
+      const press = restoredInput(controls, route, ruleset);
+      assert.deepEqual(press('ShiftLeft'), { boost: true, latch: false }, route);
+      assert.deepEqual(press('ShiftRight'), { boost: true, latch: false }, route);
+      assert.deepEqual(press('KeyF'), { boost: false, latch: true }, route);
+      assert.deepEqual(press('Space'), { boost: false, latch: false }, route);
+    }
+  }
+});
+
+test('saved custom keyboard actions and explicit unbinds survive both restore paths and modes', () => {
+  for (const ruleset of [null, 'swarm']) for (const route of ['boot', 'slot', 'profile']) {
+    const custom = restoredInput({ bindings: { boost: ['Space'], tether: ['KeyG'] } }, route, ruleset);
+    assert.deepEqual(custom('Space'), { boost: true, latch: false }, route);
+    assert.deepEqual(custom('KeyG'), { boost: false, latch: true }, route);
+    assert.deepEqual(custom('ShiftLeft'), { boost: false, latch: false }, route);
+    assert.deepEqual(custom('KeyF'), { boost: false, latch: false }, route);
+    assert.deepEqual(custom('KeyX'), { boost: false, latch: false }, route);
+
+    const partial = restoredInput({ bindings: { boost: ['KeyB'], tether: ['Space', 'KeyF'] } }, route, ruleset);
+    assert.deepEqual(partial('KeyB'), { boost: true, latch: false }, route);
+    assert.deepEqual(partial('Space'), { boost: false, latch: true }, route);
+
+    const unbound = restoredInput({
+      masslineBindingProfile: 'space-v1', oneSetOfKeysVersion: 1, bindings: { boost: [], tether: [] },
+    }, route, ruleset);
+    assert.deepEqual(unbound('ShiftLeft'), { boost: false, latch: false }, route);
+    assert.deepEqual(unbound('KeyF'), { boost: false, latch: false }, route);
+  }
 });
 
 test('G18-02 RMB press publishes an immediate normalized latch packet', () => {
@@ -123,6 +188,64 @@ test('G18-02 RMB press publishes an immediate normalized latch packet', () => {
   assert.equal(state.input.actions.massline.phase, 'preview');
   assert.equal(state.input.actions.tetherFire, true, 'legacy latch consumer stays bridged');
   assert.equal(state.input.brake, false, 'the Line does not also brake');
+});
+
+test('the stock F press latches while steering in Adventure and Swarm', () => {
+  for (const ruleset of [null, 'swarm']) {
+    const host = makeInput();
+    const state = makeState();
+    if (ruleset) state.run = { kind: 'survival', phase: 'active', ruleset };
+    host.state = state;
+    host.ingestLaneDomEvent({ type: 'keydown', code: 'KeyW', pressed: true });
+    host.ingestLaneDomEvent({ type: 'keydown', code: 'KeyF', pressed: true });
+    step(host, state);
+    assert.equal(state.input.moveZ, 1);
+    assert.equal(state.input.actions.massline.latch, true);
+  }
+});
+
+test('Cargo-owned pad input stays out of flight through close until the held buttons release', () => {
+  const state = makeState();
+  const gamepad = createGamepad({ state });
+  const host = makeInput(gamepad);
+  host.state = state;
+  state.player.tether.active = true;
+  state.player.tether.targetId = 'rock';
+  const hardware = (held, captureMode = false) => {
+    const pad = { id: 'cargo-test', index: 0, mapping: 'standard', connected: true,
+      axes: [0, held.includes(0) ? -0.6 : 0, 0, 0],
+      buttons: Array.from({ length: 17 }, (_, i) => ({ pressed: held.includes(i), value: held.includes(i) ? 1 : 0 })) };
+    host.ingestLaneDomEvent({ type: 'gamepadFrame', frame: { pads: [pad], captureMode } });
+    step(host, state);
+  };
+  hardware([]);
+  hardware([6]);
+  assert.equal(state.input.actions.massline.source, 'gamepad');
+
+  // CONTROLLER-1 seats: A = Accept/Shove, B = Back/Bomb, RB = Boost, LT = the Line.
+  hardware([0, 1, 5, 6], true);
+  assert.equal(state.input.boost, false);
+  assert.equal(state.input.moveZ, 0);
+  assert.equal(state.input.actions.massline.cut, false, 'taking the UI pad does not cut a short Line hold');
+  assert.notEqual(state.input.actions.shove?.pressed, true);
+  assert.notEqual(state.input.actions.bomb?.pressed, true);
+  hardware([0, 1, 5, 6]);
+  assert.equal(state.input.boost, false, 'Cargo-held RB cannot become a held Boost after close');
+  assert.equal(state.input.moveZ, 0);
+  assert.equal(state.input.moveX, 0, 'the captured stick stays fenced too');
+  assert.notEqual(state.input.actions.shove?.pressed, true, 'Cargo Accept cannot become a fresh Shove after close');
+  assert.notEqual(state.input.actions.bomb?.pressed, true, 'Cargo Back cannot become a fresh Bomb press');
+  hardware([]);
+  hardware([0, 1, 5]);
+  assert.equal(state.input.boost, true, 'a fresh RB press is Boost again');
+  assert.equal(state.input.actions.shove.pressed, true, 'a fresh A press reaches the Shove power');
+  assert.equal(state.input.actions.bomb.pressed, true, 'a fresh B press reaches the Bomb power');
+
+  state.ui.cargoPanelOpen = true;
+  host.ingestLaneDomEvent({ type: 'keydown', code: 'KeyW', pressed: true });
+  hardware([0, 1, 5]);
+  assert.equal(state.input.boost, false, 'same-realm Cargo ownership also fences the pad');
+  assert.equal(state.input.moveZ, 1, 'keyboard steering remains live');
 });
 
 test('worker touch tap survives when press and neutral arrive before the same sim step', () => {
@@ -151,6 +274,48 @@ test('worker touch tap survives when press and neutral arrive before the same si
   frame({}, ['tether']);
   step(host, state, 2);
   assert.equal(state.input.actions.tetherCut, false, 'a cancelled contact cannot cut the Line');
+});
+
+test('R17: F and the right mouse button are the same button — a tap of F on a held body throws it, never just drops it', (t) => {
+  const saved = { ...MASSLINE2_FLAGS };
+  t.after(() => Object.assign(MASSLINE2_FLAGS, saved));
+  Object.assign(MASSLINE2_FLAGS, { enabled: true, throw: true });
+  for (const device of ['F', 'RMB']) {
+    const host = makeInput();
+    const state = makeState();
+    host.state = state;
+    state.entities.get('rock').data = { isChunk: true };
+    Object.assign(state.player.tether, { active: true, targetId: 'rock', attachmentId: 8 });
+    const down = () => (device === 'F' ? applyFlightKeyEvent(host, { code: 'KeyF', pressed: true })
+      : domMouseDownEvent(host, { button: 2, clientX: 40, clientY: 40 }));
+    const up = () => (device === 'F' ? applyFlightKeyEvent(host, { code: 'KeyF', pressed: false })
+      : domMouseUpEvent(host, { button: 2, clientX: 40, clientY: 40 }));
+    down(); step(host, state);
+    assert.equal(state.input.actions.throwArm, true, `${device}: the press on a held body arms the throw`);
+    up(); step(host, state);
+    let cut = state.input.actions.tetherCut === true;
+    step(host, state);
+    cut = cut || state.input.actions.tetherCut === true;
+    assert.equal(cut, false, `${device}: the tap throws through the throw owner; it never drops the body in place`);
+  }
+});
+
+test('R17: holding the Line reels in, and holding it with S pays out instead of reversing', () => {
+  const host = makeInput();
+  const state = makeState();
+  host.state = state;
+  Object.assign(state.player.tether, { active: true, targetId: 'rock', attachmentId: 8 });
+  host._m2 = true;
+  step(host, state, 20);
+  assert.ok(state.input.actions.reelDelta < 0, 'hold = reel in');
+  host._keys.KeyS = true;
+  step(host, state, 2);
+  assert.ok(state.input.actions.reelDelta > 0, 'hold + S = pay out');
+  assert.ok(!(state.input.moveZ < 0), 'S is the pay-out while the Line is held, not a reverse burn');
+  host._keys.KeyS = false;
+  host._keys.KeyW = true;
+  step(host, state, 2);
+  assert.ok(state.input.moveZ > 0.9, 'W stays full thrust while you hold the Line (no 25 % hijack)');
 });
 
 test('one RMB press can grab a throwable body without immediately throwing it', (t) => {
@@ -254,7 +419,8 @@ test('CADENCE: a motionless hold past the tap window never cuts on release (hold
   // neutral — not a silent entry into some other control mode; no reel/orbit axis is commanded.
   assert.equal(state.input.actions.massline.lineControl, true,
     'a motionless hold is line control holding position: mode entered, axes neutral');
-  assert.equal(state.input.actions.massline.lineLength, 0, 'no reel axis was commanded');
+  assert.equal(state.input.actions.massline.lineLength, -1,
+    'R17: "hold = reel in" — holding the Line winds it in with no axis pressed');
   assert.equal(state.input.actions.massline.orbitDirection, 0, 'no orbit axis was commanded');
   host._m2 = false;
   step(host, state);
@@ -353,11 +519,11 @@ test('PQ-003 line-control maps forward/reverse/turn/boost and clears on modal fo
   const state = makeState();
   state.player.tether.active = true;
   state.player.tether.targetId = 'rock';
-  // G18-02: the Line hold is RMB; Space is the boost (the pump axis of line control).
+  // The right mouse button holds the Line and Shift provides the pump axis.
   host._m2 = true;
   host._keys.ArrowDown = true;
   host._keys.ArrowRight = true;
-  host._keys.Space = true;
+  host._keys.ShiftLeft = true;
   step(host, state, 14);
 
   assert.ok(state.input.actions.massline, 'input must publish the normalized Massline packet');
@@ -393,9 +559,11 @@ test('PQ-003 modal reset blocks held-through input but accepts the first fresh p
   assert.equal(state.input.actions.massline.latch, false, 'a held-through press cannot leak out of the modal');
 });
 
-test('the rope stays on A while a dock prompt is up, because dock is a different button', () => {
+test('the rope stays on the pad Line button while a dock prompt is up, because dock is a different button', () => {
   const gp = {
-    axes: { leftX: -0.75, leftY: -0.8, rightX: 0, rightY: 0 },
+    // CONTROLLER-1 twin-stick: the left stick is a screen-space drive vector — pushing the
+    // world-forward direction feeds the reel channel, the strafe channel carries orbit intent.
+    axes: { leftX: 0.75, leftY: -0.8, rightX: 0, rightY: 0 },
     actions: {
       massline: { held: true, pressed: true, released: false, value: 1 },
       boost: { held: true }, fire: { held: false }, mine: { held: false },
@@ -413,8 +581,8 @@ test('the rope stays on A while a dock prompt is up, because dock is a different
 
   assert.ok(state.input.actions.massline, 'input must publish the normalized Massline packet');
   assert.equal(state.input.actions.massline.lineControl, true);
-  assert.ok(state.input.actions.massline.lineLength < -0.7, 'stick forward reels in');
-  assert.ok(state.input.actions.massline.orbitDirection < -0.7, 'stick left requests counterclockwise orbit');
+  assert.ok(state.input.actions.massline.lineLength < -0.7, 'stick toward the line reels in');
+  assert.ok(state.input.actions.massline.orbitDirection > 0.7, 'the strafe channel carries the orbit request');
   assert.equal(state.input.actions.massline.pump, true);
 
   const dockHost = makeInput(gp);
@@ -422,7 +590,7 @@ test('the rope stays on A while a dock prompt is up, because dock is a different
   dockState.ui.dockInRange = true;
   step(dockHost, dockState);
   assert.ok(dockState.input.actions.massline);
-  assert.equal(dockState.input.actions.massline.latch, true, 'A still latches while the dock prompt is up');
+  assert.equal(dockState.input.actions.massline.latch, true, 'the Line button still latches while the dock prompt is up');
 });
 
 test('active cold gamepad right-stick aim is explicit intent and neutral/modal input clears it', () => {

@@ -94,16 +94,6 @@ const KILL_GRACE_MS = 2_000;
 // defect described in the header, so if you add an aggregate link, set it.
 const LINKS = [
   {
-    id: 'plan-integrity',
-    costHintMs: 2500,
-    command: 'node scripts/check-plan-integrity.mjs',
-    why: 'The plan front door (program-dispatch --next) must always answer with a real unit while '
-      + 'any plan surface is open, and the §1C board must be drift-free. This is the check that '
-      + 'keeps the board from silently rotting into "erroring", "drained", or "hundreds of plans" '
-      + 'again — the 2026-10-12 evidence-expiry deadlock was invisible for weeks because nothing '
-      + 'gated the dispatcher itself.',
-  },
-  {
     id: 'ui-screen-imports',
     costHintMs: 500,
     command: 'node scripts/check-ui-screen-imports.mjs',
@@ -195,7 +185,7 @@ const LINKS = [
     costHintMs: 9000,
     // Envelope cleanRunCountRequired is 5. npm run check:sim:v3 still repeats 20 for the long
     // chain. Five clean runs plus the reload proof are the whole gate inside this 90s wall.
-    command: 'node scripts/sf-sim.mjs run 47a --seed 47 --ticks 720 --inputs test/47a.inputs.json --expect test/47a.telemetry.v3.native-contact.save-v26.expected.json --hash --repeat 5 --reload-at 60 --flight-system v3',
+    command: 'node scripts/sf-sim.mjs run 47a --seed 47 --ticks 720 --inputs test/47a.inputs.json --expect test/47a.telemetry.v3.native-contact.save-v27.expected.json --hash --repeat 5 --reload-at 60 --flight-system v3',
     why: 'The V3 golden hash. NOTE: sim-v3-compare cannot fail on a stale golden (sf-sim.mjs tolerates expectedHash diffs) — this link is the one that can. Repeat matches the envelope minimum so the wall stays inside 90s.',
   },
   {

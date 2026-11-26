@@ -280,7 +280,7 @@ function renderSignElement(element, notice, label) {
   return notice;
 }
 
-const SIGN_LABELS = { billboard: 'Dockside notice', bay: 'Bay screen', crawl: 'Station wire' };
+const SIGN_LABELS = { billboard: 'Dockside notice', bay: 'Bay board', crawl: 'Station bulletin' };
 
 /* ── PULSE-TIME: berth lighting follows the world calendar ─────────────────────────── */
 //

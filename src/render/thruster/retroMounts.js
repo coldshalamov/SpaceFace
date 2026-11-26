@@ -51,6 +51,35 @@ export function sharedRetroHardwareMaterial(mesh) {
   return RETRO_OPAQUE_MATERIALS[index] || null;
 }
 
+// The throat and iris glow only on the player's ship: playerRetroVolume is their one writer. On
+// every other ship they sit at their idle values for life, yet each ship used to carry its own
+// pair of materials for them, which put two material changes and four direct draws on every
+// hostile for parts 8 and 16 triangles big. A swarm hostile's throat and iris now use one shared
+// idle material per plume colour, so they can join the same cross-ship pool as the rest of the
+// retro hardware (partsLibrary poolSwarmRetroHardware).
+const RETRO_IDLE_HOT_MATERIALS = new Map();
+
+export function sharedRetroIdleHotMaterial(mesh) {
+  if (!mesh || mesh.isMesh !== true || mesh.geometry?.userData?.spacefaceSharedAsset !== true) return null;
+  const match = /^Retro_(Throat|Iris)_/.exec(mesh.name || '');
+  const own = mesh.material;
+  if (!match || !own || !own.isMeshStandardMaterial || !own.emissive) return null;
+  const key = match[1] + '|' + own.emissive.getHexString();
+  let shared = RETRO_IDLE_HOT_MATERIALS.get(key);
+  if (!shared) {
+    const iris = match[1] === 'Iris';
+    shared = new THREE.MeshStandardMaterial({
+      color: iris ? '#04070b' : '#0a1016', emissive: own.emissive.clone(),
+      emissiveIntensity: iris ? RETRO_IRIS_IDLE : 0.04,
+      metalness: iris ? 0.2 : 0.55, roughness: iris ? 0.6 : 0.52, side: THREE.DoubleSide,
+    });
+    shared.userData.spacefaceSharedAsset = true;
+    shared.userData.spacefaceSharedRetroHardware = true;
+    RETRO_IDLE_HOT_MATERIALS.set(key, shared);
+  }
+  return shared;
+}
+
 function merged(parts) {
   const geometry = mergeGeometries(parts, false);
   for (const part of parts) part.dispose();

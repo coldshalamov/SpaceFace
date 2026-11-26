@@ -32,8 +32,8 @@
     "metadataUrl": "assets/ships/release/render-packages/cold-locker/render-package.json",
     "outputDir": "assets/ships/release/render-packages/cold-locker",
     "releaseAssetId": "place_cold_locker",
-    "releaseBytes": 324392,
-    "releaseSha256": "def6397781560e3889d0ece05b28109840bc055c03ac2a7b98bd9025f8e7a939",
+    "releaseBytes": 278000,
+    "releaseSha256": "9c8df51b38602dbb1372d224394bbe16041d4857d444d8ecd5e1b1096e3d1f7e",
     "runtimeAssetId": "SF_PLACE_COLD_LOCKER",
     "sceneRoot": true,
     "slot": "place",
@@ -46,8 +46,8 @@
     "ktx2Textures": 6,
     "meshoptBufferViews": 93,
     "release": "assets/ships/release/parts/places/place_cold_locker.glb",
-    "releaseBytes": 324392,
-    "releaseSha256": "def6397781560e3889d0ece05b28109840bc055c03ac2a7b98bd9025f8e7a939",
+    "releaseBytes": 278000,
+    "releaseSha256": "9c8df51b38602dbb1372d224394bbe16041d4857d444d8ecd5e1b1096e3d1f7e",
     "source": "assets/ships/parts/places/place_cold_locker.glb",
     "sourceBytes": 828412,
     "sourceSha256": "9eb14831390a34659156771e09d54b8b9dadf897bd27151a13c873a209c47d64",
@@ -409,8 +409,8 @@
     ]
   },
   "sourceGlb": {
-    "bytes": 324392,
-    "sha256": "def6397781560e3889d0ece05b28109840bc055c03ac2a7b98bd9025f8e7a939",
+    "bytes": 278000,
+    "sha256": "9c8df51b38602dbb1372d224394bbe16041d4857d444d8ecd5e1b1096e3d1f7e",
     "uri": "assets/ships/release/parts/places/place_cold_locker.glb"
   }
 }

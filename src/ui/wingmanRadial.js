@@ -21,10 +21,11 @@ const STYLE_ID = 'sf-wingman-radial-style';
 // visual language as the rest of the HUD — the old ⛊/✦ Unicode marks rendered at mixed weights
 // and ⛊ has no consistent cross-platform glyph.
 const OPTIONS = [
-  { key: '1', order: 'attack', label: 'Attack Target', icon: 'target', pos: 'top', needsTarget: true },
-  { key: '2', order: 'screen', label: 'Screen', icon: 'shield', pos: 'right' },
-  { key: '3', order: 'regroup', label: 'Regroup', icon: 'beacon', pos: 'bottom' },
-  { key: '4', order: 'hold', label: 'Hold', icon: 'clock', pos: 'left' },
+  // R17: radial orders ride 6–9; 1–5 stay the powers.
+  { key: '6', order: 'attack', label: 'Attack Target', icon: 'target', pos: 'top', needsTarget: true },
+  { key: '7', order: 'screen', label: 'Screen', icon: 'shield', pos: 'right' },
+  { key: '8', order: 'regroup', label: 'Regroup', icon: 'beacon', pos: 'bottom' },
+  { key: '9', order: 'hold', label: 'Hold', icon: 'clock', pos: 'left' },
 ];
 
 // The dial's geometry, in its own 400-unit box (the overlay is 400px square).
@@ -212,9 +213,16 @@ export function createWingmanRadial(ctx) {
     return (state.automation && state.automation.fleet) || [];
   }
 
+  // Same fence commsRadial uses: a modal/live screen owns the keys — the dial must not
+  // paint over it, eat its Tab/Escape, or fire orders through it.
+  function blocked() {
+    const b = typeof document !== 'undefined' ? document.body : null;
+    return !!(b && (b.classList.contains('ui-modal-open') || b.classList.contains('ui-live-screen')));
+  }
+
   function toggle() {
     if (open) { close(); return; }
-    if (state.mode !== 'flight' || (state.ui && state.ui.docked)) return;
+    if (state.mode !== 'flight' || (state.ui && state.ui.docked) || blocked()) return;
     const f = fleet();
     if (!f.length) {
       bus.emit('toast', { text: 'No wingmen deployed — assign a fleet at a station', kind: 'info', ttl: 2.5 });
@@ -325,7 +333,7 @@ export function createWingmanRadial(ctx) {
   }
 
   function onKey(ev) {
-    if (!open) return;
+    if (!open || blocked()) return;
     if (ev.key === 'Escape') {
       ev.preventDefault(); ev.stopPropagation();
       bus.emit('audio:cue', { id: 'ui_back' });
@@ -347,6 +355,9 @@ export function createWingmanRadial(ctx) {
   // Close if flight is left (dock / menu / death) so it can't linger over a modal.
   bus.on('mode:changed', () => { if (open && state.mode !== 'flight') close(); });
   bus.on('dock:docked', () => close());
+  // Every stack screen is a pausing modal; when one lands on top the dial must go
+  // rather than float an order surface over it (body-class reads race the emit).
+  bus.on('ui:screenTop', (p) => { if (open && p && p.id) close(); });
 
   // FB-138 — the order receipt. The refused slot says why; a converted order shows
   // what it became on the slot that was issued; a partial status shows the count.

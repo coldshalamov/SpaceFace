@@ -2,9 +2,13 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
+import { recordImpulseProvenance } from '../src/combat/impulseKernel.js';
+import { ensureCombatState } from '../src/combat/runtime.js';
 import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
 import { mulberry32 } from '../src/core/rng.js';
+import { createRunState } from '../src/core/runState.js';
+import { createSimulation } from '../src/core/sim.js';
 import { runSession } from '../src/systems/runSession.js';
 import { survivalRun } from '../src/systems/survivalRun.js';
 import {
@@ -24,6 +28,7 @@ import { compileSwarmOptic } from '../src/data/opticStructures.js';
 import { PRODUCTION_INIT_ORDER, PRODUCTION_UPDATE_ORDER } from '../src/runtime/authoritativeSystemManifest.js';
 import { planWave } from '../src/systems/survivalWavePlanner.js';
 import { SWARM_RULESET } from '../src/data/swarmMode.js';
+import { SWARM_MAW_OFFCUT_TAG } from '../src/data/swarmMawOffcut.js';
 import { swarmOpeningTerrainStage } from '../src/data/swarmOpeningTerrain.js';
 import {
   OPENING_THROWABLE_SEPARATION_WU,
@@ -350,6 +355,95 @@ test('a second cull releases the NEW excess, not a re-count of what is already g
   add(30, 500);
   h.bus.emit('run:wavePlanned', { wave: 2, plan: planFor(2) });
   assert.equal(standing(), SWARM_WRECK_KEEP, 'and the second pass trims the NEW excess too');
+});
+
+test('surplus wrecks retire while players stay with their cover and can still claim a released hull', () => {
+  const sim = createSimulation({ seed: SEED, systems: [] });
+  const { state, bus, helpers, registry } = sim;
+  const arena = Object.create(swarmArena);
+  try {
+    state.mode = 'flight';
+    state.simTime = 10;
+    state.run = createRunState({ kind: 'survival', ruleset: SWARM_RULESET, seed: SEED });
+    Object.assign(state.run, { arenaId: ARENA, phase: 'cleanup' });
+    const player = sim.spawn({ type: 'ship', pos: { x: 0, z: 0 } });
+    state.playerId = player.id;
+    arena.init({ state, bus, helpers, registry });
+    arena._nextTerrainCheck = Infinity;
+    const core = registry.get('core');
+    const removals = [];
+    bus.on('entity:destroyed', receipt => {
+      if (receipt.type === 'wreck') removals.push(receipt);
+    });
+    const wreck = (x, z, data = {}, vel = { x: 0, z: 0 }) => sim.spawn({
+      type: 'wreck', pos: { x, z }, vel, radius: 12, ttl: Infinity, data,
+    });
+    const latch = body => {
+      const attachment = {
+        id: 'test-line', ownerId: player.id, targetId: body.id, targetGeneration: body.occupantGeneration,
+        defId: 'tether_standard', state: 'active',
+      };
+      ensureCombatState(state).attachments.byId[attachment.id] = attachment;
+      state.player.tether = { active: true, targetId: body.id, attachmentId: attachment.id };
+      bus.emit('tether:latched', { sourceId: player.id, targetId: body.id });
+    };
+    const near = wreck(60, 25);
+    const cover = wreck(105, 10, { [SWARM_DEBRIS_TAG]: true });
+    const offcut = wreck(590, 0, { [SWARM_MAW_OFFCUT_TAG]: true });
+    const foreign = wreck(900, 0, { despawnAt: state.simTime + 1 });
+    const releasedTerrain = sim.spawn({
+      type: 'asteroid', pos: { x: 100, z: -40 }, radius: 14,
+      data: { [SWARM_OPTIC_TAG]: true, despawnAt: state.simTime + 1 },
+    });
+    let held, lateHeld, thrown;
+
+    for (let wave = 1; wave <= 5; wave++) {
+      state.run.wave = wave;
+      for (let i = 0; i < 22; i++) {
+        const angle = i * 0.29 + wave * 0.12;
+        const radius = 175 + i * 8;
+        wreck(Math.cos(angle) * radius, Math.sin(angle) * radius);
+      }
+      if (wave === 5) {
+        held = wreck(570, 0);
+        latch(held);
+        lateHeld = wreck(690, 0);
+        thrown = wreck(610, 0, {}, { x: 90, z: 0 });
+        recordImpulseProvenance(thrown, {
+          actorId: player.id, tag: 'massline_throw', appliedTick: state.tick, magnitude: 90,
+        });
+      }
+      bus.emit('run:wavePlanned', { wave, plan: planFor(wave) });
+      for (let step = 0; step < 720; step++) {
+        state.tick++;
+        state.simTime += 1 / 60;
+        arena.update();
+        if (wave === 5 && step === 359) latch(lateHeld);
+        core.lifetimeSweep(1 / 60, state);
+        bus.flush();
+      }
+    }
+
+    const ordinary = state.entityList.filter(entity => entity.alive && entity.type === 'wreck'
+      && entity !== held && entity !== lateHeld && entity !== thrown && !entity.data?.[SWARM_DEBRIS_TAG]
+      && !entity.data?.[SWARM_MAW_OFFCUT_TAG]);
+    assert.equal(ordinary.length, SWARM_WRECK_KEEP, 'the pilot stays put while surplus hulks leave');
+    for (const body of [near, held, lateHeld, thrown, cover, offcut, releasedTerrain]) {
+      assert.equal(state.entities.get(body.id), body, `the retained body ${body.id} survives`);
+    }
+    assert.equal(state.player.tether.targetId, lateHeld.id);
+    assert.equal(removals.find(({ entity }) => entity === foreign)?.reason, undefined,
+      'an unrelated deadline keeps its ordinary destruction receipt');
+    const retirements = removals.filter(({ reason }) => reason === 'swarm-wreck-surplus');
+    assert.equal(retirements.length, 111 - SWARM_WRECK_KEEP);
+    for (const receipt of retirements) {
+      assert.equal(receipt.occupantGeneration, receipt.entity.occupantGeneration);
+      assert.equal(receipt.entity.alive, false, 'the presentation handoff follows physical expiry');
+    }
+  } finally {
+    arena.destroy();
+    sim.dispose();
+  }
 });
 
 test('a wreck someone else already put a shorter clock on keeps its own deadline', () => {

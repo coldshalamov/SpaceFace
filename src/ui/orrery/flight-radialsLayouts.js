@@ -85,9 +85,6 @@ ${W} .sf-wradial__face { transition:transform .12s cubic-bezier(.2, .9, .3, 1.2)
 ${W} .sf-wradial__wedge:not(.sf-wradial__wedge--disabled):active .sf-wradial__face { transform:translate(-50%, -50%) scale(.95); }
 ${W} .sf-wradial__wedge:not(.sf-wradial__wedge--disabled):active .sf-wradial__seg .sf-wradial__segarc { stroke-width:4; }
 
-/* ── comms fan: the keys ride the token key height (--fan-key-h: written by commsRadial.js) ── */
-${F} .sf-commsfan__wedge { height:var(--fan-key-h, 40px); }
-
 /* ── a radial owns the frame: every world-positioned mark stands down ─────────────────────────
    The tell chips (.sf-tells), the lock sigil (.sf-lockdiamond), the gravity/momentum marks all
    live at projected world positions — a layer the translucent radial fills were never meant to
@@ -99,38 +96,7 @@ ${F} .sf-commsfan__wedge { height:var(--fan-key-h, 40px); }
    open/close transitions only: a body-anchored :has() here restyled the whole HUD subtree
    (~900 elements) on every ordinary HUD text/attribute write. */
 body.sf-radial-owns-frame
-  :is(.sf-tells, .sf-lockdiamond, .sf-gravity-mark, .sf-momentum-sink) { visibility:hidden !important; }
-
-/* ── comms fan: the shade pool becomes a machined bezel, not a rounded slab ───────────────────
-   The feathered ellipse did darken the world behind the fan, but its soft silhouette was the
-   most card-like shape on the surface (critic finding 2). Same job — part the live HUD — drawn
-   the instrument way: a near-opaque faceted plate clipped to a cut-corner polygon, plus an
-   etched rim light on the same clip (uniform hairline + brighter top-left facets) so the edges
-   read machined. The clip-path corners stay inside the old pool's footprint, so nothing that
-   was covered is newly exposed. */
-${F}::before { inset:-34px -52px -28px -44px; border-radius:0;
-  clip-path:polygon(24px 0, calc(100% - 10px) 0, 100% 10px, 100% calc(100% - 24px),
-    calc(100% - 24px) 100%, 10px 100%, 0 calc(100% - 10px), 0 24px);
-  background:
-    /* the top edge is a read edge — the plate carries a tick scale along it the way the radar
-       bezel and the ribbon baseline do, so the long straight run stops reading as a bare slab
-       side (craft critic r2 finding R2) */
-    repeating-linear-gradient(90deg, rgb(232 226 212 / .34) 0 1.5px, transparent 1.5px 13px)
-      26px 0 / calc(100% - 40px) 5px no-repeat,
-    linear-gradient(163deg, rgb(5 7 11 / .97), rgb(4 6 10 / .94) 46%, rgb(6 8 13 / .96)); }
-/* No etched rim on the pool: consoleStandard seats the fan on its own hairline float card and
-   turns this plate back into a feathered shade, so a rim traced at the pool's outer bounds read
-   as a loose second frame about 40px outside the card (bench comms-radial, ui-polish-527). */
-
-/* ── one Hand per screen: while the contact plate is under the pointer (its "HAIL DECK" hint is
-   the amber then), the verb holding keyboard focus stands down — the mirror of the wedge-side
-   rule commsLayouts already authors ─────────────────────────────────────────────────────────── */
-${F} .sf-commsfan__hub:is(:hover, :focus-visible) ~ .sf-commsfan__wedgehost .sf-commsfan__wedge:not(:hover):not(.is-dim) { color:rgb(232 230 216 / .9); }
-${F} .sf-commsfan__hub:is(:hover, :focus-visible) ~ .sf-commsfan__wedgehost .sf-commsfan__wedge:not(:hover):not(.is-dim)::before {
-  background:rgb(232 230 216 / .92) !important;
-  box-shadow:0 0 0 2px rgb(5 7 10), 0 0 8px 1px rgb(232 230 216 / .4) !important; }
-${F} .sf-commsfan__hub:is(:hover, :focus-visible) ~ .sf-commsfan__wedgehost .sf-commsfan__wedge:not(:hover)::after { opacity:0; }
-${F} .sf-commsfan__hub:is(:hover, :focus-visible) ~ .sf-commsfan__wedgehost .sf-commsfan__wedge:not(:hover):not(.is-dim) .sf-commsfan__keychip { color:var(--dp-phos, #dfeeff); }
+  :is(.sf-tells, .sf-lockdiamond, .sf-gravity-mark, .sf-momentum-sink, .sf-alert--dock, .sf-dock-prompt) { visibility:hidden !important; }
 
 /* ── wingman dial: the hub is the reading centre — deep enough glass that a live-HUD line behind
    it (the tell) cannot print through onto "2 CRAFT / TAB"; same glass hue, a near-opaque pour

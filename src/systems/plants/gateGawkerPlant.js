@@ -45,6 +45,7 @@ export function bobOffsetS(nowS, boost, tuning = GATE_GAWKER_TUNING) {
 }
 
 export const gateGawkerPlant = {
+  modes: ['swarm'],
   name: 'plants164',
 
   init(ctx) {

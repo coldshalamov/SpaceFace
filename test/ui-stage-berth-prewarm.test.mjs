@@ -1,13 +1,8 @@
-// The berth stage is prepared during the docking approach, not under the station screen (D67).
-//
-// Before this contract the first docked frame built the berth — three props and the player's hull
-// decoded, compiled, uploaded and shadow-baked on the main thread while the station screen was
-// opening — and on the owner's Intel iGPU the first click after docking waited seconds behind it.
-// These tests drive the real module with a stub renderer and a stub part loader and prove the
-// ORDER: compile, upload and the warm-up draw all happen while `state.ui.dockInRange` is true and
-// the game is still in flight; the docked request then adopts the warm stage and reports it live
-// on its very first frame with no compile, no upload and no warm-up of its own.
+// The berth loads, compiles and uploads during the approach (D67). Its draw belongs to the
+// docked picture. The first station frame can adopt the prepared stage without repeating
+// admission, while flight submits nothing for the hidden berth.
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import * as THREE from 'three';
 import { EnergyBoltPool } from '../src/render/weapons/energyBoltPool.js';
@@ -23,7 +18,6 @@ import {
   tickUiStagePrewarm,
   uiStageReport,
   uiStageResident,
-  warmUiStagePrewarm,
 } from '../src/render/uiStage.js';
 import { runRenderUpdatePhase } from '../src/core/renderUpdatePhase.js';
 
@@ -170,10 +164,32 @@ test('a title that finishes preparing under New Game defers its warm draw until 
   state.ui.stageRequest = { scene: 'title-field', hullDefId: 'ship_kestrel' };
   presentUiStage({ render, state });
   assert.equal(ops(log, 'compile').length, 1, 'Back reuses the prepared authored stage');
-  assert.equal(ops(log, 'render').length, drawsBefore + 2, 'Back warms once then presents the title');
+  assert.equal(ops(log, 'render').length, drawsBefore + 1, 'Back warms once; the covering plate skips later presents');
   assert.equal(uiStageReport().prepared.warm, true);
   presentUiStage({ render, state });
-  assert.equal(ops(log, 'render').length, drawsBefore + 3, 'later frames need only the presented draw');
+  assert.equal(ops(log, 'render').length, drawsBefore + 1, 'covered title-field does not draw every frame');
+});
+
+test('motion ask keeps presenting title-field after the warm draw', async (t) => {
+  reset(); t.after(reset);
+  const log = [];
+  setUiStagePartLoaderForTest(stubPartLoader(log));
+  const renderer = stubRenderer(log);
+  const state = flightState(log);
+  state.mode = 'menu';
+  state.ui.dockInRange = false;
+  state.ui.screenStack = ['motionAsk'];
+  state.ui.stageRequest = { scene: 'title-field', hullDefId: 'ship_kestrel' };
+  const render = { renderer };
+  presentUiStage({ render, state });
+  await settle(() => uiStageReport().hullDrawn === true, 'motion-ask title-field hull');
+  presentUiStage({ render, state });
+  const afterWarm = ops(log, 'render').length;
+  assert.ok(afterWarm >= 1, 'motion ask has drawn the field');
+  presentUiStage({ render, state });
+  assert.equal(ops(log, 'render').length, afterWarm + 1, 'motion ask presents title-field every frame');
+  presentUiStage({ render, state });
+  assert.equal(ops(log, 'render').length, afterWarm + 2, 'motion ask does not freeze on the warm frame');
 });
 
 test('releasing a stage during prop admission does not start its hull load afterward', async (t) => {
@@ -200,7 +216,7 @@ test('releasing a stage during prop admission does not start its hull load after
   assert.equal(uiStageResident(), false);
 });
 
-test('the berth is compiled, uploaded and warmed during the approach; the dock adopts it live on frame one', async (t) => {
+test('the berth is compiled and uploaded during the approach and adopted live on frame one', async (t) => {
   t.after(reset);
   const log = [];
   setUiStagePartLoaderForTest(stubPartLoader(log));
@@ -223,16 +239,7 @@ test('the berth is compiled, uploaded and warmed during the approach; the dock a
   assert.equal(ops(log, 'compile').length, 1, 'the stage compiled as one lit scene on approach');
   assert.equal(ops(log, 'residency').length, 1, 'one residency pass carried every admitted root');
   assert.equal(ops(log, 'initTexture').length, 0, 'no timer-burst uploads while flying');
-  assert.equal(ops(log, 'render').length, 0, 'nothing is drawn until a flight frame asks for the warm-up');
-
-  // A flight frame takes the warm-up draw; the world draw follows it in the same task.
-  assert.equal(warmUiStagePrewarm({ render, state }), true);
-  assert.equal(ops(log, 'render').length, 1, 'the warm-up is exactly one draw');
-  assert.equal(uiStageReport().prewarm.warmupPending, false);
-  assert.equal(uiStageReport().prewarm.prepared.warm, true);
-  assert.equal(renderer.shadowMap.enabled, false, 'the warm-up hands the shadow flag back to flight');
-  assert.equal(renderer.getRenderTarget(), null);
-  assert.equal(warmUiStagePrewarm({ render, state }), false, 'a warm prewarm is not drawn again');
+  assert.equal(ops(log, 'render').length, 0, 'preparation submits no stage draw');
 
   // The dock. The station screen requests the berth for the ship the player flies.
   const marks = { compile: ops(log, 'compile').length, load: ops(log, 'load').length, render: ops(log, 'render').length };
@@ -249,8 +256,10 @@ test('the berth is compiled, uploaded and warmed during the approach; the dock a
   assert.deepEqual(statuses, ['live'], 'the screen is live on its first frame, never "loading"');
   assert.equal(ops(log, 'compile').length, marks.compile, 'no compile after dock:docked');
   assert.equal(ops(log, 'load').length, marks.load, 'no decode after dock:docked');
-  assert.equal(ops(log, 'render').length, marks.render + 1, 'the docked frame is one draw: the picture, no warm-up');
-  assert.ok(report.marks.adopted >= report.marks.warmup, 'the warm-up finished before the dock adopted the stage');
+  assert.equal(ops(log, 'render').length, marks.render + 1, 'the first docked frame warms and presents in one draw');
+  assert.ok(report.marks.warmup >= report.marks.adopted, 'the docked stage owns warm-up');
+  assert.equal(renderer.shadowMap.enabled, false, 'stage draws return the renderer to its original shadow state');
+  assert.equal(renderer.getRenderTarget(), null);
 });
 
 test('a docked request the prewarm cannot satisfy releases it and builds as before', async (t) => {
@@ -263,7 +272,6 @@ test('a docked request the prewarm cannot satisfy releases it and builds as befo
 
   tickUiStagePrewarm({ render, state });
   await settle(() => uiStageReport().prewarm?.warmupPending === true, 'the prewarm to finish preparing');
-  warmUiStagePrewarm({ render, state });
 
   const statuses = [];
   state.ui.docked = true;
@@ -396,6 +404,9 @@ test('loss of a replaced renderer does not suspend or retire the replacement ren
 
 test('late live-stage completion releases its CPU owners without old-context dispose events', async (t) => {
   t.after(reset);
+  // The game's asset fetch resolves a local file URL under Node's test runner.
+  const tape = await readFile(new URL('../src/sim/titleAttractTapeData.json', import.meta.url), 'utf8');
+  t.mock.method(globalThis, 'fetch', async () => new Response(tape));
   let lost = false;
   const pending = [];
   const poolDisposals = [];
@@ -438,7 +449,7 @@ test('late live-stage completion releases its CPU owners without old-context dis
   assert.equal(gpuDisposeEvents.length, 0, `no old-context resource dispatches dispose after restore boundary: ${gpuDisposeEvents.slice(0, 2).join('\n---\n')}`);
 });
 
-test('the presentation frame warms the prewarm directly ahead of the world draw, in the same task', async (t) => {
+test('the first station frame presents the prepared berth without a second draw during active flight', async (t) => {
   t.after(reset);
   t.mock.method(console, 'error', () => {});
   const log = [];
@@ -450,10 +461,10 @@ test('the presentation frame warms the prewarm directly ahead of the world draw,
     prepareFrame() { calls.push('prepare'); return true; },
     drawPreparedFrame() { calls.push('draw'); },
   };
-  renderer.render = (scene) => { calls.push(`stage-warmup:${scene.name || 'scene'}`); log.push({ op: 'render' }); };
+  renderer.render = () => { calls.push('stage'); log.push({ op: 'render' }); };
   const state = flightState(log);
-  const frame = () => runRenderUpdatePhase({
-    state, render, vfx: { update() { calls.push('vfx'); } }, feel: null, ui: null, alpha: 1, frameDt: 1 / 60,
+  const frame = (frameRenderer = render) => runRenderUpdatePhase({
+    state, render: frameRenderer, vfx: { update() { calls.push('vfx'); } }, alpha: 1, frameDt: 1 / 60,
   });
 
   frame(); // the approach frame starts the prewarm
@@ -463,19 +474,26 @@ test('the presentation frame warms the prewarm directly ahead of the world draw,
 
   calls.length = 0;
   frame();
-  assert.deepEqual(calls, ['prepare', 'vfx', 'stage-warmup:scene', 'draw'],
-    'the warm-up draw is taken right before the world draw, which overwrites it before any present');
-  calls.length = 0;
-  frame();
-  assert.deepEqual(calls, ['prepare', 'vfx', 'draw'], 'one warm-up, then flight frames are untouched');
+  assert.deepEqual(calls, ['prepare', 'vfx', 'draw']);
+  assert.equal(uiStageReport().prewarm.warmupPending, true);
 
-  // The docked frame adopts it: the frozen branch draws the stage once, no warm-up.
+  calls.length = 0;
+  frame({ renderer, renderFrame() { calls.push('draw'); } });
+  assert.deepEqual(calls, ['draw', 'vfx'], 'the compatibility flight path does not draw a berth either');
+
+  const admissionCount = log.length;
   state.ui.docked = true;
   const statuses = [];
   state.ui.stageRequest = { scene: 'berth', hullDefId: 'ship_kestrel', onStatus: (status) => statuses.push(status) };
   calls.length = 0;
   assert.equal(frame(), false, 'docked presentation does not acknowledge a world frame');
-  assert.deepEqual(calls, ['stage-warmup:scene'], 'exactly one stage draw on the docked frame');
+  assert.deepEqual(calls, ['stage'], 'the first docked frame warms and presents together');
+  assert.ok(log.slice(admissionCount).every(({ op }) => op === 'render'), 'no extra loading, compile or upload at dock');
   assert.deepEqual(statuses, ['live']);
   assert.equal(uiStageReport().adopted, true);
+  assert.equal(uiStageReport().hullDrawn, true);
+
+  calls.length = 0;
+  frame();
+  assert.deepEqual(calls, ['stage'], 'later docked frames only draw the visible stage');
 });

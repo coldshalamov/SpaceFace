@@ -134,7 +134,7 @@ test('a lawful patrol counts as protected; hostiles and the dead do not', () => 
   assert.doesNotMatch(dom4.throwLabel.textContent, /COLLATERAL/, 'an unpositioned body triggers nothing');
 });
 
-test('a stale solution keeps its STALE read with no speculation', () => {
+test('a degraded solution paints nothing: no tag, no ring, no STALE word', () => {
   const dom = fakeDom();
   const state = stateWith([civilian(9, 100, 0)]);
   const stale = {
@@ -142,5 +142,8 @@ test('a stale solution keeps its STALE read with no speculation', () => {
     solution: { ...CONFIDENT, degraded: true },
   };
   masslineHud._updateThrowMark(dom, stale, state, w2sCenter);
-  assert.equal(dom.throwLabel.textContent, 'STALE', 'uncertainty keeps its own read');
+  // Owner 2026-11-23: the aim is words only, and a solution the target turned out of promises
+  // nothing, so nothing is painted until the solution comes back.
+  assert.equal(dom.throwEl.style.display, 'none', 'a degraded solution hides the aim tag');
+  assert.doesNotMatch(dom.throwLabel.textContent, /STALE|COLLATERAL/);
 });

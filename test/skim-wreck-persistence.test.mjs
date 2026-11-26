@@ -36,7 +36,9 @@ function moveAwayAndProveDormant(sim, wrecks) {
 
   const near = ensureActivityClassified(state);
   for (const wreck of wrecks) {
-    assert.equal(wreck.activity?.simTier, SIM_TIER.S1_NEAR, 'the live encounter starts in near simulation');
+    // The Skim lands ahead of the pilot, on the glass, so its wrecks start exact (seen) or near.
+    assert.ok([SIM_TIER.S0_EXACT, SIM_TIER.S1_NEAR].includes(wreck.activity?.simTier),
+      'the live encounter starts in exact or near simulation: ' + wreck.activity?.simTier);
     assert.ok(entityNeedsPhysics(wreck), 'the encounter wrecks begin physics-admitted near the player');
     assert.ok(near.physicsStatics.includes(wreck) || near.physicsDynamics.includes(wreck));
   }
@@ -50,7 +52,9 @@ function moveAwayAndProveDormant(sim, wrecks) {
   state.tick += 1;
   state.simTime += 1 / 60;
   const grace = ensureActivityClassified(state);
-  assert.ok(wrecks.every(wreck => wreck.activity?.simTier === SIM_TIER.S1_NEAR),
+  // The grace holds the live tier the wreck had (exact when it lay on the glass ahead of the pilot).
+  assert.ok(wrecks.every(wreck => [SIM_TIER.S0_EXACT, SIM_TIER.S1_NEAR].includes(wreck.activity?.simTier)
+    && Number.isFinite(wreck.activity?.graceUntilT)),
     'the first away classification honors the authored demotion grace');
   const graceUntil = Math.max(...wrecks.map(wreck => wreck.activity?.graceUntilT || state.simTime + DEFAULT_GRACE_S));
 
@@ -213,8 +217,8 @@ test('accepted 47-A Skim wrecks survive the public Save and Continue owner', asy
     missions._stepContract47aSkim(state);
     const original = state.entityList.filter(e => e.alive !== false && e.data?.contract47aSkim === true);
     assert.equal(original.length, 3);
-    assert.match(receipts.find(row => /Unknown Black Line ship/.test(row.text))?.text || '',
-      /Optional salvage: 3 wrecks, 1 alloy each/);
+    assert.match(receipts.find(row => /took the 47-A sample/.test(row.text))?.text || '',
+      /3 wrecks ahead to salvage, 1 alloy each/);
     const signatures = original.map(e => ({ label: e.data.scanLabel, pos: { ...e.pos } }));
     const saveOwner = registry.get('save');
     assert.equal(await Promise.resolve(saveOwner.save('quick')), true, 'public Save writes the actual slot');

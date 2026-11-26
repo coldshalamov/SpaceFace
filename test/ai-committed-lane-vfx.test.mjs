@@ -88,7 +88,7 @@ test('real tactical decision receipts cancel the visible lane once on living tar
  }finally{out.dispose();}
 });
 
-test('a shooter-cap-held attacker paints no committed lane; its release still warns in the same cue',()=>{
+test('an arrival-held attacker paints no committed lane; its release still warns in the same cue',()=>{
  const {state,attacker,player}=fixture(),out=new ActionVfx(new THREE.Scene());
  const ids=[2,3,4,5,6],events=[];
  state.meta={seed:47};state.player={heat:0};state.combat={trace:{events:[]}};
@@ -96,7 +96,7 @@ test('a shooter-cap-held attacker paints no committed lane; its release still wa
  for(const id of ids){const a=id===2?attacker:{id,type:'ship',alive:true,team:1,pos:{x:0,z:id*12},vel:{x:0,z:0},rot:0,radius:12};
   a.team=1;a.data={ai:{combatDoctrineId:id===2?'interceptor_flyby':null,activity,roe:'weapons_free'},intent:{},weapons:[{projSpeed:420}]};state.entities.set(id,a);}
  player.team=2;player.pos={x:190,z:0};
- attacker.data.ai.swarmFireHoldUntil=10;
+ attacker.data.ai.arrivalHoldUntil=10;
  const tactical=createTacticalAISystem({seed:47,config:{trace:{enabled:false}},
   sensors:{frameFor(id,tick){return {tick,self:{id,team:1,pos:state.entities.get(id).pos,vel:{x:0,z:0},rot:0,radius:12,hullFraction:1,energyFraction:1,heatFraction:0,disabled:false,tethered:false,capabilities:['drive','sensor','weapon','ranged'],subsystemFractions:{},activity,roe:'weapons_free',combatDoctrineId:id===2?'interceptor_flyby':null},contacts:[{id:1,kind:'ship',team:2,classification:'live_hostile',pos:player.pos,vel:player.vel,radius:12,confidence:1,threat:.9,hostile:true,alive:true,valid:true,visible:true,tags:['armed']}],events:[]};}},
   roster:{listSquads(){return [{id:'lane_fixture',doctrine:'scavenger',faction:'fixture',formation:'wedge',members:ids.map(id=>({id,capabilities:id===2?['drive','sensor','weapon']:['drive','sensor','weapon','ranged'],combatDoctrineId:id===2?'interceptor_flyby':null}))}];}},
@@ -107,7 +107,7 @@ test('a shooter-cap-held attacker paints no committed lane; its release still wa
   assert.equal(events.filter(e=>e.name==='ai:telegraph'&&e.p.entityId===2).length,0,
    'a held attacker must not emit the telegraph that renders the committed lane');
   assert.equal(attacker.data.intent.fire!==true,true,'the same hold keeps the volley shut');
-  attacker.data.ai.swarmFireHoldUntil=0;
+  attacker.data.ai.arrivalHoldUntil=0;
   state.tick=1;state.simTime=1/60;tactical.update(1/60,state);
   const sent=events.find(e=>e.name==='ai:telegraph'&&e.p.entityId===2);
   assert.ok(sent,'the released attacker still warns inside its own announce window');

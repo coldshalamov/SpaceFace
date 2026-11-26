@@ -115,40 +115,47 @@ for (const ore of ORES) {
 }
 
 // 6 asteroid types. hp[small,large] = ore-HP endpoints; yieldU[small,large] = units released.
-// oreTable weights use cmdty_ ore IDs; tierCap gates eligibility.
+// oreTable weights use cmdty_ ore IDs; tierCap gates eligibility. Surface cut
+// profiles give the pilot a seam width (fraction of radius) and shell penalties.
 export const ASTEROIDS = [
   {
     id: 'ast_common_rock', hp: [120, 520], yieldU: [8, 22], spawnWeight: 45, sizeRange: [6, 14], tierCap: 0,
     oreTable: { cmdty_silicate: 0.7, cmdty_ore_iron: 0.3 },
+    surfaceCut: { seamWidth: 0.22, shellYield: 0.35, shellSpeed: 0.7 },
     authoredPlaceId: 'place_asteroid_seamed',
     look: 'grey lumpy icosphere',
   },
   {
     id: 'ast_metallic', hp: [320, 900], yieldU: [14, 32], spawnWeight: 22, sizeRange: [7, 16], tierCap: 2,
     oreTable: { cmdty_ore_iron: 0.45, cmdty_ore_copper: 0.35, cmdty_ore_titanium: 0.20 },
+    surfaceCut: { seamWidth: 0.17, shellYield: 0.30, shellSpeed: 0.65 },
     authoredPlaceId: 'place_asteroid_rock_a',
     look: 'dark metallic specular veins',
   },
   {
     id: 'ast_icy', hp: [180, 640], yieldU: [12, 26], spawnWeight: 14, sizeRange: [8, 18], tierCap: 1,
     oreTable: { cmdty_ice_water: 0.75, cmdty_volatiles: 0.25 },
+    surfaceCut: { seamWidth: 0.26, shellYield: 0.42, shellSpeed: 0.8 },
     authoredPlaceId: 'place_asteroid_rock_b',
     look: 'translucent blue emissive rim',
   },
   {
     id: 'ast_crystalline', hp: [260, 720], yieldU: [9, 20], spawnWeight: 9, sizeRange: [5, 12], tierCap: 2,
     oreTable: { cmdty_crystal_silica: 0.7, cmdty_crystal_lumin: 0.3 },
+    surfaceCut: { seamWidth: 0.16, shellYield: 0.28, shellSpeed: 0.68 },
     authoredPlaceId: 'place_asteroid_rock_c',
     look: 'sharp emissive crystal cluster',
   },
   {
     id: 'ast_gas_cloud', hp: [90, 300], yieldU: [16, 30], spawnWeight: 7, sizeRange: [14, 30], tierCap: 2,
     oreTable: { cmdty_gas_hydrogen: 0.75, cmdty_gas_helium3: 0.25 },
+    surfaceCut: { seamWidth: 0.32, shellYield: 0.55, shellSpeed: 0.9 },
     look: 'soft additive billboard puff, no hard mesh',
   },
   {
     id: 'ast_rare_exotic', hp: [480, 1200], yieldU: [7, 18], spawnWeight: 3, sizeRange: [6, 13], tierCap: 4,
     oreTable: { cmdty_ore_platinoid: 0.6, cmdty_crystal_lumin: 0.25, cmdty_exotic_xenium: 0.15 },
+    surfaceCut: { seamWidth: 0.13, shellYield: 0.15, shellSpeed: 0.58 },
     look: 'dark dense rock, slow xenium glow',
   },
 ];
@@ -157,9 +164,8 @@ export const ASTEROIDS = [
 //
 // heatMax/heatRate/coolRate drive the pulse-timing rhythm in systems/mining.js: heat climbs while
 // the beam bites, the amber vent band opens near the top, releasing inside it pays a real ore
-// bonus, and letting the gauge peg locks the beam out while the radiators dump (slowly — see
-// BEAM_OVERHEAT_COOL_MULT). Numbers are seconds-scale on purpose: mk1 runs ~4.5 s cold-to-peg and
-// dumps in ~1.8 s, so the loop is a beat rather than a wait. Higher tiers hold more heat and vent
+// bonus. At the peg the beam still cuts, but the pulse stops banking bonus ore.
+// Mk1 runs ~4.5 s cold-to-peg and dumps in ~1.8 s. Higher tiers hold more heat and vent
 // faster, which is what a beam upgrade should FEEL like on top of raw dps.
 export const BEAMS = [
   { id: 'beam_mk1',        dps: 18, range: 240, energyDraw: 4,  tier: 1, heatMax: 100, heatRate: 22, coolRate: 55 },

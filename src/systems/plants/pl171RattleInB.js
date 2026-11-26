@@ -63,6 +63,7 @@ export function isPatched(ent, tuning = RATTLE_IN_B_TUNING) {
 }
 
 export const pl171Rattle = {
+  modes: ['flight'],
   name: 'plantsPl171',
 
   init(ctx) {

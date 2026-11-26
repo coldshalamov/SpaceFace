@@ -94,7 +94,7 @@ test('ledger: merges across layers, caps at four, drops an outranked newcomer', 
   assert.equal(L.admit({ text: '+3 SHUNTED', x: 100, y: 100, priority: 2 }).action, 'new', 'window elapsed: no merge');
 });
 
-import { AVOID_SELECTORS, createAvoidRects, seatBelowColumn, visibleRects } from '../src/ui/hudAvoidRects.js';
+import { AVOID_RECT_INVALIDATE_COALESCE_MS, AVOID_SELECTORS, createAvoidRects, invalidateAvoidRects, seatBelowColumn, visibleRects } from '../src/ui/hudAvoidRects.js';
 
 test('class-up plate seats just below the Swarm centre column, or stays put with no column', () => {
   const col = visibleRects([{ left: 330, top: 10, width: 180, height: 40 }, { left: 300, top: 50, width: 240, height: 70 }]);
@@ -142,4 +142,67 @@ test('HUD obstacles share one read and keep consumer exclusions, extra blockers,
   assert.deepEqual(positions(boss), [1, 2]);
   assert.deepEqual(positions(floating), [1]);
   assert.equal(queries.filter((query) => query === commonQuery).length, 4);
+});
+
+test('mounted HUD readers keep obstacle document order across desktop and phone overlay roots', async () => {
+  const obstacle = (order) => ({
+    order,
+    getBoundingClientRect: () => ({ left: order, top: 0, width: 80, height: 24 }),
+    compareDocumentPosition(other) { return this.order < other.order ? 4 : 2; },
+  });
+  const centre = obstacle(2);
+  const toast = obstacle(4);
+  const law = obstacle(6);
+  const alert = obstacle(7);
+  const stageItem = obstacle(8);
+  const pill = obstacle(9);
+  const phonePanel = obstacle(10);
+  const alerts = { querySelectorAll: () => [alert] };
+  const roots = {
+    hud: { querySelectorAll: () => [centre] },
+    'ui-root': { querySelectorAll: () => [pill] },
+    toasts: { querySelectorAll: () => [toast] },
+    'sf-stage-banner': { contains: (node) => node === alerts, querySelectorAll: () => [alert, stageItem] },
+    alerts,
+    'sf-sector-law': law,
+  };
+  let globalQueries = 0;
+  const doc = {
+    getElementById: (id) => roots[id] ?? null,
+    querySelectorAll() { globalQueries++; return []; },
+  };
+  const reader = createAvoidRects(doc);
+  const positions = () => reader.get().map(({ x }) => x);
+  assert.deepEqual(positions(), [2, 4, 6, 7, 8, 9]);
+
+  roots['sf-touch-overlay'] = { querySelectorAll: () => [phonePanel] };
+  toast.hidden = true;
+  law.order = 9.5;
+  invalidateAvoidRects(doc);
+  // Render lead 2026-11-20: a burst of HUD layout invalidations coalesces into at most one
+  // re-read per AVOID_RECT_INVALIDATE_COALESCE_MS (the round-20 Swarm HUD forced layout on
+  // nearly every frame); the change lands on the first read after that window.
+  await new Promise((resolve) => setTimeout(resolve, AVOID_RECT_INVALIDATE_COALESCE_MS + 20));
+  assert.deepEqual(positions(), [2, 7, 8, 9, 6, 10]);
+  assert.equal(globalQueries, 0);
+});
+
+test('a burst of HUD layout invalidations costs one rect read per coalescing window', () => {
+  let now = 0;
+  let reads = 0;
+  const el = { getBoundingClientRect() { reads++; return { left: 5, top: 5, width: 50, height: 20 }; },
+    compareDocumentPosition: () => 4 };
+  const doc = { defaultView: { performance: { now: () => now }, addEventListener() {} }, querySelectorAll: () => [el] };
+  const reader = createAvoidRects(doc, { selectors: ['.x'], now: () => now });
+  reader.get();
+  assert.equal(reads, 1);
+  for (let frame = 1; frame <= 8; frame++) {
+    now = frame * 16;
+    invalidateAvoidRects(doc);
+    reader.get();
+  }
+  assert.equal(reads, 1, 'eight invalidated frames inside the window read nothing');
+  now = AVOID_RECT_INVALIDATE_COALESCE_MS;
+  reader.get();
+  assert.equal(reads, 2, 'the pending invalidation lands once the window has passed');
 });

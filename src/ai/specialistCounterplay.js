@@ -26,7 +26,9 @@
 // owner — it arms only across the telegraphed commit (field_spool -> anchor_hold) and dies on
 // the recovery, so every bite is preceded by a visible wind-up and a full re-approach.
 import { isSwarmSpecialistRun, SWARM_SPECIALIST_TUNING } from '../data/swarmSpecialists.js';
-import { breakSwarmGuard, updateSwarmWarden, updateSwarmAnchor } from './swarmSpecialistRuntime.js';
+import {
+  breakSwarmGuard, isSwarmWardenPair, swarmWardOccupantMatches, updateSwarmWarden, updateSwarmAnchor,
+} from './swarmSpecialistRuntime.js';
 import { specialistPlanByEnemyId } from './specialistPlans.js';
 import { wrapAngle } from './contracts.js';
 import { entityIndexLaneVersion, entityIndexVersion } from '../world/livingWorldViews.js';
@@ -164,18 +166,22 @@ export function wardScreenTarget(state, attacker, target, origin) {
   if (!attacker || !target || target.alive === false || attacker.id === target.id) return null;
   if (!attacker.pos || !target.pos) return null;
   if (target.type !== 'ship') return null;
-  if (enemyTypeId(target) === WARD_ID) return null;
+  const targetIsWarden = enemyTypeId(target) === WARD_ID;
+  const swarm = isSwarmSpecialistRun(state);
+  if (targetIsWarden && (!swarm || target.data?.swarmWardPair == null)) return null;
   let best = null;
   let bestDist = Infinity;
   for (const ent of wardRosterFor(state)) {
     if (!ent || ent.alive === false || !ent.pos || ent.id === target.id) continue;
     if (specialistIncapacitated(state, ent, 'drive')) continue;
     if (target.team == null || ent.team !== target.team) continue;
-    if (isSwarmSpecialistRun(state) && (ent.data?.runCohort === 'survival' || target.data?.runCohort === 'survival')) {
+    if (targetIsWarden && !isSwarmWardenPair(ent, target)) continue;
+    if (swarm && (targetIsWarden || ent.data?.runCohort === 'survival' || target.data?.runCohort === 'survival')) {
       const link = ent.data?.swarmSpecialist;
       if (link?.kind !== 'warden' || link.phase !== 'active' || link.targetId !== target.id
         || !(link.linkEnergy > 0) || ent.data?.runCohort !== 'survival'
-        || target.data?.runCohort !== 'survival' || ent.data.runWave !== target.data.runWave) continue;
+        || target.data?.runCohort !== 'survival' || ent.data.runWave !== target.data.runWave
+        || !swarmWardOccupantMatches(link, target) || (targetIsWarden && link.targetGeneration == null)) continue;
       if (Math.hypot(ent.pos.x - target.pos.x, ent.pos.z - target.pos.z) > SWARM_SPECIALIST_TUNING.warden.linkRange) {
         breakSwarmGuard(ent, state.tick | 0);
         continue;
@@ -228,7 +234,9 @@ function commitLockHeld(state, tick, kind) {
   if (!lock || lock.untilTick <= tick) return false;
   if (lock.phase === 'committed' && lock.holderId != null && state.entities && typeof state.entities.get === 'function') {
     const holder = state.entities.get(lock.holderId);
-    if (!holder || specialistIncapacitated(state, holder, lock.capability || null)) {
+    // Generation check: a different occupant on the recycled holder id does not inherit the lock.
+    if (!holder || holder.occupantGeneration !== lock.holderGeneration
+      || specialistIncapacitated(state, holder, lock.capability || null)) {
       commitLedger.delete(state);
       return false;
     }
@@ -236,9 +244,9 @@ function commitLockHeld(state, tick, kind) {
   return lock.kind !== kind;
 }
 
-function claimCommitLock(state, tick, kind, untilTick, phase = 'committed', holderId = null, capability = null) {
+function claimCommitLock(state, tick, kind, untilTick, phase = 'committed', holderId = null, capability = null, holderGeneration = null) {
   if (!state) return;
-  commitLedger.set(state, { kind, untilTick, phase, holderId, capability });
+  commitLedger.set(state, { kind, untilTick, phase, holderId, capability, holderGeneration });
 }
 
 function releaseCommitLock(state, kind) {
@@ -325,7 +333,7 @@ function scissorwakeCut({ state, specialist, doctrine, doctrinePhase, tick, atta
       corridor: { origin: { ...corridor.origin }, dir: { ...corridor.dir }, range: corridor.range, halfWidth: corridor.halfWidth },
       lastPos: { x: specialist.pos.x, z: specialist.pos.z } };
     delete data.scissorwakeOutcome;
-    claimCommitLock(state, tick, 'cut_line', commit.deadline, 'committed', specialist.id, 'drive');
+    claimCommitLock(state, tick, 'cut_line', commit.deadline, 'committed', specialist.id, 'drive', specialist.occupantGeneration);
     return null;
   }
   if (commit.attachmentId !== line.id || commit.sourceLife !== specialist.occupantGeneration
@@ -491,7 +499,7 @@ export function applySpecialistCounterplay({
         startedTick: tick,
         deadline: tick + workTicks,
       };
-      claimCommitLock(state, tick, 'disrupt_field', data._disruptWork.deadline, 'committed', specialist.id, 'weapons');
+      claimCommitLock(state, tick, 'disrupt_field', data._disruptWork.deadline, 'committed', specialist.id, 'weapons', specialist.occupantGeneration);
       return null;
     }
     // Freshness beat 1 — damage: the working ghost is interruptible by the existing damage

@@ -18,6 +18,7 @@ import { spawn } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync, unlinkSync } from 'node:fs';
 import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createRequire } from 'node:module';
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const DIR = join(REPO, '.devshots', 'fleet');
@@ -26,6 +27,26 @@ const QUEUE = join(DIR, 'game-queue');
 const OWNER_ENV = 'SPACEFACE_GAME_LOCK_OWNER';
 // FIFO bounds a wait by the queue ahead of you, so a long queue is not a reason to give up.
 const WAIT_MAX_MIN = 240;
+// The owner playing the game outranks any test: a launch waits while his window is focused
+// (scripts/lib/playerPresence.cjs), up to this many minutes, then goes ahead.
+const OWNER_PLAY_WAIT_MAX_MIN = Number.isFinite(Number(process.env.SPACEFACE_OWNER_PLAY_WAIT_MAX_MIN))
+  ? Math.max(0, Number(process.env.SPACEFACE_OWNER_PLAY_WAIT_MAX_MIN)) : 30;
+const { isPlayerPlaying, readPresence } = createRequire(import.meta.url)('../lib/playerPresence.cjs');
+async function yieldToPlayer() {
+  const started = Date.now();
+  let noted = 0;
+  while (OWNER_PLAY_WAIT_MAX_MIN > 0 && isPlayerPlaying(readPresence())) {
+    if (Date.now() - started > OWNER_PLAY_WAIT_MAX_MIN * 60_000) {
+      console.error(`[game-lock] the owner has been playing for ${OWNER_PLAY_WAIT_MAX_MIN} min; starting anyway.`);
+      return;
+    }
+    if (Date.now() - noted > 60_000) {
+      noted = Date.now();
+      console.error('[game-lock] the owner is playing the game; holding this launch so it does not slow his game down...');
+    }
+    await new Promise((r) => setTimeout(r, 5_000));
+  }
+}
 
 function alive(pid) {
   try { process.kill(pid, 0); return true; } catch { return false; }
@@ -142,6 +163,7 @@ if (!serverOnlyBench) {
     await new Promise((r) => setTimeout(r, headOfQueue() === process.pid ? 2_000 : 10_000));
   }
   dequeue();
+  await yieldToPlayer();
 }
 const childEnv = { ...process.env };
 let executionCmd = cmd;

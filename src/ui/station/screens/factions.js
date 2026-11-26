@@ -33,7 +33,7 @@ import { createCrestOrbit, standingScaleSvg, crestUrl } from '../../orrery/crest
 import { injectOrreryStationFactions } from '../../orrery/station-factionsLayouts.js';
 import { syncScrollExtent } from '../../orrery/scrollExtent.js';
 import { decrypt, rollTo } from '../../orrery/text.js';
-import { reducedMotion } from '../../orrery/motion.js';
+import { reducedMotion, stagger } from '../../orrery/motion.js';
 import { activeTreatiesFor } from '../../../data/factionTreaties.js';
 
 const STATION_FACTION = new Map();
@@ -199,6 +199,7 @@ export function createFactionsScreen(ctx) {
   const factions = FACTION_META.map((m) => ({ id: m.id, name: m.name || m.id, meta: m }));
   let selectedId = factions[0] && factions[0].id;
   let picked = false;
+  let arriving = false; // the powers and their reading stagger in on show only; a re-render is silent
 
   el.innerHTML = factionsFrameHtml();
 
@@ -398,6 +399,21 @@ export function createFactionsScreen(ctx) {
     const state = (c || ctx).state || {};
     renderRail(state);
     renderStage(state);
+    // the stage is the reading's scroll window: its fold and extent cursor must follow every
+    // re-render's height, or the NEXT MOVE rung hard-cuts at the rim with no "more below"
+    // (bench 1440x900)
+    syncScrollExtent(stageEl);
+    // Arrival (ORRERY §3.5): the crests file in and the reading rises; the orbit ring (a
+    // persistent instrument with its own swing) and later rep changes stay still.
+    if (arriving && !reducedMotion()) {
+      arriving = false;
+      const units = [
+        ...railEl.querySelectorAll('.sx-fac__rows > li'),
+        ...readingEl.children,
+      ].filter(Boolean);
+      stagger(units, { base: 60, step: 40 });
+      for (const unit of units) unit.classList.add('orr-rise');
+    }
   }
 
   function selectFaction(id, focus) {
@@ -469,7 +485,9 @@ export function createFactionsScreen(ctx) {
         if (authorityId && factions.some((f) => f.id === authorityId)) selectedId = authorityId;
         picked = true;
       }
+      arriving = true;
       refresh(c);
+      arriving = false;
     },
     refresh,
     dispose() {

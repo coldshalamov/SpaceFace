@@ -771,7 +771,6 @@ function assertAcceptanceContract({ abandon, lawful, fenced, confiscated, destro
 async function bootSeededFlight(page, baseUrl) {
   await page.goto(baseUrl, { waitUntil: 'domcontentloaded' });
   assert.equal(new URL(page.url()).search, '', 'route must use the canonical root with no debug flags');
-  await page.bringToFront();
   await page.waitForFunction(() => !!(window.SF?.state && window.SF?.bus && window.SF?.registry && window.SF?.helpers),
     null, { timeout: 45_000 });
   await waitVisible(page, '[data-screen="mainMenu"]', 'main menu');

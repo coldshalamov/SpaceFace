@@ -67,10 +67,11 @@ test('Borrowed Sun opens after an ordinary Helios-to-Tethys gate jump with nativ
     assert.equal(owner.serviceStatus().ok, false,
       'the remote open phase must not grant service without its native berth');
 
-    await runtime.runTicks(1, DT);
+    await runtime.runTicks(6, DT);
     const sailIds = state.entityList.filter(e => e.alive !== false && e.data?.sunMirror === true)
       .map(e => e.id).sort((a, b) => a - b);
-    assert.equal(sailIds.length, 4, 'the distant carrier deploys exactly four owned reflectors');
+    assert.equal(sailIds.length, 4,
+      'the distant carrier deploys exactly four owned reflectors (borrowedSun runs a [6] 10 Hz cadence — up to five ticks may pass before its update lands)');
     await runtime.runTicks(180, DT);
     assert.deepEqual(state.entityList.filter(e => e.alive !== false && e.data?.sunMirror === true)
       .map(e => e.id).sort((a, b) => a - b), sailIds,

@@ -51,6 +51,7 @@ export function isShardCommodity(commodityId) {
 }
 
 export const glassPaysPlant = {
+  modes: ['flight'],
   name: 'plants140',
 
   init(ctx) {

@@ -1270,6 +1270,7 @@ export const trafficJobOps = {
           ai: aiSpec,
         },
       );
+      this._resolveSpawnClearance(spec);
       ent = this.helpers.spawnEntity(spec);
       if (!ent) return;
       this._stampTrafficDurableIdentity(ent, sectorId, role, def, list.length);

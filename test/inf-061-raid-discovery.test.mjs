@@ -2,6 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { BEATS, onboarding } from '../src/systems/onboarding.js';
+import { createChaseCamera } from '../src/render/camera.js';
+import { CameraDirectorMode } from '../src/render/cameraDirector.js';
+import { tableWorldToScreen } from '../src/render/tabletopPolicy.js';
 
 // INF-061 — the first real encounter teaches a physical discovery: the raid beat stages a
 // vulnerable enemy (crippled drifting raider), a useful anchor (a big rock downrange), and
@@ -50,6 +53,7 @@ function drive() {
     spawnEntity(spec) {
       const entity = {
         id: nextId++,
+        occupantGeneration: nextId,
         alive: true,
         vel: { x: 0, z: 0 },
         ...spec,
@@ -123,6 +127,98 @@ test('INF-061: a genuine thrown-raider impact completes the lesson with no kill'
   const milestone = events.find((e) => e.event === 'firsthour:milestone' && e.payload.milestone === 'momentumKill');
   assert.ok(milestone, 'the thesis moment is recorded');
   assert.equal(milestone.payload.cause, 'throwImpact');
+});
+
+test('a missing throw rock is replaced ahead of the held Raider without taking another body’s slot', () => {
+  const { system, state, player } = drive();
+  state.mode = 'flight';
+  state.nav = {};
+  system._enterRaidBeat();
+  const raid = state.onboarding.raid;
+  const raider = state.entities.get(raid.ids.raider);
+  const oldRock = state.entities.get(raid.ids.throwRock);
+  const hauler = state.entities.get(raid.ids.hauler);
+  const wing = state.entities.get(raid.ids.wing);
+  const line = state.player.tether = { active: true, targetId: raider.id };
+  const recycled = { ...oldRock, occupantGeneration: oldRock.occupantGeneration + 400, radius: 60, data: {} };
+  state.entities.set(oldRock.id, recycled);
+
+  system._onRaidWhipImpact({ targetId: raider.id, victimId: recycled.id, rating: 'solid' });
+  assert.equal(state.onboarding.beatDoneAt.raid, undefined);
+  system._resolveRaidDone();
+  system._setObjectiveWaypoint(true);
+  const replacement = state.entities.get(raid.ids.throwRock);
+  assert.notEqual(replacement.id, oldRock.id);
+  assert.notEqual(replacement.occupantGeneration, oldRock.occupantGeneration);
+  assert.equal(replacement.data.typeId, oldRock.data.typeId);
+  assert.equal(replacement.mass, oldRock.mass);
+  assert.ok(Math.hypot(replacement.pos.x - recycled.pos.x, replacement.pos.z - recycled.pos.z)
+    > replacement.radius + recycled.radius, 'the occupied straight-ahead berth is skipped');
+  assert.ok(angleDelta(bearing(player.pos, raider.pos), bearing(raider.pos, replacement.pos)) <= Math.PI / 8);
+  assert.equal(state.player.tether, line);
+  assert.equal(state.entities.get(raid.ids.raider), raider);
+  assert.equal(state.entities.get(raid.ids.hauler), hauler);
+  assert.equal(state.entities.get(raid.ids.wing), wing);
+  assert.equal(state.nav.waypoint.presentationEntityId, replacement.id);
+  assert.equal(state.nav.waypoint.presentationEntityGeneration, replacement.occupantGeneration);
+  assert.equal(state.onboarding.beatDoneAt.raid, undefined);
+  system._resolveRaidDone();
+  assert.equal(state.entities.get(raid.ids.throwRock), replacement, 'following updates keep the same target');
+
+  system._onRaidWhipImpact({ targetId: raider.id, victimId: replacement.id, rating: 'solid' });
+  assert.equal(state.onboarding.beatDoneAt.raid, state.simTime);
+  system._removeRaidActors();
+  assert.equal(state.entities.get(recycled.id), recycled);
+});
+
+test('the held Raider and its marked rock stay in the Overhead work view as the pilot starts a swing', () => {
+  const { system, state, player, wall } = drive();
+  system._enterRaidBeat();
+  const raid = state.onboarding.raid;
+  const raider = state.entities.get(raid.ids.raider);
+  const rock = state.entities.get(raid.ids.throwRock);
+  raider.pos = { x: 24, z: -49 };
+  rock.pos = { x: -43, z: 119.5 };
+  state.mode = 'flight';
+  state.nav = {};
+  state.settings = { video: { fov: 50 }, gameplay: { steeringView: 'overhead' } };
+  state.camera = { zoom: 144, tilt: 60, lookAhead: 18, lerp: 6, trauma: 0 };
+  state.input = {};
+  state.player.targetId = wall.id;
+  const viewport = { width: 1280, height: 720 };
+  const camera = createChaseCamera(state, { innerWidth: viewport.width, innerHeight: viewport.height });
+  camera.snapToPlayer();
+  const settle = () => { for (let tick = 0; tick < 240; tick++) camera.follow(1 / 60); };
+  const project = body => tableWorldToScreen(state, viewport, body.pos, {});
+
+  system._setObjectiveWaypoint(true);
+  assert.equal(state.nav.waypoint.presentationEntityId, undefined, 'approaching the Raider uses normal flight');
+  state.player.tether = { active: true, targetId: raider.id };
+  system._setObjectiveWaypoint(true);
+  settle();
+  assert.equal(camera.composition().mode, CameraDirectorMode.INDUSTRIAL);
+  assert.equal(state.nav.waypoint.presentationEntityId, rock.id);
+  assert.equal(state.nav.waypoint.presentationEntityGeneration, rock.occupantGeneration);
+  for (const body of [player, raider, rock]) {
+    const screen = project(body);
+    assert.ok(screen.onScreen && screen.x > 64 && screen.x < 1216 && screen.y > 36 && screen.y < 684,
+      `${body.id} projects to ${screen.x}, ${screen.y} at zoom ${camera.composition().zoom}`);
+  }
+  player.vel.x = 90;
+  settle();
+  assert.equal(camera.composition().mode, CameraDirectorMode.INDUSTRIAL);
+  assert.equal(project(rock).onScreen, true);
+  assert.equal(state.player.targetId, wall.id, 'the camera does not change the existing selection');
+  assert.equal(state.nav.waypoint.targetEntityId, undefined, 'the marker does not set a release target');
+
+  state.entities.set(rock.id, { ...rock, occupantGeneration: rock.occupantGeneration + 1 });
+  camera.follow(1 / 60);
+  assert.equal(camera.composition().mode, CameraDirectorMode.RECOVER, 'a recycled rock loses framing');
+  state.player.tether = { active: true, targetId: wall.id };
+  system._setObjectiveWaypoint(true);
+  settle();
+  assert.equal(state.nav.waypoint.presentationEntityId, undefined, 'another attachment does not renew framing');
+  assert.equal(camera.composition().mode, CameraDirectorMode.FOLLOW);
 });
 
 test('INF-061: ordinary guns stay viable — refusal only delays, never blocks', () => {

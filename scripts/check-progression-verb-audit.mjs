@@ -57,6 +57,11 @@ const ID_MATCHED_VERBS = Object.freeze({
   mod_claw_anchor_s: ['counter-torque a tethered hull during custody approach', 'shipjack custody control', { file: 'src/systems/shipjack.js', symbol: "fittedBlackFlagTool(state,'mod_claw_anchor_s')" }],
   mod_quiet_intrusion_s: ['one quiet maintenance-handshake attempt', 'shipjack intrusion adaptation', { file: 'src/systems/shipjack.js', symbol: "fittedBlackFlagTool(state,'mod_quiet_intrusion_s')" }],
   mod_proof_recorder_s: ['record custody recovery proof', 'shipjack title evidence', { file: 'src/systems/shipjack.js', symbol: "fittedBlackFlagTool(state,'mod_proof_recorder_s')" }],
+  // Kinetic Catalysts (features/kineticCatalysts): fitting records carry no mods — the catalyst id
+  // selects a physical behaviour inside the kernel, dispatched on state.fittedId.
+  unique_kinetic_orbital_magazine: ['Pull captures up to three loose bodies into a physical orbit; Shove releases their real momentum', 'features/kineticCatalysts kernel.js orbitPower/orbitStep', { file: 'src/features/kineticCatalysts/kernel.js', symbol: "state.fittedId === 'orbital_magazine'" }],
+  unique_kinetic_aftershock_core: ['Shove arms one delayed, weaker repulsion echo at the cast point', 'features/kineticCatalysts kernel.js echoPower/echoStep', { file: 'src/features/kineticCatalysts/kernel.js', symbol: "state.fittedId === 'aftershock_core'" }],
+  unique_kinetic_load_bridge: ['Pin + Pull bridges two bodies; the tensioned link shares capped incoming impulse', 'features/kineticCatalysts kernel.js bridgePower/bridgeStep', { file: 'src/features/kineticCatalysts/kernel.js', symbol: "state.fittedId === 'load_bridge'" }],
 });
 
 const VERB_MOD_KEYS = Object.freeze({
@@ -68,9 +73,9 @@ const VERB_MOD_KEYS = Object.freeze({
   cloakBaseRadius: ['activated stealth cloak', 'systems/cloak.js', { file: 'src/systems/cloak.js', symbol: 'cloakBaseRadius' }],
   cloakDrainPerS: ['activated stealth cloak (energy bar)', 'systems/cloak.js', { file: 'src/systems/cloak.js', symbol: 'cloakDrainPerS' }],
   cloakRechargePerS: ['activated stealth cloak (energy bar)', 'systems/cloak.js', { file: 'src/systems/cloak.js', symbol: 'cloakRechargePerS' }],
-  impulseChargeCapacity: ['impulse charge carry + throw', 'systems/impulseCharges.js', { file: 'src/systems/impulseCharges.js', symbol: 'impulseChargeCapacity' }],
+  impulseChargeCapacity: ['impulse charge carry + throw', 'systems/impulseCharges.js via data/impulseChargeReadModel.js resolveImpulseChargeCapacity', { file: 'src/data/impulseChargeReadModel.js', symbol: 'impulseChargeCapacity' }],
   bombPropulsion: ['propelled bomb / vector charge', 'systems/impulseCharges.js', { file: 'src/systems/impulseCharges.js', symbol: 'bombPropulsion' }],
-  pullCollector: ['Pull drops a collector: loose mass binds into a knot you aim and throw (hold Pull, release)', 'systems/fields.js collectorFitted', { file: 'src/systems/fields.js', symbol: 'pullCollector' }],
+  pullCollector: ['Pull drops a collector: loose mass binds into a knot you aim and throw (hold Pull, release)', 'systems/fields.js via core/fields/fieldReadModel.js collectorFitted', { file: 'src/core/fields/fieldReadModel.js', symbol: 'pullCollector' }],
   repulsionTrap: ['drop-a-trap radial shove', 'systems/impulseCharges.js', { file: 'src/systems/impulseCharges.js', symbol: 'repulsionTrap' }],
   droneBay: ['launch drones from a bay', 'ships.js droneBayCountForFittings', { file: 'src/systems/ships.js', symbol: 'droneBay' }],
   jumpDriveTier: ['jump verb', 'ships.js derived fold (jumpDriveTier)', { file: 'src/systems/ships.js', symbol: 'jumpDriveTier' }],

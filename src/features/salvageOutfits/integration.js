@@ -80,11 +80,11 @@ export function installSalvageOutfitsPresentation(ctx = {}) {
       if (!options.overlayCanvas || typeof options.worldToScreen !== 'function') return null;
       overlay = createSalvageOutfitsOverlay({ canvas: options.overlayCanvas,
         state: stateOf, worldToScreen: options.worldToScreen, colors: options.colors,
-        pixelRatio: options.pixelRatio });
+        pixelRatio: options.pixelRatio, prepareCanvas: options.prepareCanvas });
       return overlay;
     },
     detachOverlay() { overlay?.destroy(); overlay = null; },
-    draw() { return overlay?.draw(); },
+    draw(state) { return overlay?.draw(state); },
     newGame() { prompt.clear(); },
     destroy() {
       if (destroyed) return;
@@ -129,6 +129,9 @@ export function mountSalvageOutfitsPresentation(ctx = {}) {
   const canvas = document.createElement('canvas');
   canvas.className = 'sf-salvage-outfits-overlay';
   canvas.setAttribute('aria-hidden', 'true');
+  canvas.width = 1;
+  canvas.height = 1;
+  canvas.hidden = true;
   Object.assign(canvas.style, { position: 'absolute', inset: '0', width: '100%', height: '100%',
     pointerEvents: 'none' });
   root.appendChild(canvas);
@@ -152,7 +155,6 @@ export function mountSalvageOutfitsPresentation(ctx = {}) {
     if (canvas.height !== height) canvas.height = height;
     dirty = !observer && !windowResize;
   }
-  syncSize();
   const world = { x: 0, y: 0, z: 0 }, screen = { x: 0, y: 0, onScreen: false };
   function project(point, out) {
     world.x = point.x; world.z = point.z;
@@ -161,8 +163,8 @@ export function mountSalvageOutfitsPresentation(ctx = {}) {
     out.x = p.x - bounds.left; out.y = p.y - bounds.top;
     return out;
   }
-  api.attachOverlay({ overlayCanvas: canvas, worldToScreen: project,
-    pixelRatio: () => dpr, colors: ctx.colors });
+  const overlay = api.attachOverlay({ overlayCanvas: canvas, worldToScreen: project,
+    pixelRatio: () => dpr, colors: ctx.colors, prepareCanvas() { if (dirty) syncSize(); } });
   return {
     canvas,
     draw(currentState, hudVisible = true) {
@@ -170,11 +172,10 @@ export function mountSalvageOutfitsPresentation(ctx = {}) {
       // The loading shell covers the canvas: per-frame work under it is pure invalidation.
       if (loadingShellVisible(canvas.ownerDocument)) return;
       const state = currentState || (typeof ctx.state === 'function' ? ctx.state() : ctx.state);
-      const hidden = !hudVisible || state?.mode !== 'flight' || state?.ui?.docked === true;
+      const active = hudVisible && state?.mode === 'flight' && state?.ui?.docked !== true;
+      if (active) api.draw(state);
+      const hidden = !active || overlay?.hasDrawing !== true;
       if (canvas.hidden !== hidden) canvas.hidden = hidden;
-      if (hidden) return;
-      if (dirty) syncSize();
-      api.draw();
     },
     destroy() {
       if (destroyed) return;

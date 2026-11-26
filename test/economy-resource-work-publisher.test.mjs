@@ -19,6 +19,7 @@ import { createGameState } from '../src/core/gameState.js';
 import { createBus } from '../src/core/eventBus.js';
 import { core } from '../src/core/coreSystem.js';
 import { world as worldSystem } from '../src/systems/world.js';
+import { ROCK_REGROWTH } from '../src/data/rockRegrowth.js';
 import { economy } from '../src/systems/economy.js';
 import {
   FIELD_REGROWTH_INTERVAL_S,
@@ -66,6 +67,13 @@ function fieldRocks(state, fieldId) {
 /** Work the field into the "worked" band, seat the player at the seam, and regrow once. */
 function prepareSeam(h, { drainWorkS = null, parkPlayerAtField = true } = {}) {
   h.world.enterSector(HELIOS, {});
+  // Sliced sector enters (owner freeze bug 2026-11-21): neighbor residency drains one job per
+  // world tick, so the single update below would otherwise spend its spawn budget minting a
+  // neighbor sector — and a spawn-refusal stub would crash that mint before the seam test ran.
+  // Settle the backlog so the tick exercises the seam alone.
+  for (let i = 0; i < 64 && h.world._pendingResidency && h.world._pendingResidency.length; i++) {
+    h.world._drainResidencyQueue(64);
+  }
   const field = (h.state.world.activeSector.fields || [])[0];
   assert.ok(field && field.id && field.center, 'Helios materializes at least one authored field');
   for (let i = 0; i < 5; i++) {
@@ -73,9 +81,12 @@ function prepareSeam(h, { drainWorkS = null, parkPlayerAtField = true } = {}) {
   }
   assert.ok(h.state.fieldDepletion.fields[field.id].depletion >= 0.35, 'field reads as worked');
   if (parkPlayerAtField && h.state.entities.get(h.state.playerId)) {
+    // Rock regrowth rule (2026-11-21): a fresh seam never pops in on screen — it opens only while
+    // the pilot is out of sight of the belt. The pilot works the seam, then flies off; regrow then.
     const player = h.state.entities.get(h.state.playerId);
     player.pos.x = field.center.x;
-    player.pos.z = field.center.z;
+    // south of the belt, still inside Helios (east would cross into the Tethys corridor)
+    player.pos.z = field.center.z - ((Number(field.clusterRadius) || 450) + ROCK_REGROWTH.offscreenWu + 100);
   }
   if (drainWorkS != null) {
     h.state.economy.resourceWork ||= {};

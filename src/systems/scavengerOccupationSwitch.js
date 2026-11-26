@@ -620,7 +620,7 @@ export function createScavengerOccupationSwitch(owner) {
     });
     bus.emit('toast', {
       kind: 'good', ttl: 5,
-      text: `The wreck field's picker crew hauled ${Math.round(record.holdQty)}u to the depot.`,
+      text: `The wreck field's picker crew hauled ${Math.round(record.holdQty)} units to the depot.`,
     });
   }
 
@@ -772,7 +772,7 @@ export function createScavengerOccupationSwitch(owner) {
         bus.emit('toast', {
           kind: 'warn', ttl: 5,
           text: hauled
-            ? `The wreck field's picker crew lost their hauler — ${Math.round(record.holdQty)}u gone with it.`
+            ? `The wreck field's picker crew lost their hauler — ${Math.round(record.holdQty)} units gone with it.`
             : wasPhase === 'established'
               ? 'The crew\'s second run ends in the black — the bond was already settled.'
               : 'The picker crew was murdered at their own depot — the take was already banked.',

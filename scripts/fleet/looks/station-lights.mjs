@@ -3,7 +3,9 @@
 // relative to the hull), which ones are resident in a real light slot, and the director's score ranking. Shoots a
 // frame with the station in view (frozen), then again with each resident light removed for contrast.
 //   node scripts/fleet/game-lock.mjs run -- node scripts/fleet/looks/station-lights.mjs <outPrefix>
-import { chromium } from 'playwright';
+import { chromium as rawChromium } from 'playwright';
+import { quietChromium } from '../../lib/quietLaunch.mjs';
+const chromium = quietChromium(rawChromium);
 import { spawn } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';

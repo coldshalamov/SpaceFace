@@ -23,13 +23,13 @@ export default defineEncounter(trigger, {
   },
   title: 'THE RUNAWAY KILN', factionId: 'faction_choir',
   motive: 'the ring must not take the load',
-  primaryLine: 'DEPOT THREE: Unmanned crucible on our ring, drive cold, answering nothing. '
+  primaryLine: 'DEPOT THREE: Unmanned kiln on our ring, drive cold, answering nothing. '
     + 'She is full of molten glass — guns will light her. Slow her down before she arrives.',
   receipts: {
-    saved: 'CRUCIBLE CAUGHT — vector bled dead short of the ring. +320 cr; the depot remembers.',
+    saved: 'KILN CAUGHT — vector bled dead short of the ring. +320 cr; the depot remembers.',
     impact: 'THE LOAD MEETS THE RING — the scorch will outlive the paperwork.',
     detonated: 'DETONATION LOGGED — the glass goes everywhere and nowhere useful.',
-    drifted: 'The lane stops watching. The crucible keeps her vector.',
-    lost: 'CRUCIBLE NINE-ARM is gone from the band.',
+    drifted: 'The lane stops watching. The kiln keeps her vector.',
+    lost: 'KILN NINE-ARM is gone from the band.',
   },
 });

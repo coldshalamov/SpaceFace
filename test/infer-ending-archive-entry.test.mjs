@@ -247,7 +247,7 @@ test('pause offers Ending Archive only when the ending is filed, and picking it 
   const withEnding = mountPause(filedEndingRecord());
   const entry = byLabel(withEnding, ENDING_ARCHIVE_LABEL);
   assert.ok(entry, 'Ending Archive is reachable when a written finale exists');
-  assert.ok(byLabel(withEnding, 'Photo'), 'the Media group still renders alongside it');
+  assert.equal(byLabel(withEnding, 'Photo'), undefined, 'Photo stays off the sheet beside Ending Archive');
   assert.deepEqual(
     withEnding.emitted.filter((e) => e.event === 'ui:endingArchiveOpen'),
     [],
@@ -264,7 +264,8 @@ test('pause hides Ending Archive until an ending exists', () => {
   const withoutEnding = mountPause(null);
   assert.equal(byLabel(withoutEnding, ENDING_ARCHIVE_LABEL), undefined,
     'no Ending Archive entry before the story files an ending');
-  assert.ok(byLabel(withoutEnding, 'Photo'), 'the rest of the menu is untouched');
+  assert.equal(byLabel(withoutEnding, 'Photo'), undefined, 'Photo stays off the sheet');
+  assert.ok(byLabel(withoutEnding, 'Records Wall'), 'the rest of the menu stays');
 });
 
 test('a finale filed after mount opens the row on the next pause show (the mounted sheet re-gates)', () => {

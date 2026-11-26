@@ -29,6 +29,7 @@ function install() {
 }
 
 const { swarmJuiceHud } = await import('../src/ui/swarmJuiceHud.js');
+const { IRON_MAW } = await import('../src/data/encounters/capital-boss/iron-maw.js');
 
 function boot() {
   install();
@@ -57,6 +58,38 @@ test('every centre piece is a child of the one column; none is its own layer', (
   swarmJuiceHud.destroy();
 });
 
+test('Iron Maw’s live opening clears incidental callouts and does not replay them', (t) => {
+  const h = boot();
+  t.after(() => swarmJuiceHud.destroy());
+  const bossId = 10;
+  h.state.run.wave = 5;
+  h.state.entities = new Map([[bossId, { id: bossId, alive: true, pos: { x: 50, z: 0 },
+    radius: 40, data: { lootTableId: 'dreadnought_boss' } }]]);
+  const fight = { encounterId: IRON_MAW.id, bossId, phase: 'windup', clock: 100 };
+  h.state.capitalBossEncounters = { fights: { 'swarm:w5': fight } };
+  h.emit('swarm:bossHp', { name: 'Iron Maw', hp: 90, maxHp: 100 });
+  h.emit('swarm:announce', { kind: 'collateral', text: 'COLLATERAL' });
+  h.tick();
+  assert.equal(h.dom.calls.hidden, false);
+
+  fight.phase = 'recovery';
+  fight.recovery = { beatId: 'port_battery', startedAt: fight.clock };
+  h.tick();
+  assert.equal(h.dom.boss.hidden, false, 'boss health remains available');
+  assert.equal(h.dom.calls.hidden, true, 'a lingering callout yields to the opening');
+  h.emit('swarm:announce', { kind: 'collateral', text: 'COLLATERAL ×2' });
+  h.tick();
+  assert.equal(h.dom.calls.children.length, 0, 'new incidental callouts never queue during the opening');
+
+  fight.recovery.mawFed = true;
+  h.tick();
+  assert.equal(h.dom.calls.hidden, true, 'stale callouts do not return after the opening');
+  h.emit('swarm:announce', { kind: 'collateral', text: 'COLLATERAL ×3' });
+  h.tick();
+  // HUD-2 item 9: the sim's internal word prints in plain words on the glass.
+  assert.deepEqual(h.dom.calls.children.map((c) => c.textContent), ['CROSSFIRE ×3']);
+});
+
 test('the CSS gives no centre piece a private vh offset', () => {
   const src = readFileSync(new URL('../src/ui/swarmJuiceHud.js', import.meta.url), 'utf8');
   for (const cls of ['hero', 'calls', 'shatter', 'slam', 'tally', 'card', 'boss', 'bossdown']) {
@@ -78,7 +111,9 @@ test('round slam, boss card, clear tally, scoreboard and boss-down never show to
   h.tick();
   assert.deepEqual(h.shown(), ['bossDown'], 'BOSS DOWN outranks the slam');
   h.tick(3);
-  assert.deepEqual(h.shown(), ['slam'], 'the slam is still pending, so it takes the lane back');
+  // HUD-2 item 9: a headline lives at most ~1.5 s; a round slam that waited behind BOSS DOWN is
+  // stale news by then and is dropped — the waiting boss card (never yet shown) takes the lane.
+  assert.deepEqual(h.shown(), ['card'], 'the stale slam is dropped; the waiting card takes the lane');
   swarmJuiceHud.destroy();
 });
 
@@ -92,9 +127,9 @@ test('a waiting boss card starts its clock when it first shows, then ends', () =
   assert.deepEqual(h.shown(), ['slam'], 'FIGHT lingers first');
   h.tick(1.2);
   assert.deepEqual(h.shown(), ['card'], 'the card shows once the slam clears');
-  h.tick(1.5);
-  assert.deepEqual(h.shown(), ['card'], 'still inside its own 2 s');
-  h.tick(1);
+  h.tick(1.2);
+  assert.deepEqual(h.shown(), ['card'], 'still inside its own ~1.5 s (HUD-2 item 9: one short headline)');
+  h.tick(0.6);
   assert.deepEqual(h.shown(), [], 'then it ends');
   swarmJuiceHud.destroy();
 });
@@ -107,19 +142,42 @@ test('a clear tally held behind BOSS DOWN is not spent while it waits', () => {
   assert.deepEqual(h.shown(), ['bossDown']);
   h.tick(2.3);
   assert.deepEqual(h.shown(), ['tally'], 'the tally appears after BOSS DOWN, whole');
-  assert.equal(h.dom.tallyTitle.textContent, 'ROUND 5 CLEAR');
+  // Swarm arcade HUD, owner 2026-11-23: sentence case, no ALL-CAPS label soup.
+  assert.equal(h.dom.tallyTitle.textContent, 'Round 5 clear');
   h.tick(1);
   assert.equal(h.dom.tally.hidden, false, 'its hold began when it first showed');
   swarmJuiceHud.destroy();
 });
 
-test('the announcer speaks one line: higher priority replaces, lower is dropped, repeats update in place', () => {
+test('a shorter clear tally never leaves the last round’s rows on the glass', () => {
+  // Swarm stranger pass, owner demo 2026-11-23: 'BEST CHAIN ×44' printed twice because the tail
+  // rows of the previous, longer summary were never hidden.
   const h = boot();
-  h.emit('swarm:announce', { kind: 'collateral', text: 'COLLATERAL' });
-  h.emit('swarm:announce', { kind: 'pileup', text: 'PILE-UP ×4' });          // lower: dropped
+  h.emit('swarm:roundClear', { wave: 5, tally: [
+    { label: 'Flawless', value: 'no hull lost' },
+    { label: 'Cleared in', value: '12 s' },
+    { label: 'Room kills', value: '31' },
+    { label: 'Best chain', value: '44' },
+  ] });
+  h.tick(0.1);
+  h.tick(1.0);
+  assert.equal(h.dom.tallyRows.filter((node) => !node.hidden).length, 4);
+  h.emit('swarm:roundClear', { wave: 6, tally: [{ label: 'Room kills', value: '9' }] });
+  h.tick(0.1);
+  const visible = h.dom.tallyRows.filter((node) => !node.hidden).map((node) => node.textContent);
+  assert.deepEqual(visible, ['Room kills  9']);
+  swarmJuiceHud.destroy();
+});
+
+test('the announcer speaks one line: higher priority replaces, lower is dropped, repeats update in place', () => {
+  // HUD-2 item 9: a crossfire kill (the room's work, not the pilot's) is the lowest word; the
+  // pilot's own pile-up outranks it.
+  const h = boot();
+  h.emit('swarm:announce', { kind: 'pileup', text: 'PILE-UP ×4' });
+  h.emit('swarm:announce', { kind: 'collateral', text: 'COLLATERAL' });      // lower: dropped
   h.tick();
-  assert.deepEqual(h.dom.calls.children.map((c) => c.textContent), ['COLLATERAL']);
-  h.emit('swarm:announce', { kind: 'collateral', text: 'COLLATERAL ×2' });    // same kind: in place
+  assert.deepEqual(h.dom.calls.children.map((c) => c.textContent), ['PILE-UP ×4']);
+  h.emit('swarm:announce', { kind: 'pileup', text: 'PILE-UP ×5' });          // same kind: in place
   h.emit('swarm:announce', { kind: 'bossdown', text: 'BOSS DOWN' });          // higher: replaces
   h.tick();
   assert.deepEqual(h.dom.calls.children.map((c) => c.textContent), ['BOSS DOWN']);

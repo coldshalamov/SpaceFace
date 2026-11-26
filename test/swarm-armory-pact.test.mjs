@@ -1,3 +1,5 @@
+// Rewritten to the new rule — superseded by design/overhaul/04_SWARM.md section 2: the equipment
+// stop opens only at the Bench, every tenth round, so the shop round these tests open is 10.
 // The mid-run pact — the armory's wager row. A signature costs no credits: the counter pays
 // the authored purse on the spot and folds the pact's mutator into run.arenaMutators, the
 // same live contract a launch challenge or a Threat wager writes. The handicap must bind
@@ -20,6 +22,7 @@ import {
   survivalDraft,
 } from '../src/systems/survivalDraft.js';
 import { survivalRun } from '../src/systems/survivalRun.js';
+import { bankableRunCredits } from '../src/systems/survivalExtraction.js';
 import { compactRunResult, resetCrucibleMetaForTests } from '../src/systems/survivalRecords.js';
 import { isSwarmLadderRun, swarmArcadeSeedFor } from '../src/data/swarmLadder.js';
 import {
@@ -106,7 +109,7 @@ function pactRow(h) {
 
 test('the pact rides the service counter — a wager row with a live quote, not stock', () => {
   const h = boot();
-  waveArmory(h, null, 1);
+  waveArmory(h, null, 10);
   const row = pactRow(h);
   assert.ok(row, 'the pact is on the counter');
   assert.equal(row.kind, 'service');
@@ -127,8 +130,9 @@ test('the pact rides the service counter — a wager row with a live quote, not 
 
 test('signing pays the purse now and binds the mutator — the cradle dies on the same refresh', () => {
   const h = boot();
-  waveArmory(h, null, 1);
+  waveArmory(h, null, 10);
   const credits = h.state.run.credits;
+  const earned = bankableRunCredits(h.state.run);
 
   assert.equal(survivalDraft.resolvePick({ offerId: PACT.offerId }), true, 'the signature lands');
   assert.deepEqual(h.state.run.arenaMutators, ['one_hull'], 'the mutator folded into the run');
@@ -138,6 +142,7 @@ test('signing pays the purse now and binds the mutator — the cradle dies on th
     'the compiled contract carries the bound rule',
   );
   assert.equal(h.state.run.credits, credits + PACT.purse, 'the purse paid through the wallet');
+  assert.equal(bankableRunCredits(h.state.run), earned, 'the signing purse is spendable only inside the run');
   const awards = named(h, 'run:awardRequested').filter((e) => e.payload.reason === 'crucible:pact');
   assert.equal(awards.length, 1, 'one purse asked');
   assert.equal(awards[0].payload.credits, PACT.purse);
@@ -189,7 +194,7 @@ test('signing pays the purse now and binds the mutator — the cradle dies on th
 
 test('the bound contract holds into the next armory — the row refuses honestly, the shelf still deals', () => {
   const h = boot();
-  waveArmory(h, null, 1);
+  waveArmory(h, null, 10);
   assert.equal(survivalDraft.resolvePick({ offerId: PACT.offerId }), true);
   const wallet = h.state.run.credits;
 
@@ -198,7 +203,7 @@ test('the bound contract holds into the next armory — the row refuses honestly
   transition(h, 'draft', 'wave_intro');
   transition(h, 'wave_intro', 'active');
   transition(h, 'active', 'cleanup');
-  h.state.run.wave = 2;
+  h.state.run.wave = 20; // the next Bench (every tenth round)
   transition(h, 'cleanup', 'draft');
   assert.equal(h.state.run.phase, 'draft');
   const dealt = named(h, 'run:draftOffered');
@@ -228,11 +233,11 @@ test('the bound contract holds into the next armory — the row refuses honestly
 
 test('the signature stamps provenance — the record keeps the clean contract AND the bound flight', () => {
   const h = boot();
-  waveArmory(h, null, 1);
+  waveArmory(h, null, 10);
   assert.equal(survivalDraft.resolvePick({ offerId: PACT.offerId }), true);
 
   // The wager-seam stamp: which mutator bound, and the wave the signature landed.
-  assert.deepEqual(h.state.run.telemetry.pacts, [{ mutatorId: 'one_hull', wave: 1 }]);
+  assert.deepEqual(h.state.run.telemetry.pacts, [{ mutatorId: 'one_hull', wave: 10 }]);
 
   // Settle the way survivalResults hands the records a finished run: the bound mutator
   // rides the result's own list, because the mechanics really ran under it.
@@ -247,7 +252,7 @@ test('the signature stamps provenance — the record keeps the clean contract AN
   assert.deepEqual(compact.mutators, [],
     'the signed mutator stays out of the launch contract the record fingerprints');
   // …while the row still says the ship really flew bound — and from which wave.
-  assert.deepEqual(compact.pacts, [{ mutatorId: 'one_hull', wave: 1 }]);
+  assert.deepEqual(compact.pacts, [{ mutatorId: 'one_hull', wave: 10 }]);
   assert.equal(compact.trialId, null, 'a swarm run keeps its ruleset — never a trial identity');
   assert.deepEqual(compact.recordRules.mutators, ['one_hull'],
     'the comparison class still knows the run flew under one_hull');
@@ -255,7 +260,7 @@ test('the signature stamps provenance — the record keeps the clean contract AN
   // The same mechanics launched as the contract still file as a mutator run — the two
   // provenances stay separable instead of fingerprinting identically.
   const bound = boot();
-  waveArmory(bound, ['one_hull'], 1);
+  waveArmory(bound, ['one_hull'], 10);
   assert.equal(bound.state.run.telemetry.pacts, undefined, 'a launch challenge signs nothing');
   const boundCompact = settle(bound.state.run);
   assert.deepEqual(boundCompact.mutators, ['one_hull'],
@@ -283,7 +288,7 @@ test('the signature stamps provenance — the record keeps the clean contract AN
 
 test('a run launched already bound lists the row dead — the refusal spends nothing', () => {
   const h = boot();
-  waveArmory(h, ['one_hull'], 1);
+  waveArmory(h, ['one_hull'], 10);
   assert.deepEqual(h.state.run.arenaMutators, ['one_hull'], 'the queued challenge reached the run');
   const credits = h.state.run.credits;
 

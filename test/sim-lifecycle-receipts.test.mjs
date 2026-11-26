@@ -8,7 +8,8 @@ import { createSimCommandRing, pushLaneCommand } from '../scripts/lib/simCommand
 import { createSimLaneRuntime } from '../src/core/simLaneMain.js';
 import { createBus } from '../src/core/eventBus.js';
 import { makeEntity, stampOccupantGeneration } from '../src/core/entity.js';
-import { destructionReceiptMatchesPresentationOwner, render } from '../src/render/renderer.js';
+import { destructionReceiptMatchesPresentationOwner, render, serviceRenderMeshResidency } from '../src/render/renderer.js';
+import { noteSharedTextureConsumer } from '../src/render/pooledPresentationMarks.js';
 import { createPlayerTruthLifeTracker, createPlayerTruthDrawIdentity, installPlayerTruthReader } from '../src/testing/playerTruth/reader.js';
 import { checkPopping, checkLodChurn, CLS, VIS } from '../scripts/player-truth/checks.mjs';
 
@@ -183,6 +184,90 @@ test('worker death replay retires only the previous occupant root after id reuse
   assert.equal(nextRoot.parent, scene);
   assert.equal(owner._meshes.get(id), nextRoot);
   assert.deepEqual(owner._despawnDisposeQueue, [oldRoot]);
+});
+
+test('surplus retirement keeps only the old drawable root through collapse and releases its exact lease', () => {
+  const id = 391;
+  const scene = new THREE.Scene();
+  const owner = {
+    scene,
+    state: { mode: 'flight', world: { enterSerial: 1 }, entities: new Map() },
+    _meshes: new Map(), _meshesVersion: 0,
+    _despawnDisposeQueue: [], _despawnDisposeHead: 0,
+    _meshBuildQueue: [], _meshBuildQueuedIds: new Set(), _hazardVisuals: [],
+    _detachDestroyedEntityMesh: render._detachDestroyedEntityMesh,
+    _unbindPresentationMesh: render._unbindPresentationMesh,
+    _queueAssetResidencyDiagnosticsPublish() {},
+    _publishAssetResidencyDiagnostics() {},
+    _killDepthStageSession() {},
+    _markShadowReceiversDirty() {},
+    reconcileMeshes() { this._meshReconcileDirty = false; },
+    reconcileMeshResidency() {},
+  };
+  function installWreck(life) {
+    const texture = new THREE.Texture();
+    texture.userData.sfEvictWhenEmpty = true;
+    const geometry = new THREE.BoxGeometry();
+    const material = new THREE.MeshStandardMaterial({ map: texture });
+    const root = new THREE.Group();
+    const leaf = new THREE.Mesh(geometry, material);
+    root.add(leaf);
+    root.scale.set(2, 3, 4);
+    root.matrixAutoUpdate = false;
+    root.updateMatrix();
+    Object.assign(root.userData, {
+      presentationOccupantGeneration: life,
+      sfBoundEntityId: id,
+      sfSharedTextureNotes: [texture],
+      sfSharedTexturesNoted: true,
+    });
+    noteSharedTextureConsumer(texture, id);
+    const released = { texture: 0, geometry: 0 };
+    texture.addEventListener('dispose', () => released.texture++);
+    geometry.addEventListener('dispose', () => released.geometry++);
+    scene.add(root);
+    owner._meshes.set(id, root);
+    return { root, leaf, geometry, material, texture, released };
+  }
+  const retire = life => render._onPresentationEntityDestroyed.call(owner, {
+    id, type: 'wreck', reason: 'swarm-wreck-surplus', occupantGeneration: life,
+  });
+
+  const old = installWreck(42);
+  const successor = { id, type: 'wreck', alive: true, occupantGeneration: 43 };
+  owner.state.entities.set(id, successor);
+  retire(42);
+  assert.equal(old.root.parent, scene, 'the exact old drawable root remains presented');
+  assert.equal(owner._meshes.has(id), false, 'the root no longer owns a gameplay presentation slot');
+  assert.deepEqual([...old.texture.userData.sfConsumers], [old.root]);
+  assert.deepEqual(old.released, { texture: 0, geometry: 0 });
+
+  const next = installWreck(43);
+  retire(42);
+  assert.equal(owner._meshes.get(id), next.root, 'a replay cannot retire the replacement');
+  serviceRenderMeshResidency(owner, 1);
+  assert.equal(old.root.parent, scene, 'a stalled presentation beat still shows the collapsing silhouette');
+  assert.ok(old.root.scale.x < 2 && old.root.scale.x > 0);
+  assert.equal(old.root.matrix.elements[0], old.root.scale.x, 'a frozen root still updates its pose');
+  assert.equal(old.leaf.geometry, old.geometry);
+  assert.equal(old.leaf.material, old.material);
+  assert.equal(old.leaf.material.map, old.texture);
+  assert.equal(old.released.texture, 0);
+  for (let frame = 0; frame < 3; frame++) serviceRenderMeshResidency(owner, 1);
+  assert.equal(old.root.parent, null);
+  assert.equal(old.released.texture, 1);
+  assert.equal(owner._rebuildBridges.size, 0);
+  assert.equal(next.root.parent, scene);
+  assert.deepEqual(next.root.scale.toArray(), [2, 3, 4]);
+
+  owner.state.entities.delete(id);
+  retire(43);
+  assert.equal(next.root.parent, scene);
+  render.clearAllMeshes.call(owner, false);
+  assert.equal(next.root.parent, null, 'reset releases a remnant without waiting for another frame');
+  assert.equal(owner._rebuildBridges.size, 0);
+  assert.deepEqual(old.released, { texture: 1, geometry: 1 });
+  assert.deepEqual(next.released, { texture: 1, geometry: 1 });
 });
 
 function readerFixture() {

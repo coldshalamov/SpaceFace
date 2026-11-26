@@ -134,12 +134,18 @@ test('a capital hull never dodges a thrown body', () => {
   assert.equal(firstDodge(frames), null, 'a capital cannot sidestep a thrown wreck');
 });
 
-test('heavier hulls dodge with less amplitude than light hulls', () => {
+test('a heavy hull never dodges a thrown body — it is terrain', () => {
   const pilot = pilotWhere((id) => notices(id, 'wreck-1', ALERT));
-  const amp = (band) => firstDodge(run(pilot, (tick) => [thrownAt(tick)], { self: selfFrame({ operationalMassBand: band }), ticks: 40 })).reflex.dodgeAmp;
-  assert.ok(amp('light') > amp('medium') && amp('medium') > amp('heavy'), 'mass bands scale the sidestep: light > medium > heavy');
-  const heavy = firstDodge(run(pilot, (tick) => [thrownAt(tick)], { self: selfFrame({ operationalMassBand: 'heavy' }), ticks: 40 }));
-  assert.equal(heavy.reflex.boost, false, 'only light hulls boost out of the lane');
+  const frames = run(pilot, (tick) => [thrownAt(tick)], { self: selfFrame({ operationalMassBand: 'heavy' }), ticks: 48 });
+  assert.equal(firstDodge(frames), null, 'a Bruiser takes the throw; design calls heavy hulls terrain');
+});
+
+test('medium hulls dodge with less amplitude than light hulls', () => {
+  const pilot = pilotWhere((id) => notices(id, 'wreck-1', ALERT));
+  const amp = (band) => firstDodge(run(pilot, (tick) => [thrownAt(tick)], { self: selfFrame({ operationalMassBand: band }), ticks: 48 })).reflex.dodgeAmp;
+  assert.ok(amp('light') > amp('medium'), 'mass bands scale the sidestep: light > medium');
+  const medium = firstDodge(run(pilot, (tick) => [thrownAt(tick)], { self: selfFrame({ operationalMassBand: 'medium' }), ticks: 48 }));
+  assert.equal(medium.reflex.boost, false, 'only light hulls boost out of the lane');
 });
 
 test('a live, non-tumbling ship on a head-on pass is left to ship collision avoidance', () => {
@@ -252,19 +258,23 @@ test('two near-equal bodies alternating as the nearest do not keep resetting the
     `each body keeps its own clock (fired at ${dodge.tick})`);
 });
 
-test('a second body inside the dodge cooldown is not dodged', () => {
-  const pilot = pilotWhere((id) => notices(id, 'wreck-1', ALERT) && notices(id, 'wreck-2', ALERT));
-  const first = firstDodge(run(pilot, (tick) => [thrownAt(tick)], { ticks: 40 }));
+test('a second body inside the light hull 4-second dodge cooldown is not dodged', () => {
+  const pilot = pilotWhere((id) => notices(id, 'wreck-1', ALERT));
+  // A fresh body every 30 ticks keeps a real threat on the hull for the whole window.
+  const stream = (tick) => {
+    const out = [];
+    for (let start = 0; start <= tick; start += 30) {
+      if (tick - start <= 50) out.push(thrownAt(tick - start, { id: `wreck-${start}` }));
+    }
+    return out;
+  };
+  const first = firstDodge(run(pilot, stream, { ticks: 60 }));
   assert.ok(first);
-  const cooldownEnd = first.tick + 90;
-  const frames = run(pilot, (tick) => [
-    thrownAt(tick),
-    thrownAt(tick - 40, { id: 'wreck-2' }),
-    thrownAt(tick - 80, { id: 'wreck-3' }),
-  ].filter((c, i) => i === 0 ? tick <= 40 : true), { ticks: cooldownEnd + 10 });
+  const cooldownEnd = first.tick + 240;
+  const frames = run(pilot, stream, { ticks: cooldownEnd + 30 });
   const starts = frames.filter((f) => f.reflex && f.reflex.kind === REFLEX_KIND.BODY_DODGE && f.reflex.dodgeAmp > 0);
   const lastStartWindow = starts.filter((f) => f.tick > first.tick + 30 && f.tick < cooldownEnd);
-  assert.equal(lastStartWindow.length, 0, 'no new burst inside the 90-tick cooldown');
+  assert.equal(lastStartWindow.length, 0, 'no new burst inside the light hull 240-tick (4 s) cooldown');
 });
 
 test('an invisible (cloak ghost or reported) track is never dodged', () => {

@@ -15,10 +15,10 @@ const EXPECTED_RECIPES = {
 };
 const EXPECTED_CAPTIONS = {
   well: 'Gravity well',
-  repulsor: 'Repulsor deployed',
-  cone: 'Cone deployed',
+  repulsor: 'Repulsion ring deployed',
+  cone: 'Wedge deployed',
   skim: 'Skim sheet deployed',
-  seed: 'Seed deployed',
+  seed: 'Anchor deployed',
 };
 
 test('INST-24: primary cue table resolves all 5 field deploy kinds', () => {

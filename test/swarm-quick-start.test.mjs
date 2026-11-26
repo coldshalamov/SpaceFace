@@ -24,7 +24,9 @@ import {
   useCrucibleMetaStorage,
 } from '../src/systems/survivalRecords.js';
 import { clearQueuedChallenge } from '../src/systems/survivalMutators.js';
-import { crucibleSetupFor, requestCrucibleRun } from '../src/ui/crucibleLaunch.js';
+import {
+  crucibleSetupFor, requestCrucibleRun, requestSwarmQuickStart, swarmQuickStartSetup,
+} from '../src/ui/crucibleLaunch.js';
 import {
   SWARM_QUICK_START,
   swarmQuickStartExtras,
@@ -177,4 +179,37 @@ test('the door keeps its authored opening: no flag still means the armory first'
   h.bus.emit('run:loadoutReady', { source: 'test' });
   h.bus.emit('run:openingPrepareRequested', { source: 'test' });
   assert.equal(h.state.run.phase, 'draft', 'the authored opening stop is the armory');
+});
+
+// Rewritten to the new rule (superseded by design/overhaul/04_SWARM.md §5 and §7): the title press
+// launches exactly what the Swarm front's PLAY launches — the remembered hull with its free starting
+// gun replayed during the load, zero Scrap, the room's Course seed. The ready-fitted quick-start kit
+// and its armory opt-out are gone. Reaching round 1 in flight with the gun mounted is proven through
+// the real sim host in test/swarm-play-door.test.mjs.
+test('the title press: one call sends the PLAY run — hull, free gun, zero Scrap — down the begin request', () => {
+  resetMeta();
+  const h = bootDoor();
+  assert.equal(requestSwarmQuickStart(h.bus, { seed: SEED, previous: null, stake: null }), true);
+  const request = h.emitted.filter((e) => e.event === 'game:new').at(-1);
+  const replay = request.payload.crucibleSetup.retryOpeningEquipment;
+  assert.equal(replay.hullId, 'ship_hornet');
+  assert.equal(replay.gun.defId, 'wpn_autocannon_s', 'the default free gun rides the load');
+  launchBus.emit('game:started');
+  const begin = h.emitted.filter((e) => e.event === 'run:beginRequested').at(-1);
+  assert.equal(begin.payload.ruleset, SWARM_RULESET);
+  assert.equal(begin.payload.zeroScrapOpening, true, 'every run starts at zero Scrap');
+  assert.equal(begin.payload.openArmoryBeforeRound1 ?? null, null, 'no opt-out flag: the gun replay skips the armory');
+  assert.equal(h.state.run.telemetry.zeroScrapOpening, true);
+});
+
+test('the title press remembers the last Swarm room and hull, and never flies an empty ship', () => {
+  const prior = { arenaId: 'cinder_sluice', hullId: 'ship_wasp', loadout: [], seed: 5 };
+  const bare = swarmQuickStartSetup({ seed: 9, previous: prior, previousRuleset: SWARM_RULESET, stake: 'veteran' });
+  assert.equal(bare.arenaId, 'cinder_sluice', 'the room last flown');
+  assert.equal(bare.hullId, 'ship_wasp', 'the hull last flown');
+  assert.equal(bare.swarmStake, 'veteran', 'the stake last chosen');
+  assert.ok(bare.retryOpeningEquipment.gun, 'never an empty ship: the free gun is fitted during the load');
+  const other = swarmQuickStartSetup({ seed: 9, previous: prior, previousRuleset: 'scored', stake: null });
+  assert.equal(other.arenaId, SWARM_QUICK_START.arenaId, 'a Gauntlet launch does not steer the Swarm door');
+  assert.equal(other.swarmStake, SWARM_QUICK_START.stakeId);
 });

@@ -21,6 +21,7 @@
 // - Civilian hulls are never moved by this plant: only their data stamp + lamps are touched.
 
 import { hash32 } from '../../core/rng.js';
+import { queuePlayerImpulse } from './playerImpulse.js';
 
 export const PL_343_RING_EVENT = 'plants:pl343:ring';
 export const PL_343_CHECK_EVENT = 'plants:pl343:check';
@@ -74,6 +75,7 @@ export function isSilencedFor(silencedUntil, hullKey, now) {
 }
 
 export const pl343LiftBell = {
+  modes: ['flight'],
   name: 'plantsPl343',
 
   init(ctx) {
@@ -216,13 +218,14 @@ export const pl343LiftBell = {
     const hullKey = this._hullKey(s, player);
     const speed = Math.hypot(finite(player.vel?.x), finite(player.vel?.z));
 
-    // The line-check mercy in progress: a bounded pull toward the station.
+    // The line-check mercy in progress: a bounded pull toward the station — through
+    // the membrane (the bell's line is the visible source), never a raw vel write.
     if (this._checkUntil != null && now < this._checkUntil) {
       const sx = station.pos.x - player.pos.x;
       const sz = station.pos.z - player.pos.z;
       const sd = Math.hypot(sx, sz) || 1;
-      player.vel.x += (sx / sd) * t.checkPullWu * step;
-      player.vel.z += (sz / sd) * t.checkPullWu * step;
+      queuePlayerImpulse(s, player, (sx / sd) * t.checkPullWu * step, (sz / sd) * t.checkPullWu * step,
+        'plantsPl343LiftBell', { continuous: true, dt: step });
     }
 
     const dist = Math.hypot(player.pos.x - pos.x, player.pos.z - pos.z);

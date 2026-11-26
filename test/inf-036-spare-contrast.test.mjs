@@ -11,7 +11,7 @@ import { WEAPONS } from '../src/data/weapons.js';
 import { describeAttackMetrics } from '../src/combat/attackSpec.js';
 import { createRunState } from '../src/core/runState.js';
 import { compileFittedAttackSpec } from '../src/systems/adventureMigration.js';
-import { refitRowLines, weaponSpareContrast } from '../src/ui/screens/crucibleDraft.js';
+import { plainWeaponComparison, refitRowLines, weaponSpareContrast } from '../src/ui/screens/crucibleDraft.js';
 import { arsenalIdentity } from '../src/data/arsenalIdentity.js';
 
 const WEAPON_BY_ID = new Map(WEAPONS.map((def) => [def && def.id, def]));
@@ -36,17 +36,18 @@ function compiledDamage(weaponId) {
   return describeAttackMetrics(result.spec).payloadTotal;
 }
 
-test('INF-036: split leaders read as sustained fire versus shove, with the defs’ numbers', () => {
+test('INF-036: split leaders read as hitting versus pushing, with the defs’ numbers', () => {
+  // The plain comparison the packet asked for — 'hits hardest', 'pushes hardest' — no dps/impulse jargon.
   const text = weaponSpareContrast([spare(PLASMA, 1), spare(RAILGUN, 2)]);
-  assert.match(text, /Most sustained fire: .*Plasma.*102 dps/);
-  assert.match(text, /Hardest shove: .*Railgun.*impulse 168/);
-  assert.doesNotMatch(text, /range|homing|heat/i, 'no capability beyond the two axes');
+  assert.match(text, /Plasma.*hits hardest \(fire 102\)/);
+  assert.match(text, /Railgun.*pushes hardest \(impact 168\)/);
+  assert.doesNotMatch(text, /range|homing|heat|dps|impulse/i, 'no capability beyond the two axes, no jargon');
 });
 
 test('INF-036: one spare leading both says so plainly', () => {
   // Pulse Laser M leads Pulse Laser S on both axes since the ROW 482 pulse rebalance.
   const text = weaponSpareContrast([spare(PULSE_M, 1), spare(PULSE, 2)]);
-  assert.match(text, /Pulse Laser M leads sustained fire \(72 dps\) and shove \(impulse 126\)/);
+  assert.match(text, /Pulse Laser M hits hardest \(fire 72\) and pushes hardest \(impact 126\)/);
 });
 
 test('INF-036: no comparison where there is none', () => {
@@ -60,11 +61,11 @@ test('INF-036: no comparison where there is none', () => {
     'fitted rows still carry the arsenalIdentity sentence');
 });
 
-test('INF-036: option labels carry the figures, mod spares stay bare', () => {
+test('INF-036: option labels carry the figures in plain words, mod spares stay bare', () => {
   const lines = refitRowLines({ slotIndex: 0, defId: null, name: null, spares: [spare(PULSE, 1), spare(AUTO, 2)] });
-  assert.match(lines.options[0].label, /27\.5 dps/);
-  assert.match(lines.options[0].label, /impulse 84/);
-  assert.match(lines.options[1].label, /31 dps/);
+  assert.match(lines.options[0].label, /fire 55/);
+  assert.match(lines.options[0].label, /impact 84/);
+  assert.match(lines.options[1].label, /fire 31/);
   assert.ok(lines.contrast && lines.contrast.length > 0, 'the row carries the contrast');
   const modLines = refitRowLines({
     slotIndex: 1, defId: null, name: null,
@@ -81,4 +82,16 @@ test('INF-036: the advertised damage difference appears in the compiled encounte
   const specOrder = Math.sign(compiledDamage(AUTO.id) - compiledDamage(PULSE.id));
   assert.equal(specOrder, defOrder, 'the encounter spec keeps the defs’ damage order');
   assert.ok(compiledDamage(PULSE.id) > 0 && compiledDamage(AUTO.id) > 0);
+});
+
+test('plainWeaponComparison speaks trade-offs in plain words with zero jargon', () => {
+  const vsSibling = plainWeaponComparison(PLASMA.id, [spare(PLASMA, 1), spare(RAILGUN, 2)], []);
+  assert.ok(vsSibling, 'compares against the sibling spare');
+  assert.equal(vsSibling.sentence, `Hits harder, pushes less than ${RAILGUN.name}.`);
+  assert.doesNotMatch(vsSibling.sentence, /dps|impulse/i);
+
+  const vsFitted = plainWeaponComparison(AUTO.id, [spare(AUTO, 1)], [{ defId: 'wpn_bank_stream_m', name: 'Bank Stream M' }]);
+  assert.ok(vsFitted, 'falls back to comparing a lone weapon spare against the ship’s fitted gun');
+  assert.equal(vsFitted.sentence, 'Hits softer, pushes harder than Bank Stream M.');
+  assert.doesNotMatch(vsFitted.sentence, /dps|impulse/i);
 });

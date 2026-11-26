@@ -164,7 +164,7 @@ test('target-bound NPC fixed fire physically intercepts from the real muzzle', (
     vel: physicalLaunchVelocity(centerLead, def.projSpeed, hunter.vel),
   };
   const centerLeadMiss = closestApproachDistance(centerAimShot, target);
-  assert.ok(physicalMiss < 0.2, `spawned projectile misses the moving target by ${physicalMiss.toFixed(3)} WU`);
+  assert.ok(physicalMiss < 2, `spawned projectile misses the moving target by ${physicalMiss.toFixed(3)} WU`);
   assert.ok(centerLeadMiss > physicalMiss + 0.5,
     `hull-center lead misses by ${centerLeadMiss.toFixed(2)} WU versus ${physicalMiss.toFixed(3)} WU from the muzzle`);
 });
@@ -180,6 +180,9 @@ test('target-bound NPC turrets physically intercept from the real muzzle', () =>
     gimbalArc: Math.PI * 2, _cooldown: 0, _heat: 0,
   };
   const target = { id: 99, pos: { x: 120, z: 100 }, vel: { x: -30, z: 45 }, alive: true };
+  // CW-WPN: an NPC cradle must already be on the solution before it releases (slew <= 1.5 rad/s);
+  // this test owns the intercept geometry from the real muzzle, not the traverse.
+  mount._turretAngle = system._arcadeMountAngle(hunter, mount, target, def.projSpeed);
   let spawned = null;
   const realSpawn = system._spawnProjectile;
   system._spawnProjectile = function (...args) {
@@ -189,7 +192,9 @@ test('target-bound NPC turrets physically intercept from the real muzzle', () =>
   system._serviceProjectileWeapon(hunter, mount, def, false, 100, 1 / 60, state, 0, target);
   assert.ok(spawned?.type === 'projectile', 'the normal weapon owner creates a live turret projectile');
   const physicalMiss = closestApproachDistance(spawned, target);
-  assert.ok(physicalMiss < 0.2, `turret projectile misses the moving target by ${physicalMiss.toFixed(3)} WU`);
+  // The pilot quiver (CW-WPN) is a real angular error on every NPC mount, so the turret is no
+  // longer a perfect solver; it must still land well inside the target it is aiming at.
+  assert.ok(physicalMiss < 2, `turret projectile misses the moving target by ${physicalMiss.toFixed(3)} WU`);
 });
 
 test('missile launch revalidates the target and each mount range before spending charge', () => {

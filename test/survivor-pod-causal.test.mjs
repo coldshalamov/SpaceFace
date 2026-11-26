@@ -135,6 +135,35 @@ test('scenario gate matches salvor-style golden exclusion', () => {
   assert.equal(causalSurvivorPodsGatedOut({ scenario: { active: null } }), false);
   assert.equal(causalSurvivorPodsGatedOut({ scenario: { active: { id: '47a' } } }), true);
   assert.equal(causalSurvivorPodsGatedOut({ scenario: { scenarioId: 'contract_x' } }), true);
+  // DEMO-SWARM-QUIET-1 review: a Swarm arena has no rescue economy, so no pod and no mayday.
+  assert.equal(causalSurvivorPodsGatedOut({ world: { swarmArenaOnly: true } }), true);
+  // DEMO-SWARM-UX-2: the live run gates from the first tick, before the arena flag is written.
+  assert.equal(causalSurvivorPodsGatedOut({ run: { kind: 'survival', ruleset: 'swarm' } }), true);
+  assert.equal(causalSurvivorPodsGatedOut({ run: { kind: 'survival', ruleset: 'gauntlet' } }), false);
+  assert.equal(causalSurvivorPodsGatedOut({ world: { currentSectorId: 'sector_tethys_junction' } }), false);
+});
+
+test('a Swarm arena never ejects a pod or hails a mayday; Adventure still does', () => {
+  for (const swarm of [true, false]) {
+    const h = boot();
+    try {
+      if (swarm) h.state.world.swarmArenaOnly = true;
+      const hails = [];
+      h.bus.on('toast', (p) => { if (p && p.kind === 'survivorMayday') hails.push(p.text); });
+      for (let i = 0; i < 40; i++) {
+        h.kill(h.spawnCrewed({ pos: { x: 100 + i * 5, z: 30 }, extraData: { worldRecordId: `wr_arena_${i}` } }));
+      }
+      if (swarm) {
+        assert.equal(h.pods().length, 0, 'a Swarm kill never leaves a survivor pod');
+        assert.deepEqual(hails, [], 'no "Mayday, mayday — … pod away." in a Swarm fight');
+      } else {
+        assert.ok(h.pods().length > 0, 'Adventure kills still eject pods');
+        assert.ok(hails.length > 0 && /^Mayday, mayday/.test(hails[0]), 'Adventure still hears the mayday');
+      }
+    } finally {
+      h.restore();
+    }
+  }
 });
 
 test('eject roll is deterministic for seed+identity', () => {

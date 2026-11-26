@@ -241,7 +241,8 @@ function openField(t, id = 'bomb_goo') {
     t.tick(31);
     const bay = readBombBayModel(t.state, t.state.simTime);
     assert.equal(bay.name, 'Pull'); assert.equal(bay.deployed, 1); assert.equal(bay.armedCount, 1);
-    assert.equal(readRailModel(t.state, t.state.simTime)[2].state, 'armed');
+    // R17: the armed remote lights the BOMB socket — the second press of Bomb detonates.
+    assert.equal(readRailModel(t.state, t.state.simTime)[4].state, 'armed');
     t.state.bombs.selectedId = 'bomb_concussion';
     assert.equal(readBombBayModel(t.state, t.state.simTime).state, 'ready');
     // PQ-205.03: save:loaded sweeps live bomb entities only — the owner deserializer restores
@@ -256,8 +257,8 @@ function openField(t, id = 'bomb_goo') {
   // The five powers (owner 2026-10-22): the bay is BOMB + its cycle, and SHOVE sets armed
   // ordnance off (it took the old detonate's D-Pad Down beside the repulsor's Y).
   for (const action of ['bomb', 'cycleBomb', 'shove']) assert.ok(TAUGHT_FLIGHT_ACTIONS.includes(action));
-  // G18-02: RB shoves on the pad (hold-Y owns the wheel the old chords moved to).
-  assert.deepEqual(GAMEPAD_DEFAULT_BINDINGS.shove, ['r1']);
+  // CONTROLLER-1: A/Cross shoves on the pad (sharing the seat with UI accept by design).
+  assert.deepEqual(GAMEPAD_DEFAULT_BINDINGS.shove, ['accept']);
   assert.equal(gamepadShareAllowed('shove', 'fire'), false);
   assert.equal(gamepadShareAllowed('shove', 'tabPrev'), true);
   const settings = readFileSync(new URL('../src/ui/screens/settings.js', import.meta.url), 'utf8');

@@ -36,6 +36,19 @@ function buoy(overrides = {}) {
 
 const NOW = 995; // 5 s of lease left on the base buoy
 
+test('Dione flag stays green then pulses red, including with reduced motion', () => {
+  const flag = buoy({ data: { storyPropKind: 'dione_range_flag', rangeGreenUntil: 30 } });
+  const green = resolveBeaconLampPlan(flag, 29, false, {});
+  assert.equal(green.mode, 'range-green'); assert.equal(green.colorHex, BEACON_LAMP_COLORS.rangeGreen);
+  assert.equal(green.glow01, 1);
+  for (const reduced of [false, true]) {
+    const a = resolveBeaconLampPlan(flag, 30, reduced, {});
+    const b = resolveBeaconLampPlan(flag, 30.6, reduced, {});
+    assert.equal(a.mode, 'range-red'); assert.equal(a.colorHex, BEACON_LAMP_COLORS.rangeRed);
+    assert.notEqual(a.glow01, b.glow01); assert.ok(a.glow01 >= .45 && b.glow01 >= .45);
+  }
+});
+
 test('a permanent buoy runs a light that breathes but never goes dark', () => {
   const lane = buoy({ data: {} });
   let minGlow = 2;
@@ -160,6 +173,24 @@ test('a re-grafted view root keeps the bead on the live root', () => {
   assert.equal(newRoot.children.length, 1, 'the bead follows the live root');
   assert.equal(oldRoot.children.length, 0, 'the stale root lets go');
   layer.dispose();
+});
+
+test('despawned beacon lamp materials recycle instead of disposing and evicting the shader program', () => {
+  const layer = new BeaconLampLayer();
+  const makeRoot = () => ({ children: [], add(c) { this.children.push(c); }, remove(c) { const i = this.children.indexOf(c); if (i >= 0) this.children.splice(i, 1); } });
+  const a = buoy({ id: 'b-rec-1', view: { root: makeRoot() } });
+  const b = buoy({ id: 'b-rec-2', view: { root: makeRoot() } });
+  layer.update([a], NOW, false);
+  const firstMat = layer.slots.get('b-rec-1').material;
+  let disposed = 0;
+  const origDispose = firstMat.dispose.bind(firstMat);
+  firstMat.dispose = () => { disposed++; origDispose(); };
+  layer.update([], NOW + 0.1, false);
+  assert.equal(disposed, 0, 'despawning a beacon must recycle rather than dispose its material');
+  layer.update([b], NOW + 0.2, false);
+  assert.equal(layer.slots.get('b-rec-2').material, firstMat, 'next beacon reuses the pooled material instance');
+  layer.dispose();
+  assert.equal(disposed, 1, 'layer.dispose() releases pooled and active materials');
 });
 
 test('the tracked set is bounded', () => {

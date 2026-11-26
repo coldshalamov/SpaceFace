@@ -73,6 +73,7 @@ export function hasOldScorch(ent, tuning = HONK_AT_HEAT_TUNING) {
 }
 
 export const pl237HonkAtHeat = {
+  modes: ['flight'],
   name: 'plantsPl237',
 
   init(ctx) {

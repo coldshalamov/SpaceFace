@@ -57,7 +57,10 @@ const SHIPPED_WEAPONS = [
     // packed hull at least as fast and pays more Scrap, so the room stays the louder path. NPC copies of
     // this gun carry their own dmgOverride in src/data/enemies.js (wasp 6, zealot 4, reaver 6), so NPC
     // lethality is unchanged. Pinned by test/zc-a34-guns-nudge.test.mjs.
-    dmg: 9, rof: 5.5, dps: 49.5, damageType: 'energy', energyCost: 2,
+    // Combat lead 2026-11-20 (gun-curve bench): dmg 9 killed the reference Wasp in 2.2 s, just
+    // outside the Pew band (1.5–2.0 s). dmg 10 (dps 55) lands at 2.02 s, the band's edge; dmg 11
+    // would out-kill a committed throw (R5 keeps the room the louder path). Kick per hit unchanged.
+    dmg: 10, rof: 5.5, dps: 55, damageType: 'energy', energyCost: 2,
     projSpeed: 320, range: 240, tracking: 'fixed', spreadDeg: 0.6,
     heatPerShot: 6, heatMax: 100, heatDissip: 16,
     // R5 is the PLAYER's starter. Every non-player copy of this gun (catalog enemies, the 47-A harasser,
@@ -105,7 +108,12 @@ const SHIPPED_WEAPONS = [
     dmg: 5, rof: 1.2, dps: 6.0, damageType: 'kinetic', energyCost: 3,
     projSpeed: 320, range: 240, tracking: 'fixed', spreadDeg: 1.0,
     heatPerShot: 10, heatMax: 100, heatDissip: 24,
-    impulsePerHit: 520, environmentImpulsePerHit: 1024, tumbleTorque: 35, impulseProvenance: 'concussion_slug_s',
+    // Gun-curve bench 2026-11-20: one hit moved a Wasp 0.52 depth in 2 s; Thump needs >= 1 ("the
+    // cannon gun that wallops them… knocks them back so hard they become a weapon themselves").
+    impulsePerHit: 1100, environmentImpulsePerHit: 1024, rockKickDv: 95, tumbleTorque: 35, impulseProvenance: 'concussion_slug_s',
+    // CW-WPN (INV-22 item 7): recoil is on the hull, never the camera. A light kicker still
+    // answers on the firing ship through the shared physical-impulse path.
+    recoilImpulse: 180,
   },
 
   // --- MEDIUM (M slot) ---
@@ -125,6 +133,7 @@ const SHIPPED_WEAPONS = [
     dmg: 5.14, rof: 14, dps: 71.96, damageType: 'kinetic', energyCost: 0.6,
     projSpeed: 520, range: 280, tracking: 'fixed', spreadDeg: 0.8,
     heatPerShot: 4, heatMax: 100, heatDissip: 36, armorPierce: 0.35,
+    attackTraits: ['mod_bank_shot'],
     impulsePerHit: 12, tumbleTorque: 1.2, impulseProvenance: 'bank_stream',
   },
   {
@@ -167,9 +176,15 @@ const SHIPPED_WEAPONS = [
     id: 'wpn_railgun_m', name: 'Railgun M', slotType: 'weapon', size: 'M', tier: 2, mass: 9, price: 21000, requiresTech: 'tech_kinetic_drivers',
     sentence: 'A long, honest spear: punches plates at range and staggers whatever survives.',
     mount: 'spinal',
-    dmg: 60, rof: 0.8, dps: 48, damageType: 'kinetic', energyCost: 14,
+    // Gun-curve bench 2026-11-20 (03 §3.1 Needle: "one shot kills it"): dmg 60 needed two shots
+    // on the reference Wasp; 140 is one. NPC copies carry their own dmgOverride (40 / 36). It also
+    // bats loose rocks now (owner: "free to blast at asteroids to knock them into enemies").
+    dmg: 140, rof: 0.6, dps: 84, damageType: 'kinetic', energyCost: 14,
     projSpeed: 700, range: 1100, tracking: 'fixed', armorPierce: 0.5,
-    impulsePerHit: 168, tumbleTorque: 16, impulseProvenance: 'railgun_penetrator',
+    impulsePerHit: 168, environmentImpulsePerHit: 900, rockKickDv: 70, tumbleTorque: 16, impulseProvenance: 'railgun_penetrator',
+    // CW-WPN (INV-22 item 7): the needle answers on the hull (03_COMBAT.md:131-132) - a small
+    // backward nudge per shot through the existing physical-impulse path.
+    recoilImpulse: 140,
   },
   {
     id: 'wpn_plasma_cannon_m', name: 'Plasma Cannon M', slotType: 'weapon', size: 'M', tier: 3, mass: 8, price: 42000, requiresTech: 'tech_plasma_dynamics',
@@ -184,7 +199,7 @@ const SHIPPED_WEAPONS = [
     mount: 'launcher',
     dmg: 70, splashDmg: 35, splashRadius: 40, rof: 0.8, dps: 56, damageType: 'explosive', energyCost: 4,
     projSpeed: 320, projSpeedMin: 180, range: 280, tracking: 'homing', turnRate: 1.5, lockTimeS: 1.2,
-    impulsePerHit: 150, tumbleTorque: 22, impulseProvenance: 'missile_detonation',
+    impulsePerHit: 150, rockKickDv: 60, tumbleTorque: 22, impulseProvenance: 'missile_detonation',
   },
   {
     id: 'unique_nestbreaker_rack', baseId: 'wpn_missile_rack_m', name: 'Nestbreaker Rack', slotType: 'weapon', size: 'M', tier: 2, mass: 7, price: 0,
@@ -225,7 +240,7 @@ const SHIPPED_WEAPONS = [
     mount: 'launcher',
     dmg: 320, splashDmg: 120, splashRadius: 70, rof: 0.25, dps: 80, damageType: 'explosive', energyCost: 10,
     projSpeed: 240, projSpeedMin: 140, range: 1400, tracking: 'homing', turnRate: 1.4, lockTimeS: 2.5,
-    impulsePerHit: 320, tumbleTorque: 48, impulseProvenance: 'torpedo_detonation',
+    impulsePerHit: 320, rockKickDv: 100, tumbleTorque: 48, impulseProvenance: 'torpedo_detonation',
   },
   {
     id: 'wpn_siege_lance_l', name: 'Siege Lance L', slotType: 'weapon', size: 'L', tier: 5, mass: 24, price: 310000, requiresTech: 'tech_flagship_command',
@@ -313,7 +328,12 @@ const SHIPPED_WEAPONS = [
     dmg: 12, rof: 1.0, dps: 12, damageType: 'kinetic', energyCost: 6,
     projSpeed: 340, range: 260, tracking: 'fixed', spreadDeg: 1.2,
     heatPerShot: 16, heatMax: 100, heatDissip: 26,
-    impulsePerHit: 920, environmentImpulsePerHit: 1024, tumbleTorque: 60, impulseProvenance: 'concussion_slug',
+    // Gun-curve bench 2026-11-20: one hit moved a Wasp 0.91 depth in 2 s; Thump needs >= 1 and the
+    // M must wallop harder than the S. (Rock kick stays the authored 1024: see the report's rock-mass note.)
+    impulsePerHit: 1400, environmentImpulsePerHit: 1024, rockKickDv: 130, tumbleTorque: 60, impulseProvenance: 'concussion_slug',
+    // CW-WPN (INV-22 item 7): the hull pays part of the throw it deals - recoil on the ship,
+    // never the camera (03_COMBAT.md:131-132), through the existing physical-impulse path.
+    recoilImpulse: 320,
   },
   {
     // VECTOR MINE — deployable ordnance whose payload is a RADIAL IMPULSE, not a burn: zero hull
@@ -379,7 +399,7 @@ const SHIPPED_WEAPONS = [
     sentence: 'The starter bolt reborn meaner: the same push, faster and meaner on the follow-up.',
     // dmg follows its base, the starter bolt (R5, 2026-11-18: dmg 9): the unique keeps its own
     // cooler heat (5/shot) and Bank Shot/Relay — the same pistol, meaner on the follow-up.
-    dmg: 9, rof: 5.5, dps: 49.5, damageType: 'energy', energyCost: 2,
+    dmg: 10, rof: 5.5, dps: 55, damageType: 'energy', energyCost: 2,
     projSpeed: 320, range: 240, tracking: 'fixed', spreadDeg: 0.6,
     heatPerShot: 5, heatMax: 100, heatDissip: 12,
     impulsePerHit: 84, tumbleTorque: 0.05, impulseProvenance: 'starter_pulse_plink',
@@ -463,6 +483,25 @@ const SHIPPED_WEAPONS = [
     lineageGenerationMax: 2,
     sentence: 'Flies out, carves back through you — a hit on each pass.',
     swarmReason: 'The bolt comes back; whatever stands in the return path eats it.',
+  },
+  {
+    // THE TUMBLER — 03_COMBAT.md §10; the owner: "that long-distance gravity blast laser thing that
+    // shoots pretty far away and doesn't do any damage but it sends them tumbling… end over end and
+    // they do get damage when they smash into an object or crash into a black hole — like Mortal
+    // Kombat trying to use the stage as a weapon." Trick family. Zero damage: the payload is a
+    // long, fast gravity bolt whose impulse knocks a light hull loose (the universal hitstun law
+    // turns that delta-v into helm loss and the §7 tumble) and sends it along the beam; the kill is
+    // whatever it hits, which the collision law credits to the shooter. Rocks take it too.
+    id: 'wpn_tumbler_m', name: 'Tumbler', slotType: 'weapon', size: 'M', tier: 3, mass: 8, price: 34000,
+    requiresTech: 'tech_graviton_drives',
+    // dmg 1 is a token so every live hit path routes the packet; the impulse is the payload.
+    dmg: 1, rof: 0.6, dps: 0.6, damageType: 'kinetic', energyCost: 16, pureImpulse: true,
+    projSpeed: 1400, range: 1300, tracking: 'fixed', spreadDeg: 0.2,
+    heatPerShot: 30, heatMax: 100, heatDissip: 22,
+    impulsePerHit: 1500, environmentImpulsePerHit: 2600, rockKickDv: 110, tumbleTorque: 140, impulseProvenance: 'tumbler_gravity_bolt',
+    recoilImpulse: 90,
+    sentence: 'A long gravity bolt: no damage, it sends them tumbling into whatever is behind them.',
+    swarmReason: 'Knock them end over end into the rocks — the room does the killing.',
   },
   ...EMERGENT_WEAPON_DEFS,
 ];

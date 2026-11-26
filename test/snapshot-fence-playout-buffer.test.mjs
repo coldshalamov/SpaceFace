@@ -25,6 +25,13 @@ function meshStub() {
   return { position: { x: 0, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0 }, userData: {} };
 }
 
+// The drawn pose (ENGINE slice 1): the fence pose plus the correction blend the renderer applies.
+function drawnX(fence, mesh, elapsedS) {
+  fence.beginBlendFrame(elapsedS);
+  const b = fence.blendDrawnPose(PLAYER_ID, 0, mesh.position.x, mesh.position.z, mesh.rotation.y, {});
+  return b.x;
+}
+
 function applyPose(fence, mesh, alpha) {
   applySnapshotPoseToMesh(mesh, fence.latestSnapshot(), PLAYER_ID, { x: 0, z: 0 },
     fence.previousSnapshot(), alpha);
@@ -62,7 +69,9 @@ for (const duplicate of [true, false]) {
     }, { rawForward: true, drawnForward: true, timeForward: true });
     assert.equal(fence.latestSnapshot().sequence, lastSequenceAtGap);
     assert.ok(fence.previousSnapshot().simTime < fence.latestSnapshot().simTime);
-    if (!duplicate) assert.equal(fence.getPlayoutDiagnostics().gapResets, 1);
+    // ENGINE slice 1: a 0.52 s frame is caught up by the rate servo, never re-seated (only a
+    // frame longer than PLAYOUT_RESEAT_FRAME_S is a re-entered tab).
+    if (!duplicate) assert.equal(fence.getPlayoutDiagnostics().gapResets, 0);
 
     // After real ticks resume, both the delayed pair and its mesh keep moving forward.
     let prior = after;
@@ -90,7 +99,7 @@ test('a late pack lands inside history: the drawn pose never holds or jumps', ()
   const step = (elapsedS) => {
     const alpha = fence.samplePresentationAlpha(elapsedS, 0, DT);
     applyPose(fence, mesh, alpha);
-    drawn.push(mesh.position.x);
+    drawn.push(drawnX(fence, mesh, elapsedS));
   };
   // 300 ms of worker silence: the delay buffer plays first, extrapolation after.
   for (let i = 0; i < 18; i++) step(1 / 60);
@@ -140,7 +149,11 @@ test('the adaptive delay grows when the buffer runs dry and shrinks when history
   packOne(fence, { x: 100, simTime: DT });
   // Drive the presented clock into the extrapolation zone, THEN let a pack land while
   // the clock is past the old newest — that commit prices the dry buffer.
-  for (let i = 0; i < 30; i++) fence.samplePresentationAlpha(1 / 60, 0, DT);
+  // Stop as soon as the clock has overrun the newest sample (a dry buffer, not a deep silence:
+  // a clock far into coast is riding out a worker silence and does not price arrival jitter).
+  for (let i = 0; i < 30 && !(fence.getPlayoutDiagnostics().packLagMs < -5); i++) {
+    fence.samplePresentationAlpha(1 / 60, 0, DT);
+  }
   packOne(fence, { x: 200, simTime: 2 * DT });
   fence.samplePresentationAlpha(1 / 60, 0, DT);
   const dry = fence.getPlayoutDiagnostics();
@@ -365,13 +378,12 @@ test('a 30 Hz present cadence plays the world at wall speed', () => {
   assert.ok(last.rate <= 1.05, `the playout rate was not saturated (${last.rate.toFixed(3)})`);
 });
 
-test('a true 400 ms sim gap rides out, then re-seats at the bounded gap limit', () => {
+test('a true 400 ms sim gap rides out, then is caught up without a re-seat or a leap', () => {
   // The presentation consumer withholds completed packs for 400 ms while the sim keeps
-  // running; the fence sees a real 400 ms gap in sim time. The runway modulation keeps the
-  // hull moving through the silence (zero held frames); the burst that ends it is beyond the
-  // bounded playout gap, so the clock re-seats at newest − delay in one frame instead of
-  // replaying ~4 s of backlog. The re-seat jump is the distance the world actually travelled
-  // while unobserved, never an interpolation overshoot.
+  // running; the fence sees a real 400 ms gap in sim time. The hull coasts through the silence
+  // (zero held frames). ENGINE slice 1: the burst that ends it is inside the 48-pack history, so
+  // the clock is NOT re-seated; the coast-to-truth discontinuity becomes a healing offset and the
+  // servo plays the backlog out at up to 2x — the drawn hull never leaps in one frame.
   const fence = createSnapshotFence({ capacity: 4 });
   const speed = 195;
   const mesh = meshStub();
@@ -389,8 +401,9 @@ test('a true 400 ms sim gap rides out, then re-seats at the bounded gap limit', 
       mesh, fence.latestSnapshot(), PLAYER_ID, { x: 0, z: 0 },
       fence.previousSnapshot(), alpha,
     );
+    const x = drawnX(fence, mesh, DT);
     if (xs.length > 0) {
-      const jump = Math.abs(mesh.position.x - xs.at(-1));
+      const jump = Math.abs(x - xs.at(-1));
       if (jump <= 1e-4) {
         held++;
         maxHeld = Math.max(maxHeld, held);
@@ -398,7 +411,7 @@ test('a true 400 ms sim gap rides out, then re-seats at the bounded gap limit', 
         held = 0;
       }
     }
-    xs.push(mesh.position.x);
+    xs.push(x);
   };
   // 400 ms of silence at 60 fps.
   for (let i = 0; i < 24; i++) frame();
@@ -411,12 +424,12 @@ test('a true 400 ms sim gap rides out, then re-seats at the bounded gap limit', 
     packOne(fence, { x, simTime: tick * DT });
   }
   frame();
-  const reseatJump = Math.abs(mesh.position.x - beforeBurst);
+  const burstJump = xs.at(-1) - beforeBurst;
   const reseatFrameIndex = xs.length - 1;
-  assert.ok(mesh.position.x >= beforeBurst, 'the re-seat never moves the hull backwards');
-  assert.ok(reseatJump <= 2 * speed * 0.4 + 1e-6,
-    `the re-seat covers at most the gap's real travel: ${reseatJump.toFixed(2)} wu`);
-  assert.ok(fence.getPlayoutDiagnostics().gapResets >= 1, 'the bounded-gap re-seat fired');
+  assert.ok(burstJump >= 0, 'the burst never moves the hull backwards');
+  assert.ok(burstJump <= 2 * speed * DT + 1e-6,
+    `the burst frame stays under the 2x bar: ${burstJump.toFixed(2)} wu`);
+  assert.equal(fence.getPlayoutDiagnostics().gapResets, 0, 'a 400 ms burst is caught up, not re-seated');
   const afterReseat = xs.slice(reseatFrameIndex + 1);
   let previous = xs[reseatFrameIndex];
   let worstRatio = 0;
@@ -429,9 +442,11 @@ test('a true 400 ms sim gap rides out, then re-seats at the bounded gap limit', 
     previous = xs.at(-1);
   }
   assert.ok(afterReseat.every((value, i, arr) => i === 0 || value >= arr[i - 1] - 1e-9),
-    'post-re-seat motion is monotone');
-  assert.ok(worstRatio <= 2,
-    `post-re-seat frames stay under the 2x bar: ${worstRatio.toFixed(2)}x`);
+    'catch-up motion is monotone');
+  // Catch-up plays recorded history at up to PLAYOUT_CATCHUP_RATE_MAX (2x) while the burst's
+  // offset heals; never a leap.
+  assert.ok(worstRatio <= 1.25,
+    `catch-up frames stay under 2.5x speed: ${(worstRatio * 2).toFixed(2)}x`);
   const leads = [];
   for (let i = 0; i < 120; i++) {
     x += speed * DT;
@@ -527,6 +542,13 @@ test('a same-epoch respawn never blends the old body into the new pose', () => {
     mesh, fence2.latestSnapshot(), PLAYER_ID, { x: 0, z: 0 },
     fence2.previousSnapshot(), 20,
   );
-  assert.ok(Math.abs(mesh.position.x - 6.5 * 13) < 1e-6,
-    `overshoot clamps to 13 hops: ${mesh.position.x}`);
+  // ENGINE slice 1: the coast window reaches tau/span = 21 hops at 60 Hz; the clamp is 25.
+  assert.ok(Math.abs(mesh.position.x - 6.5 * 20) < 1e-6,
+    `alpha 20 is inside the hop clamp: ${mesh.position.x}`);
+  applySnapshotPoseToMesh(
+    mesh, fence2.latestSnapshot(), PLAYER_ID, { x: 0, z: 0 },
+    fence2.previousSnapshot(), 40,
+  );
+  assert.ok(Math.abs(mesh.position.x - 6.5 * 25) < 1e-6,
+    `overshoot clamps to 25 hops: ${mesh.position.x}`);
 });

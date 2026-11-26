@@ -1,6 +1,7 @@
 import { el } from '../kit/index.js';
 import { dpIcon } from '../deckplate/icons.js';
 import { injectManifestLayouts } from '../orrery/manifestLayouts.js';
+import { stagger, reducedMotion } from '../orrery/motion.js';
 import { MANIFEST_STAKES, MANIFEST_TARGET, manifestDeedCards, manifestStyle, manifestTotal } from '../../data/manifestGame.js';
 
 const SUITS = {
@@ -159,7 +160,13 @@ export const manifestScreen = {
     root.replaceChildren(this._header, this._body, this._footer, this._live);
     this.render();
   },
-  onShow(ctx) { this._ctx = ctx; ctx.bus.emit('ui:manifestOpen', {}); },
+  onShow(ctx) {
+    this._ctx = ctx;
+    // Arrival pass (ORRERY §3.5): the table deal rises in on show; every later
+    // manifest:changed re-render (the opponent answering) stays silent.
+    this._arriving = true;
+    ctx.bus.emit('ui:manifestOpen', {});
+  },
   act(action, cardId) {
     if (!this._match) return;
     this._ctx.bus.emit('ui:manifestAction', { matchId: this._match.id, action, cardId,
@@ -231,6 +238,15 @@ export const manifestScreen = {
       next?.focus({ preventScroll: true });
       if (keyboardFocus) {
         next?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+      }
+    }
+
+    if (this._arriving) {
+      this._arriving = false;
+      if (!reducedMotion()) {
+        const units = [this._header, ...this._body.children, this._footer].filter(Boolean);
+        stagger(units, { base: 40, step: 55 });
+        for (const unit of units) unit.classList.add('orr-rise');
       }
     }
   },

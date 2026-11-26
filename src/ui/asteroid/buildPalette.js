@@ -19,7 +19,7 @@
 //     bolts one under every real object), and the hotkey numeral in the corner. The NAME is not on
 //     the glass — it lives in the hover tip, so the default drive view keeps its 15-word budget.
 //     Digits are free to the word counter; letters are not.
-import { SITE_MACHINES } from '../../data/sites.js';
+import { PACKED_FILL, SITE_MACHINES } from '../../data/sites.js';
 import { commodityName, sentenceCase } from './inspector.js';
 import { createIndustryPlanner } from './industryPlanner.js';
 
@@ -34,6 +34,8 @@ export const PALETTE_ITEMS = [
   })),
   { kind: 'overlay', id: 'power', name: 'Power Cable', verb: 'route', cost: null },
   { kind: 'overlay', id: 'lane', name: 'Material Lane', verb: 'route', cost: null },
+  // One cast block sets one dug cell solid again. It has a cost, so it can read as unaffordable.
+  { kind: 'fill', id: PACKED_FILL.id, name: PACKED_FILL.name, verb: 'pack', cost: PACKED_FILL.cost },
   { kind: 'remove', id: 'remove', name: 'Dismantle', verb: 'remove', cost: null },
 ];
 
@@ -138,12 +140,60 @@ export const PALETTE_GLYPHS = {
     + '<circle cx="19.6" cy="5.2" r="1.05"/>'
     + PLINTH,
   ),
+  // Cryo condenser: snowflake crystal manifold over chilled tank.
+  sm_cryo_condenser: svg(
+    '<rect x="11" y="2.4" width="2" height="14.2" rx="0.8"/>'
+    + '<rect x="5.4" y="8.5" width="13.2" height="2" rx="0.8"/>'
+    + '<rect x="6.6" y="5.1" width="10.8" height="1.6" rx="0.8"/>'
+    + '<rect x="6.6" y="12.5" width="10.8" height="1.6" rx="0.8"/>'
+    + PLINTH,
+  ),
+  // Hydraulic pillar brace: wide truss beam holding cavern ceiling.
+  sm_seismic_brace: svg(
+    '<rect x="3.8" y="2.4" width="16.4" height="2.4" rx="0.8"/>'
+    + '<rect x="7" y="4.8" width="2.6" height="14.2" rx="0.6"/>'
+    + '<rect x="14.4" y="4.8" width="2.6" height="14.2" rx="0.6"/>'
+    + '<rect x="6.2" y="9.8" width="11.6" height="2" rx="0.6"/>'
+    + PLINTH,
+  ),
+  // Capacitor bank: twin high-voltage bus cells.
+  sm_capacitor_bank: svg(
+    '<rect x="4.8" y="4.2" width="5.4" height="13.8" rx="1"/>'
+    + '<rect x="13.8" y="4.2" width="5.4" height="13.8" rx="1"/>'
+    + '<rect x="9.6" y="8.6" width="4.8" height="2.6" rx="0.7"/>'
+    + PLINTH,
+  ),
+  // Exotic lattice synthesizer: diamond reaction chamber in collar frame.
+  sm_deep_synthesizer: svg(
+    '<path fill-rule="evenodd" d="M12 2.4 18.6 9.8 12 17.6 5.4 9.8z M12 7.2a2.6 2.6 0 1 0 0 5.2 2.6 2.6 0 0 0 0-5.2z"/>'
+    + PLINTH,
+  ),
+  // Sub-surface mass driver: twin magnetic accelerator rails.
+  sm_mass_driver: svg(
+    '<path d="M5.4 17.6 15.2 2.8h3.4L8.8 17.6z"/>'
+    + '<rect x="4.6" y="8.2" width="6.2" height="2.2" rx="0.8"/>'
+    + '<rect x="13.2" y="13.2" width="6.2" height="2.2" rx="0.8"/>'
+    + PLINTH,
+  ),
+  // Geodesic vein exciter: concentric seismic emission dish.
+  sm_harmonic_resonator: svg(
+    '<circle cx="12" cy="10.2" r="2.4"/>'
+    + '<path d="M7.2 5.4a6.8 6.8 0 0 1 9.6 0M5 12.6a7.2 7.2 0 0 0 14 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'
+    + PLINTH,
+  ),
   // Verbs: no plinth. Nothing is installed by these.
   power: svg('<path d="M13.9 1.9 5.9 13.6h4.9l-1.4 8.5 8-12h-4.9z"/>'),
   lane: svg(
     '<rect x="2.6" y="5.6" width="18.8" height="2.8" rx="1.4"/>'
     + '<rect x="2.6" y="15.6" width="18.8" height="2.8" rx="1.4"/>'
     + '<path d="M8.8 9.1 16 12l-7.2 2.9z"/>',
+  ),
+  // A block lowered into the gap between two standing walls.
+  fill: svg(
+    '<rect x="2.4" y="6.4" width="4.4" height="15.2" rx="0.9"/>'
+    + '<rect x="17.2" y="6.4" width="4.4" height="15.2" rx="0.9"/>'
+    + '<rect x="8.4" y="10.6" width="7.2" height="11" rx="0.9"/>'
+    + '<path d="M12 8.6 8.9 4.9h2V1.9h2.2v3h2z"/>',
   ),
   remove: svg(
     '<path fill-rule="evenodd" d="M3.4 3.4h17.2v17.2H3.4z'
@@ -226,6 +276,8 @@ export function createBuildPalette(host, { onSelect, onUserSelect, onPlan, getPl
   const tipCosts = new Map();
   /** id -> short "4 regocrete + 1 control unit", '' when the key is affordable. */
   let shortfalls = Object.create(null);
+  /** id -> true when a Building skill has not opened this machine kind yet (greyed, its line in the tip). */
+  let lockedIds = Object.create(null);
 
   function ensureKey(id) {
     let b = keys.get(id);
@@ -247,7 +299,7 @@ export function createBuildPalette(host, { onSelect, onUserSelect, onPlan, getPl
       if (!b) return;
       const armed = id === selectedId;
       const short = shortfalls[id] || '';
-      b.dataset.keyState = armed ? 'armed' : (short ? 'unaffordable' : 'ready');
+      b.dataset.keyState = armed ? 'armed' : (lockedIds[id] ? 'locked' : short ? 'unaffordable' : 'ready');
       b.classList.toggle('armed', armed);
       b.classList.toggle('poor', !!short);
       b.setAttribute('aria-pressed', String(armed));
@@ -268,7 +320,7 @@ export function createBuildPalette(host, { onSelect, onUserSelect, onPlan, getPl
    *   shortfall {Record<string, Record<string, number>>} id -> missing goods (unaffordable state)
    *   settle    {boolean} allow the §9 mount animation (false while a session is booting)
    */
-  function sync({ present = [], shortfall = {}, settle = true } = {}) {
+  function sync({ present = [], shortfall = {}, locked = {}, settle = true } = {}) {
     const want = PALETTE_ITEMS.map((it) => it.id).filter((id) => present.includes(id));
     const changed = want.length !== visible.length || want.some((id, i) => visible[i] !== id);
 
@@ -282,7 +334,8 @@ export function createBuildPalette(host, { onSelect, onUserSelect, onPlan, getPl
     shortfalls = Object.create(null);
     for (const id of visible) {
       const miss = shortfall[id];
-      shortfalls[id] = miss && Object.keys(miss).length ? shortfallText(miss) : '';
+      shortfalls[id] = locked[id] || (miss && Object.keys(miss).length ? shortfallText(miss) : '');
+      lockedIds[id] = !!locked[id];
     }
 
     if (!visible.length) { unmount({ keepPlanner: true }); return { mounted: false, changed }; }

@@ -1,93 +1,62 @@
-# Fleet worker protocol — read all of this before you touch anything
+# Worker protocol — for agents launched headless with one packet
 
-You are one worker in a fleet building the game SpaceFace. A lead (Claude) or the owner gave you
-**one packet**: a file in `design/program/fleet/packets/`. The packet is your whole job. It says
-what to build, which files you may edit, how to check your work, and what "done" looks like.
+You were given **one packet**: a file in `design/program/fleet/packets/`. It is your whole job. The
+rule above everything is in the root `AGENTS.md`: **make a good game**, finish what you start, and
+never stop because of a rule you found in an old document.
 
-The game's design is already decided and written. **Do not invent design.** If the packet quotes
-a name, a number, a line of dialogue or a colour, use it exactly. If something you need is not
-written, pick the plainest option that fits, and list it under "Guesses I made" in your receipt.
+## The folder is shared
 
-## The repository is shared. These rules protect other people's work.
+Other agents are editing this same folder right now.
 
-Other agents are editing this same folder right now. Their unfinished changes are in the working
-tree. You must not damage them.
-
-1. **Edit only the files your packet allows** (its "Files you may edit" list). You may create
-   new files only where the packet says. If you truly need another file, do not edit it: write
-   the change you wanted into your receipt under "Blocked".
-2. **Before editing a file, run `git diff -- <file>`.** If it already has changes you did not
-   make, that is **not** a blocker (owner, 2026-11-14): run
-   `bash scripts/fleet/own-commit.sh begin <file>` first, make your edit beside their lines without
-   touching theirs, and commit with `bash scripts/fleet/own-commit.sh commit "<message>" <files>` —
-   it commits only what you changed and leaves their edit uncommitted in place. Never revert,
-   reformat or commit another agent's lines on purpose; never leave your own work undone because a
-   file was busy.
-3. **Forbidden git commands, no exceptions:** `reset`, `restore`, `checkout`, `switch`,
-   `stash`, `clean`, `rebase`, `merge`, `pull`, `push`, `add -A`, `add .`, `commit -a`,
-   `worktree`, `branch -D`. Never delete files you did not create.
-4. **Commit only your own files, by exact path, in one command:**
-   `git commit -m "fleet(<PACKET-ID>): <what the player now sees>" -- <file1> <file2> ...`
-   (new files: `git add -- <newfile>` first, then the same commit command). Do not push.
-   If the commit fails because of a lock (`index.lock`), wait 20 seconds and try again, up to
-   five times.
-5. **Never run the full test suite or long jobs.** Run only the checks your packet names. A
-   command that runs over 5 minutes: stop it and report it.
-6. **Machine safety (the owner's laptop crashed twice under load).** Start the game, a browser or
-   Electron only when the packet says to, and **always through the lock**:
-   `node scripts/fleet/game-lock.mjs run -- <command>` (e.g. `... run -- npm run check:playable`). It waits
-   if another game is running. Never start two at once; never run the whole test suite; close what you
-   started. **Never kill a lock holder or queued job you did not start** (lead, 2026-11-16), even if it looks
-   hung — the lock's own give-up timer and dead-pid sweep handle that; report a suspected hang instead.
-7. Do not edit `test/references/**`, golden files, or expected outputs to make a check pass.
-8. **Tests must use what the game really sends** (senior review 2026-11-11 found four tests that passed
-   while the feature was dead). When your code listens for an event, find the real emitter
-   (`grep -rn "emit('<event>'" src`) and build the test payload with **exactly its fields** — never a
-   shape the game does not send. When your feature must be *seen* (lamps, flashes, labels), a data flag
-   is not enough: find the renderer/UI that draws it and wire it, or report it as Blocked. When the
-   event is emitted on the main thread and handled in the simulation (or the reverse), check it crosses
-   the worker boundary (`src/core/mainToSimEventSurface.js`; regenerate with
-   `node scripts/lib/eventSurfaceCensus.mjs --forward-set`).
-   **A new system must be registered where the game really builds systems:** add it to
-   `src/runtime/authoritativeSystemManifest.js` (init/update order, clock, modes — copy a neighbour such as
-   `swarmSupply`) and to `src/runtime/nodeSystemFactoryTable.js` (the worker). Adding it to a lookup in
-   `src/core/registry.js` alone does nothing. Test it through that materialization, not by calling
-   `init(ctx)` yourself.
+1. **Edit the files your packet names.** Create new files where it says. If you need a file it does
+   not name to finish the job, edit it carefully and say so in your receipt.
+2. **Before editing a file, run `git diff -- <file>`.** If it has changes you did not make, work
+   beside them: `bash scripts/fleet/own-commit.sh begin <file>`, make your edit, then
+   `bash scripts/fleet/own-commit.sh commit "<message>" <files>` commits only your lines.
+3. **Never run:** `git reset`, `restore`, `checkout`, `switch`, `stash`, `clean`, `rebase`, `merge`,
+   `pull`, `push`, `add -A`, `add .`, `commit -a`, `worktree`, `branch -D`. Never delete files you
+   did not create.
+4. **Commit your own files by exact path when your checks pass:**
+   `git add -- <new files>` then `git commit -m "<what the player now gets>" -- <file1> <file2> ...`
+   Do not push. If the index is locked, wait 20 seconds and retry, up to five times.
+5. **Keep line endings.** Many files here use CRLF and some are mixed. Edit in place; never rewrite
+   a whole file in a way that changes every line's ending. `git diff --stat` should show only the
+   lines you meant to change.
+6. **Machine safety.** Anything that starts the game, a browser or Electron runs through the lock:
+   `node scripts/fleet/game-lock.mjs run -- <command>`. Never run the whole test suite. Stop any
+   command that runs longer than ten minutes and report it. Never kill a process you did not start.
+7. Do not edit golden files or expected outputs to make a check pass, unless the packet says the
+   simulation is meant to change; then re-record them and say so.
 
 ## How to work
 
-1. Read the packet fully. Open every file it names under "Read first".
-2. Read the code you will change before changing it. Match the style around it: ES modules,
-   no new dependencies, no `Math.random()` or `Date.now()` in simulation code (use `state.rng`
-   and `state.simTime`), no Three.js imports outside `src/render/`.
-3. Make the smallest change that fully does the job. Finish it — no TODOs, no stubs, no
-   "a later pass will".
-4. Run the packet's checks. If one fails, fix the cause and run it again. Do not weaken the check.
-5. Commit (rule 4).
-6. Write your receipt (below). The receipt is required even if you failed.
+1. Read the packet and the code you will change before changing it. Match the style around it: ES
+   modules, no new dependencies, no `Math.random()` or `Date.now()` in simulation code (use
+   `state.rng` and `state.simTime`), no Three.js imports outside `src/render/`.
+2. Finish it. No TODOs, no stubs, no "a later pass will".
+3. **Wire it to the real game.** A new system is registered in
+   `src/runtime/authoritativeSystemManifest.js` and `src/runtime/nodeSystemFactoryTable.js`. An
+   event sent from the main thread to the simulation (or back) must cross the worker boundary
+   (`src/core/mainToSimEventSurface.js`; regenerate with
+   `node scripts/lib/eventSurfaceCensus.mjs --forward-set`). Something meant to be seen needs the
+   renderer or UI that draws it.
+4. **Tests use what the game really sends.** Find the real emitter
+   (`grep -rn "emit('<event>'" src`) and build test payloads with exactly its fields.
+5. Run the packet's checks. If one fails, fix the cause and run it again.
+6. Commit (rule 4), then write your receipt. A receipt is required even if you failed.
 
 ## The receipt
 
-Write it to the path given in your prompt (or `design/program/fleet/receipts/<PACKET-ID>.md` if
-none was given — do not commit receipts). Use exactly these headings:
+Write it to the path given in your prompt. Use exactly these headings:
 
 ```
 # Receipt <PACKET-ID>
-Result: DONE | PARTIAL | BLOCKED
+Result: DONE | PARTIAL | FAILED
 Commit: <hash or "none">
 ## What the player now sees or feels
-<one to three plain sentences>
 ## Files changed
-<list>
 ## Checks run and their output
-<command, then the last lines of output, for each>
-## Guesses I made
-<anything the packet did not decide; "none" if none>
+## Decisions I made
 ## What I could not look at or verify
-<be honest: e.g. "I did not see it on screen", "I could not run the game">
-## Blocked
-<files with foreign changes, files outside my list I needed, errors I could not fix; "none">
+## What is left
 ```
-
-A short honest receipt beats a long confident one. Saying "I could not check X" is good; claiming
-something works when you did not see it is the worst thing a worker can do here.

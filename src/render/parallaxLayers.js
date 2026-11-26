@@ -160,9 +160,11 @@ class ParallaxLayers {
 
     this._chipTemplate = createFracturedDebrisGeometry();
     this._sharedMaps = getReadyRockSurfaceTextures();
+    this._disposed = false;
     if (!this._sharedMaps) {
       waitForRockSurfaceLibraryReady().then((maps) => {
-        if (maps && !this._sharedMaps) {
+        // A resolution that lands after dispose() must not stamp maps onto the dead instance.
+        if (maps && !this._sharedMaps && !this._disposed) {
           this._seatRockSurfaceMaps(maps);
         }
       }).catch(() => {});
@@ -224,6 +226,7 @@ class ParallaxLayers {
   }
 
   dispose() {
+    this._disposed = true;
     for (let i = 0; i < this.groups.length; i++) {
       const group = this.groups[i];
       if (this.scene) this.scene.remove(group);

@@ -25,7 +25,27 @@ COLORS = {
 VINES = (15.0, 100.0, 185.0, 270.0)
 
 
+def signature(s):
+    """Growth domes inside the ring: cultivated moss caps with fronds and bio-lamps."""
+    for i, a in enumerate((40.0, 130.0, 220.0, 310.0)):
+        p = K.polar(26.0, a, 9.0)
+        F.sphere(s, f'UnderstoryDome{i}', p, 5.0, material='paint', segments=16)
+        F.sphere(s, f'UnderstoryDomeCap{i}', (p[0], p[1], p[2] + 4.4), 2.6,
+                 material='paint2', segments=12)
+        base = K.polar(26.0, a, p[2] + 3.0)
+        for k in range(4):
+            aa = a + k * 30.0 - 45.0
+            tip = K.polar(29.0, aa, p[2] + 9.0)
+            F.cylinder(s, f'UnderstoryFrond{i}{k}', base, tip, 0.3, 0.08,
+                       material='stripe', segments=6, bevel=0.0)
+        s.detail = 1
+        F.light(s, f'UnderstoryDomeLamp{i}', (p[0], p[1], p[2] + 5.2), 'glow_warm.grow',
+                size=0.5)
+        s.detail = 0
+
+
 def dress(s):
+    K.interior(s, 'stripe', 'glow_warm.grow')
     # root mat band: soil-dark plate the growth sits on
     K.ring_wall(s, 'RootMat', K.SHELL_R + 0.7, 9.0, 25.0, 2.4, 'paint.soil', segs=56)
     # moss mats — irregular clumped plates over the mat, thick mid-band, ragged edges
@@ -66,6 +86,7 @@ def dress(s):
     s.detail = 1
     K.lamp_ring(s, 'BioLamp', 'glow_warm.grow', r=K.SHELL_R + 1.8, z=7.0, count=12, size=0.45)
     s.detail = 0
+    signature(s)
 
 
 def build():

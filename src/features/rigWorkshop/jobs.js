@@ -342,6 +342,11 @@ export function createWorkshopJobs({ state, bus, physics, feedback = () => {} })
       return { ok: true };
     }
     const useBench = target === 'bench' || !job;
+    if (useBench && w.bench.sectorId !== state.world?.currentSectorId) {
+      // A position is always interpreted locally by the world course owner.
+      bus.emit('ui:setCourse', { sectorId: w.bench.sectorId });
+      return { ok: true };
+    }
     const usePickup = target === 'pickup' || (!target && job && job.stage === 'pickup');
     const remaining = usePickup ? (job?.cargo || []).filter(c => !c.paid && !c.lost
       && !w.rigs.some(r => physics.isCargoSecured?.(w, r.id, c.id))) : [];

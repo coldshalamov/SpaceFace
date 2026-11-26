@@ -734,7 +734,7 @@ export function cavedShaftReturnGuidance(state) {
     return { phase: 'closed', text: 'The hardened-probe contract is closed. There is nothing left to file from the shaft.', artifact: null };
   }
   if (active.some(row => row.status === 'active' && isCanonicalMission(row))) {
-    return { phase: 'active', text: 'Hardened probe accepted at Cut Refinery. Fly back to the Caved Shaft and fire one close scanner pulse within 300 WU.', artifact: null };
+    return { phase: 'active', text: 'Hardened probe accepted at Cut Refinery. Fly back to the Caved Shaft and fire one close scanner pulse within 300 m.', artifact: null };
   }
   // A lead, not an availability promise: standing, board lifecycle and acceptance remain
   // mission-owned. Merely learning the site must never accept a job or grant its reward.

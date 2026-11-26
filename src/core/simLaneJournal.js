@@ -228,6 +228,12 @@ export function createSimLaneJournal() {
     applyPack(pack) {
       if (!pack || !Number.isSafeInteger(pack.count) || pack.count <= 0
         || !Number.isSafeInteger(pack.start) || !Number.isSafeInteger(pack.end)) return false;
+      // A short pack must not apply: out-of-bounds reads mint undefined/NaN pose scalars
+      // instead of tripping the not-retained rebuild path.
+      const count = pack.count;
+      if (!pack.scalars || pack.scalars.length < count * 18
+        || !pack.kinds || pack.kinds.length < count
+        || !pack.typeIndex || pack.typeIndex.length < count) return false;
       const seg = {
         start: pack.start,
         end: pack.end,

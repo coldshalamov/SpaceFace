@@ -4,6 +4,7 @@
 // spawns only its established promoted-return crews, and emits the station-news seam. It never
 // owns first-contact entities or changes hostility.
 import { WEAPONS } from '../data/weapons.js';
+import { occupantGenerationOf } from '../core/entity.js';
 import {
   ACE_RAM_PASS_TELEGRAPH_BARK,
   ACE_RAM_PASS_TELEGRAPH_TICKS,
@@ -1802,6 +1803,10 @@ export const aceMemory = {
     const memory = ensureMemory(this.state);
     const active = memory.activeReturns && memory.activeReturns[String(id)];
     if (!active) return;
+    // A receipt for a dead occupant that recycled its id must not clear the live binding —
+    // compare the receipt's occupant generation when it is carried.
+    if (payload.entity && active.generation != null
+      && occupantGenerationOf(payload.entity) !== active.generation) return;
     delete memory.activeReturns[String(id)];
     const rec = memory[active.aceId];
     if (rec && Array.isArray(rec.activeReturnIds)) {
@@ -2507,7 +2512,14 @@ function rememberActiveReturn(state, entityId, aceId, requestId, role = null) {
     ? state.aceMemory
     : ensureMemory(state);
   if (!memory.activeReturns || typeof memory.activeReturns !== 'object') memory.activeReturns = {};
-  memory.activeReturns[String(entityId)] = { aceId, requestId, role };
+  // Stamp the bound occupant's generation: ids recycle and a queued destroyed receipt for
+  // the previous occupant must not clear the new binding.
+  const bound = state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(entityId) : null;
+  memory.activeReturns[String(entityId)] = {
+    aceId, requestId, role,
+    generation: bound ? occupantGenerationOf(bound) : null,
+  };
 }
 
 function emit(bus, evt, payload) {

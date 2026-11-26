@@ -3,6 +3,7 @@
 import { qtyDialSvg } from '../orrery/marketLayouts.js';
 import { escapeMarkup as escapeHtml } from './identity.js';
 import { commodityGlyphHtml } from './commodityGlyphs.js';
+import { itemThumbHtml } from '../icons/itemThumbnails.js';
 import { AGE_BAND_FRESH_S } from '../marketIntelligence.js';
 const fmt = n => Math.round(Number(n) || 0).toLocaleString('en-US');
 const quoteFmt = n => n == null || !Number.isFinite(Number(n)) ? '—' : fmt(n);
@@ -253,9 +254,10 @@ export function marketRowHtml({ id, name, category = '', buy, sell, stock, held 
   const presentationId = presentation && typeof presentation.id === 'string' ? presentation.id.trim() : '';
   const presentationColor = presentation && typeof presentation.color === 'string'
     && /^#[0-9a-f]{6}$/i.test(presentation.color) ? presentation.color : '';
+  const thumb = itemThumbHtml({ id, category }, { size: 'sm', showCrest: false, showPips: false, className: 'sx-mkt-row__thumb' });
   const icon = presentationId && presentationColor
-    ? `<span class="sx-mkt-row__commodity" data-commodity-presentation="${escapeHtml(presentationId)}" style="color:${escapeHtml(presentationColor)}">${commodityGlyphHtml(category, 'of-commodity-icon')}</span>`
-    : commodityGlyphHtml(category, 'of-commodity-icon');
+    ? `<span class="sx-mkt-row__commodity" data-commodity-presentation="${escapeHtml(presentationId)}" style="color:${escapeHtml(presentationColor)}">${thumb}</span>`
+    : thumb;
   // The badge is an atomic inline chip after the name on a nowrap, ellipsizing cell: when the
   // full "N% PROFIT" chip did not fit (held cargo at a fat margin), the ellipsis replaced the
   // whole chip — the row read as a truncated name with no mark at all. The bare percentage
@@ -271,10 +273,13 @@ export function marketRowHtml({ id, name, category = '', buy, sell, stock, held 
   // --sf-i is the rung's place on the ladder, read by station-marketLayouts.js to stagger the
   // row's arrival (reduced motion skips it); the attribute stays inert for AT and the tests.
   const stagger = ` style="--sf-i:${Math.max(0, Math.floor(Number(order) || 0))}"`;
-  return `<tr id="sx-market-tab-${escapeHtml(id)}" class="sx-mkt-row${selected ? ' is-active' : ''}${tracked ? ' is-tracked' : ''}" data-cmdty="${escapeHtml(id)}" role="tab" aria-selected="${!!selected}" tabindex="${selected ? '0' : '-1'}" aria-controls="sx-market-instrument" data-family="${family}"${stagger}
+  // Every register row is a stop of its own (mission-log's contract): a roving -1 is invisible to
+  // the pad's spatial focus, so a controller could not walk the register. Rows keep tabindex="0"
+  // from birth; the row keydown still owns the arrows.
+  return `<tr id="sx-market-tab-${escapeHtml(id)}" class="sx-mkt-row${selected ? ' is-active' : ''}${tracked ? ' is-tracked' : ''}" data-cmdty="${escapeHtml(id)}" role="tab" aria-selected="${!!selected}" tabindex="0" aria-controls="sx-market-instrument" data-family="${family}"${stagger}
     aria-label="${escapeHtml(name)}, ${quoteFmt(buy)} credits, ${escapeHtml(demandWord)} demand${soldOut ? `, sold out, ${restockSpoken}` : ''}${held ? `, ${fmt(held)} units held` : ''}${profitBadge ? `, ${Math.round(profitPct)} percent over your cost basis` : ''}${tracked ? ', tracked for your active contract' : ''}. ${escapeHtml(driversSummary)}">
     <td class="k-name sx-mkt-row__name">${icon}${tracked ? '<span class="sx-mkt-row__flag k-t-fine k-signal" aria-hidden="true">◆ </span>' : ''}${escapeHtml(name)}${profitBadge}${soldOut ? `<br><span class="sx-mkt-row__none" style="white-space:normal">SOLD OUT · ${escapeHtml(restock)}</span>` : ''}</td>
-    <td class="k-num sx-mkt-row__price">${quoteFmt(buy)} ${trendHtml(hist)}</td><td class="k-num sx-mkt-row__sell">${quoteFmt(sell)}</td><td class="k-num sx-mkt-row__stock">${soldOut ? '0u' : held > 0 ? `<span class="sx-mkt-row__heldtag">held ${fmt(held)}u</span>` : (stock > 0 ? `${fmt(stock)}u` : '<span class="sx-mkt-row__none">\u2014</span>')}</td><td class="k-t-data k-62 sx-mkt-row__held">${held > 0 ? fmt(held) + ' u' : '—'}</td></tr>`;
+    <td class="k-num sx-mkt-row__price">${quoteFmt(buy)} ${trendHtml(hist)}</td><td class="k-num sx-mkt-row__sell">${quoteFmt(sell)}</td><td class="k-num sx-mkt-row__stock">${soldOut ? '0' : held > 0 ? `<span class="sx-mkt-row__heldtag">held ${fmt(held)}</span>` : (stock > 0 ? `${fmt(stock)}` :'<span class="sx-mkt-row__none">\u2014</span>')}</td><td class="k-t-data k-62 sx-mkt-row__held">${held > 0 ? fmt(held) + ' units' : '—'}</td></tr>`;
 }
 export function statRow(k, v, sub) {
   return `<li class="k-row k-row--static sx-stat"><span class="sx-stat__k">${escapeHtml(k)}${sub ? ` <span class="k-row__sub">${escapeHtml(sub)}</span>` : ''}</span><span class="k-row__num sx-stat__v">${escapeHtml(v)}</span></li>`;
@@ -405,7 +410,7 @@ export function saleLineHtml({ sell, saleQty, saleQuote }) {
     const q = Math.max(1, Math.floor(Number(saleQuote.qty) || qty));
     const avg = Math.round(Number(saleQuote.unitAvg));
     const gross = Math.round(Number(saleQuote.total));
-    const partial = saleQuote.partial ? ` · fills ${fmt(q)} u` : '';
+    const partial = saleQuote.partial ? ` · fills ${fmt(q)} units` : '';
     const hasTravel = saleQuote.travelCost != null && Number.isFinite(Number(saleQuote.travelCost));
     const hasOperating = saleQuote.operatingCost != null && Number.isFinite(Number(saleQuote.operatingCost));
     if (hasTravel || hasOperating) {
@@ -415,10 +420,10 @@ export function saleLineHtml({ sell, saleQty, saleQuote }) {
       const attrs = `data-sale-line data-sale-qty="${q}" data-sale-credits="${net}" data-sale-gross="${gross}" data-sale-travel="${travel}" data-sale-operating="${operating}" data-sale-net="${net}"`;
       // A cost that is zero is not a cost: the line only itemises what actually comes off the sale.
       if (!travel && !operating) {
-        return `<p class="k-sentence sx-mkt-sale" ${attrs}>If sold: ${fmt(q)} u → ${fmt(gross)} cr${partial}</p>`;
+        return `<p class="k-sentence sx-mkt-sale" ${attrs}>If sold: ${fmt(q)} units → ${fmt(gross)} cr${partial}</p>`;
       }
       const costs = (travel ? ` − ${fmt(travel)} cr travel` : '') + (operating ? ` − ${fmt(operating)} cr operating` : '');
-      return `<p class="k-sentence sx-mkt-sale" ${attrs}>If sold: ${fmt(q)} u → ${fmt(gross)} cr after slippage${costs} = ${fmt(net)} cr net${partial}</p>`;
+      return `<p class="k-sentence sx-mkt-sale" ${attrs}>If sold: ${fmt(q)} units → ${fmt(gross)} cr after slippage${costs} = ${fmt(net)} cr net${partial}</p>`;
     }
     return `<p class="k-sentence sx-mkt-sale" data-sale-line data-sale-qty="${q}" data-sale-credits="${gross}">If sold: ${fmt(q)} × ${fmt(avg)} cr = ${fmt(gross)} cr${partial}</p>`;
   }
@@ -428,13 +433,13 @@ export function saleLineHtml({ sell, saleQty, saleQuote }) {
   return `<p class="k-sentence sx-mkt-sale" data-sale-line data-sale-qty="${qty}" data-sale-credits="${credits}">If sold: ${fmt(qty)} × ${fmt(unit)} cr = ${fmt(credits)} cr</p>`;
 }
 
-function chartKeyHtml(hasForecast, origins, statedRate) {
+function chartKeyHtml(hasForecast, origins, statedRate, historyWord = 'Last ten minutes') {
   const modelled = origins && origins.modelled ? '<span data-modelled>Estimated</span>' : '';
   const observed = origins && origins.observed ? '<span data-observed>Observed</span>' : '';
   const rate = Number.isFinite(statedRate)
     ? `<span data-stated-rate="${statedRate}">${Math.round(statedRate * 100)}%</span>`
     : '';
-  return `<p class="k-t-fine sx-mkt-chart-key"><span data-history-key>Last ten minutes</span>${modelled}${observed}<span class="sx-mkt-chart-key__now">now</span>${hasForecast ? '<span data-forecast-key>Forecast</span>' : ''}${rate}</p>`;
+  return `<p class="k-t-fine sx-mkt-chart-key"><span data-history-key>${historyWord}</span>${modelled}${observed}<span class="sx-mkt-chart-key__now">now</span>${hasForecast ? '<span data-forecast-key>Forecast</span>' : ''}${rate}</p>`;
 }
 
 // What each price driver is ABOUT, so its short word can stand alone on the reading line.
@@ -465,7 +470,7 @@ function readoutsHtml({ buy, sell, avg, demandWord }) {
   return `<dl class="sx-mkt-readouts">${item('Buy', 'buy', `${quoteFmt(buy)} cr`, 'you pay')}${item('Sell', 'sell', `${quoteFmt(sell)} cr`, 'station pays')}${item('Galactic average', 'avg', `${fmt(avg)} cr`)}${item('Demand', 'demand', demandWord)}${item('Local spread', 'margin', `${quoteFmt(buy == null || sell == null ? null : Math.max(0, Number(buy) - Number(sell)))} cr`, 'buy \u2212 sell')}</dl>`;
 }
 
-export function marketQuoteHtml({ id, name, category, legal = 'legal', titleHtml, mode = 'buy', buy, sell, avg, demandWord = 'normal', driversSummary = '', drivers = [], hist = [], forecast = [], now, regime = '', quoteAge = '', quoteSource = '', survey = null, saleQty = 1, saleQuote = null, trackedGuidance = null, producedBy, consumedBy, stationType, cause = null }) {
+export function marketQuoteHtml({ id, name, category, legal = 'legal', titleHtml, mode = 'buy', buy, sell, avg, demandWord = 'normal', driversSummary = '', drivers = [], hist = [], forecast = [], now, regime = '', historyWord = 'Last ten minutes', quoteAge = '', quoteSource = '', survey = null, saleQty = 1, saleQuote = null, trackedGuidance = null, producedBy, consumedBy, stationType, cause = null }) {
   const legalText = ({ legal: 'Legal', restricted: 'Restricted', contraband: 'Contraband' })[legal] || String(legal);
   const chainHtml = supplyChainHtml(presentSupplyChain({ producedBy, consumedBy, stationType }));
   const forecastPts = forecastSamples(forecast);
@@ -483,16 +488,17 @@ export function marketQuoteHtml({ id, name, category, legal = 'legal', titleHtml
     : quoteFmt(heroQuote);
   // titleHtml is a trusted entityResolver fragment generated by the production controller, never user input.
   return (trackedGuidance ? `<p class="k-sentence k-signal sx-mkt-tracked" data-tracked-state="${escapeHtml(trackedGuidance.state)}"><b>Tracked contract</b> — ${escapeHtml(trackedGuidance.text)}</p>` : '') +
-    `<p class="k-caps sx-mkt-cat-inline">${escapeHtml(category || 'goods')} · <span class="${legal === 'contraband' ? 'k-bad' : legal === 'restricted' ? 'k-signal' : ''}">${escapeHtml(legalText)}</span></p>
+    `<div class="sx-mkt__specimen" aria-hidden="true">${itemThumbHtml({ id, category, legality: legal }, { size: 'hero', showCrest: false, showPips: false })}</div>
+    <p class="k-caps sx-mkt-cat-inline">${escapeHtml(category || 'goods')} · <span class="${legal === 'contraband' ? 'k-bad' : legal === 'restricted' ? 'k-signal' : ''}">${escapeHtml(legalText)}</span></p>
     <h2 class="k-display k-t-title sx-mkt-title">${titleHtml || escapeHtml(name)}</h2>
-    <div class="k-hero k-hero--hero k-hero--signal sx-mkt__hero${heroNa ? ' sx-mkt__hero--na' : ''}"><div class="k-hero__n">${heroNumHtml}</div><div class="k-hero__w">${mode === 'sell' ? 'station pays' : 'you pay'} · one unit now</div></div>
+    <div class="k-hero k-hero--hero k-hero--signal sx-mkt__hero${heroNa ? ' sx-mkt__hero--na' : ''}"><div class="k-hero__n">${heroNumHtml}</div><div class="k-hero__w">${mode === 'sell' ? 'station pays for' : 'you pay for'} one unit now</div></div>
     ${driverLineHtml(drivers)}
     <p class="k-sentence sx-mkt-essay" id="sx-market-driver-summary">${escapeHtml(driversSummary)}</p>
     ${chainHtml}
     ${coneReadoutHtml({ regime, quoteAge, quoteSource, survey })}
     ${cause && cause.text ? `<p class="k-sentence sx-mkt-cause"${cause.eventId ? ` data-cause-event="${escapeHtml(cause.eventId)}"` : ''}>${escapeHtml(cause.text)}</p>` : ''}
     ${buildChart(hist, avg, `sxmkt-${String(id).replace(/[^a-zA-Z0-9_-]/g, '_')}`, name, { forecast: forecastPts, now, buy, sell })}
-    ${chartKeyHtml(forecastPts.length > 0, origins, statedRate)}
+    ${chartKeyHtml(forecastPts.length > 0, origins, statedRate, historyWord)}
     ${readoutsHtml({ buy, sell, avg, demandWord })}
     ${saleLineHtml({ sell, saleQty, saleQuote })}`;
 }

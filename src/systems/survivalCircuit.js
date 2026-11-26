@@ -169,8 +169,8 @@ export const CIRCUIT_DESTINATIONS = Object.freeze({
     Object.freeze({
       arenaId: 'lagrange_crucible',
       nodeId: 'lagrange_crucible',
-      label: 'Lagrange Crucible',
-      line: 'Wells pull the whole room. Weight your passes.',
+      label: 'Lagrange Arena',
+      line: 'Pull wells drag the whole room. Weight your passes.',
     }),
     Object.freeze({
       arenaId: 'cinder_sluice',
@@ -805,6 +805,7 @@ export function circuitEntryBlocker(run, { queuedChallenge = false } = {}) {
   if (run.practice === true) return 'Practice runs cannot enter the Circuit.';
   if (queuedChallenge) return 'A queued challenge cannot enter the Circuit.';
   const telemetry = isPlainObject(run.telemetry) ? run.telemetry : {};
+  if (telemetry.dailyDateKey) return 'Daily runs cannot enter the Circuit.';
   if (Number.isInteger(telemetry.startWave) && telemetry.startWave > 1) {
     return 'A checkpoint start cannot enter the Circuit.';
   }

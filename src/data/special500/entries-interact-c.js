@@ -209,7 +209,7 @@ export const ENTRIES_INTERACT_C = [
     channel: 'memory',
     followup: 'Numbered selfRegistered encounter with a burning prop on a real drift vector and a massline-physics rescue: tow or shove the pile clear before it cooks the three-habitat camp; the camp\'s gratitude is a permanent dock discount and the best fuel in the belt.',
     payload: {
-      text: 'A volatile tailings heap has self-ignited next to a three-habitat camp, and the camp\'s own tug is too small to move it. The burning pile is drifting — slowly, at walking pace — toward the habitats. You have maybe four minutes and one very useful massline.',
+      text: 'A volatile tailings heap has self-ignited next to a three-habitat camp, and the camp\'s own tug is too small to move it. The burning pile is drifting — slowly, at walking pace — toward the habitats. You have maybe four minutes and one very useful line.',
     },
   },
 

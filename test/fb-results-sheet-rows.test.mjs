@@ -108,7 +108,7 @@ test('FB-028 the results plate prints the sheet beside the ledger', () => {
       state: {},
     });
     const text = textLines(root).join('\n');
-    assert.match(text, /Helios Core/);
+    assert.match(text, /Ricochet Foundry/);
     assert.match(text, /Ricochet/);
     assert.match(text, /Overconfidence: 2 runs/);
     assert.equal(text.includes('helios_core'), false);

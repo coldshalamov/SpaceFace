@@ -81,11 +81,26 @@ test('two destroyed wingmen each get their own line', () => {
 });
 
 test('a living wingman does not announce a death', () => {
-  const wing = { id: 31, alive: true, pos: { x: 40, y: 0, z: 0 }, hull: 80, hullMax: 100, data: { ai: {} } };
+  const wing = { id: 31, alive: true, pos: { x: 40, y: 0, z: 0 }, hull: 80, hullMax: 100,
+    data: { ai: {}, isWingman: true, wingmanOf: 'w-live' } };
   const fs = { id: 'w-live', name: 'Kestrel', order: 'escort', _liveId: wing.id, hp: 1, hullPct: 1 };
   const { state, wings, events } = harness([fs], [wing]);
   wings.update(1 / 60, state);
   wings.update(1 / 60, state);
   assert.equal(downToasts(events).length, 0);
   assert.equal(fs._liveId, wing.id);
+});
+
+test('a recycled id never adopts the foreign hull — the loss path runs instead', () => {
+  // The wingman died; id 41 was recycled onto a hull that is not ours (no stamps).
+  const foreign = { id: 41, alive: true, pos: { x: 40, y: 0, z: 0 }, hull: 90, hullMax: 100, data: { ai: {} } };
+  const fs = { id: 'w-rec', name: 'Kestrel', order: 'escort', _liveId: foreign.id, hp: 1, hullPct: 1 };
+  const { state, wings, events } = harness([fs], [foreign]);
+  wings.update(1 / 60, state);
+  // The ledger runs the loss beat and forgets the id — it does not write orders onto the
+  // foreign hull, and the foreign hull is untouched.
+  assert.equal(downToasts(events).length, 1);
+  assert.equal(fs._liveId, null);
+  assert.deepEqual(foreign.data, { ai: {} });
+  assert.equal(foreign.data.wingmanOrder, undefined);
 });

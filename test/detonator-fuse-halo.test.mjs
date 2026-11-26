@@ -96,7 +96,7 @@ test('a re-announced run restarts the window — the cue is per-pass, not one-sh
   const directive = dartDirective();
   runtime.update({ tick: 0, entityId: 2, doctrineId: CombatDoctrineId.DETONATOR_RUN, perception: dartPerception(800), directive });
   runtime.update({ tick: 2, entityId: 2, doctrineId: CombatDoctrineId.DETONATOR_RUN, perception: dartPerception(220), directive });
-  runtime.update({ tick: 34, entityId: 2, doctrineId: CombatDoctrineId.DETONATOR_RUN, perception: dartPerception(90), directive });
+  runtime.update({ tick: 2 + DOCTRINE_TELEGRAPH_TICKS, entityId: 2, doctrineId: CombatDoctrineId.DETONATOR_RUN, perception: dartPerception(90), directive });
   // Overshoot → breakaway → reform → ingress → fresh fuse cue at tick 460.
   runtime.update({ tick: 120, entityId: 2, doctrineId: CombatDoctrineId.DETONATOR_RUN, perception: dartPerception(-160, 0, { vx: 150 }), directive });
   runtime.update({ tick: 400, entityId: 2, doctrineId: CombatDoctrineId.DETONATOR_RUN, perception: dartPerception(-160, 0, { vx: 150 }), directive });

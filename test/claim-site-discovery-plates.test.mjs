@@ -6,6 +6,7 @@
 // owner (poiId) and Base screen (CLAIMABLE_BODY_SITES lookup) depend on, and the Base screen's
 // `.base-sub` why-line rendering on a headless DOM stub.
 import assert from 'node:assert/strict';
+import test from 'node:test';
 
 import {
   CLAIMABLE_BODY_SITES,
@@ -13,6 +14,8 @@ import {
 } from '../src/data/claimableBodies.js';
 import { SECTORS } from '../src/data/sectors.js';
 import { baseScreen } from '../src/ui/screens/base.js';
+import { createLaneSystemFacade } from '../src/runtime/laneSystemFacades.js';
+import { installSimCommandSink, uninstallSimCommandSink } from '../src/core/simLaneCommands.js';
 
 // Site inventory: exactly 15, unique ids (claims bodies store poiId) and unique plate titles
 // (15 authored identities, not a template with the name swapped).
@@ -78,17 +81,26 @@ function fakeEl(tag) {
     set textContent(v) { el._text = String(v); el.children = []; },
     get textContent() { return el._text; },
     parent: null,
+    listeners: {},
     // base.js clears a re-render with childNodes + remove()
     get childNodes() { return el.children; },
     remove() { if (el.parent) el.parent.children = el.parent.children.filter((c) => c !== el); el.parent = null; },
     appendChild(child) { child.parent = el; el.children.push(child); return child; },
     append(...kids) { for (const k of kids) k.parent = el; el.children.push(...kids); },
     setAttribute() {},
-    addEventListener() {},
+    addEventListener(event, listener) { el.listeners[event] = listener; },
+    closest() { return null; },
     classList: { add() {}, remove() {} },
     focus() {},
   };
   return el;
+}
+
+function fakeRoot() {
+  const root = fakeEl('div');
+  root.querySelector = selector => selector === '#sf-base' ? root.children.find(child => child.id === 'sf-base') : null;
+  root.querySelectorAll = () => [];
+  return root;
 }
 
 const previousDocument = globalThis.document;
@@ -100,7 +112,7 @@ globalThis.document = {
 
 try {
   const cinder = CLAIMABLE_BODY_SITES.find((s) => s.id === 'poi_claim_cinder_crown');
-  const rootEl = fakeEl('div');
+  const rootEl = fakeRoot();
   baseScreen._rootEl = rootEl;
   baseScreen._bodyId = 'claim_1';
   baseScreen._ctx = {
@@ -148,3 +160,58 @@ try {
   if (previousDocument === undefined) delete globalThis.document;
   else globalThis.document = previousDocument;
 }
+
+test('Base dispatch reaches the worker owner without changing the detached claim', async (t) => {
+  const commands = [];
+  installSimCommandSink(command => {
+    commands.push(command);
+    return Promise.resolve({ ok: true, result: { ok: true, result: true } });
+  });
+  t.after(uninstallSimCommandSink);
+  const messages = [];
+  const bus = { emit: (name, payload) => messages.push({ name, payload }) };
+  const body = {
+    id: 'claim_1', poiId: 'poi_claim_cinder_crown', name: 'Cinder Crown',
+    size: 'L', slots: 4, modules: ['mod_depot'], sectorId: 'sector_ashfall_reach', owned: true,
+    spec: { id: 'spec_relay', status: 'active',
+      store: { input: { cmdty_ore_iron: 10, cmdty_ore_copper: 10 }, output: {} },
+      totals: {}, receipts: [], convoySeq: 0, nextDispatchAt: 340 },
+  };
+  const state = {
+    player: { cargo: { items: { cmdty_fuel_cells: 10, cmdty_alloys: 6 } } },
+    ui: {}, claims: { bodies: [body] }, simTime: 100,
+    missions: { active: [
+      { status: 'active', preloadedCargo: true, params: { cmdtyId: 'cmdty_fuel_cells', qty: 8 } },
+      { status: 'active', preloadedCargo: true, params: { cmdtyId: 'cmdty_alloys', qty: 6 } },
+    ] },
+  };
+  const root = fakeRoot();
+  const screen = Object.assign(Object.create(baseScreen), {
+    _rootEl: root, _bodyId: body.id,
+    _ctx: { state, bus, registry: { get: createLaneSystemFacade({ state, bus }) } },
+  });
+  const oldDocument = globalThis.document;
+  globalThis.document = { createElement: fakeEl, getElementById: () => null, head: { appendChild() {} } };
+  t.after(() => { globalThis.document = oldDocument; });
+  screen._render();
+  const foot = () => root.children.find(child => child.className === 'base-foot');
+  const dispatchAction = () => foot().children.find(child => child.textContent === 'Dispatch convoy');
+  assert.equal(dispatchAction(), undefined, 'two 10-unit stacks cannot form one 20-unit lot');
+  assert.match(foot().children.find(child => child.className === 'base-dispatch-state').textContent, /20u of one commodity/);
+  const ledger = root.querySelector('#sf-base').children.find(child => child.dataset.baseSection === 'ledger');
+  const freight = ledger.children.find(child => child.className === 'base-freight').children;
+  assert.ok(freight.some(child => child.textContent === '6u reserved for delivery · Composite Alloys'));
+  assert.equal(freight.some(child => child.dataset.baseAction === 'deliver-cmdty_alloys'), false);
+  assert.match(freight.find(child => child.dataset.baseAction === 'deliver-cmdty_fuel_cells').innerHTML, /Deliver 2u/);
+
+  body.spec.store.input.cmdty_ore_iron = 20;
+  screen._render();
+  const dispatch = dispatchAction();
+  assert.ok(dispatch, 'a real 20-unit lot can dispatch through the normal Base action');
+  await dispatch.listeners.click();
+  assert.equal(body.spec.nextDispatchAt, 340, 'the Base action must never write the detached claim');
+  assert.equal(commands.length, 1, 'the Base action must reach the claims worker');
+  assert.equal(commands[0].op, 'claimsCall');
+  assert.deepEqual(commands[0].args, { method: 'requestRelayDispatch', bodyId: 'claim_1', expectedConvoySeq: 0 });
+  assert.ok(messages.some(row => /leave base/i.test(row.payload?.text || '')));
+});

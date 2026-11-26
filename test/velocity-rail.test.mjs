@@ -92,8 +92,8 @@ test('state word, figures and accessibility share one sample at the reference cr
   assert.equal(i.root.getAttribute('data-over-reference'), 'false');
   assert.doesNotMatch(i.root.getAttribute('aria-valuetext'), /above/);
   i.source.textContent = '402'; setKitGauge(i.root, 402, 400);
-  assert.equal(i.extent.textContent, 'ABOVE REF');
-  assert.match(i.root.getAttribute('aria-valuetext'), /above reference, not a speed limit/);
+  assert.equal(i.extent.textContent, 'ABOVE CRUISE');
+  assert.match(i.root.getAttribute('aria-valuetext'), /above cruise, not a speed limit/);
 });
 
 test('same candidate: 10,000 unchanged updates cause zero DOM writes or selector queries', () => {
@@ -108,7 +108,7 @@ test('reference changes repaint even at constant speed; meter remains internally
   assert.equal(i.root.getAttribute('aria-valuenow'), '672');
   assert.equal(i.root.getAttribute('aria-valuemax'), '672');
   setKitGauge(i.root, 672, 1000);
-  assert.equal(i.reference.textContent, '1000'); assert.equal(i.extent.textContent, 'REFERENCE');
+  assert.equal(i.reference.textContent, '1000'); assert.equal(i.extent.textContent, 'CRUISE');
   assert.equal(i.root.getAttribute('aria-valuemax'), '1000');
   assert.notEqual(i.fill.style.transform, 'scaleX(1)');
 });
@@ -122,7 +122,7 @@ test('unavailable state removes stale ARIA bounds and recovers without remountin
   setKitGauge(i.root, 248, NaN);
   assert.equal(i.root.getAttribute('role'), 'meter');
   assert.equal(i.root.getAttribute('data-has-reference'), 'false');
-  assert.equal(i.extent.textContent, 'NO REFERENCE');
+  assert.equal(i.extent.textContent, 'NO CRUISE');
   setKitGauge(i.root, 248, 400);
   assert.equal(i.root.getAttribute('data-has-reference'), 'true');
 });
@@ -203,7 +203,7 @@ test('loss of speed signal says NO SIGNAL instead of pretending the reference is
   assert.equal(i.root.getAttribute('data-available'), 'false');
   assert.equal(i.root.getAttribute('aria-valuenow'), null);
   setKitGauge(i.root, 672, 400);
-  assert.equal(i.extent.textContent, 'ABOVE REF');
+  assert.equal(i.extent.textContent, 'ABOVE CRUISE');
 });
 
 test('compact visual notation preserves the exact accessible speed and meter bounds', () => {
@@ -211,7 +211,7 @@ test('compact visual notation preserves the exact accessible speed and meter bou
   assert.deepEqual(visiblePaths(i), [...'12.3k'].map(c => SPEED_FIGURES[c]));
   assert.equal(i.root.getAttribute('aria-valuenow'), '12345');
   assert.equal(i.root.getAttribute('aria-valuemax'), '12345');
-  assert.match(i.root.getAttribute('aria-valuetext'), /^12345 world units per second/);
+  assert.match(i.root.getAttribute('aria-valuetext'), /^12345 meters per second/);
 });
 
 test('keyboard inspection uses a unique described tooltip; the instrument is not a live region', () => {
@@ -246,11 +246,11 @@ test('foregrounds have measured contrast on the brightest area of their carrier'
 test('reference removal and restoration at constant speed do not leave stale scale claims', () => {
   const i = instrument('248'); setKitGauge(i.root, 248, 400);
   setKitGauge(i.root, 248, undefined);
-  assert.equal(i.reference.textContent, '—'); assert.equal(i.extent.textContent, 'NO REFERENCE');
+  assert.equal(i.reference.textContent, '—'); assert.equal(i.extent.textContent, 'NO CRUISE');
   assert.equal(i.root.getAttribute('data-has-reference'), 'false');
   assert.equal(i.fill.style.transform, 'scaleX(0)');
   setKitGauge(i.root, 248, 800);
-  assert.equal(i.reference.textContent, '800'); assert.equal(i.extent.textContent, 'REFERENCE');
+  assert.equal(i.reference.textContent, '800'); assert.equal(i.extent.textContent, 'CRUISE');
   assert.equal(i.root.getAttribute('aria-valuenow'), '248');
 });
 

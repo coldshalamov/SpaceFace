@@ -80,6 +80,44 @@ test('a key released inside a modal cannot remain held when flight resumes', () 
   } finally { f.cleanup(); }
 });
 
+test('a rebound legacy arrow drives only its assigned action', () => {
+  for (const [scheme, formerAction] of [['classic', 'yawLeft'], ['helm-assist', 'strafeLeft']]) {
+    const f = fixture();
+    try {
+      const { settings, input: flight } = f.state;
+      settings.gameplay.controlScheme = scheme;
+      f.win.dispatch('keydown', { code: 'ArrowLeft' });
+      f.tick();
+      assert.equal(flight.turnIntent, -1, `${scheme}: the stock arrow steers while coasting`);
+      f.win.dispatch('keydown', { code: 'KeyW' });
+      f.tick();
+      assert.equal(flight.moveX, -1, `${scheme}: the stock arrow strafes under thrust`);
+      f.win.dispatch('keyup', { code: 'ArrowLeft' });
+      f.win.dispatch('keyup', { code: 'KeyW' });
+
+      // A primary bound under the other scheme has no default arrow secondary. The player
+      // can then assign that arrow to Boost using the current scheme's rebind grid.
+      settings.controls.bindings = { [formerAction]: ['KeyJ'], boost: ['ArrowLeft', 'ShiftRight'] };
+      f.win.dispatch('keydown', { code: 'ArrowLeft' });
+      f.tick();
+      assert.equal(flight.boost, true, `${scheme}: the arrow activates Boost`);
+      assert.equal(flight.turnIntent, 0, `${scheme}: the rebound arrow does not steer`);
+      f.win.dispatch('keydown', { code: 'KeyW' });
+      f.tick();
+      assert.equal(flight.moveX, 0, `${scheme}: the rebound arrow does not strafe`);
+      f.win.dispatch('keyup', { code: 'ArrowLeft' });
+      f.win.dispatch('keyup', { code: 'KeyW' });
+      f.tick();
+      assert.equal(flight.boost, false, `${scheme}: release ends Boost`);
+
+      f.win.dispatch('keydown', { code: 'KeyJ' });
+      f.tick();
+      assert.equal(scheme === 'classic' ? flight.turnIntent : flight.moveX, -1,
+        `${scheme}: the alternative movement binding still works`);
+    } finally { f.cleanup(); }
+  }
+});
+
 test('destroy discards a released one-shot edge before the input owner is reinitialized', () => {
   const f = fixture();
   try {

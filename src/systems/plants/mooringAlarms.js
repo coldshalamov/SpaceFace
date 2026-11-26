@@ -93,6 +93,7 @@ export function mooringRowFor(memory, shipId, now, cap = MOORING_TUNING.memoryCa
  * sequence (ordered by proximity along the pass) as the boosting player crosses the field.
  */
 export const mooringAlarmsPlant = {
+  modes: ['flight'],
   name: 'plantsPl176',
   init(ctx) {
     this.state = ctx.state;

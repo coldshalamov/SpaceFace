@@ -211,7 +211,8 @@ test('native Gauntlet loading births carry damage admission before progress is p
       assert.equal(entity.data.runRole, 'mass');
       assert.equal(admission, 'swarm_waiting_for_input');
       assert.equal(entity.alive, true);
-      assert.equal(entity.data.ai.swarmFireHeld, true);
+      // Damage admission (above) is what waits for the pilot; the guns are not frozen by a rule.
+      assert.notEqual(entity.data.ai.swarmFireHeld, true);
     }
     assert.equal(runtime.getSystem('survivalWave')._swarm, null,
       'the native Gauntlet never enters the Swarm pacing branch');

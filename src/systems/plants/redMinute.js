@@ -51,6 +51,7 @@ export function isCutter(e, playerId) {
 }
 
 export const redMinutePlant = {
+  modes: ['flight'],
   name: 'plants119',
 
   init(ctx) {
@@ -111,7 +112,7 @@ export const redMinutePlant = {
       if (!playerNear) this._playerSeenWhole = false;
     }
     if (!inWindow && this._wasWindow) {
-      this._pad('SEAL FLARE');
+      this._pad('SEAL BURST');
       if (this._playerSeenWhole && playerNear) {
         this._say(`plants:pl119:done:${Math.floor(now)}`, "Minute's done. Cut clean.", 6);
         this.bus.emit(PLANTS_RED_MINUTE_EVENT, { kind: 'satItOut', t: now });
@@ -224,11 +225,11 @@ export const redMinutePlant = {
       hullMax: 1,
       data: {
         parentType: 'story_prop',
-        scanLabel: 'Seal flare — the red minute',
+        scanLabel: 'Seal burst — the red minute',
         storyPropKind: 'seal_flare',
         tetherable: true,
         masslineTetherable: true,
-        swarmFloorPad: { label: 'SEAL FLARE' },
+        swarmFloorPad: { label: 'SEAL BURST' },
       },
     });
     if (ent && ent.id != null) {

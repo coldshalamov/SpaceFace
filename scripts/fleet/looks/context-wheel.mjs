@@ -5,7 +5,9 @@
 //   node scripts/fleet/game-lock.mjs run -- node scripts/fleet/looks/context-wheel.mjs [out-prefix]
 // Done = the printed wheel line shows "visible":true with a non-zero size, the -held.png shows it,
 // and the fired line names the slice the release actually chose.
-import { chromium } from 'playwright';
+import { chromium as rawChromium } from 'playwright';
+import { quietChromium } from '../../lib/quietLaunch.mjs';
+const chromium = quietChromium(rawChromium);
 import { spawn } from 'node:child_process';
 
 const PORT = 8161;

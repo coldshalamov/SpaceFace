@@ -48,6 +48,38 @@ export const PLACE_TEXTURE_BUDGET = Object.freeze({
   place_works_derrick: 512,
   place_works_rover: 512,
   place_works_inclusion_kit: 512,
+  // TEXTURE-DOWNSIZE (2026-11-20 asset-cost audit): small drawn bodies covering 19-96 px of glass
+  // at the closest normal gameplay framing (chase-close 58 WU) shipped 1024 px texture sets. The
+  // budget is the smallest power-of-two edge at least twice that framing, so the camera can still
+  // resolve every texel the body can show; anything not listed keeps its authored resolution.
+  place_cold_locker: 512,
+  place_container_rack: 512,
+  place_extraction_mast: 512,
+  place_improvised_dock: 512,
+  place_lane_beacon: 512,
+  place_lane_pin: 512,
+  place_memorial_array: 512,
+  place_rock_junk_boulder: 512,
+  place_rock_metallic_ore_boulder: 512,
+  place_rock_reef_metal_boulder: 512,
+  place_scrap_cage: 512,
+  place_slurry_tank: 512,
+  place_tally_post: 512,
+  place_47a_rescue_capsule: 256,
+  place_anvil_condensate_pod: 256,
+  place_ash_pin: 256,
+  place_cargo_pod_standard: 256,
+  place_claim_mark: 256,
+  place_interdiction_buoy: 256,
+  place_mining_drone: 256,
+  place_nav_buoy: 256,
+  place_rock_ice_pebble: 256,
+  place_rock_junk_pebble: 256,
+  place_rock_metallic_ore_pebble: 256,
+  place_rock_reef_metal_pebble: 256,
+  place_sensor_mast: 256,
+  place_whistle: 256,
+  place_worklight_tower: 256,
 });
 
 /** Longest edge this asset's maps may ship at, or 0 for "leave authored". */

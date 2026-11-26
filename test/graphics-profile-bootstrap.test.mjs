@@ -28,7 +28,8 @@ test('fresh phone profiles use High performance in Auto before the renderer star
   bootstrapProfileSettingsBeforeRegistry(state, storage, phone);
   assert.equal(state.settings.video.qualityPreset, 'low');
   assert.equal(state.settings.video.qualityMode, 'auto');
-  assert.equal(state.settings.video.frameCap, 30);
+  assert.equal(state.settings.video.frameCap, 0,
+    'an Auto posture writes no explicit frame cap: the presentation governor picks 30 or 60');
   assert.equal(state.settings.video.renderScale, 1);
   assert.equal(storage.writes(), 0);
 });

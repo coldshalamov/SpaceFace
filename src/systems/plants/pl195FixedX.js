@@ -105,6 +105,8 @@ export function createPl195FixedX() {
     update(dt, state) {
       const s = state || this.state;
       if (!s || s.mode !== 'flight') return;
+      // A Swarm arena admits run bodies and arena props only — no campaign plants.
+      if (s.world?.swarmArenaOnly) { this._resetSession(); return; }
       const t = FIXED_X_TUNING;
       const sectorId = s.world?.currentSectorId;
       if (!sectorId) return;

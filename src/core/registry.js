@@ -196,6 +196,11 @@ import { nemesis } from '../systems/nemesis.js'; // adaptive named-rival arc eng
 import { nemesisEncounter } from '../systems/nemesisEncounter.js'; // spawn-host adapter (state.nemesisDeployment)
 import { nemesisSignals } from '../systems/nemesisSignals.js'; // event-only voice/toast router
 import { capitalBossEncounters } from '../systems/capitalBossRuntime.js'; // packet 09 authored capital scores
+import { createConvoyRaidProductionSystem } from '../features/convoyRaid/production.js'; // PORT-PRO-FIVE SWITCHBACK
+import { createTowjawSystem } from '../features/towjaw/index.js'; // PORT-PRO-FIVE TOWJAW
+import { createDerelictExpeditionSystem } from '../features/derelictExpedition/index.js'; // PORT-PRO-FIVE BLACKBOX RUNS
+import { createStormChaseSystem } from '../features/stormChase/index.js'; // PORT-PRO-FIVE GLASSWAKE
+import { createKineticCatalystsRuntime } from '../features/kineticCatalysts/runtime.js'; // PORT-PRO-FIVE KINETIC CATALYSTS
 import { livingPoiBehaviors } from '../systems/livingPoiBehaviors.js'; // M4 six causal POI behavior families
 import { pirateRumor } from '../systems/pirateRumor.js';             // BP-13/B12 zone pirate rumors from real events
 import { ambushSignatures } from '../systems/ambushSignatures.js';   // BP-13/B14 passive pre-ambush scan tells
@@ -247,6 +252,7 @@ import { voiceArbiter } from '../ui/voiceArbiter.js';                // "one voi
 // BP-11 Sector Atmosphere (Wave 3, design/revamp/detail/A_sector_station.md) — SYSTEMS-only
 // surfacing modules (event-driven; no update; DOM fully guarded; voice via ctx.helpers.voice).
 import { sectorPostcard } from '../ui/sectorPostcard.js';             // A1: arrival identity card + one 'news' rumor line
+import { sectorArrivalPlate } from '../ui/sectorArrivalPlate.js';     // PLACES-1: one-shot arrival name plate + the sector's first greeting bark
 import { dockDenyBanner } from '../ui/dockDenyBanner.js';             // A3: dockDeny.js surfaced — scan line + one 'comms' denial
 import { stationBroadcast } from '../systems/stationBroadcast.js';    // A5: ambient station flavor (window-timer only; lowest voice priority)
 import { hazardHints } from '../data/hazardLanguage.js';               // A7: once-per-type counterplay hint (tutorial channel) + state.ui.hazardRead
@@ -507,6 +513,11 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     // Packet 09 (Three Capitals): executable authored capital scores. Publishes fire/move orders
     // the tactical slot consumes the same fixed tick; routes all damage through the combat owner.
     ['capitalBossEncounters', capitalBossEncounters],
+    ['convoyRaid', createConvoyRaidProductionSystem()],
+    ['towjaw', createTowjawSystem()],
+    ['derelictExpedition', createDerelictExpeditionSystem()],
+    ['stormChase', createStormChaseSystem()],
+    ['kineticCatalysts', createKineticCatalystsRuntime()],
     ['routeFollower', routeFollower],
     ['travelLanes', travelLanes],
     ['livingPoiBehaviors', livingPoiBehaviors],
@@ -603,6 +614,7 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['planetHud', planetHud],
     ['miningHud', miningHud],
     ['sectorPostcard', sectorPostcard],
+    ['sectorArrivalPlate', sectorArrivalPlate],
     ['dockDenyBanner', dockDenyBanner],
     ['stationBroadcast', stationBroadcast],
     ['hazardHints', hazardHints],
@@ -893,6 +905,10 @@ export function createRegistry(ctx) {
   byName.set('flight', flightSlot);
   byName.set('aiSlot', aiSlot);
   byName.set('flightSlot', flightSlot);
+  // Manifest ids that differ from the runtime .name (like the slot aliases above):
+  // get('v2FlavorRuntime')/get('moralTrapSystem') resolve the same objects.
+  byName.set('v2FlavorRuntime', v2FlavorRuntime);
+  byName.set('moralTrapSystem', moralTrapSystem);
 
   const lifecycle = createSystemLifecycle({
     systems: SYSTEMS,
@@ -942,6 +958,10 @@ export function createRegistry(ctx) {
         }
         return;
       }
+      // SIM-RATE-TIERS-BREADTH: open the step-deferred presentation window — emits of the
+      // deferral set inside the step collect and deliver once at drainStepDeferred below.
+      if (ctx.bus.beginStep) ctx.bus.beginStep(state.playerId);
+      try {
       // Tier-1 causal counting: one hoisted boolean per step; per-system work is a branch + an
       // integer increment. Counts are workload facts, never durations, so they stay valid under
       // host contention (see perfCounters.js header).
@@ -974,6 +994,8 @@ export function createRegistry(ctx) {
             if (countSystems) tier1.countSystemInvocation(s.name);
             s.update(postInputPartitions.updateDt(s, dt, state), state);
           }
+          // Deferred presentation emits land once, in order, before the sweep.
+          if (ctx.bus.drainStepDeferred) ctx.bus.drainStepDeferred();
           if (countSystems) tier1.countSystemInvocation('core.lifetimeSweep');
           core.lifetimeSweep(dt, state);
         } finally {
@@ -1005,6 +1027,8 @@ export function createRegistry(ctx) {
         try { s.update(postInputPartitions.updateDt(s, dt, state), state); }
         finally { recordSystem(s.name, perfNow() - t); }
       }
+      // Deferred presentation emits land once, in order, before the sweep.
+      if (ctx.bus.drainStepDeferred) ctx.bus.drainStepDeferred();
       t = perfNow();
       if (countSystems) tier1.countSystemInvocation('core.lifetimeSweep');
       try { core.lifetimeSweep(dt, state); }
@@ -1012,6 +1036,9 @@ export function createRegistry(ctx) {
         recordSystem('core.lifetimeSweep', perfNow() - t);
         perf.recordStepTotal(perfNow() - stepStart);
         if (stepProfilerActive) stepProfiler.endTick();
+      }
+      } finally {
+        if (ctx.bus.endStep) ctx.bus.endStep();
       }
     },
     renderUpdate(alpha, frameDt, presentationFrame = null) {

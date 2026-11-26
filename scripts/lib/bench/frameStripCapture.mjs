@@ -1009,9 +1009,8 @@ export function cleanTargetDirectory(targetDir, authorizedRoot) {
 export async function driveRealCrucibleRoute(page, { hullId, seed, log = () => {} }) {
   // 1. The title cinematic owns focus and defers the main menu until it is dismissed. Clicking
   //    it is what a player does; waiting out its 18 s auto-dismiss is what the old capture
-  //    accidentally never did. bringToFront first: the dismissal fence starts suspended when the
+  //    accidentally never did. The dismissal fence starts suspended when the
   //    document does not have focus, and a suspended fence ignores the click.
-  await page.bringToFront();
   await page.evaluate(() => {
     const el = document.getElementById('cinematic-splash');
     if (el) el.click();

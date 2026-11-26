@@ -132,6 +132,20 @@ function liveProjectiles(state) {
   return (state && state.entityList) || [];
 }
 
+// Per-state memo of a provable live-count UPPER bound. laneVersions.projectiles bumps on
+// every structural lane mutation (spawn push, removal, corpse sweep), so laneVersion+length
+// equality proves the row multiset is unchanged; silent alive=false deaths can only LOWER
+// the true live count, keeping the cached bound conservative. When bound + need still
+// overflows the cap the caller pays the scan — which re-establishes an exact bound.
+const RESERVE_CAPACITY_MEMO = new WeakMap();
+
+function projectileLaneVersion(state) {
+  const index = state && state.entityIndex;
+  return index && index.__spacefaceEntityIndexV1 && index.laneVersions
+    ? (index.laneVersions.projectiles | 0)
+    : null;
+}
+
 /**
  * Make room for `incoming` new projectiles. Retires the oldest live rounds
  * first. Returns how many were retired.
@@ -140,20 +154,34 @@ export function reserveProjectileCapacity(state, incoming = 1) {
   const need = Math.max(0, incoming | 0);
   if (!state || need === 0) return 0;
   const list = liveProjectiles(state);
-  let live = 0;
-  for (let i = 0; i < list.length; i++) {
-    const entity = list[i];
-    if (entity && entity.alive !== false && entity.type === 'projectile') live += 1;
-  }
-  let overflow = live + need - PROJECTILE_LIVE_CAP;
-  if (overflow <= 0) return 0;
+  // The lane length is an upper bound, since spent rounds can await removal.
+  // No individual row can affect admission while even that bound fits.
+  if (list.length + need <= PROJECTILE_LIVE_CAP) return 0;
+  const laneVersion = projectileLaneVersion(state);
+  const memo = laneVersion != null ? RESERVE_CAPACITY_MEMO.get(state) : null;
+  if (memo && memo.list === list && memo.laneVersion === laneVersion
+    && memo.length === list.length
+    && memo.liveBound + need <= PROJECTILE_LIVE_CAP) return 0;
+  // Single backward pass: lane order is oldest-first, so keeping the newest (CAP - need)
+  // live rows and retiring every older one kills exactly the `live + need - CAP` oldest
+  // the former count-then-retire pair produced — same retired set in one traversal, and
+  // the survivors (`keep` headroom left) give the memo its exact bound.
+  let keep = PROJECTILE_LIVE_CAP - need;
   let retired = 0;
-  for (let i = 0; i < list.length && overflow > 0; i++) {
+  for (let i = list.length - 1; i >= 0; i--) {
     const entity = list[i];
     if (!entity || entity.alive === false || entity.type !== 'projectile') continue;
+    if (keep > 0) { keep -= 1; continue; }
     entity.alive = false;
-    overflow -= 1;
     retired += 1;
+  }
+  if (laneVersion != null) {
+    RESERVE_CAPACITY_MEMO.set(state, {
+      list,
+      laneVersion,
+      length: list.length,
+      liveBound: Math.max(0, PROJECTILE_LIVE_CAP - need - keep),
+    });
   }
   return retired;
 }

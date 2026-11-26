@@ -21,6 +21,9 @@ import { damp } from '../core/math.js';
 import { createTimeEffects } from '../core/timeEffects.js';
 import { resolveGovernedCombatSpeed, resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
 import { WEAPONS } from '../data/weapons.js';
+import { arcadeEffectsLevel } from '../data/swarmJuice.js';
+import { isSwarmRuleset } from '../systems/survivalSwarm.js';
+import { createCameraGate, HULL_BLOW_MIN_FRACTION, playerBlowFraction } from './shakeAdmission.js';
 import {
   VL_WAKE_AT,
   VL_COLOR,
@@ -101,6 +104,8 @@ function recoilWeight(weaponId) {
   return Math.min(0.28, weight);
 }
 
+const RECOIL_BY_WEAPON = new Map();
+
 /**
  * Mass-scaled muzzle kick. Pure. motionReduce returns null so the fire listener can no-op
  * without touching FOV or trauma. Light repeaters stay under a degree; a torpedo shoves harder.
@@ -109,23 +114,29 @@ export function resolveKineticRecoil(weaponId, context = {}) {
   if (context.motionReduce) return null;
   if (context.photoMode || photoModeFeelPresentation(context.state).silencePunch) return null;
   if (context.mode && context.mode !== 'flight') return null;
-  const w = weaponRecord(weaponId);
-  const weight = recoilWeight(weaponId);
-  const mass = w && Number.isFinite(w.mass) ? Math.max(0, w.mass) : 0;
-  const massU = Math.min(1, mass / CRUNCH_MASS_REF);
-  const fov = Math.min(
-    CRUNCH_RECOIL_FOV_MAX,
-    RECOIL_FOV_MIN + (RECOIL_FOV_MAX - RECOIL_FOV_MIN) * Math.min(1, weight / 0.2) + massU * 0.85,
-  );
-  const trauma = weight * 0.4 * (1 + massU * 0.65);
-  return Object.freeze({
-    weaponId: weaponId == null ? null : String(weaponId),
-    weight,
-    mass,
-    fov,
-    trauma,
-    stallsSim: false,
-  });
+  const key = weaponId == null ? null : weaponId;
+  let cached = RECOIL_BY_WEAPON.get(key);
+  if (!cached) {
+    const w = weaponRecord(weaponId);
+    const weight = recoilWeight(weaponId);
+    const mass = w && Number.isFinite(w.mass) ? Math.max(0, w.mass) : 0;
+    const massU = Math.min(1, mass / CRUNCH_MASS_REF);
+    const fov = Math.min(
+      CRUNCH_RECOIL_FOV_MAX,
+      RECOIL_FOV_MIN + (RECOIL_FOV_MAX - RECOIL_FOV_MIN) * Math.min(1, weight / 0.2) + massU * 0.85,
+    );
+    const trauma = weight * 0.4 * (1 + massU * 0.65);
+    cached = Object.freeze({
+      weaponId: key == null ? null : String(key),
+      weight,
+      mass,
+      fov,
+      trauma,
+      stallsSim: false,
+    });
+    RECOIL_BY_WEAPON.set(key, cached);
+  }
+  return cached;
 }
 
 function kineticBody(weapon, payload = {}) {
@@ -197,6 +208,37 @@ export function resolveKineticCrunch(payload, context = {}) {
   });
 }
 
+// OVH-06a / R10 - a hard blow to the player's own hull (>= 8 % of max hull in one hit) is the only
+// damage the camera answers: a small kick toward the side the blow came from, and a red edge pulse
+// on that side of the screen. Pure: the caller supplies the direction and the accessibility id.
+export const EDGE_PULSE_PEAK = 0.55;
+export const EDGE_PULSE_DECAY_PER_S = 3.2;
+export const EDGE_STATIC_TINT = 0.28;
+export const EDGE_STATIC_HOLD_S = 0.9;
+export const HULL_KICK_BASE_WU = 0.6;
+export const HULL_KICK_PER_FRACTION_WU = 5;
+export const HULL_KICK_MAX_WU = 2.4;
+export function resolveHullBlowFeel(fraction, dirX, dirZ, a11yId = 'full') {
+  if (!(fraction >= HULL_BLOW_MIN_FRACTION)) return null;
+  const len = Math.hypot(dirX, dirZ);
+  const hasDir = Number.isFinite(len) && len > 1e-6;
+  const nx = hasDir ? dirX / len : 0;
+  const nz = hasDir ? dirZ / len : 0;
+  const reduced = a11yId !== 'full';
+  return Object.freeze({
+    fraction,
+    hasDir,
+    nx,
+    nz,
+    kickWu: hasDir ? Math.min(HULL_KICK_MAX_WU, HULL_KICK_BASE_WU + HULL_KICK_PER_FRACTION_WU * fraction) : 0,
+    // top-down camera, no yaw follow: world +x is screen right, world +z is screen down
+    edgeX: 50 + 55 * nx,
+    edgeY: 50 + 55 * nz,
+    peak: reduced ? EDGE_STATIC_TINT : Math.min(0.85, EDGE_PULSE_PEAK + fraction),
+    static: reduced,
+  });
+}
+
 // Collision impact feel (PQ-139.00). Physics impacts and combat consequence receipts share one
 // frame queue; this maps deltaV onto a monotone hitstop + FOV + trauma ramp so a scrape is a
 // tick and a slam is a beat. Pure: no DOM, no state, no wall-clock, no RNG.
@@ -208,6 +250,7 @@ export const HS_IMPACT_MAX = 0.09;            // s — slam ceiling; well under 
 // three frames at 60 Hz. The simulation never pauses; only the camera's presentation clock
 // is frozen. Motion-reduce and photo mode already bail above.
 export const HS_CAMERA_HOLD_MAX = 0.05;
+const SWARM_HERO_HOLD_REARM_S = 0.8;
 export const COLLISION_HITSTOP_COOLDOWN = 0.18; // s of real frame time between armed collision beats
 // F9 — the rope's joke is three bodies agreeing. A player-caused release whose contact chain
 // reaches a THIRD distinct body earns exactly one extra dip, long enough to see the chain land.
@@ -500,6 +543,8 @@ export function traumaFromContact(dp, context = {}) {
  * unknown mass falls back to the collision law's ACOUSTIC_MASS_UNKNOWN, which the camera's tier
  * table maps to the conservative medium beat (the old unconditional kiss), never to silence.
  */
+// A Bruiser (~170 t) is a heavy; a Wasp (~16 t) is not.
+const THROW_KILL_HEAVY_MASS = 120;
 function victimAcousticMass(receipt, state) {
   const entity = state && state.entities && typeof state.entities.get === 'function'
     ? state.entities.get(receipt.id)
@@ -592,7 +637,7 @@ export function resolveMomentBeat(eventName, payload = {}, context = {}) {
 export function applyMomentBeat(host, beat) {
   if (!host || !beat) return false;
   const ctrl = host.state && host.state.render && host.state.render.cameraCtrl;
-  if (ctrl && typeof ctrl.hold === 'function') ctrl.hold(beat.holdS);
+  if (ctrl && typeof ctrl.hold === 'function') ctrl.hold(beat.holdS, 'moment');
   const bus = host.bus;
   if (bus && typeof bus.emit === 'function' && beat.stinger) {
     bus.emit('audio:cue', { id: beat.stinger, importance: 0.9 });
@@ -917,6 +962,8 @@ export const feel = {
     // live state
     this._beatTimer = 0; // presentation sequencing only; never controls simulation time
     this._deathBellFrameHoldS = 0; // framebuffer lease, drained only by presentation frameDt
+    this._swarmHeroHoldCooldownS = 0;
+    this._pendingSwarmBossBeat = null;
     this._collisionHitstopCooldown = 0; // remaining real-time seconds before another collision beat
     this._armedCollisionDeltaV = 0;     // deltaV that armed the current cooldown (upgrade gate)
     this._pendingCollisionFeel = null;  // strongest contact this frame, from either receipt source
@@ -967,6 +1014,16 @@ export const feel = {
       }
       this._unsubs = [];
     }
+    // init() nulls the refs and re-mounts; a node the ref forgot stays connected forever —
+    // worst case a mid-flash vignette pins its last opacity as a permanent red wash.
+    for (const key of ['_vigEl', '_hullCritEl', '_slCanvas', '_edgeEl']) {
+      const node = this[key];
+      if (node) {
+        try { node.remove(); } catch (_) { /* detached */ }
+        this[key] = null;
+      }
+    }
+    this._hullCritOn = false;
   },
 
   _injectStyle() {
@@ -980,6 +1037,8 @@ export const feel = {
   mix-blend-mode:screen; transition:none; }
 .sf-feel-vig--hit   { background:radial-gradient(circle at 50% 55%, rgba(255,90,70,0) 45%, rgba(255,60,50,1) 100%); }
 .sf-feel-vig--death { background:radial-gradient(circle at 50% 50%, rgba(255,30,50,0) 25%, rgba(255,20,40,1) 100%); }
+#sf-feel-edge { position:absolute; inset:0; z-index:1199; pointer-events:none; opacity:0;
+  mix-blend-mode:screen; transition:none; }
 #sf-speed-lines { position:absolute; inset:0; z-index:1201; pointer-events:none; opacity:0; }
 /* Persistent low-hull heartbeat — distinct from the hit vignette above (one-shot decay). A red
    edge with a lub-dub double swell on a 1.5s cycle; --crit scales depth as hull approaches zero.
@@ -1100,7 +1159,7 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
     const speed = Math.hypot(player.vel.x || 0, player.vel.z || 0);
     if (speed < boostCap * REDLINE_TOP_FRACTION) return;
     const ctrl = state.render && state.render.cameraCtrl;
-    if (ctrl && typeof ctrl.addTrauma === 'function') ctrl.addTrauma(REDLINE_TRAUMA_PER_S * dt);
+    if (ctrl && typeof ctrl.addTrauma === 'function') ctrl.addTrauma(REDLINE_TRAUMA_PER_S * dt, 'redline');
   },
 
   _updateSpeedLines(frameDt) {
@@ -1491,6 +1550,7 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
     const clearHitStop = () => {
       this._resetHitStop();
       this._deathBellFrameHoldS = 0;
+      this._swarmHeroHoldCooldownS = 0;
     };
     bus.on('sim:pause', () => {
       this._resetHitStop();
@@ -1504,6 +1564,17 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
     bus.on('save:loaded', clearHitStop);
     bus.on('game:over:dismissed', () => { this._deathBellFrameHoldS = 0; });
     bus.on('mode:changed', () => { this.isDeathBellFrameHeld(state); });
+    bus.on('run:started', () => {
+      this._pendingSwarmBossBeat = null;
+      this._swarmHeroHoldCooldownS = 0;
+    });
+    bus.on('run:ended', () => { this._pendingSwarmBossBeat = null; });
+    bus.on('swarm:bossDown', (payload) => {
+      const run = state.run;
+      if (run?.kind !== 'survival' || !isSwarmRuleset(run.ruleset) || payload?.wave !== run.wave) return;
+      if (this._swarmHeroHoldCooldownS > 0) return;
+      this._pendingSwarmBossBeat = run.wave;
+    });
     bus.on('special500:deathBell', (payload) => {
       if (!payload || typeof payload.stationId !== 'string' || !Number.isFinite(payload.at)) return;
       this._deathBellFrameHoldS = DEATH_BELL_FRAME_HOLD_S;
@@ -1514,6 +1585,7 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
     // armor/hull hits get NO hit-stop (only trauma for player-as-target); big damage gets a micro dip.
     bus.on('combat:damage', (p) => {
       if (!p) return;
+      this._onPlayerBlow(p);
       if (p.origin && p.origin.kind === 'collision') return;
       const playerId = state.playerId;
       const isPlayer = p.isPlayer || (playerId != null && p.targetId === playerId);
@@ -1549,8 +1621,8 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
 
       if (p.brokeShield) {
         const fov = isPlayer ? FOV_PUNCH_HEAVY : FOV_PUNCH_HEAVY * 0.4;
-        this._trigger(HS_SHIELD_BREAK, fov, isPlayer ? VIG_HEAVY : 0, isPlayer ? 'hit' : null);
-        if (playerInvolved && ctrl && typeof ctrl.addTrauma === 'function') ctrl.addTrauma(0.3);
+        this._trigger(HS_SHIELD_BREAK, fov, isPlayer ? VIG_HEAVY : 0, isPlayer ? 'hit' : null, 'hitFov');
+        // OVH-06a: no trauma here - a hard blow's kick and edge pulse come from _onPlayerBlow.
         // Heavy kinetic/explosive shield strikes also get the presentation crunch. FOV is
         // already punched by the shield-break beat; the hold + extra trauma are the mass term.
         if (crunch) this._applyKineticCrunch(crunch, { fovScale: 0.35, traumaScale: 1 });
@@ -1565,13 +1637,12 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
       }
       if (p.armorHit) {
         const fov = isPlayer ? FOV_PUNCH_HEAVY * 0.7 : FOV_PUNCH_HEAVY * 0.3;
-        this._trigger(HS_ARMOR_HIT, fov, isPlayer ? VIG_HEAVY * 0.6 : 0, isPlayer ? 'hit' : null);
+        this._trigger(HS_ARMOR_HIT, fov, isPlayer ? VIG_HEAVY * 0.6 : 0, isPlayer ? 'hit' : null, 'hitFov');
         return;
       }
       if (p.hullHit) {
         const fov = isPlayer ? FOV_PUNCH_HEAVY * 0.7 : FOV_PUNCH_HEAVY * 0.3;
-        this._trigger(HS_HULL_HIT, fov, isPlayer ? VIG_HEAVY * 0.6 : 0, isPlayer ? 'hit' : null);
-        if (isPlayer && ctrl && typeof ctrl.addTrauma === 'function') ctrl.addTrauma(0.08);
+        this._trigger(HS_HULL_HIT, fov, isPlayer ? VIG_HEAVY * 0.6 : 0, isPlayer ? 'hit' : null, 'hitFov');
         return;
       }
 
@@ -1579,7 +1650,7 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
       if (!big) return;
       const dur = isPlayer ? HS_HEAVY * 1.3 : HS_HEAVY * 0.6;
       const fov = isPlayer ? FOV_PUNCH_HEAVY : FOV_PUNCH_HEAVY * 0.4;
-      this._trigger(dur, fov, isPlayer ? VIG_HEAVY : 0, isPlayer ? 'hit' : null);
+      this._trigger(dur, fov, isPlayer ? VIG_HEAVY : 0, isPlayer ? 'hit' : null, 'hitFov');
     }, { presentation: true });
 
     // Spec2/02 §3: small kill = 60 ms hit-stop + kill-cam kiss; capital kill = 0.5 trauma scaled
@@ -1589,11 +1660,17 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
       const playerInvolved = (p.killerId === state.playerId) || (p.id === state.playerId);
       const ctrl = this.state.render && this.state.render.cameraCtrl;
       const isCapital = p.capital || /capital|flagship|cruiser|gunship/i.test(String(p.victimClass || p.type || '')) || (p.radius || 0) >= 55;
+      // OVH-06a hero beat: a thrown body (or the whip) killing a heavy. Swarm heavies such as the
+      // Bruiser are not capitals, so the beat keys on mass too (agy2 delta review).
+      const throwKill = p.cause === 'massline_whip' || p.impactorId != null;
+      const heavyThrowKill = throwKill && (isCapital || victimAcousticMass(p, state) >= THROW_KILL_HEAVY_MASS);
+      const run = state.run;
+      const swarm = run?.kind === 'survival' && isSwarmRuleset(run.ruleset);
       if (!playerInvolved) {
         // Remote NPC kills stay silent at the camera; a local off-player kill keeps the small
         // world-event punch so nearby action remains readable without stealing the beat.
         if (!killCameraIsMeaningfullyNearby(state, p.pos)) return;
-        this._trigger(0, FOV_PUNCH_KILL * 0.3, 0, null);
+        this._trigger(0, FOV_PUNCH_KILL * 0.3, 0, null, 'killFov');
         return;
       }
       if (isCapital) {
@@ -1604,14 +1681,19 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
           const d2 = (player.pos.x - p.pos.x) ** 2 + (player.pos.z - p.pos.z) ** 2;
           trauma = d2 <= 400 * 400 ? 0.5 : Math.min(0.5, 0.5 * ((400 * 400) / d2));
         }
-        if (ctrl && typeof ctrl.addTrauma === 'function') ctrl.addTrauma(trauma);
-        this._trigger(HS_CAPITAL_KILL, FOV_PUNCH_KILL, 0, null);
+        // OVH-06a: a capital kill moves the camera only as a throw kill on a heavy (hero beat).
+        if (ctrl && typeof ctrl.addTrauma === 'function') ctrl.addTrauma(trauma, throwKill ? 'throwKillHeavy' : 'kill');
+        // killCam's cause already freezes the hero frame; hold here only without a kill cam.
+        if (throwKill && !(ctrl && typeof ctrl.killCam === 'function')) this._holdCameraBeat(HS_CAMERA_HOLD_MAX, 'throwKillHeavy');
+        this._trigger(HS_CAPITAL_KILL, FOV_PUNCH_KILL, 0, null, 'killFov');
         // FB-084: the capital tier of the weight-keyed kill beat (deep push + hold), keyed on
         // the same acoustic mass the kill audio resolves.
         if (ctrl && typeof ctrl.killCam === 'function') {
           ctrl.killCam(victimAcousticMass(p, state), {
             capital: true,
             direction: p.presentation && p.presentation.direction,
+            cause: throwKill ? 'throwKillHeavy' : 'kill',
+            hold: !swarm,
           });
         }
         return;
@@ -1619,11 +1701,15 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
       // Small kill: short hit-stop + camera beat, now weighted (FB-084): the light tier nudges
       // along the kill direction the presentation receipt carries (G18-03); medium+ keeps the
       // zoom beat by the mass law.
-      this._trigger(HS_KILL, FOV_PUNCH_KILL, 0, null);
+      this._trigger(HS_KILL, FOV_PUNCH_KILL, 0, null, 'killFov');
+      if (heavyThrowKill && ctrl && typeof ctrl.addTrauma === 'function') ctrl.addTrauma(0.35, 'throwKillHeavy');
+      if (heavyThrowKill && !(ctrl && typeof ctrl.killCam === 'function')) this._holdCameraBeat(HS_CAMERA_HOLD_MAX, 'throwKillHeavy');
       if (ctrl && typeof ctrl.killCam === 'function') {
         ctrl.killCam(victimAcousticMass(p, state), {
           capital: false,
+          ...(heavyThrowKill ? { cause: 'throwKillHeavy' } : null),
           direction: p.presentation && p.presentation.direction,
+          hold: !swarm,
         });
       }
     }, { presentation: true });
@@ -1631,16 +1717,16 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
     // Player death is the single biggest beat in the game — long dip, big FOV punch, red wash,
     // and a death cam (PQ-159.02) so the wreck is a picture, not a cut.
     bus.on('player:death', () => {
-      this._trigger(HS_DEATH, FOV_PUNCH_DEATH, VIG_DEATH, 'death');
+      this._trigger(HS_DEATH, FOV_PUNCH_DEATH, VIG_DEATH, 'death', 'deathFov');
       const ctrl = this.state && this.state.render && this.state.render.cameraCtrl;
       if (ctrl && typeof ctrl.deathCam === 'function') ctrl.deathCam();
     });
 
-    // Weapon recoil on the player's own shots. Firing currently produces VFX + audio but ZERO camera
-    // response, so every shot feels like a laser pointer. We add a small weapon-class-scaled fov kick
-    // (via the shared punch mechanism) + a tiny camera shake via the controller's addTrauma. No
-    // hit-stop/vignette — those belong to impacts, not muzzle. Gated to the player's shots only so an
-    // NPC furball doesn't jitter your view.
+    // Weapon recoil on the player's own shots. R10 / 03_COMBAT §3.2: recoil is on the ship, never
+    // the camera - the cannon or needle nudges the firing hull (weapons.js delivers recoilImpulse
+    // through the physical-impulse path), so this listener no longer punches the FOV. The trauma
+    // call stays only so the OVH-06a gate records the refusal it already makes for 'recoil'; the
+    // shot is felt on the weapon and the target, not on the view.
     bus.on('combat:fire', (p) => {
       if (!p || p.ownerId !== state.playerId) return;
       if (this.state.mode !== 'flight' || !this._modalClear()) return;
@@ -1648,9 +1734,8 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
       if (mr) return;
       const recoil = resolveKineticRecoil(p.weaponId, { motionReduce: false, mode: 'flight', state: this.state });
       if (!recoil) return;
-      this._fovPunch = addFovPunch(this._fovPunch, recoil.fov);
       const ctrl = this.state.render && this.state.render.cameraCtrl;
-      if (ctrl && typeof ctrl.addTrauma === 'function') ctrl.addTrauma(recoil.trauma);
+      if (ctrl && typeof ctrl.addTrauma === 'function') ctrl.addTrauma(recoil.trauma, 'recoil');
     });
 
     // Boost pre-kick (F6): the dash fires on the press edge now, so the camera needs its
@@ -1662,7 +1747,7 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
       if (this.state.mode !== 'flight' || !this._modalClear()) return;
       const mr = this.state.settings && this.state.settings.video && this.state.settings.video.motionReduce;
       if (mr) return;
-      this._fovPunch = addFovPunch(this._fovPunch, 2.0);
+      this._postFov(2.0, 'boostFov');
     });
 
     // Jump / warp camera response. The warp particle VFX + audio already fire on charge→start→arrive,
@@ -1677,21 +1762,21 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
     const _warpCtrl = () => this.state.render && this.state.render.cameraCtrl;
     bus.on('jump:chargeStart', () => {
       if (!_warpGate()) return;
-      this._fovPunch = addFovPunch(this._fovPunch, 2.5);   // anticipation kick
+      this._postFov(2.5, 'jumpFov');   // anticipation kick
     });
     bus.on('jump:start', () => {
       if (!_warpGate()) return;
-      this._fovPunch = addFovPunch(this._fovPunch, 6.0);   // warp-out punch
+      this._postFov(6.0, 'jumpFov');   // warp-out punch
       const ctrl = _warpCtrl();
-      if (ctrl && typeof ctrl.addTrauma === 'function') ctrl.addTrauma(0.18);
+      if (ctrl && typeof ctrl.addTrauma === 'function') ctrl.addTrauma(0.18, 'jump');
     });
     bus.on('jump:arrive', (p) => {
       if (!_warpGate()) return;
       // arrival: a brief fov DIP (negative punch) then it eases back — reads as decelerating out of warp.
       // We model the dip as a negative fov offset clamped so the composite never goes below ~0.5° floor.
-      this._fovPunch = addFovPunch(this._fovPunch, -3.0);
+      this._postFov(-3.0, 'jumpFov');
       const ctrl = _warpCtrl();
-      if (ctrl && typeof ctrl.addTrauma === 'function') ctrl.addTrauma(p && p.interdicted ? 0.28 : 0.15);
+      if (ctrl && typeof ctrl.addTrauma === 'function') ctrl.addTrauma(p && p.interdicted ? 0.28 : 0.15, 'jump');
     });
 
     // Tether snap: 0.25 trauma (spec2/02 §3).
@@ -1701,7 +1786,7 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
       const mr = this.state.settings && this.state.settings.video && this.state.settings.video.motionReduce;
       if (mr) return;
       const ctrl = this.state.render && this.state.render.cameraCtrl;
-      if (ctrl && typeof ctrl.addTrauma === 'function') ctrl.addTrauma(0.25);
+      if (ctrl && typeof ctrl.addTrauma === 'function') ctrl.addTrauma(0.25, 'strain');
     });
 
     // Impulse charge detonate: trauma 0.2 at epicenter, 1/d² falloff (spec2/02 §3).
@@ -1717,7 +1802,7 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
         trauma = d2 <= 1 ? 0.2 : Math.min(0.2, 0.2 / d2);
       }
       const ctrl = this.state.render && this.state.render.cameraCtrl;
-      if (ctrl && typeof ctrl.addTrauma === 'function') ctrl.addTrauma(trauma);
+      if (ctrl && typeof ctrl.addTrauma === 'function') ctrl.addTrauma(trauma, 'charge');
     });
 
     // Consequences can arrive inside physics:impact dispatch or at the deferred contact flush.
@@ -1892,7 +1977,12 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
       && (provenanceActor === playerId || (p && p.causalActorId === playerId));
     const context = this._collisionFeelContext;
     context.playerContact = !playerCausedRemote;
-    if (!playerCausedRemote) return;
+    if (!playerCausedRemote) {
+      // R10: a room contact never punches the FOV; counted so the camera trace shows it.
+      const gate = this._cameraGate();
+      if (gate) gate.refuse('collisionFov', state.simTime, 'fov');
+      return;
+    }
     const chainBeat = allowChainBeat === true && this._chainBeatFor(p, playerId);
     const tick = Number.isFinite(p.tick) ? p.tick : state.tick;
     if (Number.isFinite(tick) && tick === this._armedCollisionTick && aId != null && bId != null
@@ -1994,15 +2084,17 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
     const mr = this.state.settings && this.state.settings.video && this.state.settings.video.motionReduce;
     if (mr) return;
 
-    this._trigger(pending.hsDur, pending.fov, 0, null);
-    this._holdCameraBeat(pending.hsDur);
-    const ctrl = this.state.render && this.state.render.cameraCtrl;
-    if (ctrl && typeof ctrl.addTrauma === 'function') ctrl.addTrauma(pending.trauma);
-    // Directed kick rides the SAME armed beat — the cooldown above rate-limits it identically, so
-    // a grind cannot machine-gun the offset any more than it can the hitstop.
-    if (ctrl && pending.kickWu > 0 && typeof ctrl.impactKick === 'function') {
-      ctrl.impactKick(pending.kickX, pending.kickZ, pending.kickWu);
-    }
+    // OVH-06a / R10: a collision is a room event. The body that was hit answers it (flash,
+    // sparks, dent, tumble, sound); the camera trauma, the kick and the frame hold do not. The FOV
+    // punch and the pacing below stay so a rope chain's third-body beat keeps its single-shot
+    // gate, and the refusal is counted per cause for the camera trace.
+    // The FOV punch is camera motion too. _queueCollisionFeel only ever queues a contact the
+    // player caused (their own throw / rope chain, provenance-stamped); every other contact -
+    // NPC against NPC, a bump the player merely witnessed - is refused there and counted as
+    // 'collisionFov', so a pending record here is always the player's own beat.
+    const gate = this._cameraGate();
+    this._trigger(pending.hsDur, pending.fov, 0, null, 'collisionFov');
+    if (gate) gate.refuse('collision', this.state.simTime, 'trauma');
     this._collisionHitstopCooldown = COLLISION_HITSTOP_COOLDOWN;
     this._armedCollisionDeltaV = pending.deltaV;
     this._armedCollisionTick = pending.tick;
@@ -2026,10 +2118,10 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
       mode: this.state.mode,
     });
     if (!beat) return;
-    this._trigger(beat.dipS, beat.fov, 0, null);
+    this._trigger(beat.dipS, beat.fov, 0, null, 'momentFov');
     applyMomentBeat(this, beat);
     const ctrl = this.state.render && this.state.render.cameraCtrl;
-    if (ctrl && typeof ctrl.addTrauma === 'function') ctrl.addTrauma(beat.trauma);
+    if (ctrl && typeof ctrl.addTrauma === 'function') ctrl.addTrauma(beat.trauma, 'moment');
   },
 
   _applyMasslineFeelPunch(event, raw) {
@@ -2041,7 +2133,7 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
     });
     if (!punch) return;
     if (punch.hsDur > 0 || punch.fov > 0 || punch.vig > 0) {
-      this._trigger(punch.hsDur || 0, punch.fov || 0, punch.vig || 0, punch.vig > 0 ? 'hit' : null);
+      this._trigger(punch.hsDur || 0, punch.fov || 0, punch.vig || 0, punch.vig > 0 ? 'hit' : null, 'masslineFov');
     }
     if (punch.trauma > 0) {
       const ctrl = this.state.render && this.state.render.cameraCtrl;
@@ -2055,9 +2147,12 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
             trauma = d2 <= 400 * 400 ? trauma : Math.min(trauma, trauma * ((400 * 400) / d2));
           }
         }
-        ctrl.addTrauma(trauma);
+        const cid = String(punch.id || '');
+        ctrl.addTrauma(trauma, cid === 'release.razor' ? 'perfectRelease' : (/tumble/.test(cid) ? 'tumble' : 'whip'));
       }
     }
+    // OVH-06a: a perfect (razor) release is a hero beat and earns the only hitstop there is.
+    if (punch.id === 'release.razor') this._holdCameraBeat(punch.hsDur, 'perfectRelease');
   },
 
   _applyKineticCrunch(crunch, scales = null) {
@@ -2070,12 +2165,12 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
     const traumaScale = scales && Number.isFinite(scales.traumaScale) ? scales.traumaScale : 1;
     // Heavy contacts bite with a 1–2 frame hit-stop; _trigger keeps the longer of any dip already
     // running and stacks the FOV punch. Rhythmic ticks (hsDur = 0) only punch the FOV.
-    this._trigger(crunch.hsDur || 0, Math.max(0, crunch.fov * fovScale), 0, null);
-    this._holdCameraBeat(crunch.hsDur);
-    const ctrl = this.state.render && this.state.render.cameraCtrl;
-    if (crunch.trauma * traumaScale > 0 && ctrl && typeof ctrl.addTrauma === 'function') {
-      ctrl.addTrauma(crunch.trauma * traumaScale);
-    }
+    this._trigger(crunch.hsDur || 0, Math.max(0, crunch.fov * fovScale), 0, null, 'crunchFov');
+    // OVH-06a / R10: a crunch is felt on the body, not at the camera - no trauma, no hold. The
+    // refusal is counted so the camera trace shows what the room asked for.
+    const gate = this._cameraGate();
+    if (gate) gate.refuse('crunch', this.state.simTime, 'trauma');
+    void traumaScale;
   },
 
   /**
@@ -2093,25 +2188,135 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
     const ctrl = state.render && state.render.cameraCtrl;
     let applied = false;
     if (ctrl && typeof ctrl.impactKick === 'function' && (kick.dirX !== 0 || kick.dirZ !== 0)) {
-      ctrl.impactKick(kick.dirX, kick.dirZ, kick.kickWu);
+      ctrl.impactKick(kick.dirX, kick.dirZ, kick.kickWu, 'weaponKick');
       applied = true;
     }
     // Keep the bounded presentation hold that the contact path established. It freezes the
     // presentation camera for 1–2 frames; the simulation clock is untouched.
-    if (this._holdCameraBeat(kick.holdS)) applied = true;
+    if (this._holdCameraBeat(kick.holdS, 'weaponKick')) applied = true;
     return applied;
   },
 
+  /** The OVH-06a camera gate; created on first use so every camera motion shares one ledger. */
+  _cameraGate() {
+    const r = this.state && this.state.render;
+    if (!r) return null;
+    return r.cameraGate || (r.cameraGate = createCameraGate());
+  },
+
+  /**
+   * OVH-06a / R10 - the one damage the camera answers: a hard blow (>= 8 % of max hull in one hit)
+   * to the player's own hull. A small kick toward the side the blow came from and a red edge pulse
+   * on that side; every smaller blow is felt on the hull alone (counted, refused).
+   */
+  _onPlayerBlow(p) {
+    const state = this.state;
+    if (!state || state.mode !== 'flight' || !this._modalClear()) return;
+    const playerId = state.playerId;
+    if (playerId == null || !(p.isPlayer || p.targetId === playerId)) return;
+    const ents = state.entities;
+    const player = ents && typeof ents.get === 'function' ? ents.get(playerId) : null;
+    const frac = playerBlowFraction(p, player && player.hullMax);
+    const gate = this._cameraGate();
+    if (!(frac >= HULL_BLOW_MIN_FRACTION)) {
+      if (frac > 0 && gate) gate.refuse('hullChip', state.simTime, 'trauma');
+      return;
+    }
+    // Which side: from the player toward whatever dealt the blow (attacker, else the hit point,
+    // else the shot's own approach reversed).
+    let dx = 0;
+    let dz = 0;
+    const px = player && player.pos ? player.pos.x : 0;
+    const pz = player && player.pos ? player.pos.z : 0;
+    const attacker = p.attackerId != null && ents && typeof ents.get === 'function' ? ents.get(p.attackerId) : null;
+    if (attacker && attacker.pos && Number.isFinite(attacker.pos.x)) {
+      dx = attacker.pos.x - px;
+      dz = attacker.pos.z - pz;
+    } else if (p.pos && Number.isFinite(p.pos.x) && Math.hypot(p.pos.x - px, p.pos.z - pz) > 1e-3) {
+      dx = p.pos.x - px;
+      dz = p.pos.z - pz;
+    } else if (p.approach && Number.isFinite(p.approach.x)) {
+      dx = -p.approach.x;
+      dz = -p.approach.z;
+    }
+    const fx = resolveHullBlowFeel(frac, dx, dz, resolveVfxAccessibilityProfile(state.settings).id);
+    if (!fx) return;
+    const ctrl = state.render && state.render.cameraCtrl;
+    if (ctrl && fx.kickWu > 0 && typeof ctrl.impactKick === 'function') {
+      ctrl.impactKick(fx.nx, fx.nz, fx.kickWu, 'hullHit');
+    }
+    this._edgePulse(fx);
+    if (gate) gate.admit('hullHit', frac, state.simTime, 'edge');
+  },
+
+  _edgePulse(fx) {
+    if (photoModeFeelPresentation(this.state).hideVignette) return;
+    const el = this._ensureEdge();
+    if (!el) return;
+    const x = Math.max(-10, Math.min(110, fx.edgeX));
+    const y = Math.max(-10, Math.min(110, fx.edgeY));
+    el.style.background = 'radial-gradient(ellipse 65% 65% at ' + x.toFixed(1) + '% ' + y.toFixed(1)
+      + '%, rgba(255,50,40,1) 0%, rgba(255,50,40,0) 70%)';
+    el.style.display = 'block';
+    this._edgeLevel = Math.max(this._edgeLevel || 0, fx.peak);
+    this._edgeStatic = fx.static === true;
+    this._edgeHoldS = fx.static ? EDGE_STATIC_HOLD_S : 0;
+    el.style.opacity = String(this._edgeLevel);
+  },
+
+  _ensureEdge() {
+    if (this._edgeEl && this._edgeEl.isConnected) return this._edgeEl;
+    if (typeof document === 'undefined') return null;
+    const root = document.getElementById('hud') || document.body;
+    if (!root) return null;
+    const el = document.createElement('div');
+    el.id = 'sf-feel-edge';
+    el.style.display = 'none';
+    root.appendChild(el);
+    this._edgeEl = el;
+    return el;
+  },
+
+  _stepEdge(frameDt) {
+    if (!(this._edgeLevel > 0.001)) return;
+    const el = this._edgeEl;
+    const dt = Number.isFinite(frameDt) ? Math.max(0, frameDt) : 0;
+    if (this._edgeStatic) {
+      // Reduced motion / flashing: a steady tint, no pulse - held, then gone.
+      this._edgeHoldS = Math.max(0, (this._edgeHoldS || 0) - dt);
+      if (this._edgeHoldS <= 0) this._edgeLevel = 0;
+    } else {
+      this._edgeLevel *= Math.exp(-EDGE_PULSE_DECAY_PER_S * dt);
+    }
+    if (this._edgeLevel < 0.01) this._edgeLevel = 0;
+    if (!el) return;
+    if (this._edgeLevel <= 0) { el.style.opacity = '0'; el.style.display = 'none'; }
+    else el.style.opacity = String(this._edgeLevel);
+  },
+
   /** Freeze the presentation camera for the contact beat; never the simulation clock. */
-  _holdCameraBeat(seconds) {
+  _holdCameraBeat(seconds, cause) {
     if (!(Number.isFinite(seconds) && seconds > 0)) return false;
     const ctrl = this.state && this.state.render && this.state.render.cameraCtrl;
     if (!ctrl || typeof ctrl.hold !== 'function') return false;
-    return ctrl.hold(Math.min(HS_CAMERA_HOLD_MAX, seconds)) !== false;
+    return ctrl.hold(Math.min(HS_CAMERA_HOLD_MAX, seconds), cause) !== false;
+  },
+
+  /** HARMONY-FIX 5 (R23): every field-of-view change asks the camera gate; only the player's own
+   *  acts (boost, jump) are admitted, one beat per 250 ms. Hits, kills, collisions, moments are not. */
+  _postFov(deg, cause) {
+    if (!(Math.abs(Number(deg)) > 0)) return 0;
+    // The renderer owns the shared gate; a bare rig without one gets a private gate so the same
+    // rule applies without conjuring the shared ledger (which changes how the camera admits kills).
+    const shared = this.state && this.state.render && this.state.render.cameraGate;
+    const gate = shared || this._fovGate || (this._fovGate = createCameraGate());
+    const out = gate.motion('fov', cause, deg, this.state.simTime);
+    if (out !== 0) this._fovPunch = addFovPunch(this._fovPunch, out);
+    return out;
   },
 
   // Arm a punch. `vigCls` selects which vignette gradient ('hit'|'death'|null).
-  _trigger(beatDuration, fovAdd, vigPeak, vigCls) {
+  _trigger(beatDuration, fovAdd, vigPeak, vigCls, fovCause = 'presentation') {
     // Keep camera feedback out of modal screens and non-flight routes.
     if (this.state.mode !== 'flight') return;
     if (!this._modalClear()) return;
@@ -2124,7 +2329,7 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
       // render can delay that accent, but has no effect on simulation progress.
       this._beatTimer = Math.max(this._beatTimer || 0, beatDuration || 0);
       // FOV punch: stack onto the envelope (peak preserved; applied FOV rises in frame()).
-      this._fovPunch = addFovPunch(this._fovPunch, fovAdd);
+      this._postFov(fovAdd, fovCause);
     }
 
     // Vignette: swap gradient class and raise opacity toward the peak. The full profile snaps to
@@ -2164,6 +2369,7 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
 
   _resetHitStop() {
     this._beatTimer = 0;
+    this._pendingSwarmBossBeat = null;
     this.timeEffects.clear('feel:hit-stop');
     this._collisionHitstopCooldown = 0;
     this._armedCollisionDeltaV = 0;
@@ -2193,6 +2399,19 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
     // We keep using the ctx-cached state reference; the registry passes the live state too.
     void state;
 
+    // R10: let the impact frame draw first, then hold the chase briefly while simulation runs.
+    this._swarmHeroHoldCooldownS = Math.max(0, this._swarmHeroHoldCooldownS - frameDt);
+    if (this._pendingSwarmBossBeat !== null) {
+      const wave = this._pendingSwarmBossBeat;
+      this._pendingSwarmBossBeat = null;
+      const st = this.state;
+      if (st.run?.wave === wave && st.mode === 'flight' && this._modalClear()
+        && !st.render?.sectorShellAdmission && !photoModeFeelPresentation(st).silencePunch
+        && arcadeEffectsLevel(st.settings) === 'full' && this._holdCameraBeat(HS_CAMERA_HOLD_MAX, 'bossBreak')) {
+        this._swarmHeroHoldCooldownS = SWARM_HERO_HOLD_REARM_S;
+      }
+    }
+
     if (this.isDeathBellFrameHeld(this.state)) {
       this._deathBellFrameHoldS = Math.max(0, this._deathBellFrameHoldS
         - (Number.isFinite(frameDt) ? Math.max(0, frameDt) : 0));
@@ -2209,7 +2428,7 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
     if (this._chainBeatQueued > 0 && this._beatTimer <= 0) {
       const dipS = this._chainBeatQueued;
       this._chainBeatQueued = 0;
-      this._trigger(dipS, CHAIN_BEAT_FOV, 0, null);
+      this._trigger(dipS, CHAIN_BEAT_FOV, 0, null, 'collisionFov');
     }
 
     const photoFeel = photoModeFeelPresentation(this.state);
@@ -2268,6 +2487,10 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
       if (this._vig < 0.001 && !(this._vigTarget > 0)) { this._vig = 0; vigEl.style.opacity = '0'; vigEl.style.display = 'none'; }
       else vigEl.style.opacity = String(this._vig);
     }
+
+    // ---- hard-blow edge pulse (OVH-06a) ----
+    if (photoFeel.hideVignette) this._edgeLevel = 0;
+    this._stepEdge(frameDt);
 
     // ---- low-hull heartbeat ----
     // The 'HULL CRITICAL' alert banner says it once; this edge keeps saying it without stealing

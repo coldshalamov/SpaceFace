@@ -1,0 +1,413 @@
+{
+  "catalog": {
+    "releaseManifest": "assets/ships/release/release_manifest.json",
+    "runtimeManifest": "src/render/renderPackageManifest.js",
+    "schema": "spaceface.renderPackagePilots.v1"
+  },
+  "compiler": {
+    "externalizeKtx2": false,
+    "externalizeKtx2Hashes": null,
+    "name": "spaceface-render-package-compiler",
+    "positionPrecisionPolicy": "standard",
+    "sourceAssetId": "place_crusher_module",
+    "version": "1.0.0"
+  },
+  "flightStatic": {
+    "policy": {
+      "schema": "spaceface.flightRenderPackagePilots.v1"
+    },
+    "selected": true
+  },
+  "pilot": {
+    "assetId": "sf.render.crusher-module",
+    "dynamicNameIncludes": [],
+    "key": "crusher-module",
+    "kind": "place",
+    "metadataUrl": "assets/ships/release/render-packages/crusher-module/render-package.json",
+    "outputDir": "assets/ships/release/render-packages/crusher-module",
+    "releaseAssetId": "place_crusher_module",
+    "releaseBytes": 44864,
+    "releaseSha256": "e8bd397433f88126424c9d469eddbf8a94aea3c4a6ad31022091f957bef53e42",
+    "runtimeAssetId": "place_crusher_module",
+    "sceneRoot": true,
+    "slot": "place",
+    "sourceUrl": "assets/ships/release/parts/places/place_crusher_module.glb"
+  },
+  "releaseRow": {
+    "contractNodeCount": 2,
+    "id": "place_crusher_module",
+    "kind": "part:places",
+    "ktx2Textures": 0,
+    "meshoptBufferViews": 46,
+    "release": "assets/ships/release/parts/places/place_crusher_module.glb",
+    "releaseBytes": 44864,
+    "releaseSha256": "e8bd397433f88126424c9d469eddbf8a94aea3c4a6ad31022091f957bef53e42",
+    "source": "assets/incubator/everyday_space_kit/source/crusher_module.glb",
+    "sourceBytes": 62516,
+    "sourceSha256": "60a635505ba228622fe5b3d392854beac35368c3af7736b56741be9dc1a5e0fe",
+    "textureProfiles": {
+      "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+      "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data",
+      "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear"
+    },
+    "textures": 0
+  },
+  "runtime": {
+    "assetId": "place_crusher_module",
+    "motionBank": null,
+    "slot": "place",
+    "sourceUrl": "assets/ships/release/parts/places/place_crusher_module.glb"
+  },
+  "schema": "spaceface.renderPackagePilotInputs.v1",
+  "semanticManifest": {
+    "anchors": [
+      {
+        "id": "sf.render.crusher-module.anchor.socket-discharge",
+        "kind": "socket",
+        "node": "SOCKET_Discharge",
+        "parentNodeId": "sf.render.crusher-module.node.crusher-module"
+      },
+      {
+        "id": "sf.render.crusher-module.anchor.socket-feed",
+        "kind": "socket",
+        "node": "SOCKET_Feed",
+        "parentNodeId": "sf.render.crusher-module.node.crusher-module"
+      }
+    ],
+    "assetId": "sf.render.crusher-module",
+    "collisions": [
+      {
+        "id": "sf.render.crusher-module.collision",
+        "nodeId": "sf.render.crusher-module.node.collision-hull",
+        "reference": "COLLISION_HULL"
+      }
+    ],
+    "dynamicGroups": [],
+    "hlods": [],
+    "kind": "place",
+    "lods": [],
+    "mergeGroups": [
+      {
+        "id": "sf.render.crusher-module.flight-static-lane.1",
+        "nodeIds": [
+          "sf.render.crusher-module.node.belt-guard",
+          "sf.render.crusher-module.node.body",
+          "sf.render.crusher-module.node.cheek-p",
+          "sf.render.crusher-module.node.cheek-s",
+          "sf.render.crusher-module.node.chute",
+          "sf.render.crusher-module.node.feed-0",
+          "sf.render.crusher-module.node.feed-1",
+          "sf.render.crusher-module.node.feed-2",
+          "sf.render.crusher-module.node.hopper-fl-bracket",
+          "sf.render.crusher-module.node.hopper-fl-housing",
+          "sf.render.crusher-module.node.hopper-fl-lens",
+          "sf.render.crusher-module.node.hopper-shell",
+          "sf.render.crusher-module.node.hopper-throat",
+          "sf.render.crusher-module.node.hopper-throat-collar",
+          "sf.render.crusher-module.node.motor",
+          "sf.render.crusher-module.node.rim-e",
+          "sf.render.crusher-module.node.rim-n",
+          "sf.render.crusher-module.node.rim-s",
+          "sf.render.crusher-module.node.rim-w",
+          "sf.render.crusher-module.node.strobe"
+        ]
+      }
+    ],
+    "schema": "spaceface.renderPackageSource.v1",
+    "semanticNodes": [
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.crusher-module.node.belt-guard",
+        "independentlyCulled": false,
+        "mergeBoundary": "flight-static:opaque:lodalways",
+        "node": "belt_guard",
+        "parentId": "sf.render.crusher-module.node.crusher-module",
+        "pipelineKey": "flight-static:opaque:lodalways",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.crusher-module.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.crusher-module.node.body",
+        "independentlyCulled": false,
+        "mergeBoundary": "flight-static:opaque:lodalways",
+        "node": "body",
+        "parentId": "sf.render.crusher-module.node.crusher-module",
+        "pipelineKey": "flight-static:opaque:lodalways",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.crusher-module.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.crusher-module.node.cheek-p",
+        "independentlyCulled": false,
+        "mergeBoundary": "flight-static:opaque:lodalways",
+        "node": "cheek_p",
+        "parentId": "sf.render.crusher-module.node.crusher-module",
+        "pipelineKey": "flight-static:opaque:lodalways",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.crusher-module.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.crusher-module.node.cheek-s",
+        "independentlyCulled": false,
+        "mergeBoundary": "flight-static:opaque:lodalways",
+        "node": "cheek_s",
+        "parentId": "sf.render.crusher-module.node.crusher-module",
+        "pipelineKey": "flight-static:opaque:lodalways",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.crusher-module.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.crusher-module.node.chute",
+        "independentlyCulled": false,
+        "mergeBoundary": "flight-static:opaque:lodalways",
+        "node": "chute",
+        "parentId": "sf.render.crusher-module.node.crusher-module",
+        "pipelineKey": "flight-static:opaque:lodalways",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.crusher-module.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.crusher-module.node.collision-hull",
+        "independentlyCulled": false,
+        "mergeBoundary": "COLLISION_HULL",
+        "node": "COLLISION_HULL",
+        "parentId": "sf.render.crusher-module.node.crusher-module",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.crusher-module.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.crusher-module.node.crusher-module",
+        "independentlyCulled": false,
+        "mergeBoundary": "crusher_module",
+        "node": "crusher_module",
+        "parentId": null,
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.crusher-module.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.crusher-module.node.feed-0",
+        "independentlyCulled": false,
+        "mergeBoundary": "flight-static:opaque:lodalways",
+        "node": "feed_0",
+        "parentId": "sf.render.crusher-module.node.crusher-module",
+        "pipelineKey": "flight-static:opaque:lodalways",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.crusher-module.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.crusher-module.node.feed-1",
+        "independentlyCulled": false,
+        "mergeBoundary": "flight-static:opaque:lodalways",
+        "node": "feed_1",
+        "parentId": "sf.render.crusher-module.node.crusher-module",
+        "pipelineKey": "flight-static:opaque:lodalways",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.crusher-module.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.crusher-module.node.feed-2",
+        "independentlyCulled": false,
+        "mergeBoundary": "flight-static:opaque:lodalways",
+        "node": "feed_2",
+        "parentId": "sf.render.crusher-module.node.crusher-module",
+        "pipelineKey": "flight-static:opaque:lodalways",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.crusher-module.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.crusher-module.node.hopper-fl-bracket",
+        "independentlyCulled": false,
+        "mergeBoundary": "flight-static:opaque:lodalways",
+        "node": "hopper_fl_bracket",
+        "parentId": "sf.render.crusher-module.node.crusher-module",
+        "pipelineKey": "flight-static:opaque:lodalways",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.crusher-module.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.crusher-module.node.hopper-fl-housing",
+        "independentlyCulled": false,
+        "mergeBoundary": "flight-static:opaque:lodalways",
+        "node": "hopper_fl_housing",
+        "parentId": "sf.render.crusher-module.node.crusher-module",
+        "pipelineKey": "flight-static:opaque:lodalways",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.crusher-module.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.crusher-module.node.hopper-fl-lens",
+        "independentlyCulled": false,
+        "mergeBoundary": "flight-static:opaque:lodalways",
+        "node": "hopper_fl_lens",
+        "parentId": "sf.render.crusher-module.node.crusher-module",
+        "pipelineKey": "flight-static:opaque:lodalways",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.crusher-module.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.crusher-module.node.hopper-shell",
+        "independentlyCulled": false,
+        "mergeBoundary": "flight-static:opaque:lodalways",
+        "node": "hopper_shell",
+        "parentId": "sf.render.crusher-module.node.crusher-module",
+        "pipelineKey": "flight-static:opaque:lodalways",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.crusher-module.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.crusher-module.node.hopper-throat",
+        "independentlyCulled": false,
+        "mergeBoundary": "flight-static:opaque:lodalways",
+        "node": "hopper_throat",
+        "parentId": "sf.render.crusher-module.node.crusher-module",
+        "pipelineKey": "flight-static:opaque:lodalways",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.crusher-module.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.crusher-module.node.hopper-throat-collar",
+        "independentlyCulled": false,
+        "mergeBoundary": "flight-static:opaque:lodalways",
+        "node": "hopper_throat_collar",
+        "parentId": "sf.render.crusher-module.node.crusher-module",
+        "pipelineKey": "flight-static:opaque:lodalways",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.crusher-module.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.crusher-module.node.motor",
+        "independentlyCulled": false,
+        "mergeBoundary": "flight-static:opaque:lodalways",
+        "node": "motor",
+        "parentId": "sf.render.crusher-module.node.crusher-module",
+        "pipelineKey": "flight-static:opaque:lodalways",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.crusher-module.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.crusher-module.node.rim-e",
+        "independentlyCulled": false,
+        "mergeBoundary": "flight-static:opaque:lodalways",
+        "node": "rim_e",
+        "parentId": "sf.render.crusher-module.node.crusher-module",
+        "pipelineKey": "flight-static:opaque:lodalways",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.crusher-module.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.crusher-module.node.rim-n",
+        "independentlyCulled": false,
+        "mergeBoundary": "flight-static:opaque:lodalways",
+        "node": "rim_n",
+        "parentId": "sf.render.crusher-module.node.crusher-module",
+        "pipelineKey": "flight-static:opaque:lodalways",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.crusher-module.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.crusher-module.node.rim-s",
+        "independentlyCulled": false,
+        "mergeBoundary": "flight-static:opaque:lodalways",
+        "node": "rim_s",
+        "parentId": "sf.render.crusher-module.node.crusher-module",
+        "pipelineKey": "flight-static:opaque:lodalways",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.crusher-module.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.crusher-module.node.rim-w",
+        "independentlyCulled": false,
+        "mergeBoundary": "flight-static:opaque:lodalways",
+        "node": "rim_w",
+        "parentId": "sf.render.crusher-module.node.crusher-module",
+        "pipelineKey": "flight-static:opaque:lodalways",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.crusher-module.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.crusher-module.node.socket-discharge",
+        "independentlyCulled": false,
+        "mergeBoundary": "SOCKET_Discharge",
+        "node": "SOCKET_Discharge",
+        "parentId": "sf.render.crusher-module.node.crusher-module",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.crusher-module.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.crusher-module.node.socket-feed",
+        "independentlyCulled": false,
+        "mergeBoundary": "SOCKET_Feed",
+        "node": "SOCKET_Feed",
+        "parentId": "sf.render.crusher-module.node.crusher-module",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.crusher-module.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.crusher-module.node.strobe",
+        "independentlyCulled": false,
+        "mergeBoundary": "flight-static:opaque:lodalways",
+        "node": "strobe",
+        "parentId": "sf.render.crusher-module.node.crusher-module",
+        "pipelineKey": "flight-static:opaque:lodalways",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.crusher-module.body",
+        "transparency": "opaque"
+      }
+    ]
+  },
+  "sourceGlb": {
+    "bytes": 44864,
+    "sha256": "e8bd397433f88126424c9d469eddbf8a94aea3c4a6ad31022091f957bef53e42",
+    "uri": "assets/ships/release/parts/places/place_crusher_module.glb"
+  }
+}

@@ -23,6 +23,17 @@ export const FRESH_RUN_SYSTEMS = Object.freeze([
   'npcJobsRuntime',
   // Clear durable extraction records before world entry replans authored salvage sources.
   'salvage',
+  // PORT-PRO-FIVE: a settled SWITCHBACK raid must not survive New Game.
+  'convoyRaid',
+  // TOWJAW's cage/boss ownership is run-scoped; a finished or live fight cannot
+  // carry its bindings into a fresh run.
+  'towjaw',
+  // PORT-PRO-FIVE BLACKBOX RUNS: the wreck ledger/custody is run-scoped; an
+  // accepted or spent site must not leak into a fresh run.
+  'derelictExpedition',
+  // PORT-PRO-FIVE GLASSWAKE: an active or banked storm run cannot survive New Game.
+  'stormChase',
+  'kineticCatalysts',
   // Encounter-cover placement and spin use a private per-run stream. Reset it before
   // world/encounter owners can rematerialize content on a retained New Game instance.
   'terrainAnchors',
@@ -95,7 +106,10 @@ export function resetFreshRunSystems(registry, options = {}) {
   const afterEach = typeof options.afterEach === 'function' ? options.afterEach : null;
   for (const name of FRESH_RUN_SYSTEMS) {
     const system = registry.get(name);
-    if (system && typeof system.newGame === 'function') system.newGame();
+    if (system && typeof system.newGame === 'function') {
+      if (options.swarmBoot && (name === 'world' || name === 'missions')) system.newGame({ campaign: false });
+      else system.newGame();
+    }
     if (afterEach && afterEach(name, system) === false) return false;
   }
   return true;

@@ -21,9 +21,9 @@ const DESTRUCTION_LIGHT_CINDER_TAIL = Object.freeze({ r: 0x7a / 255, g: 0x1f / 2
 //   * size is the emitter's own authored billow scale (already inside the packet's ~1.5x bound), and
 //     the separate proximity cap in `render/vfx.js` is what keeps a billow off a protected hull.
 export const RESIDUE_SMOKE_COLOUR = '#4c4744';
-export const RESIDUE_SMOKE_PEAK_OPACITY = 0.30;
-export const RESIDUE_SMOKE_LIFE_S = 3.6;
-export const RESIDUE_SMOKE_END_OPACITY = 0.04;
+export const RESIDUE_SMOKE_PEAK_OPACITY = 0.20;
+export const RESIDUE_SMOKE_LIFE_S = 2.6;
+export const RESIDUE_SMOKE_END_OPACITY = 0.02;
 
 // VFX retains phased scheduling, shared particle/sprite/light pools, and camera/event ownership.
 // These existing methods contain only the per-phase explosion picture and use that same instance.
@@ -69,8 +69,8 @@ export function createExplosionPresentationMethods({
           0.9 * scale, 0.2 * scale,
           DESTRUCTION_LIGHT_JET_CORE, DESTRUCTION_LIGHT_JET_TAIL, 2.2, 0, 0, a, 0.7);
       }
-      this._spawnSprite(SPR_FLASH, sternX, 0.30, sternZ, 0.22,
-        3.6 * scale, 0.4 * scale, 0.85, 0, '#eaf6ff', 0, 0, 1.6, jetAngle);
+      this._spawnSprite(SPR_FLASH, sternX, -0.30, sternZ, 0.14,
+        2.6 * scale, 0.4 * scale, 0.55, 0, '#eaf6ff', 0, 0, 1.6, jetAngle);
     }
     // Long cinders drifting on the inherited velocity: the part of a light death still on screen
     // a second later — what makes a firefight leave a trace.
@@ -87,40 +87,36 @@ export function createExplosionPresentationMethods({
     }
   },
 
-  // A kill is an event: the fireball reaches several hull-widths past the victim for its first beats,
-  // a shock ring and a screen-space distortion ripple follow the flash, the smoke grows and lingers
-  // for seconds, and glowing chunks big enough to read as pieces of the ship fly out. Everything
-  // scales with the victim (a Wasp pops, a capital erupts); the fireball is a single flipbook quad.
+  // A kill is an event: a tight hot flash for a beat, a fireball sized to what was hit,
+  // a screen-space ripple, glowing chunks flying out, and low dissolving smoke behind ships.
   _emitPaintedExplosionBody(phase, entry) {
     const r = Math.max(5, entry.radius || 8);
     const capital = entry.classId === 'capital';
-    const diameter = Math.max(34, capital ? Math.min(r * 3.2, 280) : r * 5);
+    const diameter = Math.max(20, capital ? Math.min(r * 2.5, 190) : Math.min(r * 3.1, 68));
     const s = diameter / 1.35; // flipbook quad: sheet fills ~70% of its cell, scaled 1.35x in vfx.js
     const reduced = resolveVfxAccessibilityProfile(this.state?.settings).flashOpacityScale < 1;
     const x = entry.x, z = entry.z;
     const vx = entry.targetVelocityX || 0, vz = entry.targetVelocityZ || 0;
     const dirAngle = Math.atan2(entry.dirZ || 0, entry.dirX || 1);
     if (phase === 'ignition') {
-      // The bright flash frame: white, HDR, brief, and wide enough to wash the neighbours.
-      this._spawnSprite(SPR_FLASH, x, 0.32, z, 0.12, s * 0.35, s * 0.9, reduced ? 0.7 : 1.0, 0,
-        '#ffffff', 0, 0, 1, dirAngle);
-      this._spawnSprite(SPR_COMBUSTION, x, 0.26, z, 0.55, s * 0.30, s * 0.72, 0.95, 0,
-        '#ffe2b8', vx * 0.1, vz * 0.1, 1, dirAngle);
+      // Brief, tight punch flash sized to the victim (never a white-out cloud over the arena).
+      this._spawnSprite(SPR_FLASH, x, -0.30, z, 0.08, s * 0.22, s * 0.46, reduced ? 0.40 : 0.62, 0,
+        '#ffe8c8', 0, 0, 1, dirAngle);
+      this._spawnSprite(SPR_COMBUSTION, x, -0.40, z, 0.34, s * 0.26, s * 0.60, 0.74, 0,
+        '#ffd6a4', vx * 0.1, vz * 0.1, 1, dirAngle);
     } else if (phase === 'rupture') {
-      this._spawnSprite(SPR_COMBUSTION, x, 0.24, z, 1.0, s * 0.55, s * 1.0, 0.92, 0,
-        '#ffd09a', vx * 0.12, vz * 0.12, 1, dirAngle + 2.1);
-      // Fast shock ring, then the screen-space ripple that travels with it.
-      this._spawnSprite(SPR_RING, x, 0.28, z, 0.5, s * 0.35, s * 1.55, reduced ? 0.45 : 0.85, 0,
-        '#ffffff', 0, 0, 1, dirAngle);
+      this._spawnSprite(SPR_COMBUSTION, x, -0.50, z, 0.58, s * 0.40, s * 0.78, 0.68, 0,
+        '#ffc88a', vx * 0.12, vz * 0.12, 1, dirAngle + 2.1);
+      // Screen-space ripple carries the blast pressure without drawing a circle around the fireball.
       const dist = this._weaponPresenter && this._weaponPresenter.distortion;
       if (dist && !reduced) {
         const local = this._toLocalXZ(x, z, this._spawnLocalXZ);
-        dist.spawn({ x: local.x, y: 0.3, z: local.z, radius: diameter * 0.9, strength: capital ? 1.0 : 0.75, life: 0.55 });
+        dist.spawn({ x: local.x, y: 0.3, z: local.z, radius: diameter * 0.85, strength: capital ? 0.95 : 0.68, life: 0.45 });
       }
-      if (!reduced) this._spawnSprite(SPR_FLASH, x, 0.34, z, 0.09, s * 0.25, s * 0.7, 0.9, 0,
-        '#fff6e6', 0, 0, 1, dirAngle + 0.7);
+      if (!reduced) this._spawnSprite(SPR_FLASH, x, -0.30, z, 0.07, s * 0.18, s * 0.38, 0.50, 0,
+        '#ffdca8', 0, 0, 1, dirAngle + 0.7);
       // Glowing chunks of the ship: few, large, slow enough to track, cooling from white-gold to ember.
-      const chunks = capital ? 9 : (entry.classId === 'small' ? 4 : 6);
+      const chunks = capital ? 8 : (entry.classId === 'small' ? 4 : 5);
       for (let k = 0; k < chunks; k++) {
         const a = dirAngle + (explosionPatternSigned(entry.serial, 'rupture', k, 61) * Math.PI);
         const spd = (28 + explosionPattern01(entry.serial, 'rupture', k, 62) * 70) * Math.min(2.2, diameter / 40);
@@ -130,20 +126,14 @@ export function createExplosionPresentationMethods({
           DESTRUCTION_LIGHT_CINDER_CORE, DESTRUCTION_LIGHT_CINDER_TAIL, 0.9, 0, 0, a, 0.8);
       }
     } else if (phase === 'residue') {
-      // Smoke outlives the flame: it grows for seconds and drifts with the wreck's momentum.
-      // VFX-02: the defect was never the billow's size — it was that a billow was (a) nearly white,
-      // (b) drawn at 0.55 opacity and held there, and (c) free to sit on top of the boss or the
-      // player. This keeps LOOK-05C's authored 2-3 billows for ~4 s and its own scale (which already
-      // sits inside the packet's "no bigger than ~1.5x the fireball" bound), and fixes the three
-      // things that actually made it a white wall: dark soot grey, low peak opacity, and a full-life
-      // dissolve instead of a flat hold.
+      // Smoke outlives the flame: low behind ships, dark soot grey, dissolving quickly.
       const puffs = capital ? 3 : 2;
       for (let k = 0; k < puffs; k++) {
         const a = dirAngle + k * 2.1;
-        this._spawnSprite(SPR_PUFF, x + Math.cos(a) * s * 0.12 * k, 0.10, z + Math.sin(a) * s * 0.12 * k,
-          RESIDUE_SMOKE_LIFE_S + k * 0.6,
-          s * (0.5 + 0.1 * k), s * (1.35 + 0.2 * k),
-          RESIDUE_SMOKE_PEAK_OPACITY - k * 0.045, RESIDUE_SMOKE_END_OPACITY, RESIDUE_SMOKE_COLOUR,
+        this._spawnSprite(SPR_PUFF, x + Math.cos(a) * s * 0.12 * k, -0.90, z + Math.sin(a) * s * 0.12 * k,
+          RESIDUE_SMOKE_LIFE_S + k * 0.4,
+          s * (0.40 + 0.08 * k), s * (0.95 + 0.15 * k),
+          RESIDUE_SMOKE_PEAK_OPACITY - k * 0.03, RESIDUE_SMOKE_END_OPACITY, RESIDUE_SMOKE_COLOUR,
           vx * 0.22 + (entry.dirX || 0) * 3 + Math.cos(a) * 2, vz * 0.22 + (entry.dirZ || 0) * 3 + Math.sin(a) * 2,
           1, a - 1.3);
       }
@@ -172,6 +162,7 @@ export function createExplosionPresentationMethods({
         if (phase === 'rupture') this.bus.emit('camera:shake', {
           amount: (accessibility.id === 'full' ? 0.28 : 0.12) * (entry.classId === 'capital' ? 1.5 : 1),
           position: { x: entry.x, z: entry.z },
+          cause: 'explosion',
         });
       }
       return;
@@ -274,10 +265,11 @@ export function createExplosionPresentationMethods({
             1.34, lobeAngle);
         }
       } else {
-        this._spawnSprite(SPR_RING, x, 0.28, z,
-          entry.classId === 'capital' ? 0.30 : 0.20,
-          r * 0.05 * scale, r * (entry.classId === 'capital' ? 0.55 : 0.40) * scale,
-          reduced ? 0.30 : 0.52, 0.0, '#fff0c0', 0, 0);
+        // Anisotropic heat shear instead of a concentric blast ring (owner 2026-11-23).
+        this._spawnSprite(SPR_FLASH, x, 0.28, z,
+          entry.classId === 'capital' ? 0.22 : 0.16,
+          r * 0.08 * scale, r * (entry.classId === 'capital' ? 0.42 : 0.30) * scale,
+          reduced ? 0.26 : 0.48, 0.0, '#fff0c0', 0, 0, 2.2, dirAngle);
       }
       // FB-074 — the capital kill is bound to the authored `explosionCapital` identity so the
       // audio's five-part beat has a matching light plan in the record.
@@ -469,7 +461,7 @@ export function createExplosionPresentationMethods({
       // A ship blowing up is a WORLD event: send where it happened so the consumer can fall it off
       // with distance. Untagged, this kicked the player's camera identically whether the wreck was on
       // their nose or across the sector — measured as six unearned kicks in ~30 s of tutorial flight.
-      this.bus.emit('camera:shake', { amount: reduced ? shake * 0.55 : shake, position: { x, z } });
+      this.bus.emit('camera:shake', { amount: reduced ? shake * 0.55 : shake, position: { x, z }, cause: 'explosion' });
       return;
     }
 
@@ -818,6 +810,7 @@ export function createExplosionPresentationMethods({
       this.bus.emit('camera:shake', {
         amount: (reduced ? 0.16 : 0.30) * (entry.classId === 'capital' ? 1.5 : 1),
         position: { x, z },
+        cause: 'explosion',
       });
       return;
     }

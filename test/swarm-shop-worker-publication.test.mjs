@@ -275,10 +275,36 @@ test('paused native worker replies publish draft/refit receipts with coherent ru
       'an unchanged rejection signs without resending the balance');
     assert.equal(creditNode.urgentSign, false);
 
+    const walletTarget = nextThreeOffTicks(lane.host.domainDiffSeq, coldNodes);
+    await advancePausedTo(walletTarget);
+    run.credits = 1420;
+    run.telemetry.hangar.spares.push('mod_bank_shot');
+    bus.emit('run:awarded', { credits: 8, totalCredits: 1420, reason: 'chip_scooped' });
+    const pickup = await pausedReply();
+    assert.ok(pickup.events.some(event => event.t === 'run:awarded' && event.p.totalCredits === 1420));
+    assert.equal(mainDomains.get('run').credits, 1420);
+    assert.equal(updatePaths(pickup.domainUpdates).has('run.telemetry'), false);
+
+    run.credits = 1020;
+    bus.emit('run:spent', { credits: 400, totalCredits: 1020, reason: 'swarm_floor_pad' });
+    const floorSpend = await pausedReply();
+    assert.ok(floorSpend.events.some(event => event.t === 'run:spent' && event.p.totalCredits === 1020));
+    assert.equal(mainDomains.get('run').credits, 1020);
+    assert.equal(updatePaths(floorSpend.domainUpdates).has('run.telemetry'), false);
+
+    run.credits = 1028;
+    bus.emit('run:awarded', { credits: 8, totalCredits: 1028, reason: 'chip_scooped' });
+    run.credits = 628;
+    bus.emit('run:spent', { credits: 400, totalCredits: 628, reason: 'swarm_floor_pad' });
+    const both = await pausedReply();
+    assert.deepEqual(both.domainUpdates.filter(row => row.segs.join('.') === 'run.credits').map(row => row.v), [628]);
+    assert.equal(mainDomains.get('run').credits, 628);
+    assert.equal(updatePaths(both.domainUpdates).has('run.telemetry'), false);
+
     const busEvents = [
       'run:draftOffered', 'run:refitOffered', 'run:shopPurchased', 'run:draftRerolled',
       'run:draftResolved', 'run:partialBanked', 'run:draftPickRejected', 'run:draftRerollRejected',
-      'run:refitChanged', 'run:spendRejected', 'run:awarded',
+      'run:refitChanged', 'run:spendRejected', 'run:awarded', 'run:spent',
     ];
     const beforeCleanup = new Map(busEvents.map((event) => [event, bus._listeners.get(event)?.size || 0]));
     lane.host.runShopMirrorUnsubscribe();

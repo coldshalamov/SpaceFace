@@ -237,7 +237,7 @@ test('a well still pulls ore that the plane lets through, and the pull does not 
   assert.equal(both.cues.length, 1);
 });
 
-test('the pass draws a growing ring and a puff with bloom disabled and no light', () => {
+test('the pass draws a glint and a puff, never a ring, with bloom disabled and no light (no rings around things, owner 2026-11-23)', () => {
   const mineral = body(41, { materialCategory: 'mineral' });
   const { state, bus } = boot(mineral);
   fields.registerExternal({
@@ -258,10 +258,12 @@ test('the pass draws a growing ring and a puff with bloom disabled and no light'
     assert.equal(state.settings.video.bloomStrength, 0);
     pass(state);
     const alive = (vfx._spr || []).filter((sprite) => sprite && sprite.alive);
-    const ring = alive.find((sprite) => sprite.kind === 1 && sprite.size1 > sprite.size0 && sprite.op0 >= 0.5);
+    const glint = alive.find((sprite) => sprite.kind === 0 && sprite.size1 > sprite.size0 && sprite.op0 > 0);
     const puff = alive.find((sprite) => sprite.kind === 2 && sprite.op0 > 0);
-    assert.ok(ring, 'a ripple ring is in the color buffer with bloom off');
+    assert.equal(alive.some((sprite) => sprite.kind === 1), false, 'no ring around the body (no rings around things, owner 2026-11-23)');
+    assert.ok(glint, 'a cool glint is in the color buffer with bloom off');
     assert.ok(puff, 'a deflection puff is in the color buffer with bloom off');
+    assert.equal(vfx._lastInertFieldPass.shape, 'glint');
     const lights = vfx._lights || [];
     assert.equal(lights.some((slot) => slot && slot.active), false);
     assert.equal(vfx._lastInertFieldPass && vfx._lastInertFieldPass.bloomIndependent, true);

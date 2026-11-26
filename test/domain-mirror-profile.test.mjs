@@ -3,6 +3,8 @@ import test from 'node:test';
 
 import { createBus } from '../src/core/eventBus.js';
 import { resolveSimLaneFlags, createSimLaneRuntime } from '../src/core/simLaneMain.js';
+import { powerPreviewPlan } from '../src/data/powerPreview.js';
+import { readRailModel } from '../src/ui/powerRail.js';
 import {
   createDomainMirroringProfile,
   configureDomainMirroring,
@@ -120,4 +122,48 @@ test('worker lane preserves domain root and nested identities across consecutive
   assert.equal(state.missions.active[0].id, 'm2');
   assert.equal(state.missions.progress.activeId, 'm2');
   assert.equal(state.missions.progress.amount, 2);
+});
+
+test('worker facade mirrors the selected Frag, preview readiness and loaded count without repeat transfers', async (t) => {
+  const state = { entities: new Map(), entityList: [],
+    settings: {}, meta: { seed: 1 }, tick: 0, simTime: 0, accumulator: 0, timeScale: 0, ui: { screenStack: [] } };
+  const bodies = { selectedId: 'bomb_frag', bombChosen: true, cooldownUntil: 0, cooldowns: { bomb_frag: 0 },
+    rack: { sockets: 2, cells: [{ id: 'bomb_frag', count: 3 }] }, stock: { bomb_frag: 120 } };
+  const worker = { mode: 'flight', playerId: 1, input: { actions: { bomb: { held: true } } }, bombs: bodies,
+    player: { cargo: { items: { cmdty_impulse_charge: 1 } } },
+    ui: { trackedMissionId: 'detail' }, world: { currentSectorId: 'sector_ceres_belt' },
+    missions: { active: [{ id: 'detail', status: 'active', storyTag: 'campaign47a:b1:infested',
+      destSectorId: 'sector_ceres_belt', objectiveProgress: 1, objectiveTarget: 4,
+      params: { furnaceWorksiteVersion: 1, furnaceFeedsNeeded: 3 } }] } };
+  const posts = [];
+  let receive;
+  const lane = createSimLaneRuntime({ state, registry: {}, bus: createBus(),
+    flags: resolveSimLaneFlags('?simLane=worker'), clockMode: 'worker-local',
+    channelFactory: () => ({ post: message => posts.push(message), onMessage: handler => { receive = handler; }, terminate() {} }) });
+  t.after(() => lane.close());
+  const differ = createDomainDiffer();
+  const updates = tick => differ.diff(worker, tick).updates;
+  receive({ kind: 'ready', seq: posts[0].seq, stateTick: 0, simTime: 0, domainUpdates: updates(0), spawnInfos: [
+    { entityId: 1, type: 'ship', team: 0, isPlayer: true, radius: 14, data: {} },
+    { entityId: 2, type: 'fauna', radius: 12, x: 65,
+      data: { ecology: { speciesId: 'casket_worm', siteId: 'closed_refinery' } } },
+  ] });
+  await lane.readyPromise;
+
+  const snapshot = state.bombs;
+  assert.equal(snapshot?.selectedId, 'bomb_frag');
+  assert.equal(snapshot.stock, undefined, 'hangar inventory stays with its owner');
+  assert.equal(snapshot.rack.sockets, undefined);
+  assert.match(readRailModel(state, 0)[4].description, /Frag cassette ×3 loaded/);
+  const plan = powerPreviewPlan(state);
+  assert.ok(plan.areas.some(area => area.role === 'casket-risk'));
+  assert.ok(!updates(1).some(update => update.segs[0].startsWith('bombs.')), 'unchanged stock ships no updates');
+
+  bodies.rack.cells[0].count = 2;
+  bodies.cooldownUntil = 1.25;
+  receive({ kind: 'clockTick', stateTick: 2, simTime: 2 / 60, domainUpdates: updates(2) });
+  assert.equal(state.bombs, snapshot);
+  assert.equal(state.bombs.rack.cells[0].count, 2);
+  assert.equal(readRailModel(state, state.simTime)[4].state, 'cooling');
+  assert.equal(powerPreviewPlan(state).blocked?.startsWith('Recharging'), true);
 });

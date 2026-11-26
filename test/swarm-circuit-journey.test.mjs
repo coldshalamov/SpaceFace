@@ -1401,15 +1401,22 @@ test('a null launch and a wrong-wave choice cannot skip the destination gate', (
 // Round 1 regressions: exercise the normal refresh path, not just the choice painter.
 function withDraftDom(h, callback) {
   const oldDocument = globalThis.document;
+  const detach = child => {
+    const siblings = child.parentNode?.children;
+    const index = siblings?.indexOf(child) ?? -1;
+    if (index >= 0) siblings.splice(index, 1);
+  };
   const node = (tag = 'div') => ({
     tag, className: '', dataset: {}, attrs: {}, children: [], hidden: false, style: {}, listeners: {},
     classList: { toggle() {}, add() {}, remove() {} },
     set textContent(value) { this.text = value; this.children = []; },
     get textContent() { return this.text || this.children.map(child => child.textContent).join(''); },
     setAttribute(key, value) { this.attrs[key] = String(value); },
-    appendChild(child) { this.children.push(child); child.parentNode = this; return child; },
+    removeAttribute(key) { delete this.attrs[key]; },
+    appendChild(child) { detach(child); this.children.push(child); child.parentNode = this; return child; },
     append(...children) { children.forEach(child => this.appendChild(child)); },
     insertBefore(child, before) {
+      detach(child);
       const index = this.children.indexOf(before);
       assert.ok(index >= 0);
       this.children.splice(index, 0, child);
@@ -1422,16 +1429,16 @@ function withDraftDom(h, callback) {
   });
   globalThis.document = { createElement: node };
   const screen = Object.create(crucibleDraftScreen);
-  // 7dca6e4ced added the service-bay briefing and section heading that mount() builds and refresh()
-  // then writes, so a screen built without mount() still needs those nodes.
+  // A screen built without mount() still needs the nodes refresh updates.
   for (const key of ['root', 'cards', 'title', 'filters', 'refitBtn', 'sub', 'preview',
-    'note', 'skip', 'rerollBtn', 'wallet', 'hint', 'briefing', 'armoryHeading']) screen[`_${key}`] = node();
+    'note', 'skip', 'rerollBtn', 'wallet', 'hint', 'briefing', 'armoryHeading', 'launchSummary']) screen[`_${key}`] = node();
   screen._reading = null;
   screen._visualArmory = null;
   screen._category = 'All';
   screen._clipRailToWholeRows = () => {};
-  screen._circuit = Object.fromEntries(['el', 'status', 'graphic', 'route', 'next', 'choices']
+  screen._circuit = Object.fromEntries(['el', 'status', 'graphic', 'route', 'next', 'choices', 'stage', 'options']
     .map(key => [key, node()]));
+  screen._circuit.stage.append(screen._circuit.el, screen._filters);
   const ctx = { ...h.ctx, registry: { get: () => ({
     currentOffers: () => [], currentWave: () => h.state.run.wave,
     lastNotice: () => survivalDraft.lastNotice(),
@@ -1439,23 +1446,38 @@ function withDraftDom(h, callback) {
   try { callback(screen, ctx); } finally { globalThis.document = oldDocument; }
 }
 
-test('Circuit choices occupy bounded space inside the shopping stage', () => {
+test('optional Circuit entry leaves the equipment shelf open while an owed route stays visible', () => {
   const h = makeHarness();
-  openArmory(h);
+  survivalDraft.init(h.ctx);
+  const run = openArmory(h);
   withDraftDom(h, (screen, ctx) => {
     screen.mount(screen._root, ctx);
     try {
-      const panel = screen._circuit.el;
+      const { el: panel, options } = screen._circuit;
       const stage = screen._regions.stage;
-      assert.equal(panel.parentNode, stage);
+      assert.equal(options.tag, 'details');
+      assert.equal(options.hidden, false);
+      assert.ok(!options.open, 'opening equipment keeps the optional challenge collapsed');
+      assert.equal(panel.parentNode, options);
+      assert.ok(!stage.children.includes(panel));
+      assert.match(panel.textContent, /Start Circuit/);
       assert.equal(panel.className.split(' ').includes('k-stage'), false);
       assert.equal(screen._root.children.filter(child => child.className.split(' ').includes('k-stage')).length, 1);
-      assert.ok(stage.children.indexOf(panel) < stage.children.indexOf(screen._filters));
       assert.ok(stage.children.includes(screen._cards), 'shopping remains in the same column');
+
+      h.bus.emit('run:draftPickRequested', { offerId: START_ID });
+      run.telemetry.circuit = { ...circuitFor(run), status: 'route', clearedStages: 1, revision: 4 };
+      run.wave = 4;
+      screen.refresh(ctx);
+      assert.equal(options.hidden, true);
+      assert.equal(panel.parentNode, stage);
+      assert.ok(stage.children.indexOf(panel) < stage.children.indexOf(screen._filters));
       assert.equal(panel.style.maxHeight, '40%', 'Circuit choices reserve a bounded share of the shelf');
       assert.equal(panel.style.overflow, 'auto', 'long destination choices remain scrollable');
       assert.equal(panel.hidden, false);
-      assert.match(panel.textContent, /Start Circuit/);
+      assert.equal(screen._skip.attrs['aria-disabled'], 'true');
+      assert.ok(screen._circuit.choices.children.some(item => item.children[0]?.tag === 'button'),
+        'the required destination controls remain in the open panel');
     } finally { screen.dispose(); }
   });
 });
@@ -1468,10 +1490,12 @@ test('normal opening screen refresh exposes Start Circuit and its button enters 
   withDraftDom(h, (screen, ctx) => {
     screen.refresh(ctx);
     assert.equal(screen._circuit.el.hidden, false);
-    const button = screen._circuit.choices.children[0]?.children[0];
+    const [button, description] = screen._circuit.choices.children[0]?.children ?? [];
     assert.ok(button, 'refresh renders the opening choice without Circuit telemetry');
     assert.equal(button.tag, 'button');
     assert.match(button.textContent, /Start Circuit/);
+    assert.equal(description?.tag, 'p');
+    assert.equal(button.attrs['aria-describedby'], description.id);
     button.listeners.click();
     assert.equal(named(h.emitted, 'run:draftPickRequested').at(-1).payload.offerId, START_ID);
     assert.equal(circuitFor(run).status, 'running');
@@ -1480,6 +1504,8 @@ test('normal opening screen refresh exposes Start Circuit and its button enters 
     screen.refresh(ctx);
     assert.match(screen._circuit.status.textContent, /Stage 1/);
     assert.equal(screen._circuit.choices.hidden, true, 'accepted entry is no longer offered');
+    assert.equal(screen._circuit.options.hidden, true);
+    assert.equal(screen._circuit.el.parentNode, screen._circuit.stage);
   });
 });
 

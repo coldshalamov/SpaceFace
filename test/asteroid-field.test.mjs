@@ -136,6 +136,11 @@ test('dressing rows are presentation sources, not combat entities', () => {
 test('quiet Ceres combat list drops the dormant belt and dressing', () => {
   const { state, world, player } = bootWorld(14920);
   world.enterSector(CERES);
+  // Neighbor residency drains one job per world tick by design; the field census
+  // needs the materialized neighbors' rocks, so settle the queue directly.
+  while (world._pendingResidency && world._pendingResidency.length) {
+    world._drainResidencyQueue(64);
+  }
   const origin = player.pos;
   const census = asteroidFieldCensus(state);
   const fx = dressingCensus(state);

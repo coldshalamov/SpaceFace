@@ -67,5 +67,5 @@ export function tallyThreeTowAssessment(state) {
   // R12: advice comes from the hull-to-load relationship (TOW / TUG / ANCHOR), never from line class.
   const relation=lineRelationWord(crate,linePlayerMassT(state)),advice=lineHandlingAdvice(relation,crate);
   return {available:true,massT,classIndex:cls.index,fullControlMassT:cls.fullControlMassT,overClass,relation,
-    text:`${amount(massT)}T load${relation?' · '+relation+'. '+advice:'.'} Tow slow; settle below 8 u/s.`};
+    text:`${amount(massT)}T load${relation?' · '+relation+'. '+advice:'.'} Tow slow; settle below 8 m/s.`};
 }

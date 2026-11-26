@@ -10,6 +10,12 @@ function dataUrlBytes(dataUrl) {
   return Math.ceil((dataUrl.length - comma - 1) * 3 / 4);
 }
 
+/** Read-side bound: admit only an image data URL within the still budget. */
+export function isSafeSlotThumbnail(value) {
+  return typeof value === 'string' && value.indexOf('data:image/') === 0
+    && dataUrlBytes(value) <= SLOT_THUMB_MAX_BYTES;
+}
+
 /**
  * Keep a still only when it is an image data URL within 24 KB.
  * An oversized still can be redrawn from the same canvas at 160×90; that is

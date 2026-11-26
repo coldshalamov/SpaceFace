@@ -133,7 +133,7 @@ const DASH = Object.freeze([5, 5]), SOLID = Object.freeze([]);
  * Host calls draw in its normal frame. No private loop, DOM, controls, pulses, flashes, or shake.
  */
 export function createSalvageOutfitsOverlay({ canvas, state, worldToScreen, colors = COLORS,
-  pixelRatio = 1 } = {}) {
+  pixelRatio = 1, prepareCanvas = null } = {}) {
   if (!canvas?.getContext || typeof worldToScreen !== 'function') throw new TypeError('Outfit overlay needs canvas and projection');
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new TypeError('Outfit overlay needs a 2D drawing context');
@@ -150,16 +150,17 @@ export function createSalvageOutfitsOverlay({ canvas, state, worldToScreen, colo
   function clear() { if (!blank) ctx.clearRect(0, 0, canvas.width, canvas.height); blank = true; }
   function color(id) { return id === 'player' ? colors.lamp : id === 'keel' ? colors.ink : colors.dim; }
   return {
-    draw() {
+    draw(currentState = null) {
       if (destroyed) return model;
       clear();
-      const live = typeof state === 'function' ? state() : state;
+      const live = currentState || (typeof state === 'function' ? state() : state);
       if (live?.mode !== 'flight' || live?.ui?.docked) return model;
       writeSalvageOutfitsReadModel(live, model);
       // Nothing to annotate (the usual case: no salvage meeting in this sector) -> leave the canvas
       // alone. Assigning ctx.font every frame re-resolves the web font and measured ~13% of all
       // main-thread CPU in a Crucible run; the loops below would draw nothing anyway.
       if (model.meetingCount + model.crewCount + model.cargoCount === 0) return model;
+      if (prepareCanvas) prepareCanvas();
       ctx.save(); const r = ratio(); ctx.setTransform?.(r, 0, 0, r, 0, 0);
       ctx.font = '12px "IBM Plex Mono", monospace'; ctx.lineWidth = 2;
       ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
@@ -211,6 +212,7 @@ export function createSalvageOutfitsOverlay({ canvas, state, worldToScreen, colo
       }
       ctx.restore(); return model;
     },
+    get hasDrawing() { return !blank; },
     inspect: () => model,
     destroy() { clear(); destroyed = true; },
   };

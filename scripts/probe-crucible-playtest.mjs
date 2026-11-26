@@ -1,7 +1,7 @@
 // Owner-playtest reproduction for Swarm (Crucible · Ricochet Foundry by default).
 //
 // Boots the real dev server and page, walks the PUBLIC door with real pointer clicks
-// (menu → Crucible → arena card → Choose ship & kit → Open armory → Launch round 1), then
+// (menu → Crucible → arena card → Choose ship → Review equipment → Launch round 1), then
 // watches the rendered route: what dies and why in the first seconds with no input, how often
 // entity visuals swap or vanish, whether the player hull stays on the glass at its hero body,
 // and whether round 2 answers the keyboard. Contact sheet frames land in --out.
@@ -93,7 +93,7 @@ if (await arenaCard.count()) await arenaCard.click();
 await page.waitForTimeout(200);
 report.door = await page.evaluate(() => [...document.querySelectorAll('#screens button')]
   .filter((b) => b.offsetParent).map((b) => b.textContent.replace(/\s+/g, ' ').trim()).filter(Boolean));
-await clickText('Choose ship & kit');
+await clickText('Choose ship');
 await page.waitForTimeout(400);
 await page.evaluate((seed) => {
   const input = document.querySelector('#screens .sf-crd-seed input');
@@ -103,7 +103,7 @@ await page.screenshot({ path: path.join(OUT, '01-kit.png') });
 report.kit = await page.evaluate(() => ({
   text: (document.querySelector('#screens [data-screen="crucible"]') || document.querySelector('#screens')).innerText.slice(0, 4000),
 }));
-await clickText('Open armory');
+await clickText('Review equipment');
 await page.waitForFunction(() => window.SF.state.mode === 'flight' && window.SF.state.run
   && window.SF.state.run.phase === 'draft', null, { timeout: 120000 });
 await page.waitForTimeout(800);

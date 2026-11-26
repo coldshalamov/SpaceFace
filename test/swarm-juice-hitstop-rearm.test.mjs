@@ -1,16 +1,5 @@
-// Sustained-beat contract: kill-storm presentation must never hold the world clock.
-// Two stacked re-arm defects produced the headed-Swarm slowdown (sim ~0.09-0.2 s per wall s
-// while presentation kept animating):
-//  1. swarmJuice: 'swarm:juice-hitstop' (~0.35) re-armed on nearly every multi-kill receipt —
-//     each fresh ~60-80 ms window beats the drained sim-clock remainder, so the request pinned
-//     the floor for as long as killing continued.
-//  2. feel: 'feel:hit-stop' (HS_DEPTH 0.12) re-topped on every player-caused kill/heavy-damage
-//     receipt via _trigger — no cooldown — so a kill stream held the 0.12 floor indefinitely.
-// swarmJuice keeps its real/sim-clock re-arm gate; feel's automatic writer is gone entirely —
-// kill/heavy-damage beats are presentation only (punch, trauma, vignette) and 'feel:hit-stop'
-// is a retired source name that init/reset/destroy only ever clear. These tests drive a
-// sustained kill storm through the production event paths: the swarm floor must release
-// between beats, and the feel layer must never move the clock at all.
+// R10: a sustained kill storm keeps the clock normal. Champion defeat alone has a
+// short Swarm chase hold, with an admission budget on the presentation clock.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
@@ -22,12 +11,13 @@ import { runSession } from '../src/systems/runSession.js';
 import { swarmJuice } from '../src/systems/swarmJuice.js';
 import { feel as feelDefinition } from '../src/render/feel.js';
 import { SURVIVAL_COHORT_TAG } from '../src/systems/waveMaterialization.js';
-import { SWARM_HITSTOP_SOURCE } from '../src/data/swarmJuice.js';
+import { createChaseCamera } from '../src/render/camera.js';
 
 const DT = 1 / 60;
 
 function boot({ effects = 'full' } = {}) {
   const state = createGameState(9);
+  state.mode = 'flight';
   state.settings.video.arcadeEffects = effects;
   const bus = createBus();
   const player = {
@@ -50,16 +40,16 @@ function boot({ effects = 'full' } = {}) {
 
 let victimN = 0;
 /** Spawn a cohort body, then emit its death at the current sim time (player-caused). */
-function kill(h) {
+function kill(h, bodyData = {}, capital = false) {
   const id = h.state.nextEntityId++;
   const victim = {
     id, alive: false, type: 'ship', pos: { x: 10, z: 10 },
-    data: { runCohort: SURVIVAL_COHORT_TAG, tag: victimN++, stuntThreat: { baseScore: 120, credits: 4 } },
+    data: { runCohort: SURVIVAL_COHORT_TAG, tag: victimN++, stuntThreat: { baseScore: 120, credits: 4 }, ...bodyData },
   };
   h.state.entities.set(id, victim);
   h.state.entityList.push(victim);
   h.bus.emit('entity:killed', {
-    id, killerId: h.state.playerId, type: 'ship',
+    id, killerId: h.state.playerId, type: 'ship', capital,
     pos: { x: 10, z: 10 },
     presentation: { cause: 'direct', playerCaused: true },
   });
@@ -70,57 +60,96 @@ function tick(h) {
   swarmJuice.update(DT, h.state);
 }
 
-test('a sustained kill storm produces discrete dips, not a held time floor', () => {
+test('a sustained kill storm cannot hold the ordinary Swarm chase or simulation', () => {
   const h = boot();
-  const totalSteps = Math.round(12 / DT);         // 12 sim-seconds of continuous killing
-  let dips = 0;                                    // transitions into the dip
-  let heldSteps = 0;                               // steps where the request pins the scale
-  let measuredSteps = 0;
-  let freeSteps = 0;
-  const stormStartS = 2;                           // let the multi-kill window establish first
-  for (let i = 0; i < totalSteps; i += 1) {
-    const before = h.state.timeScale;
-    if (i % 3 === 0) kill(h);                      // ~20 kills per sim-second — a dense wipe storm
-    tick(h);
-    if (before === 1 && h.state.timeScale < 1) dips += 1;
-    if (h.state.timeScale < 1) heldSteps += 1;
-    if (h.state.simTime >= stormStartS) {
-      measuredSteps += 1;
-      if (h.state.timeScale === 1) freeSteps += 1;
+  const camera = h.state.render.cameraCtrl = createChaseCamera(h.state);
+  const feel = initFeel(h);
+  try {
+    for (let i = 0; i < 180; i += 1) {
+      if (i % 3 === 0) kill(h, {}, true); // even heavy non-champion kills keep moving
+      tick(h);
+      feel.frame(DT, h.state);
+      assert.equal(h.state.timeScale, 1);
+      assert.equal(camera.holdRemaining(), 0);
     }
-  }
-  assert.ok(dips >= 3, `distinct kill beats must still dip (got ${dips})`);
-  const freeFraction = freeSteps / measuredSteps;
-  assert.ok(freeFraction >= 0.5,
-    `the dip must release between beats — held ${heldSteps} steps, only ${(freeFraction * 100).toFixed(0)}% free`);
-
-  // The floor always recovers once the storm stops: drain the last live dip, then verify
-  // no request remains.
-  for (let i = 0; i < Math.round(1.5 / DT); i += 1) tick(h);
-  assert.equal(h.state.timeScale, 1, 'the floor must release after the last beat');
-  assert.equal(h.effects.describeRequests()[SWARM_HITSTOP_SOURCE], undefined,
-    'no swarm hit-stop request may survive the storm');
-  swarmJuice.destroy();
-});
-
-test('an explicitly forced beat (boss down) still lands inside the re-arm window', () => {
-  const h = boot();
-  for (let i = 0; i < 3; i += 1) kill(h);          // TRIPLE arms the dip inside the same tick
-  assert.ok(h.state.timeScale <= 0.35, 'fixture must begin inside a live dip');
-  swarmJuice._requestHitStop(null, 1);             // the boss-down marquee dip is forced
-  assert.equal(swarmJuice._hitStopLeft, 1, 'the forced beat must arm its full duration');
-  assert.equal(h.effects.describeRequests()[SWARM_HITSTOP_SOURCE].scale, 0.35);
-  swarmJuice.destroy();
-});
-
-test('the re-arm gate still respects reduced/off effects', () => {
-  for (const effects of ['reduced', 'off']) {
-    const h = boot({ effects });
-    for (let i = 0; i < 60; i += 1) { kill(h); tick(h); }
-    assert.equal(h.state.timeScale, 1, `${effects} effects never dip`);
-    assert.equal(h.effects.describeRequests()[SWARM_HITSTOP_SOURCE], undefined);
+    assert.deepEqual(h.effects.describeRequests(), {});
+    assert.ok(camera.killBeatLog().some((beat) => beat.zoom && beat.holdS === 0));
+  } finally {
+    feel.destroy();
     swarmJuice.destroy();
   }
+});
+
+function defeatChampion(h, wave) {
+  h.state.run.wave = wave;
+  h.state.run.phase = 'wave_intro';
+  h.bus.emit('run:wavePlanned', { wave, plan: {} });
+  h.state.run.phase = 'active';
+  kill(h, { runWave: wave, swarmChampion: true }, true);
+}
+
+test('champion defeat owns one 50 ms chase hold with an 800 ms presentation re-arm', () => {
+  const h = boot();
+  const camera = h.state.render.cameraCtrl = createChaseCamera(h.state);
+  const feel = initFeel(h);
+  const defeats = [];
+  const stingers = [];
+  h.bus.on('swarm:bossDown', (beat) => defeats.push(beat.wave));
+  h.bus.on('audio:cue', ({ id }) => { if (id === 'moment.stinger') stingers.push(id); });
+  try {
+    defeatChampion(h, 5);
+    assert.equal(camera.holdRemaining(), 0, 'capital kill does not add a longer hold');
+    feel.frame(DT, h.state);
+    assert.equal(camera.holdRemaining(), 0.05);
+    assert.equal(h.state.timeScale, 1);
+    camera.follow(0.06);
+    assert.equal(camera.holdRemaining(), 0);
+
+    feel.frame(0.79, h.state);
+    defeatChampion(h, 10);
+    feel.frame(0, h.state);
+    assert.equal(camera.holdRemaining(), 0, 'a second champion cannot bypass presentation re-arm');
+    feel.frame(0.02, h.state);
+    defeatChampion(h, 15);
+    feel.frame(0, h.state);
+    assert.equal(camera.holdRemaining(), 0.05, 'elapsed presentation time re-arms while sim time is unchanged');
+    assert.deepEqual(defeats, [5, 10, 15]);
+    assert.equal(stingers.length, 3);
+    assert.equal(h.state.timeScale, 1);
+  } finally {
+    feel.destroy();
+    swarmJuice.destroy();
+  }
+});
+
+test('reduced and off effects skip the hero hold, and explicit Pause owns its own clock', () => {
+  for (const effects of ['reduced', 'off']) {
+    const h = boot({ effects });
+    const camera = h.state.render.cameraCtrl = createChaseCamera(h.state);
+    const feel = initFeel(h);
+    defeatChampion(h, 5);
+    feel.frame(DT, h.state);
+    assert.equal(camera.holdRemaining(), 0);
+    assert.equal(h.state.timeScale, 1);
+    feel.destroy();
+    swarmJuice.destroy();
+  }
+  const h = boot();
+  const camera = h.state.render.cameraCtrl = createChaseCamera(h.state);
+  const feel = initFeel(h);
+  defeatChampion(h, 5);
+  h.effects.set('pause', { scale: 0 });
+  h.state.mode = 'paused';
+  h.bus.emit('sim:pause');
+  feel.frame(DT, h.state);
+  assert.equal(h.state.timeScale, 0);
+  h.effects.clear('pause');
+  h.state.mode = 'flight';
+  feel.frame(DT, h.state);
+  assert.equal(h.state.timeScale, 1);
+  assert.equal(camera.holdRemaining(), 0);
+  feel.destroy();
+  swarmJuice.destroy();
 });
 
 // --- feel beats (presentation layer, real-frame cadence) --------------------------------------
@@ -183,6 +212,7 @@ test('a kill stream lands its beats as presentation and never writes the clock',
 
 test('kill, capital, and death beats keep their authored windows — clock untouched', () => {
   const fx = makeFeelFixture(22);
+  const camera = fx.state.render.cameraCtrl = createChaseCamera(fx.state);
   const feel = initFeel(fx);
   killReceipt(fx, 0);
   assert.equal(fx.state.timeScale, 1, 'the kill beat never writes the clock');
@@ -193,6 +223,7 @@ test('kill, capital, and death beats keep their authored windows — clock untou
   });
   const capitalWindow = beatWindow(feel);
   assert.ok(capitalWindow > killWindow, 'the capital kill keeps the larger authored window');
+  assert.equal(camera.holdRemaining(), 0.35, 'Adventure retains its authored capital framing');
   assert.equal(fx.state.timeScale, 1);
   fx.bus.emit('player:death', {});
   assert.ok(beatWindow(feel) >= capitalWindow, 'the death beat always lands its own window');

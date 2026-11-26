@@ -280,9 +280,12 @@ test('a refused strip is reported too', () => {
   assert.equal(survivalDraft.lastNotice(), changed.payload.reason);
 });
 
-test('an empty hardpoint with nothing to put in it says so', () => {
+test('an empty slot with nothing to put in it says so', () => {
   const lines = refitRowLines({ slotIndex: 2, defId: null, name: null, spares: [] });
-  assert.equal(lines.label, 'Hardpoint 3');
+  assert.equal(lines.label, 'Slot 3');
+  // The plain words the packet asked for: weapon slots read Gun N, shield slots read Shield N.
+  assert.equal(refitRowLines({ slotIndex: 0, slotType: 'weapon', defId: null, name: null, spares: [] }).label, 'Gun 1');
+  assert.equal(refitRowLines({ slotIndex: 1, slotType: 'shield', defId: null, name: null, spares: [] }).label, 'Shield 2');
   assert.equal(lines.disabled, true);
   assert.match(lines.value, /no spare/i);
   assert.deepEqual(lines.options, []);

@@ -1,0 +1,54 @@
+{
+  "sourcePath": "assets/ships/parts/wholeships/kestrel.glb",
+  "sourceSha256": "e538f48b11bd5e7eeabb31e785f0d179112c102d478d7082aa3fb7c6085cded5",
+  "purpose": "Independent original collider for import within Blender export; reduced render geometry must not alter gameplay collision.",
+  "collisionSha256": "199179fc6c817432e0b45db778d908efb0d3eba8de303c12b7a5c38b9f6a0a83",
+  "origin": "Existing first-party Forge Kestrel authored source; extracted original collision mesh only.",
+  "reviewedGeometrySources": [
+    {
+      "path": "reviewed_lod0.glb",
+      "sha256": "2906a79967b041784b31394f1ef1246b8da148dc56f66f479e1d11f6e205af52",
+      "bytes": 1765868,
+      "reviewedSource": ".devshots/fleet/kestrel-astra/final/kestrel_final.glb",
+      "reviewedSourceSha256": "cdfb0240b69feafd12c25b5af35afc79820cbcffdc3f5122e16a81f3f8f77b2e"
+    },
+    {
+      "path": "reviewed_lod1.glb",
+      "sha256": "6d7d66667d365601d1f8ca34393bc7a5114129a5fe806a0481983853caf00504",
+      "bytes": 668496,
+      "reviewedSource": ".devshots/fleet/kestrel-astra/final/kestrel_final_lod1.glb",
+      "reviewedSourceSha256": "a0708acc2fdc1ce20bc98256603cc887cb377602133520669e53dcc79b90a909"
+    },
+    {
+      "path": "reviewed_lod2.glb",
+      "sha256": "71981dcfc6a336972cd8b5ec0c62f22084ae110ab8c9e789eb96e7908921b789",
+      "bytes": 287108,
+      "reviewedSource": ".devshots/fleet/kestrel-astra/final/kestrel_final_lod2.glb",
+      "reviewedSourceSha256": "b44ea059535ca407b65202c2805ff3f3e3cf7b9323f34fd00e95b943c757bb14"
+    }
+  ],
+  "reviewedInputs": {
+    "tools/blender/forge/ships/kestrel.py": "0d15702b6753552797611ccf12f933389efe7029ff1b3f57f0a564cf29158302",
+    "tools/blender/forge/forge.py": "306023f232b9b4504581139a3870748a27eab15964678861f01e84c15a59b443",
+    "tools/blender/forge/forge_export.py": "cfa4052214abfacb82365bf487dd2605a2921c0bc889b21911889da12615e711",
+    "tools/blender/forge/forge_textures.py": "508f677b6caef8c06fbf3a7ff9f1ea8bf9bf7f0c05de1904c8476c6a3d60edd6",
+    "tools/blender/forge/skin.py": "2a051af4c96c2d6c1c58e666d6a5127235ce28d7316403967a8a61c36749ad8d",
+    "tools/blender/forge/stencil.py": "bc70720cb151bf84ab68017262ab2c947844cdd19b0c95200109a655360e746b",
+    "tools/blender/forge/motion.py": "49ea1d5b90f6da57a427865ef6ebef74604609fc426001ca4be0e6305f8951ff",
+    "tools/blender/forge/fleet.json": "a8b255383c5e1e53271fb1c2087ea9d65f0c312441954e0f2f49b54bc6dad4e3",
+    "tools/blender/forge/animations/motion_bank.py": "b0f0c16db14facc11bb7dcc6e4441693a756caa80300ed75fc3f6f463277bd45",
+    "tools/blender/forge/animations/ANI_01.py": "92f00a4d883f88cd81118fbb5545fd340f52302df6e4887d5697787c6efaf1e4",
+    "tools/blender/forge/animations/ANI_02.py": "1d5cab1b0260ac56cac0feb0634a4b8c4bdd083f743061f47d64686b56a8089a",
+    "tools/blender/forge/animations/ANI_05.py": "8f0d5167128a721d2651024b5c645b35c0a2a12b32c1c5ab9a8aeffb1f891055",
+    "tools/blender/forge/animations/ANI_06.py": "cd1024380f9df23aa246340c73d7e8796e992ec0c0c8cbdc2632f47db162a4f8",
+    "tools/blender/forge/animations/ANI_07.py": "1abf016cd8c659f464f04cd7288f0cd5de3ed94aca3ffc1f389e00f4ba92f1af",
+    "tools/blender/forge/animations/ANI_16.py": "39fbe2e7c0f7340f29e616a5fce547fd223e9e51d05b2686b53260b961f500f0",
+    "tools/blender/forge/animations/ANI_17.py": "cdcb6ad12b16a51e43c14acd8be0067694ac482d8c968a7f4a292c209c61791b",
+    "tools/blender/forge/animations/ANI_18.py": "8e38c3c70a04bab15bea33f1b684014296fd9a8ac07c36f9cd9a8ab486cfb6ef",
+    "tools/blender/forge/source_assets/kestrel/review_guard.py": "6cb0d0b0e9c7a800a1b58ada4330c6e4cdc14e10fe595263196f3866a94f98f8",
+    "tools/blender/forge/source_assets/kestrel/pin_reviewed.py": "1730fc389634137f8cc2ac9c0d4664802dca8f2eebc4a997a5147213dfbc7d41",
+    "tools/blender/forge/source_assets/kestrel/drive-lod2/contract.blend": "cef34f2774e9d850099f7b3b8310dccdd0e8d562d7176951514a9e95e61d0fa6",
+    "tools/blender/forge/source_assets/kestrel/drive-lod2/contract-source.json": "51fdea7d9da3888b6ecc5282803a5c959f0cd1b9cd5ae2ead0a798fb4cc7357a",
+    "tools/blender/forge/source_assets/kestrel/drive-lod2/bake-contract.py": "7bd5185dd4597a907dbd682d6b87026a6ee317f4707927e121a79ac403678651"
+  }
+}

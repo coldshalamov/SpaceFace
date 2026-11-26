@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "cab1aff0bcc50423ed5a919eb0074e05c2b7114f2528bcd8ff9f808703dc5af1",
+  "contentHash": "51b181493de17f8a21dd9229fe169a069a6d21292c956c440cf4754577f3a940",
   "dynamicGroups": [
     {
       "id": "sf.render.apron-shuttle.node.lod0-motion-hull-core-hook-drive-core.dynamic",
@@ -4457,14 +4457,52 @@
       "uri": "apron_shuttle.glb"
     },
     "sourceManifest": {
-      "bytes": 34199,
-      "sha256": "4bd7b14849165535bb6b3bb5dff840f5716cb87bf1c9d2ea879eb23643ef0b60",
+      "bytes": 35120,
+      "sha256": "8deee19aee63e882a841e93674ba1dee568ceede14362427d8df37adeeacbe28",
       "uri": "assets/ships/render-packages/inputs/apron-shuttle.json"
     }
   },
   "render": {
-    "bytes": 947648,
-    "sha256": "416af00f2b762573b730b2a4415c9e53d59f6b6aa35bda7e0767a4484851c5df",
+    "bytes": 654496,
+    "resources": [
+      {
+        "bytes": 5381,
+        "mimeType": "image/ktx2",
+        "sha256": "4993f33a8ebc93a831f53b4e186fb9b973f0c6bff795d4fa6ab62e577c54536e",
+        "uri": "../_shared/images/4993f33a8ebc93a831f53b4e186fb9b973f0c6bff795d4fa6ab62e577c54536e.ktx2"
+      },
+      {
+        "bytes": 72992,
+        "mimeType": "image/ktx2",
+        "sha256": "884bbcbe84ab33145fea429c34b4449673ded6de8b62030df2ddfcbc5b7649d5",
+        "uri": "../_shared/images/884bbcbe84ab33145fea429c34b4449673ded6de8b62030df2ddfcbc5b7649d5.ktx2"
+      },
+      {
+        "bytes": 58536,
+        "mimeType": "image/ktx2",
+        "sha256": "a03642a3514a022dbcb614a6bf4f25dc429b28ac3f63e74b47b38af11bf398a4",
+        "uri": "../_shared/images/a03642a3514a022dbcb614a6bf4f25dc429b28ac3f63e74b47b38af11bf398a4.ktx2"
+      },
+      {
+        "bytes": 114191,
+        "mimeType": "image/ktx2",
+        "sha256": "adcfa5e58c377955c526929e74127f71d02f2cdf4149ad5339a79b9a203225a3",
+        "uri": "../_shared/images/adcfa5e58c377955c526929e74127f71d02f2cdf4149ad5339a79b9a203225a3.ktx2"
+      },
+      {
+        "bytes": 6409,
+        "mimeType": "image/ktx2",
+        "sha256": "d73dd0e53f86d9885c33a38b9634ea7132c379beb39c26db6668a9d2b7e8d065",
+        "uri": "../_shared/images/d73dd0e53f86d9885c33a38b9634ea7132c379beb39c26db6668a9d2b7e8d065.ktx2"
+      },
+      {
+        "bytes": 35770,
+        "mimeType": "image/ktx2",
+        "sha256": "d885628d06409dacfb6baa69d8c90cd130e5215ec40a49da91e4e60bd6e05ab3",
+        "uri": "../_shared/images/d885628d06409dacfb6baa69d8c90cd130e5215ec40a49da91e4e60bd6e05ab3.ktx2"
+      }
+    ],
+    "sha256": "dd80fc6cd5b66c51b290f458bbec4759452c40d7e1a71df3f6b581e84070f642",
     "uri": "render.glb"
   },
   "runtime": {
@@ -6872,7 +6910,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/apron_shuttle.glb"
   },
-  "runtimeHash": "3aa2664265796d49e6539d152f70f8f07db58549f8b809377624fe64d6b56e55",
+  "runtimeHash": "58c3bdd9a20d26d6987138b133930e111ab5bbedc9b327207825d3cbf5616197",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

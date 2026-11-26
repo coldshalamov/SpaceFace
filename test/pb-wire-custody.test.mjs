@@ -38,13 +38,15 @@ test('seed 4242 departure chip names the sealed split and does not invent one', 
   assert.equal(sealedHoldLine(open), '');
   const openChip = departureReadinessChips(open).find((chip) => chip.label === 'Hold');
   assert.ok(openChip);
-  assert.equal(openChip.text.includes('yours to sell'), false);
+  assert.equal(openChip.text.includes('held for a job'), false);
 
+  // Plain words (R18): the sealed split names what is held for the job ("4 Iron Ore held for a
+  // job"), not the old "6 of 10 Iron Ore yours to sell" ledger arithmetic.
   const sealed = holdState(true);
   const fold = projectCargoCustody(sealed).byCommodity.cmdty_ore_iron;
   assert.equal(fold.hold, 10);
   assert.equal(fold.holdSellable, 6);
-  assert.equal(sealedHoldLine(sealed), '6 of 10 Iron Ore yours to sell');
+  assert.equal(sealedHoldLine(sealed), '4 Iron Ore held for a job');
   const chip = departureReadinessChips(sealed).find((row) => row.label === 'Hold');
-  assert.ok(chip.text.includes('6 of 10 Iron Ore yours to sell'), chip.text);
+  assert.ok(chip.text.includes('4 Iron Ore held for a job'), chip.text);
 });

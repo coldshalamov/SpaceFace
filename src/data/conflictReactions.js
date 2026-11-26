@@ -215,7 +215,7 @@ export function stationGrowthReaction({ stationId, stationName, factionId, modul
     module: String(moduleName || 'a new module'),
     units: String(Math.max(0, Math.floor(Number(throughputU) || 0))),
   };
-  const body = fillGrowthTokens(line || '{station} gains {module} — {units}u of your freight built it.', tokens);
+  const body = fillGrowthTokens(line || '{station} gains {module} — {units} units of your freight built it.', tokens);
   return Object.freeze({
     factionId: owner,
     prefix: voice.prefix,

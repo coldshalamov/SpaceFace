@@ -197,12 +197,12 @@ export const FIELD_DEFS = Object.freeze({
   }),
   // CONE — "the Sluice". A player-attached sustained forward wedge (toggle). Follows ship heading;
   // clears a lane ahead. Not a spawned entity — its source is the player ship, so it ends on
-  // toggle-off, undock, death, sector change. No cooldown; it is a held tool, not a thrown one.
+  // toggle-off, undock, death, sector change. No cooldown; one tap switches it on or off.
   cone: Object.freeze({
     id: 'field_cone_standard',
     kind: FIELD_KINDS.CONE,
     volume: FIELD_VOLUMES.CONE,
-    sentence: 'Hold a forward wedge that plows a lane ahead of the nose.',
+    sentence: 'Tap Plow to scoop loose rocks into a wall at your bow. Tap again to fire them all forward.',
     radius: 260,
     strength: 260,
     damping: 0,
@@ -212,6 +212,21 @@ export const FIELD_DEFS = Object.freeze({
     durationS: Infinity,  // sustained while toggled on
     cooldownS: 0,
     originGap: 10,        // wedge apex sits just ahead of the hull nose
+    // R17 / 03 §4 — the Plow captures loose mass instead of only pushing it (src/systems/plow.js).
+    // The wedge field above now pushes SHIPS only; rocks, wrecks and debris are taken into the pocket.
+    plow: Object.freeze({
+      capacity: 25,         // 03 §4: "Capacity 25 bodies" (desktop)
+      maxMass: 2500,        // t (an r≈21 rock; asteroid mass ≈ r³/4): heavier is shoved aside, not taken
+      omega: 6,             // 1/s: the pocket spring (critically damped) that holds each slot
+      maxAccel: 1600,       // wu/s²: how hard the pocket can drag a body into its slot
+      pocketGap: 14,        // wu clear of the hull: a captured rock never strikes the player
+      pocketDepth: 0.7,     // slots sit no deeper than this fraction of the wedge
+      dropDistance: 170,    // wu out of its slot (knocked loose) → it leaves the pack
+      scanEveryTicks: 3,
+      pushAccel: 420,       // wu/s² sideways shove for over-budget bodies
+      launchSpeed: 340,     // wu/s added along the nose on launch (on top of the ship's own speed)
+      energisedS: 3,        // 03 §5: a launched body is the player's kick for this long
+    }),
   }),
   // SKIM COLLECTOR — RIG (5) inside a planet band. A ship-attached scoop SHEET (toggle). Harvests by grazing; pulls
   // loose mass onto the flight line. Not a spawned entity. PlanetRuntime owns collectorOn;
@@ -315,7 +330,7 @@ export const POWER_ROSTER = Object.freeze([
   Object.freeze({
     id: 'seed',
     defKey: 'seed',
-    name: 'Mass Seed',
+    name: 'Pin anchor',
     action: 'deployMassSeed',
     railSlot: 3,
     volume: FIELD_VOLUMES.RING,
@@ -325,7 +340,7 @@ export const POWER_ROSTER = Object.freeze([
   Object.freeze({
     id: 'well',
     defKey: 'well',
-    name: 'Well',
+    name: 'Gravity well',
     action: 'deployWell',
     railSlot: 1,
     volume: FIELD_VOLUMES.RING,
@@ -335,7 +350,7 @@ export const POWER_ROSTER = Object.freeze([
   Object.freeze({
     id: 'repulsor',
     defKey: 'repulsor',
-    name: 'Repulsor',
+    name: 'Repulsion ring',
     action: 'deployRepulsor',
     railSlot: 2,
     volume: FIELD_VOLUMES.RING,
@@ -345,7 +360,7 @@ export const POWER_ROSTER = Object.freeze([
   Object.freeze({
     id: 'cone',
     defKey: 'cone',
-    name: 'Clearing Cone',
+    name: 'Clearing wedge',
     action: 'toggleClearingCone',
     railSlot: 5,
     volume: FIELD_VOLUMES.CONE,
@@ -386,7 +401,7 @@ export const FIELD_ESCAPES = Object.freeze({
     id: 'well',
     verb: 'boost_out',
     name: 'Boost out',
-    sentence: 'Hold boost and fly out of the ring; a well cannot keep a boosting hull.',
+    sentence: 'Hold boost and fly out of the ring; the pull cannot hold a boosting hull.',
   }),
   repulsor: Object.freeze({
     id: 'repulsor',

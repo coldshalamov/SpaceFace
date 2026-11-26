@@ -199,12 +199,15 @@ const EXPECTED_ADDITIVE_WORLD_SITE_IDS = Object.freeze([CINDER_SLUICE_SITE_ID, C
 // 2026-10-03 (solid-dressing lane, D161 adjudication): dressing structures the player can see
 // now take fixed measured-skin bodies — the census collider equals the drawn model, sized from
 // modelTruthCensus. Pieces under the craft-scale floor (frag scraps, small pins) stay ghosts.
+// 2026-11 (crusher re-author): place_crusher_module source+release GLBs were re-authored in the
+// everyday_space_kit incubator lane; the regenerated modelTruthCensus skin decomposes to 12
+// capsules instead of 10 — live skid 24 + crusher 12 + rack 24, so 58 → 60.
 const EXPECTED_ADDITIVE_DRESSING_CENSUSES = Object.freeze({
   everydaySpaceKit: Object.freeze({
     entities: 6,
     byType: Object.freeze({ fx: 6 }),
     collidable: 3,
-    colliders: 58,
+    colliders: 60,
   }),
   wreckAftermath: Object.freeze({
     entities: 6,

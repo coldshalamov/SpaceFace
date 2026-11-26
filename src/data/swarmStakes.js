@@ -14,42 +14,47 @@
 
 export const SWARM_STAKE_SCHEMA_VERSION = 1;
 
+// Every run starts at zero Scrap (04_SWARM.md §5: "Kiln's mood — pressure, earn and score only;
+// purse fixed at 0"). The purse field stays so old records and the door still read it.
 export const SWARM_STAKES = Object.freeze([
   Object.freeze({
     id: 'exhibition',
-    label: 'Exhibition',
-    purse: 2400,
+    label: 'Easy',
+    purse: 0,
     pressure: 0.65,
     earn: 0.75,
     score: 0.5,
-    blurb: 'Walk in rich; the room is a classroom. Buy what you want to see.',
+    blurb: 'Fewer enemies. Rounds pay less and earn fewer points.',
+    openingBlurb: 'Fewer enemies. Rounds pay less and earn fewer points.',
   }),
   Object.freeze({
     id: 'contender',
-    label: 'Contender',
-    purse: 750,
+    label: 'Standard',
+    purse: 0,
     pressure: 1.0,
     earn: 1.0,
     score: 1.0,
-    blurb: 'The run the swarm was tuned for. A real stake, an honest pack.',
+    blurb: 'Standard enemy counts, round payouts, and scoring.',
   }),
   Object.freeze({
     id: 'veteran',
-    label: 'Veteran',
-    purse: 250,
+    label: 'Hard',
+    purse: 0,
     pressure: 1.15,
     earn: 1.25,
     score: 1.5,
-    blurb: 'Thin purse, thick pack. The shop is earned, not spent into.',
+    blurb: 'More enemies. Rounds pay more and earn more points.',
+    openingBlurb: 'More enemies. Rounds pay more and earn more points.',
   }),
   Object.freeze({
     id: 'ironbound',
-    label: 'Ironbound',
+    label: 'Expert',
     purse: 0,
     pressure: 1.3,
     earn: 1.5,
     score: 2.0,
-    blurb: 'Nothing but the hull. The purse is what you take off the pack.',
+    blurb: 'The largest waves, highest round payouts, and highest scores.',
+    openingBlurb: 'The largest waves, highest round payouts, and highest scores.',
   }),
 ]);
 
@@ -72,10 +77,10 @@ export function swarmStakeFor(stakeId) {
 }
 
 /** One legible line for the door: what the purse buys and what it costs. */
-export function swarmStakePitch(stakeId) {
+export function swarmStakePitch(stakeId, zeroScrapOpening = false) {
   const stake = swarmStakeFor(stakeId);
   // Plain words (design/overhaul/08_INTERFACE.md §5): no "% pressure" on a player-facing line.
-  const purse = stake.purse > 0 ? `${stake.purse} cr to start` : 'no purse';
+  const purse = zeroScrapOpening ? '0 Scrap to start' : stake.purse > 0 ? `${stake.purse} cr to start` : 'no purse';
   const pressure = stake.pressure === 1 ? 'standard waves'
     : stake.pressure < 1 ? 'fewer enemies' : 'more enemies';
   const earn = stake.earn === 1 ? 'standard pay' : `pays ×${stake.earn}`;

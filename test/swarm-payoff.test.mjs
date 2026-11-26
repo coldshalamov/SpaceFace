@@ -10,7 +10,6 @@ import { createRunState } from '../src/core/runState.js';
 import { createTimeEffects } from '../src/core/timeEffects.js';
 import { runSession } from '../src/systems/runSession.js';
 import { swarmJuice } from '../src/systems/swarmJuice.js';
-import { SWARM_HITSTOP_SOURCE } from '../src/data/swarmJuice.js';
 import { SURVIVAL_COHORT_TAG } from '../src/systems/waveMaterialization.js';
 import { resolveThemeMatrix, swarmChainLift } from '../src/audio/themeMatrix.js';
 
@@ -82,23 +81,19 @@ test('an empty kills receipt announces nothing', () => {
   swarmJuice.destroy();
 });
 
-test('two pile-ups inside the re-arm gap are one presentation', () => {
+test('two pile-ups keep their calls without slowing the world', () => {
   const h = boot();
-  // First pile: three physics deaths arm the dip.
   kill(h, { cause: 'terrain_collision', surface: 'terrain' });
   kill(h, { cause: 'terrain_collision', surface: 'terrain' });
   kill(h, { cause: 'ship_collision', surface: 'craft' });
   advance(h, DT);
-  const dipsAfterFirst = h.effects.describeRequests()[SWARM_HITSTOP_SOURCE];
-  assert.ok(dipsAfterFirst, 'the first pile armed the dip');
-  const firstLeft = swarmJuice._hitStopLeft;
-  // Second pile lands while the re-arm gate is shut: the count grows, the dip does not re-top.
+  assert.deepEqual(h.effects.describeRequests(), {});
   kill(h, { cause: 'terrain_collision', surface: 'terrain' });
   kill(h, { cause: 'terrain_collision', surface: 'terrain' });
   kill(h, { cause: 'terrain_collision', surface: 'terrain' });
   advance(h, DT);
-  assert.ok(swarmJuice._hitStopLeft <= firstLeft, 'a second pile inside the gap never re-arms');
-  const texts = named(h, 'swarm:announce').map((e) => e.payload.text).filter((t) => t.startsWith('PILE-UP'));
+  assert.deepEqual(h.effects.describeRequests(), {});
+  const texts = named(h, 'swarm:announce').map((e) => e.payload.text).filter((t) => t.startsWith('Pile-up'));
   assert.ok(texts.length >= 2, 'the count still climbs — presentation, not silence');
   swarmJuice.destroy();
 });

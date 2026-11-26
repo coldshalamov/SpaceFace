@@ -26,7 +26,30 @@ COLORS = {
 STRINGS = ((8.0, 52.0), (80.0, 124.0), (150.0, 196.0), (222.0, 266.0), (296.0, 340.0))
 
 
+def signature(s):
+    """Scrap blocks piled between the habitats and the ring, strung with amber lights."""
+    blocks, offcuts = [], []
+    for i in range(10):
+        a = 48.0 + i * 36.0
+        r = 36.0 + (i % 3) * 2.5
+        z = 6.0 + (i % 4) * 3.6
+        rz = math.radians(a + (i % 3) * 9.0)
+        blocks.append((K.polar(r, a, z), (3.2 + (i % 3), 6.0 + (i % 4), 4.0 + (i % 2) * 2.0),
+                       rz))
+    F.boxes(s, 'PitbornScrap', blocks, 'paint.scrap', bevel=0.05)
+    for i in range(8):
+        a = 60.0 + i * 45.0
+        offcuts.append((K.polar(33.0, a, 8.0 + (i % 3) * 4.0),
+                        (2.0 + (i % 2), 4.0, 2.4), math.radians(a + i * 7.0)))
+    F.boxes(s, 'PitbornOffcut', offcuts, 'paint.scrapb', bevel=0.04)
+    for i in range(4):
+        a0 = 20.0 + i * 90.0
+        K.catenary(s, f'PitbornString{i}', a0, a0 + 50.0, 24.0, 3.5, 30.0, 'glow_amber.pit',
+                   lamps=4, lamp_size=0.4)
+
+
 def dress(s):
+    K.interior(s, 'stripe', 'glow_amber.pit')
     # scabbed band: rust plate, then the junk — welded offcuts at ragged angles
     K.ring_wall(s, 'ScabBand', K.SHELL_R + 0.7, 9.0, 25.0, 2.2, 'paint', segs=56)
     K.ring_wall(s, 'ScabRail', K.SHELL_R + 0.95, 25.0, 26.0, 2.4, 'stripe', segs=56)
@@ -58,6 +81,7 @@ def dress(s):
     F.cylinder(s, 'CrownMast', (0.0, 0.0, 36.0), (0.0, 0.0, 43.0), 1.0, 0.5,
                material='gunmetal', segments=10)
     F.light(s, 'CrownLamp', (0.0, 0.0, 43.6), 'glow_amber.pit', size=0.8)
+    signature(s)
 
 
 def build():

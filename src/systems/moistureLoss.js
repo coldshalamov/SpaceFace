@@ -49,10 +49,10 @@ export const MOISTURE_LOSS = Object.freeze({
   sender: 'HOLD TELEMETRY',
   /** The entry warning and the first-loss line. {name} is the commodity name, {n} the
    *  units aboard, {rate} the per-minute vent expectation at this sector's light. */
-  entryWarning: 'Ice aboard, sun overhead — {name} is venting. {n}u aboard, roughly one every {rate}s in this light.',
+  entryWarning: 'Ice aboard, sun overhead — {name} is venting. {n} units aboard, roughly one every {rate}s in this light.',
   /** Same beat when the hold crosses back into the light already sweating. */
-  entryWarningWarm: 'Back in the light — the {name} never stopped sweating. {n}u aboard, next unit inside ~{rate}s of sun.',
-  firstLoss: 'The hold is lighter. {name} sublimated to crystal and bled off — {n}u left.',
+  entryWarningWarm: 'Back in the light — the {name} never stopped sweating. {n} units aboard, next unit inside ~{rate}s of sun.',
+  firstLoss: 'The hold is lighter. {name} sublimated to crystal and bled off — {n} units left.',
 });
 
 /** Commodity display name without importing the market table: the data file already

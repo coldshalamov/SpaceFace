@@ -134,6 +134,24 @@ function makeContext() {
   };
 }
 
+test('Drill Test opens Works after the launch screen cleanup', async () => {
+  const { ctx, spawned } = makeContext();
+  const get = ctx.registry.get;
+  const order = [];
+  ctx.registry.get = name => name === 'drill' ? { begin: () => order.push('begin') } : get(name);
+  ctx.bus = createBus();
+  ctx.bus.on('drill:approachCompleted', () => order.push('open'));
+  ctx.state.mode = 'loading';
+  applySandboxSetup(ctx, { drillOnStart: true });
+  assert.equal(spawned.length, 0);
+  ctx.bus.on('game:started', () => order.push('screen cleanup'));
+  ctx.state.mode = 'flight';
+  ctx.bus.emit('game:started');
+  await Promise.resolve();
+  assert.deepEqual(order, ['screen cleanup', 'begin', 'open']);
+  assert.equal(spawned.length, 1);
+});
+
 test('recovery launcher exposes the exact eight named playtest scenarios', () => {
   assert.equal(new Set(RECOVERY_SCENARIO_IDS).size, 8);
   assert.deepEqual(RECOVERY_SCENARIO_IDS, [

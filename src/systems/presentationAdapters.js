@@ -9,6 +9,7 @@ import {
   resolveImpactAudioCue,
 } from '../presentation/causalVfxGrammar.js';
 import { isSurvivalRunLive } from '../combat/adventureAttackReaders.js';
+import { openingQuiet } from '../onboarding/openingQuiet.js';
 import { SECTOR_ARRIVAL_CUES } from '../data/audioRecipes.js';
 
 export const PRESENTATION_ADAPTERS_SCHEMA_VERSION = 1;
@@ -161,7 +162,7 @@ const UI_CUES = Object.freeze({
   'subsystem.restored': uiCue('presentation:subsystem:restored', 'info', 'SUBSYSTEM RESTORED', 1.5, true),
   'scenario.signal.pulse': uiCue('presentation:scenario:signal', 'info', 'UNREGISTERED SIGNAL', 2.2, true),
   'scenario.comms.kessler': uiCue('presentation:scenario:kessler', 'info', 'PRIORITY COMMS', 2.2, true),
-  'scenario.comms.denial': uiCue('presentation:scenario:denial', 'warn', 'OFFICIAL DENIAL', 2.2, true),
+  'scenario.comms.denial': uiCue('presentation:scenario:denial', 'warn', 'STATION NOTICE: INCIDENT DENIED', 2.2, true),
   'scenario.objective.priority_split': uiCue('presentation:scenario:priority-split', 'warn', 'OBJECTIVES SPLIT', 2.4, true),
   'scenario.branch.resolved': uiCue('presentation:scenario:resolved', 'info', 'EVIDENCE ROUTE LOCKED', 2.4, true),
   // Rated cluster detonations — the authored voice owns the moment so the alert stays silent.
@@ -173,40 +174,40 @@ const UI_CUES = Object.freeze({
 });
 
 const CAPTIONS = Object.freeze({
-  'combat.player.kill': 'Target destroyed.',
-  'tether.attach': 'Massline attached.',
+  'combat.player.kill': "That's her done.",
+  'tether.attach': "Line's on.",
   'tether.line_on_you': 'A hostile line is on your hull.',
-  'tether.near_break': 'Massline strain rising.',
-  'tether.break': 'Massline broken.',
-  'tether.break.overload': 'Massline overloaded and parted.',
-  'tether.break.severed': 'Massline severed by an enemy action.',
-  'tether.break.endpoint': 'Massline target lost.',
-  'tether.whip_impact': 'Massline impact landed.',
-  'massline.threat': 'Swing threat detected.',
-  'massline.threat.sweep_commit': 'An enemy blade will reach your Massline at the marked point — move or cut first.',
-  'massline.counter_tether.cut': 'Enemy is preparing to cut the Massline.',
-  'massline.counter_tether.overload': 'Enemy is preparing a Massline overload break.',
+  'tether.near_break': "She's straining hard.",
+  'tether.break': "Line's gone.",
+  'tether.break.overload': "Overloaded — line's parted.",
+  'tether.break.severed': 'They cut your line.',
+  'tether.break.endpoint': 'Lost the far end.',
+  'tether.whip_impact': 'The swing landed.',
+  'massline.threat': "Watch out — it's swinging.",
+  'massline.threat.sweep_commit': "Blade's coming for your line — move or cut.",
+  'massline.counter_tether.cut': "They're fixing to cut your line.",
+  'massline.counter_tether.overload': "They're fixing to snap your line.",
   'tether.release.good': 'Clean release.',
   'tether.release.clean': 'Clean cut.',
   'tether.release.razor': 'Razor cut.',
-  'massline.release.missed': 'Massline release window missed.',
-  'shield.collapse': 'Shield collapse.',
-  'subsystem.disabled': 'Subsystem disabled.',
-  'subsystem.restored': 'Subsystem restored.',
+  'massline.release.missed': 'Let go too late.',
+  'shield.collapse': 'Shields are down.',
+  'subsystem.disabled': 'One of your systems is down.',
+  'subsystem.restored': "That system's back.",
   // PQ-133.04 R4 — the shot kept going: the causal fact a caption owes the player when their
   // ricochet banks off an authored surface.
-  'combat.bounce': 'Shot banked off the surface — ricochet continues.',
-  'scenario.signal.pulse': 'Unregistered signal pulse.',
-  'scenario.comms.kessler': 'Priority communication from Kessler.',
-  'scenario.comms.denial': 'Official channel denies the shipment.',
-  'scenario.objective.priority_split': 'Civilian objective competing with evidence recovery.',
-  'scenario.branch.resolved': 'Evidence route resolved.',
+  'combat.bounce': 'Banked it — still flying.',
+  'scenario.signal.pulse': "Something's pinging out there.",
+  'scenario.comms.kessler': "Kessler's calling. Sounds urgent.",
+  'scenario.comms.denial': 'Harbour office says it never shipped.',
+  'scenario.objective.priority_split': 'Two jobs pulling at once.',
+  'scenario.branch.resolved': "Evidence is in. Route's set.",
   'fields.cluster_detonate': 'Cluster detonation — the clump cooked off.',
   'fields.cluster_detonate.cascade': 'Mass cascade — the whole cluster went.',
-  'freight.cargo_spilled': 'Cargo adrift — check ownership before recovery.',
-  'travel.jump.committed': 'Jump committed.',
+  'freight.cargo_spilled': "Cargo's loose. Check whose it is.",
+  'travel.jump.committed': 'Jumping now.',
   'travel.arrival.oriented': 'Arrived.',
-  'travel.interdiction.triggered': 'Interdicted.',
+  'travel.interdiction.triggered': 'Pulled over.',
 });
 
 // ---------------------------------------------------------------------------------------------
@@ -560,6 +561,14 @@ export const presentationAdapters = {
     const playerScoped = warnsAboutRecipient
       ? cue.targetId != null && cue.targetId === this.state?.playerId
       : finite(cue && cue.playerRelevance, 1) >= PLAYER_LANE_RELEVANCE_FLOOR;
+    // DEMO-ADV-2 (item 2): the opening's own physics is not a threat, and it never says so. Until
+    // the first dock the generic swing-danger read cannot tell the lesson's rock — or the raider the
+    // player is swinging on purpose — from a hostile line, so it raised "SWING THREAT" and spoke
+    // "Swing threat detected." over the sentence asking for the throw. The words retire; the world
+    // feedback (the sting at the line, the spark, the camera's small knock) stays, because moving
+    // mass is real and the picture is how the player learns it. The named hostile variants — a
+    // committed blade, a counter-tether cut, an overload — are enemy actions and always speak.
+    const openingSwingNoise = cue?.id === 'massline.threat' && openingQuiet(this.state);
     const tutorialOwnsSignalAnnouncement = onboardingOwnsSignalAnnouncement(this.state, cue);
     const camera = playerScoped ? this._applyCamera(cue) : null;
     if (camera) outputs.camera = camera;
@@ -567,9 +576,11 @@ export const presentationAdapters = {
     if (vfx) outputs.vfx = vfx;
     const audio = this._applyAudio(cue);
     if (audio) outputs.audio = audio;
-    const ui = playerScoped && !tutorialOwnsSignalAnnouncement ? this._applyUi(cue) : null;
+    const ui = playerScoped && !tutorialOwnsSignalAnnouncement && !openingSwingNoise
+      ? this._applyUi(cue)
+      : null;
     if (ui) outputs.ui = ui;
-    const accessibility = playerScoped && !tutorialOwnsSignalAnnouncement
+    const accessibility = playerScoped && !tutorialOwnsSignalAnnouncement && !openingSwingNoise
       ? this._applyAccessibility(cue)
       : null;
     if (accessibility) outputs.accessibility = accessibility;
@@ -603,6 +614,7 @@ export const presentationAdapters = {
       id: cue.id,
       amount,
       reason: 'presentation',
+      cause: 'presentation',
       reducedMotion: motionReduced,
       sourceId: cue.sourceId ?? null,
       targetId: cue.targetId ?? null,
@@ -807,7 +819,7 @@ function playerSubsystemLine(cue, state) {
   const id = String(cue.subsystemId || '').toLowerCase();
   let part = null;
   if (id.includes('clamp')) part = 'Clamp';
-  else if (id.includes('tether') || id.includes('spool')) part = 'Massline spool';
+  else if (id.includes('tether') || id.includes('spool')) part = 'Line spool';
   else if (id.includes('drive') || id.includes('engine') || id.includes('thrust')) part = 'Drive';
   else if (id.includes('weapon') || id.includes('hardpoint') || id.includes('turret') || id.includes('gun')) part = 'Guns';
   else if (id.includes('sensor') || id.includes('comms') || id.includes('scanner')) part = 'Sensors';
@@ -817,7 +829,7 @@ function playerSubsystemLine(cue, state) {
   if (!part) return null;
   if (cue.id === 'subsystem.restored') return `${part} back online`;
   if (part === 'Drive') return 'Drive out — the ship is not pushing';
-  if (part === 'Massline spool') return 'Massline spool out — the rope will not hold';
+  if (part === 'Line spool') return 'Line spool out — the rope will not hold';
   if (part === 'Clamp') return 'Clamp out — the load is no longer held';
   if (part === 'Guns') return 'Guns out — the battery is dark';
   if (part === 'Sensors') return 'Sensors out — the board is blind';
@@ -864,13 +876,13 @@ function masslineImpactTier(cue) {
   if (!cue || cue.id !== 'tether.whip_impact') return null;
   const rating = masslineImpactRating(cue);
   if (rating === 'crushing') {
-    return { sev: 'warn', text: 'MASSLINE CRUSHING', ttl: 2.2, caption: 'Crushing massline impact.' };
+    return { sev: 'warn', text: 'LINE CRUSHING', ttl: 2.2, caption: 'Crushing line impact.' };
   }
   if (rating === 'solid') {
-    return { sev: 'info', text: 'MASSLINE IMPACT', ttl: 1.4, caption: 'Massline impact landed.' };
+    return { sev: 'info', text: 'LINE IMPACT', ttl: 1.4, caption: 'Line impact landed.' };
   }
   if (rating === 'glance') {
-    return { sev: 'info', text: 'MASSLINE GLANCE', ttl: 0.8, caption: 'Glancing massline impact.' };
+    return { sev: 'info', text: 'LINE GRAZED', ttl: 0.8, caption: 'Glancing line impact.' };
   }
   return null;
 }

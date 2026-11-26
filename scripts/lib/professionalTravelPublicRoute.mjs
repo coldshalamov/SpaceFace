@@ -916,7 +916,6 @@ export async function bootToAuthoredFlight({
     // backgrounded. A headed automation window can lose focus to another local authoring tool
     // between navigation and UI boot, so activate the page immediately before the public click.
     // This remains ordinary player input; it does not bypass or mutate the cinematic state.
-    await page.bringToFront().catch(() => {});
     await page.waitForFunction(() => document.hasFocus(), null, { timeout: 3_000 }).catch(() => {});
     const splash = page.locator('#cinematic-splash');
     if (await splash.isVisible().catch(() => false)) {

@@ -47,9 +47,9 @@ The engine has flag-selected backend swaps. Defaults pick V3/tactical, but docs 
 
 **The wrong files (editing these has no effect in normal play):**
 - `src/systems/flight.js` — legacy flight controller
-- `src/systems/ai.js` — legacy AI FSM, statically imported and compatibility/check-load-bearing,
-  but not selected by the default tactical backend
 - `src/core/flightDynamics.js` — legacy flight math (still imported by `aiPorts.js` for compat, but not by the live flight controller)
+
+(The legacy AI FSM `src/systems/ai.js` was deleted — the tactical stack is the only AI backend.)
 
 **The right files (LIVE — defaults `flightBackend:'v3'`, `aiBackend:'sg06-tactical'`):**
 - `src/systems/flightV3.js` + `src/core/flight/` (propulsionCatalog, propulsionKernel, flightTelemetry)

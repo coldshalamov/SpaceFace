@@ -21,6 +21,7 @@ import { isPlayerWanted } from './heat.js';
 import { collidesFlipEpoch, indexedShipLikeScan } from '../world/livingWorldViews.js';
 import { queryCombatTableRadius } from '../core/combatTable.js';
 import { solveLeadAngle } from './weapons.js';
+import { witnessLineOfSight } from '../combat/lineOfSight.js';
 import { combatFlag } from '../data/featureFlags.js';
 
 const RECENT_DEFENSIVE_DAMAGE_TICKS = 180;
@@ -70,13 +71,6 @@ export function applyAIFiringIntent(decision, state) {
     RUN_CORRIDOR_TARGETS.delete(e);
   }
   const pdActor = isPdScreenActor(e);
-  // INF-028 arrival hold: the same data marker the legacy brain honours. A fresh arrival (or a
-  // hull a wave director has told to wait its turn) keeps flying and aiming but does not fire.
-  const swarmHoldUntil = Number(data.ai && data.ai.swarmFireHoldUntil);
-  if (Number.isFinite(swarmHoldUntil) && state.simTime < swarmHoldUntil) {
-    clearFire(intent, 'swarm_fire_hold');
-    return;
-  }
   const holdUntil = Number(data.ai && data.ai.arrivalHoldUntil);
   if (Number.isFinite(holdUntil) && Number.isFinite(state.simTime) && state.simTime < holdUntil) {
     clearFire(intent, 'arrival_hold');
@@ -269,6 +263,24 @@ export function applyAIFiringIntent(decision, state) {
     }
   } else {
     combat.opticBankId = null;
+  }
+
+  // CW-AI item 10 — a committed volley cannot fly through a rock. The ray is paid for only when
+  // every cheaper gate has already authorised a shot inside a fire window; the optic bank lane
+  // (bankAim) is its own vetted route around cover. A held shot keeps the doctrine flying, so the
+  // next pass can regain the lane rather than spend the salvo on the obstacle.
+  if (bankAim == null && !pdActor && combatDoctrine && combatDoctrine.fireWindow === true) {
+    const travel = Math.max(1, Math.hypot(target.pos.x - e.pos.x, target.pos.z - e.pos.z));
+    const aimPoint = {
+      x: e.pos.x + Math.cos(aimAngle) * travel,
+      z: e.pos.z + Math.sin(aimAngle) * travel,
+    };
+    if (!witnessLineOfSight(state, e, aimPoint, [target.id])) {
+      clearFire(intent, 'line_of_sight_blocked');
+      intent.aimAngle = aimAngle;
+      combat.opticBankId = null;
+      return;
+    }
   }
 
   intent.fire = true;

@@ -112,7 +112,6 @@ try {
   assert.deepEqual(inspectCanonicalRootUrl(page.url(), rootUrl).failures, [],
     'Electron must remain at its isolated canonical root');
   await page.waitForLoadState('domcontentloaded', { timeout: 90_000 });
-  await page.bringToFront();
 
   routeResult = await runPq017WorldSitePublicRoute({
     page,

@@ -1,0 +1,63 @@
+{
+  "schema": "spaceface.referenceIndex.v1",
+  "id": "47a.telemetry.v3.native-contact.save-v27",
+  "envelope": "test/47a.telemetry.v3.native-contact.save-v27.expected.json",
+  "createdAt": "2026-11-20T09:41:17.643Z",
+  "updatedAt": "2026-11-20T09:41:17.643Z",
+  "versions": [
+    {
+      "version": 1,
+      "file": "v1.expected.json",
+      "snapshotFile": "v1.snapshot.json.gz",
+      "hash": "740c9f78673568c77fe557ab72ac8f6b0dc69587824e23eca419ed1299c9f248",
+      "at": "2026-11-20T09:41:17.643Z",
+      "reason": "economySlicing ON: the 5 s economy pass drains per fixed tick; receipts land exactly on 300/600 instead of one tick late; owner no-holds ruling 2026-11-19",
+      "ticket": "E2-ECON-SLICING",
+      "cleanRuns": 5,
+      "ticks": 720,
+      "reloadAt": 600,
+      "seed": 47,
+      "inputTape": "test/47a.inputs.json",
+      "scenarioContract": "src/data/scenarios/47a.scenario.json",
+      "gitHead": "bb9d8cef6e710d1b9d6b8df45f9179ce128bfdac",
+      "dirty": true,
+      "delta": {
+        "baseline": true,
+        "hashChanged": false,
+        "previousHash": null,
+        "newHash": "740c9f78673568c77fe557ab72ac8f6b0dc69587824e23eca419ed1299c9f248",
+        "changed": 0,
+        "added": 0,
+        "removed": 0,
+        "totalDiffs": 0,
+        "fieldClasses": {},
+        "motionCount": 0,
+        "motionDiffs": [],
+        "sample": [],
+        "traceChanged": {
+          "audio:cue": {
+            "from": 5,
+            "to": 6
+          },
+          "presentation:audioCue": {
+            "from": 4,
+            "to": 5
+          },
+          "presentation:cue": {
+            "from": 21,
+            "to": 22
+          },
+          "presentation:cueApplied": {
+            "from": 21,
+            "to": 22
+          },
+          "presentation:vfxCue": {
+            "from": 4,
+            "to": 5
+          }
+        }
+      }
+    }
+  ],
+  "latest": 1
+}

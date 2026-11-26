@@ -89,6 +89,41 @@ function physicalInterestFixture() {
   return { state, owner, target };
 }
 
+test('each activity pass samples the collision authority once, including an empty result', () => {
+  const player = ship(1, 0, { isPlayer: true, vx: 12 });
+  const incoming = ship(2, 200, { vx: -360 });
+  const watchTarget = rock(3, 8000);
+  let lookahead = null;
+  let reads = 0;
+  const state = makeState([player, incoming, watchTarget], {
+    physics: {
+      get imminentCollisionIds() {
+        reads++;
+        return lookahead;
+      },
+    },
+  });
+
+  const first = ensureActivityClassified(state);
+  assert.equal(reads, 1, 'absent authority is reused throughout the pass');
+  assert.ok(incoming.activity.pins.includes(PIN_REASON.IMMINENT_COLLISION));
+  assert.equal(first.physicsDynamics.includes(incoming), true);
+  assert.equal(watchTarget.activity.simTier, SIM_TIER.S3_DORMANT);
+  assert.equal(first.physicsDynamics.includes(watchTarget), false);
+  assert.equal(ensureActivityClassified(state), first);
+  assert.equal(reads, 1, 'same-tick readers use the classified frame');
+
+  lookahead = new Set([watchTarget.id]);
+  state.tick++;
+  state.simTime += 1 / 60;
+  const next = ensureActivityClassified(state);
+  assert.equal(reads, 2);
+  assert.ok(watchTarget.activity.pins.includes(PIN_REASON.IMMINENT_COLLISION));
+  assert.equal(watchTarget.activity.simTier, SIM_TIER.S0_EXACT);
+  assert.equal(next.physicsDynamics.includes(watchTarget), true);
+  assert.ok(next.changedIds.includes(watchTarget.id));
+});
+
 test('physical-interest admits a dormant NPC work target through the normal dynamics lane and expires absolutely', () => {
   const { state, owner, target } = physicalInterestFixture();
   const originalData = structuredClone(target.data), originalFlags = structuredClone(target.flags);

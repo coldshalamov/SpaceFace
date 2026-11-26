@@ -18,6 +18,7 @@ import { waveOpeningLine } from '../src/systems/survivalAnnounce.js';
 import { makeBudgetApi } from '../src/systems/spawnBudget.js';
 import { projectBridgeEvent } from '../scripts/lib/simEventBridge.mjs';
 import { collectWaveHullDecodeKeys } from '../src/world/presentationSources.js';
+import { crucibleArenaIdForName } from '../src/ui/crucibleLaunch.js';
 import {
   PHASE_WORDS,
   arenaLabel,
@@ -150,8 +151,16 @@ test('a boss or elite wave says which it is instead of reading as an ordinary fi
   assert.equal(objectiveWord(undefined), null);
 });
 
-test('the arena label is derived, so a new arena needs no edit here', () => {
-  assert.equal(arenaLabel('helios_core'), 'HELIOS CORE');
+test('the flight HUD keeps the arena name selected in setup', () => {
+  withHudDocument(() => {
+    const harness = boot();
+    harness.state.mode = 'flight';
+    const setupName = 'Ricochet Foundry';
+    const run = reachActive(harness);
+    assert.equal(run.phase, 'active');
+    assert.equal(run.arenaId, crucibleArenaIdForName(setupName));
+    assert.ok(survivalHud._dom.label.textContent.endsWith(` · ${setupName.toUpperCase()}`));
+  });
   assert.equal(arenaLabel('ceres_belt'), 'CERES BELT');
   assert.equal(arenaLabel(null), 'ARENA');
 });
@@ -175,7 +184,8 @@ test('level progress is a real fraction of the current level band', () => {
 });
 
 test('an earn receipt names what was earned, and says nothing when nothing was', () => {
-  assert.equal(earnLine({ credits: 2, score: 10, xp: 3 }), '+2 CR   +10 SCORE   +3 XP');
+  // Swarm's one money word is Scrap (ruling R18 / 678f1a9ded): the receipt never says CR.
+  assert.equal(earnLine({ credits: 2, score: 10, xp: 3 }), '+2 SCRAP   +10 SCORE   +3 XP');
   assert.equal(earnLine({ credits: 0, score: 25, xp: 0 }), '+25 SCORE');
   assert.equal(earnLine({ credits: 0, score: 0, xp: 0 }), null);
   assert.equal(earnLine(null), null);
@@ -207,12 +217,12 @@ test('Hero HUD cue follows the fitted move and worker projection without sim int
   const bank = heroManeuverHudCue(state);
   assert.equal(bank.mode, 'boomerang');
   assert.match(bank.text, /Needle.*physical bank.*bomb reserved/);
-  assert.match(bank.text, /197 cap budget/,
+  assert.match(bank.text, /197 energy/,
     'active readiness shows the full phase-return and bank-dash budget, not the phase reserve alone');
   state.heroManeuverReadModel = { mode: 'boomerang', phase: 'attack_region_missed', status: 'blocked',
     targetName: 'Needle', text: 'attack region missed · no bomb released', energyRequired: 196.2 };
   const missed = heroManeuverHudCue(state);
-  assert.match(missed.text, /Needle.*attack region missed.*no bomb released.*197 cap budget/);
+  assert.match(missed.text, /Needle.*attack region missed.*no bomb released.*197 energy/);
   assert.doesNotMatch(missed.text, /4\/Y start/,
     'a terminal result does not look like a fresh activation prompt');
 
@@ -312,7 +322,8 @@ test('wave plan projection preserves the live Swarm quota, hull runway, and main
   const wire = projectBridgeEvent('run:wavePlanned', { wave: 3, tick: 91, plan: original });
   assert.equal(wire.dropped, false);
   assert.equal(wire.reason, 'adapter');
-  assert.equal(wire.flat.plan.swarm.killTarget, 22);
+  assert.equal(wire.flat.plan.swarm.killTarget, 20,
+    'wave 3 owes its approved round budget — approved round budgets in swarmCourseCast.js (director 2026-11-20)');
   assert.equal(wire.flat.plan.objective.population, 'ships');
   assert.equal(waveOpeningLine(3, wire.flat.plan), waveOpeningLine(3, original),
     'the main-side opening copy retains its authored objective and arrival wording');
@@ -334,13 +345,18 @@ test('wave plan projection preserves the live Swarm quota, hull runway, and main
       threatBudget: 26, spawnedThreat: 26, resolvedThreat: 0 };
     const bus = createBus();
     survivalHud.init({ state, bus });
+    // Swarm arcade HUD, owner 2026-11-23: Swarm renders on the top-centre Round Plate
+    // (`swarmHudLayer`) instead of the retired top-left .sf-crun card.
     bus.emit('run:wavePlanned', wire.flat);
     survivalHud.update(DT, state);
-    assert.equal(survivalHud._dom.threatWord.textContent, 'HOSTILE SHIPS');
-    assert.equal(survivalHud._dom.threatFig.textContent, '26 / 26');
+    const sw = survivalHud._swarmLayer.dom;
+    assert.equal(sw.roundKicker.textContent, 'ROUND 3');
+    assert.equal(sw.roundName.textContent, 'Hot Potato');
+    assert.equal(sw.roundNum.textContent, '26');
+    assert.equal(sw.roundUnit.textContent, 'left');
     state.run.resolvedThreat = 1;
     survivalHud.update(DT, state);
-    assert.equal(survivalHud._dom.threatFig.textContent, '25 / 26');
+    assert.equal(sw.roundNum.textContent, '25');
   });
 });
 
@@ -356,11 +372,15 @@ test('late cohort progress restores the ship-count HUD while a circuit timer sta
     const bus = createBus();
     survivalHud.init({ state, bus });
     survivalHud.update(DT, state);
-    assert.equal(survivalHud._dom.threatWord.textContent, 'HOSTILE SHIPS',
+    // Swarm arcade HUD, owner 2026-11-23: cohort hostiles count on the Round Plate; Circuit
+    // timed waves keep their Survive countdown clock in the same plate slot.
+    const sw = survivalHud._swarmLayer.dom;
+    assert.equal(sw.roundNum.textContent, '26',
       'a positive projected cohort budget is enough while the plan event is still late');
+    assert.equal(sw.roundUnit.textContent, 'left');
     bus.emit('run:waveProgress', { wave: 3, completionKind: 'cohort', remaining: 26, total: 26 });
     survivalHud.update(DT, state);
-    assert.equal(survivalHud._dom.threatWord.textContent, 'HOSTILE SHIPS');
+    assert.equal(sw.roundUnit.textContent, 'left');
 
     const timed = planWave({ seed: 4242, arenaId: ARENA, wave: 1, ruleset: 'swarm',
       circuitRound: { stage: 1, localRound: 2, kind: 'survive' } });
@@ -375,8 +395,8 @@ test('late cohort progress restores the ship-count HUD while a circuit timer sta
     bus.emit('run:wavePlanned', projected.flat);
     bus.emit('run:waveProgress', { wave: 1, completionKind: 'duration', durationTicks: 3600, remainingTicks: 3540 });
     survivalHud.update(DT, state);
-    assert.equal(survivalHud._dom.threatWord.textContent, 'SURVIVE');
-    assert.equal(survivalHud._dom.threatFig.textContent, '0:59',
+    assert.equal(sw.roundUnit.textContent, 'Survive');
+    assert.equal(sw.roundNum.textContent, '0:59',
       'the cohort fallback must not turn a circuit clock into a kill quota');
   });
 });

@@ -210,7 +210,7 @@ remain available for callers that already use them.
 | `src/ui/alerts.js` / `toasts.js` / `floatingText.js` / `damageIndicators.js` | Alert queue, toasts, floaters (money/loot/level only), damage numbers (off by default). |
 | `src/ui/accessibility.js` | `motionReduce`/`flashReduce` — all shake/hit-stop/FOV effects ×0.25 or off. |
 | `src/ui/input.js` / `bindings.js` / `controlPrompts.js` | **UI input handling.** NOT the LOCKED sim input contract — that's `src/systems/input.js` (lead-only). |
-| `src/ui/screens/*` | Modal screens: `stationHub.js` (114KB!), `market.js`, `shipyard.js`, `outfitting.js`, `starmap.js`, `localmap.js`, `techTree.js`, `bar.js`, `missionLog.js`, `automationPanel.js`, etc. |
+| `src/ui/screens/*` | Modal screens: `market.js`, `shipyard.js`, `outfitting.js`, `starmap.js`, `localmap.js`, `techTree.js`, `bar.js`, `missionLog.js`, `automationPanel.js`, etc. (`stationHub.js` was removed — the station shell owns its body; see `src/ui/station/`) |
 
 ---
 

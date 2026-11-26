@@ -222,7 +222,6 @@ try {
   }, { noProgramCanon: NO_CANON });
   await page.goto(`${baseUrl}?simLane=${SIM_LANE}`, { waitUntil: 'domcontentloaded', timeout: 120_000 });
   await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus, null, { timeout: 300_000 });
-  await page.bringToFront();
 
   // Install before game:new so the receipt sees both opening-admission pipeline calls and
   // the later delayed roots. The collector itself is invoked only during flight polls.

@@ -15,15 +15,16 @@ const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf
 
 test('D2: the HUD frame refills a stale obstacle cache before its first write', () => {
   const hud = read('src/ui/hud.js');
-  const start = hud.indexOf('\n  function frame(dt) {');
-  assert.ok(start > 0, 'hud.js still has frame(dt)');
+  const signature = /\n  function frame\(dt(?:, [^\n]*)?\) \{/.exec(hud);
+  assert.ok(signature, 'hud.js still has a frame function that receives dt');
+  const start = signature.index + signature[0].length;
   const body = hud.slice(start, start + 6000);
   const refill = body.indexOf('if (objectiveEdgeBoxes.stale) objectiveEdgeObstacles();');
   assert.ok(refill > 0, 'the stale-cache refill is at the top of frame()');
   const firstWrite = body.search(/\b(setText|setClass|setStyle|setAttr)\(/);
   assert.ok(firstWrite > 0, 'frame() writes HUD state');
   assert.ok(refill < firstWrite, 'the layout read comes before any HUD write in the same frame');
-  assert.equal(body.slice(0, refill).replace(/\/\/[^\n]*/g, '').trim(), 'function frame(dt) {',
+  assert.equal(body.slice(0, refill).replace(/\/\/[^\n]*/g, '').trim(), '',
     'it is the first statement: nothing runs ahead of it');
 });
 

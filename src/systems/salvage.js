@@ -1043,14 +1043,14 @@ export const salvage = {
       if (!this.bus) return;
       this.bus.emit('toast', {
         text: accepted > 0
-          ? `Cradle held the core — the bay took ${accepted}u and ${refused}u are still on it.`
-          : `Cradle held the core — no room in the bay. ${refused}u stay on the core.`,
+          ? `Cradle held the core — the bay took ${accepted} units and ${refused} units are still on it.`
+          : `Cradle held the core — no room in the bay. ${refused} units stay on the core.`,
         kind: 'warn', ttl: 4,
       });
       if (lost > 0) {
         this.bus.emit('comms:log', {
           from: 'SALVAGE CRADLE',
-          text: `Delivery short: ${lost}u scored. That is ${repairEstimateCr} cr of core repair you are eating.`,
+          text: `Delivery short: ${lost} units scored. That is ${repairEstimateCr} cr of core repair you are eating.`,
           kind: 'salvage',
         });
       }
@@ -1077,14 +1077,14 @@ export const salvage = {
     const pct = Math.round(pocket.integrity * 100);
     this.bus.emit('toast', {
       text: accepted > 0
-        ? `Cradle took the core — ${accepted}u ${spokenCommodity(pocket.commodityId)} to the bay (${pct}% integrity).`
+        ? `Cradle took the core — ${accepted} units ${spokenCommodity(pocket.commodityId)} to the bay (${pct}% integrity).`
         : 'Cradle took the core — the salvage bay could not take one more unit.',
       kind: accepted > 0 ? 'info' : 'warn', ttl: 4,
     });
     if (lost > 0) {
       this.bus.emit('comms:log', {
         from: 'SALVAGE CRADLE',
-        text: `Delivery short: ${lost}u scored. That is ${repairEstimateCr} cr of core repair you are eating.`,
+        text: `Delivery short: ${lost} units scored. That is ${repairEstimateCr} cr of core repair you are eating.`,
         kind: 'salvage',
       });
     }

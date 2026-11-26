@@ -65,6 +65,6 @@ test('PB-ECON-C: a contract without a priced complication keeps the plain risk s
     factions: {}, world: {}, ui: {},
   };
   const html = missionDossierHtml(mission, state);
-  assert.match(html, /risk\./, 'the plain sentence ends after the tier word');
+  assert.match(html, /Routine job\./, 'Adventure words demo pass');
   assert.doesNotMatch(html, /customs weir|lawless|contested|patrol-thin/);
 });

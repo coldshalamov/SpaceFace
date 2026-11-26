@@ -71,8 +71,9 @@ function emitHit({ spec, runtime = null, hopTargets = [] }) {
       spawnEntity: () => null,
     },
   });
-  system._attackLive.set(projectile.id, { spec, runtime });
+  system._attackLive.set(projectile.id, { projectile, projectileGeneration: null, spec, runtime });
   const payload = {
+    projectileId: projectile.id,
     ownerId: 'player',
     targetId: first.id,
     damage: 12,

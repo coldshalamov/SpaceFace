@@ -2,6 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
+import { WebGLUniforms } from 'three/src/renderers/webgl/WebGLUniforms.js';
 
 import {
   applyAuthoredMaterialProfile,
@@ -166,6 +167,52 @@ test('shade regions default to zero gain outside claimed bounds, support multipl
 
   assert.equal(SHADE_REGION_UNIFORMS.sfShadeEnabled.value, 0);
   assert.equal(shadeRegionGainAt({ x: 0, y: 0, z: -125 }), 0);
+});
+
+test('Three uploads shade vectors only while a region can contribute to the picture', () => {
+  const FLOAT = 0x1406, FLOAT_VEC3 = 0x8b51, FLOAT_VEC4 = 0x8b52;
+  const fields = [
+    { name: 'sfShadeEnabled', type: FLOAT, size: 1 },
+    { name: 'sfShadeCount', type: FLOAT, size: 1 },
+    { name: 'sfShadeCenters[0]', type: FLOAT_VEC3, size: MAX_SHADE_REGIONS },
+    { name: 'sfShadeHalfSizes[0]', type: FLOAT_VEC3, size: MAX_SHADE_REGIONS },
+    { name: 'sfShadeParams[0]', type: FLOAT_VEC4, size: MAX_SHADE_REGIONS },
+    { name: 'sfShadeNormals[0]', type: FLOAT_VEC4, size: MAX_SHADE_REGIONS },
+  ];
+  const scalar = new Map();
+  const vectors = new Map();
+  const gl = {
+    getProgramParameter: () => fields.length,
+    getActiveUniform: (_, index) => fields[index],
+    getUniformLocation: (_, name) => name,
+    uniform1f: (name, value) => scalar.set(name, value),
+    uniform3fv: (name, value) => vectors.set(name, [...value]),
+    uniform4fv: (name, value) => vectors.set(name, [...value]),
+  };
+  const bound = new WebGLUniforms(gl, {}).seq;
+  const shader = { fragmentShader: '#include <common>' };
+  installShadeRegionShader(shader);
+  const upload = () => { vectors.clear(); WebGLUniforms.upload(gl, bound, shader.uniforms); };
+  upload();
+  assert.equal(vectors.size, 0);
+  assert.equal(scalar.get('sfShadeEnabled'), 0);
+
+  const claim = claimShadeRegion({ id: 'test:uniform-upload' });
+  try {
+    claim.update({ x: 20, y: 5, z: -50 }, true);
+    upload();
+    assert.equal(scalar.get('sfShadeEnabled'), 1);
+    assert.equal(scalar.get('sfShadeCount'), 1);
+    assert.equal(vectors.size, 4);
+    assert.deepEqual(vectors.get('sfShadeCenters[0]').slice(0, 3), [20, 5, -50]);
+    claim.update({ x: -3, y: 0, z: 19 }, true);
+    upload();
+    assert.deepEqual(vectors.get('sfShadeCenters[0]').slice(0, 3), [-3, 0, 19]);
+  } finally { claim.release(); }
+  upload();
+  assert.equal(scalar.get('sfShadeEnabled'), 0);
+  assert.equal(scalar.get('sfShadeCount'), 0);
+  assert.equal(vectors.size, 0);
 });
 
 test('illustratedSurface injects shared shade-region uniforms once and drives crisp facet steps on rocks only', () => {

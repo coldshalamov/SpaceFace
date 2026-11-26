@@ -101,9 +101,10 @@ test('the tenth round benches with all three doors — refit, bank, and the run\
 
     const lines = refitFootLines(run);
     assert.equal(lines.primary, 'Launch round 11', 'the refit door launches the next round');
-    assert.equal(lines.extract, 'Extract — end the run here', 'the exit stands beside it');
+    // Swarm's Bench says Scrap and cash out (design/overhaul/04_SWARM.md section 5, R18).
+    assert.equal(lines.extract, 'Cash out — end the run here', 'the exit stands beside it');
     assert.match(lines.extractNote, /round 10/);
-    assert.equal(lines.bank, 'Bank 100 cr, keep flying', 'the middle seat is priced off the purse');
+    assert.equal(lines.bank, 'Bank 100 Scrap, keep flying', 'the middle seat is priced off the purse');
   } finally {
     teardown();
   }

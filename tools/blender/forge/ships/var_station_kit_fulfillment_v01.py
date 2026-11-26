@@ -23,7 +23,26 @@ COLORS = {
 SEGMENTS = 12
 
 
+def signature(s):
+    """Container stacks inside the ring: three piles of ribbed freight, ready for dispatch."""
+    stacks, ribs = [], []
+    for a in (45.0, 165.0, 285.0):
+        rz = math.radians(a)
+        x, y, _ = K.polar(26.0, a)
+        for k in range(3):
+            stacks.append(((x, y, 5.0 + k * 3.4), (7.0, 12.0, 3.0), rz))
+        tx, ty = -math.sin(math.radians(a)), math.cos(math.radians(a))
+        for k in range(4):
+            off = (k / 3.0 - 0.5) * 12.0
+            ribs.append(((x + tx * off, y + ty * off, 10.0), (7.2, 0.5, 10.2), rz))
+    F.boxes(s, 'FulfillmentStacks', stacks, 'paint', bevel=0.04)
+    F.boxes(s, 'FulfillmentRibs', ribs, 'dark', bevel=0.0)
+    seals = [K.tangent_box(45.0 + i * 120.0, 29.7, 12.5, 0.25, 3.0, 1.2) for i in range(3)]
+    F.boxes(s, 'FulfillmentSeals', seals, 'stripe', bevel=0.0)
+
+
 def dress(s):
+    K.interior(s, 'stripe', 'glow_warm.ff')
     # the consignment band: hospital-white cladding with a barcode course
     K.ring_wall(s, 'ConsignBand', K.SHELL_R + 0.8, 10.0, 24.0, 2.4, 'paint', segs=56)
     K.ring_wall(s, 'ConsignBase', K.SHELL_R + 1.0, 10.0, 11.4, 2.6, 'paint2', segs=56)
@@ -59,6 +78,7 @@ def dress(s):
     s.detail = 1
     K.lamp_ring(s, 'Clinical', 'glow_warm.ff', r=K.SHELL_R + 1.6, z=26.6, count=16, size=0.4)
     s.detail = 0
+    signature(s)
 
 
 def build():

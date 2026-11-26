@@ -147,18 +147,21 @@ test('the Swarm set is S5 unchanged', () => {
 
 test('stock bindings are Swarm-only; rebinds are consulted before them in input.js', () => {
   const swarm = state({ run: { kind: 'survival', phase: 'active', ruleset: 'swarm' } });
-  assert.deepEqual(contextStockBindings(swarm)?.tether, []);
-  assert.deepEqual(contextStockBindings(swarm)?.boost, ['Space']);
+  assert.deepEqual(contextStockBindings(swarm)?.tether, ['KeyF']);
+  assert.deepEqual(contextStockBindings(swarm)?.boost, ['ShiftLeft', 'ShiftRight']);
   assert.equal(contextStockBindings(state()), null);
 });
 
-test('X5 #6: the UI letter layer is gated — combat cannot open the chart, tech or codex', () => {
+test('a selected hostile or low hull keeps the advertised chart controls available', () => {
   const combat = state({ player: { targetId: 2 } });
-  for (const action of ['map', 'localmap', 'starmap', 'techTree', 'codex', 'fleetCommand', 'claimBase', 'drill', 'ship']) {
-    assert.equal(contextUiAllowed(combat, action), false, action);
-  }
-  for (const action of ['pause', 'help', 'missionLog', 'cargo', 'comms', 'find']) {
-    assert.equal(contextUiAllowed(combat, action), true, action);
+  for (const current of [combat, lowHullState()]) {
+    assert.equal(inputContextFor(current), 'combat');
+    for (const action of ['map', 'localmap', 'starmap', 'pause', 'help', 'missionLog', 'cargo', 'comms', 'find']) {
+      assert.equal(contextUiAllowed(current, action), true, action);
+    }
+    for (const action of ['techTree', 'codex', 'fleetCommand', 'claimBase', 'drill', 'ship']) {
+      assert.equal(contextUiAllowed(current, action), false, action);
+    }
   }
   // Out of the fight every instrument stays reachable; station and map screens keep their verbs.
   for (const st of [state(), state({ mode: 'station' }), state({ ui: { mapOpen: true } })]) {
@@ -179,7 +182,7 @@ test('X5 P0: labels stay live in every context — the sheet never blanks a real
   ];
   for (const st of contexts) {
     const ctx = inputContextFor(st);
-    // G18-02: the taught seats keep a live label in every context — movement, Space boost
+    // G18-02: the taught seats keep a live label in every context — movement, Shift boost
     // and the held wheel key. Overflow verbs ship unbound and read as blank here BY DESIGN
     // (the sheet names the wheel for them, see keyLabel's wheel fallback).
     for (const action of ['forward', 'reverse', 'boost', 'contextWheel']) {
@@ -187,12 +190,15 @@ test('X5 P0: labels stay live in every context — the sheet never blanks a real
       assert.ok(label.length > 0, `${ctx}: ${action} label is blank`);
       assert.ok(resolveActionCodes(st, action).length > 0, `${ctx}: ${action} codes are empty`);
     }
-    for (const action of ['travelBurn', 'cruise', 'brake']) {
+    for (const action of ['travelBurn', 'cruise']) {
       assert.equal(resolveActionLabel(st, action), '', `${ctx}: ${action} is a wheel slice — no key label`);
     }
+    // R17 (a289310ab0): X is the dedicated full-stop key in every scheme — brake is a real key
+    // seat, so its label must stay live in every context like the rest of the taught set.
+    assert.equal(resolveActionLabel(st, 'brake'), 'X', `${ctx}: brake is the X full-stop key`);
     // Fire is the left mouse button and the Line the right: no KeyboardEvent code, never blank.
     assert.equal(resolveActionLabel(st, 'fire'), 'LMB');
-    assert.equal(resolveActionLabel(st, 'tether'), 'RMB');
+    assert.equal(resolveActionLabel(st, 'tether'), 'F');
   }
 });
 
@@ -242,5 +248,7 @@ test('without a resolver the card prints action ids, never blanks', () => {
   const rows = contextHelpRows(state());
   const move = rows.find(([, verb]) => verb === 'Move');
   assert.ok(move);
-  assert.equal(move[0], 'forward yawLeft reverse yawRight');
+  // The Move row lists yaw AND strafe: each scheme binds A/D to one pair, and the live resolver
+  // drops the unbound pair, so the card reads WASD in pilot, classic and helm assist alike.
+  assert.equal(move[0], 'forward yawLeft strafeLeft reverse yawRight strafeRight');
 });

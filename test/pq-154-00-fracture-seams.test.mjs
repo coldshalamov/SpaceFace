@@ -5,6 +5,7 @@ import test from 'node:test';
 import { createBus } from '../src/core/eventBus.js';
 import { createSimulation } from '../src/core/sim.js';
 import { consumePhysicsCommand } from '../src/core/physicsAuthority.js';
+import { createSg02DynamicBodyOwner } from '../src/core/sg02DynamicBodyOwner.js';
 import { COMBAT_FLAGS } from '../src/data/featureFlags.js';
 import {
   FRACTURE_THRESHOLD_WU,
@@ -16,6 +17,7 @@ import { collisionConsequences } from '../src/systems/collisionConsequences.js';
 import {
   fractureThresholdWU,
   resetPendingSlams,
+  spawnFracturePieces,
 } from '../src/systems/hullFracture.js';
 import { mining } from '../src/systems/mining.js';
 
@@ -213,5 +215,52 @@ test('a sub-threshold slam still swaps to one wreck', () => {
   } finally {
     resetPendingSlams();
     COMBAT_FLAGS.weaponImpulseConsequences = previous;
+  }
+});
+
+test('a near-pilot fracture clears the immediate native sweep without changing the split', async () => {
+  const makeSplit = (pilotPos, blocker = false) => {
+    const sim = createSimulation({ seed: SEED, systems: [] });
+    const { state } = sim;
+    const pilot = sim.spawn({ ...shipSpec({ defId: 'ship_hornet', pos: pilotPos, radius: 16, mass: 20,
+      vel: { x: -180, z: 0 } }), isPlayer: true });
+    state.playerId = pilot.id;
+    state.rng = () => 0.9;
+    if (blocker) sim.spawn({ type: 'station', pos: { x: 0, z: 0 }, radius: 120, collides: true });
+    const split = spawnFracturePieces(sim, { tick: 10, pos: { x: 0, z: 0 },
+      radius: 12, mass: 16, vel: { x: 0, z: 0 }, angVel: 0.35 });
+    return { sim, pilot, split };
+  };
+  const far = makeSplit({ x: 400, z: 400 });
+  const [seam, remainder] = far.split.pieces;
+  const approach = { x: seam.pos.x + 24, z: seam.pos.z };
+  const near = makeSplit(approach);
+  const blocked = makeSplit(approach, true);
+  const native = await createSg02DynamicBodyOwner({ publishTelemetry: false, fixedDt: 1 / 60 });
+  try {
+    assert.equal(far.split.seam.id, 'light_starboard_spar');
+    assert.equal(near.split.seam.id, far.split.seam.id);
+    assert.equal(near.split.pieces.length, 2);
+    const [nearSeam, nearRemainder] = near.split.pieces;
+    assert.ok(Math.abs(nearSeam.pos.x - nearRemainder.pos.x - (seam.pos.x - remainder.pos.x)) < 1e-9);
+    assert.ok(Math.abs(nearSeam.pos.z - nearRemainder.pos.z - (seam.pos.z - remainder.pos.z)) < 1e-9);
+
+    native.syncFromEntities([near.pilot, ...near.split.pieces]);
+    for (let tick = 1; tick <= 4; tick++) {
+      native.step(1 / 60, tick);
+      assert.ok(native.drainContactImpacts().every(hit => ![hit.aId, hit.bId].includes(near.pilot.id)),
+        'a newly split piece does not kick the advancing pilot');
+    }
+    assert.equal(blocked.split, null, 'a blocked pair leaves mining its ordinary single-wreck fallback');
+    assert.equal(liveWrecks(blocked.sim.state).length, 0, 'the pair is admitted atomically');
+    for (const [i, part] of near.split.pieces.entries()) {
+      const baseline = far.split.pieces[i];
+      assert.equal(part.mass, baseline.mass);
+      assert.equal(part.data.fracturePiece, baseline.data.fracturePiece);
+      assert.equal(part.collides, true);
+    }
+  } finally {
+    native.dispose();
+    for (const fixture of [far, near, blocked]) fixture.sim.dispose();
   }
 });

@@ -203,12 +203,12 @@ const WORLD_SITE_MANIFESTS_UNSORTED = [
       Object.freeze({ id: 'proxy_beacon_array', componentId: 'beacon_array', anchorId: 'SOCKET_Emissive', shape: 'circle', bodyType: 'sensor', radius: 7, offset: Object.freeze({ x: 3, z: 0 }) }),
     ]),
     components: Object.freeze([
-      Object.freeze({ id: 'relay_core', label: 'RELAY CORE', kind: 'machine', anchorId: 'SOCKET_Structure_Core', initialStatus: 'damaged' }),
-      Object.freeze({ id: 'cargo_brace', label: 'CARGO BRACE', kind: 'weakpoint', anchorId: 'SOCKET_Module_Depot', initialStatus: 'attached' }),
-      Object.freeze({ id: 'payload_cradle', label: 'FIELD COIL CRADLE', kind: 'payload_mount', anchorId: 'SOCKET_Module_Refinery', initialStatus: 'sealed' }),
-      Object.freeze({ id: 'receiver_collar', label: 'RECOVERY COLLAR', kind: 'receiver', anchorId: 'SOCKET_Dock_Approach', initialStatus: 'ready' }),
-      Object.freeze({ id: 'safety_coupler', label: 'SAFETY COUPLER', kind: 'machine', anchorId: 'SOCKET_Module_Defense', initialStatus: 'failed' }),
-      Object.freeze({ id: 'beacon_array', label: 'BEACON ARRAY', kind: 'machine', anchorId: 'SOCKET_Emissive', initialStatus: 'offline' }),
+      Object.freeze({ id: 'relay_core', label: 'Relay core', kind: 'machine', anchorId: 'SOCKET_Structure_Core', initialStatus: 'damaged' }),
+      Object.freeze({ id: 'cargo_brace', label: 'Cargo brace', kind: 'weakpoint', anchorId: 'SOCKET_Module_Depot', initialStatus: 'attached' }),
+      Object.freeze({ id: 'payload_cradle', label: 'Field coil cradle', kind: 'payload_mount', anchorId: 'SOCKET_Module_Refinery', initialStatus: 'sealed' }),
+      Object.freeze({ id: 'receiver_collar', label: 'Recovery collar', kind: 'receiver', anchorId: 'SOCKET_Dock_Approach', initialStatus: 'ready' }),
+      Object.freeze({ id: 'safety_coupler', label: 'Safety coupler', kind: 'machine', anchorId: 'SOCKET_Module_Defense', initialStatus: 'failed' }),
+      Object.freeze({ id: 'beacon_array', label: 'Beacon array', kind: 'machine', anchorId: 'SOCKET_Emissive', initialStatus: 'offline' }),
     ]),
     operations: Object.freeze([
       Object.freeze({ id: 'repair_relay_core', componentId: 'relay_core', verb: 'repair', requestStreamId: 'player-industrial-beam', threshold: 40, from: Object.freeze(['damaged', 'failed']), to: 'operational', dependsOn: Object.freeze([]), consequenceIds: Object.freeze([]) }),

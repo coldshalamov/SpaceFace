@@ -130,12 +130,13 @@ test('Crucible readout names the Veil hold/release binding and current energy re
   assert.equal(line().status, 'cooldown');
   // G18-02 (b931aac851) taught one key set in both doors: boost left L-Shift/R-Shift for Space, and
   // this readout prints the live binding rather than a hard-coded key.
-  assert.match(line().text, /hold Space to aim · release to jump · needs 42 energy/);
+  assert.match(line().text, /hold Shift to aim · release to jump · needs 42 energy/);
 
   ship.boost.energy = 70;
   ship._phaseBlink = { aiming: true, active: true, dist: 120, readyAt: 0 };
   assert.equal(line().status, 'armed');
-  assert.match(line().text, /120 WU · release to jump/);
+  // Tests follow df01ea648d: plain units everywhere — the Veil Step's reach reads in metres.
+  assert.match(line().text, /120 m · release to jump/);
   ship.boost.energy = 1;
   assert.equal(line().status, 'cooldown');
   assert.match(line().text, /needs 48 energy to release/);

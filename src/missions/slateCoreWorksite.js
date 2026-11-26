@@ -18,6 +18,37 @@ export function slateCoreBody(owner, m) {
   const e = owner.state.entities.get(m.params?.slateCore?.entityId);
   return owned(e, m) && e.alive !== false && e.hull > 0 ? e : null;
 }
+
+export function slateCoreWorksiteFocus(owner, mission) {
+  const state = owner.state;
+  if (!isSlateCore(mission) || state.world?.currentSectorId !== SLATE_SECTOR) return null;
+  const row = mission.params.slateCore;
+  if (mission.params.slateInvalid || row?.lost) return null;
+  const core = slateCoreBody(owner, mission);
+  if (row?.entityId != null && !core) return null;
+
+  const layout = slateCoreLayout();
+  const tether = state.player?.tether;
+  if (core && row.handled && tether?.active && tether.targetId === core.id) {
+    return {
+      stationId: null,
+      label: 'Slate receiving beacon',
+      pos: layout.receiver,
+      reason: `Settle the core within ${layout.radius} u at ${layout.maxSpeed} u/s or less`,
+    };
+  }
+
+  const pos = point(core?.pos) ? core.pos : point(row?.pos) ? row.pos : layout.staging;
+  return {
+    stationId: null,
+    label: 'Slate’s slag core',
+    pos: { x: pos.x, z: pos.z },
+    presentationEntityId: core?.id ?? null,
+    presentationEntityGeneration: core?.occupantGeneration ?? null,
+    reason: `Latch the ${layout.mass}t core and bring it to the receiving beacon`,
+  };
+}
+
 export function snapshotSlateCore(owner, m) {
   if (!isSlateCore(m) || !m.params.slateCore) return;
   const row = m.params.slateCore;

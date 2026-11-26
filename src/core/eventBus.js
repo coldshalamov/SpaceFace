@@ -1,6 +1,7 @@
 // Synchronous event bus with a deferred queue (ARCHITECTURE §4). Most events fire
-// synchronously; entity spawn/destroy are queued and flushed at the end of a sim step
-// so the entity set is never mutated mid-iteration.
+// synchronously; entity:destroyed is queued and flushed at the end of a sim step so the
+// entity set is not mutated mid-iteration. entity:spawned emits synchronously inside the
+// spawning call stack — handlers must not spawn or remove entities themselves.
 //
 // `sector:enter` may be count-sliced: the first budget of listeners still runs inside
 // enterSector, leftover presentation listeners drain after present. Default budget 0
@@ -14,6 +15,26 @@ import {
 
 export const SECTOR_ENTER_LISTENER_BUDGET = 32;
 export const SECTOR_ENTER_DRAIN_BUDGET = 4;
+// Coalesced lifecycle observer receipt: every flush() that delivered at least one queued
+// entity:destroyed payload emits ONE 'entity:destroyedBatch' — after the per-entity
+// deliveries, same step — carrying { receipts, count }. Observers that only need to know
+// WHICH corpses left (ecology bookkeeping, ledgers) subscribe to the batch and pay one
+// dispatch per flush instead of one per corpse. Identity-critical subscribers — spawnBudget
+// slot release, generation checks — keep the per-entity 'entity:destroyed' receipts, which
+// are unchanged in order, count and timing.
+export const ENTITY_DESTROYED_BATCH_EVENT = 'entity:destroyedBatch';
+// The spawn-side twin. entity:spawned is synchronous (never queued), so receipts cannot
+// collect inside flush(): they accumulate while a collection window is open — the sim-step
+// window (beginStep→endStep, also opened by whole-sim steppers), a worker-reply replay
+// window, or an explicit beginSpawnedBatchWindow/endSpawnedBatchWindow pair — and ONE
+// 'entity:spawnedBatch' carrying { receipts, count } dispatches when the outermost window
+// closes, after every individual 'entity:spawned' delivery inside it. An emit outside any
+// window keeps the uniform contract: individual dispatch, then a one-receipt batch.
+// Latest-wins dedupe: a receipt whose id is destroyed inside the same window drops out
+// (the corpse arrives in destroyedBatch instead), and a re-spawned id keeps only its
+// newest receipt — batch consumers read the live map and see the end-of-window state.
+export const ENTITY_SPAWNED_EVENT = 'entity:spawned';
+export const ENTITY_SPAWNED_BATCH_EVENT = 'entity:spawnedBatch';
 // Presentation-tier listeners (bus.on(event, fn, { presentation: true })): burst events like
 // entity:killed / entity:destroyed fan out to ~dozen presentation-pure tails that used to run
 // inside the emit — mid-tick for synchronous events, inside the flush task for queued ones.
@@ -26,6 +47,18 @@ export const PRESENTATION_LISTENER_DRAIN_BUDGET = 8;
 // delivered fully inline at push. That preserves the one contract the queue exists to keep
 // (no listener is ever skipped); it does not promise that delivery stays sliced.
 export const MAX_QUEUED_SLICED_EMITS = 8;
+
+// SIM-RATE-TIERS-BREADTH — presentation-only names deferred inside the sim-step window.
+// 'toast' is deliberately absent: src/systems/twoShipsOneMistakeRuntime.js listens
+// sim-side, so it stays synchronous. Economy credit events are NOT here either — they
+// need an owner-side intents queue landing in the same tick, a separate change.
+export const STEP_DEFERRED_EVENTS = new Set([
+  'audio:cue', 'comms:log', 'comms:popup', 'presentation:caption',
+]);
+// Per-step delivery cap (the physics:impact fan-out cap's bus-side equivalent) and the
+// carry bound: past it an emit delivers inline at the call site — order kept, never lost.
+export const STEP_DEFERRED_DRAIN_CAP = 48;
+export const STEP_DEFERRED_CARRY_MAX = 256;
 
 // A persistently-throwing listener on a hot event used to pay a full Error +
 // stack serialization per emit — emit-rate volume for the rest of the session.
@@ -204,6 +237,7 @@ export function createBus() {
   // an emit-time snapshotter: a queued presentation tail must read the fields a synchronous
   // listener saw — not the values the next emit refilled before the frame drain ran.
   const payloadSnapshots = new Map(); // event -> payload => clonedPayload
+  const payloadReleasers = new Map(); // event -> payload => void (owner pool release)
   let presentationDrainClaimed = false;
   let deferred = [];
   const deferredPool = [];
@@ -366,10 +400,171 @@ export function createBus() {
     payloadSnapshots.set(event, fn);
   }
 
+  // The pooled-payload contract's other half: registers the callback that returns a record
+  // to its owner's pool once the bus has FINISHED delivering it — queued receipt dispatch,
+  // the destroyedBatch fanout and the deferred-presentation snapshot all land first, so the
+  // owner can safely refill it for the next corpse. Payloads the releaser does not own
+  // (foreign emitters' literals) are ignored by the owner-side lease check.
+  function setPayloadRelease(event, fn) {
+    if (typeof fn !== 'function') { payloadReleasers.delete(event); return; }
+    if (payloadReleasers.get(event) === fn) return;
+    payloadReleasers.set(event, fn);
+  }
+
   function emitAll(event, payload) {
     const fns = snapshotListeners(listeners, listenerSnapshots, event);
     if (fns) dispatchRange(fns, payload, event, 0, fns.length);
     dispatchPresentation(event, payload);
+  }
+
+  // SIM-RATE-TIERS-BREADTH — presentation-only names requested from inside a sim step are
+  // collected and delivered once per step at drainStepDeferred() (after the last system,
+  // before the lifetime sweep), in emit order, capped per tick with carry-over — the
+  // physics:impact receipt pattern moved to the bus so 1,100 emit sites keep their shape.
+  // A name only joins the set when no sim-side listener exists ('toast' is excluded:
+  // src/systems/twoShipsOneMistakeRuntime.js subscribes and must stay same-tick), and a
+  // payload that names the live player goes now — player-facing feedback never waits.
+  let stepDeferredActive = false;
+  let stepDeferredPlayerId = null;
+  const stepDeferredQueue = [];
+
+  // entity:spawnedBatch collection state. Depth > 0 means a step window, a
+  // worker-reply replay window, or an explicit pair is collecting receipts;
+  // the batch dispatches when the outermost window closes. Receipts keyed by
+  // id give latest-wins dedupe for free: a same-window re-spawn of an id moves
+  // to the newest position, and a same-window destroy deletes the row.
+  let spawnBatchDepth = 0;
+  const spawnedReceiptsById = new Map(); // id -> payload (latest wins, insertion-ordered)
+  let spawnedReceiptsNoId = [];          // payloads without an id field (defensive)
+  let spawnReceiptReleaser = null;       // pooled-payload owner callback, captured at collect
+
+  function collectSpawnReceipt(payload) {
+    // The releaser is re-read per receipt like the destroyed path re-reads it
+    // per emit: an owner may register between windows and every collected
+    // payload is released under the newest registered lease.
+    spawnReceiptReleaser = payloadReleasers.get(ENTITY_SPAWNED_EVENT) || null;
+    const id = payload && payload.id;
+    if (id == null) { spawnedReceiptsNoId.push(payload); return; }
+    // Latest position wins for a recycled id: delete+set moves the row to the
+    // newest slot so the batch order mirrors the newest delivery order.
+    if (spawnedReceiptsById.has(id)) spawnedReceiptsById.delete(id);
+    spawnedReceiptsById.set(id, payload);
+  }
+
+  function noteWindowEntityDestroyed(payload) {
+    const id = payload && payload.id;
+    if (id == null) return;
+    // Ids recycle the moment a body is removed, and a queued corpse flushes at the end of
+    // the sweep, after a later spawn may already hold the same id. Only the corpse of the
+    // receipt's own occupant supersedes it; a receipt or corpse without an entity ref falls
+    // back to the id match.
+    const receipt = spawnedReceiptsById.get(id);
+    if (!receipt) return;
+    const occupant = receipt.entity;
+    const corpse = payload.entity;
+    if (occupant && corpse && occupant !== corpse) return;
+    spawnedReceiptsById.delete(id);
+  }
+
+  function flushSpawnedBatch() {
+    if (spawnedReceiptsById.size === 0 && spawnedReceiptsNoId.length === 0) {
+      spawnReceiptReleaser = null;
+      return;
+    }
+    const receipts = new Array(spawnedReceiptsById.size + spawnedReceiptsNoId.length);
+    let i = 0;
+    for (const receipt of spawnedReceiptsById.values()) receipts[i++] = receipt;
+    for (const receipt of spawnedReceiptsNoId) receipts[i++] = receipt;
+    spawnedReceiptsById.clear();
+    spawnedReceiptsNoId = [];
+    const release = spawnReceiptReleaser;
+    spawnReceiptReleaser = null;
+    // Depth is already 0 here: a listener that emits entity:spawned inside this
+    // fanout takes the one-receipt direct path instead of joining this batch.
+    emitAll(ENTITY_SPAWNED_BATCH_EVENT, { receipts, count: receipts.length });
+    // Delivery complete — individual dispatch and the batch fanout landed;
+    // pooled receipts return to their owner now, same lease rule as destroyed.
+    if (release) for (const receipt of receipts) release(receipt);
+  }
+
+  /**
+   * Open a spawn-receipt collection window: entity:spawned payloads emitted
+   * while it is held coalesce into one entity:spawnedBatch at the close of the
+   * OUTERMOST window. Windows nest (a step inside a reply replay); only the
+   * last close dispatches. The sim step window opens one via beginStep.
+   */
+  function beginSpawnedBatchWindow() {
+    spawnBatchDepth += 1;
+  }
+
+  function endSpawnedBatchWindow() {
+    if (spawnBatchDepth <= 0) return;
+    spawnBatchDepth -= 1;
+    if (spawnBatchDepth > 0) return;
+    flushSpawnedBatch();
+  }
+
+  function payloadTouchesPlayer(payload, playerId) {
+    if (playerId == null || payload === null || typeof payload !== 'object') return false;
+    return payload.player === true
+      || payload.entityId === playerId || payload.playerId === playerId
+      || payload.targetId === playerId || payload.shipId === playerId
+      || payload.aId === playerId || payload.bId === playerId;
+  }
+
+  /** Stepper hook: marks the sim-step window; deferred-set emits inside it queue. */
+  function beginStep(playerId) {
+    stepDeferredActive = true;
+    stepDeferredPlayerId = playerId != null ? playerId : null;
+    // The step is also a spawn-batch window: spawned receipts collect across
+    // the whole step and coalesce at endStep — after every individual delivery
+    // including the lifetime sweep's deferred spawn jobs.
+    beginSpawnedBatchWindow();
+  }
+
+  /**
+   * Drain the collected presentation emits, in order, up to the per-tick cap. Items past
+   * the cap keep their order and deliver on the next step's drain (carry-over); a queue
+   * past CARRY_MAX delivers its head inline at emit instead of growing without bound.
+   */
+  function drainStepDeferred() {
+    let delivered = 0;
+    let i = 0;
+    while (i < stepDeferredQueue.length) {
+      if (delivered >= STEP_DEFERRED_DRAIN_CAP) break;
+      const item = stepDeferredQueue[i];
+      emitAll(item.event, item.payload);
+      item.event = null;
+      item.payload = null;
+      deferredPool.push(item);
+      delivered += 1;
+      i += 1;
+    }
+    if (i === stepDeferredQueue.length) stepDeferredQueue.length = 0;
+    else if (i > 0) stepDeferredQueue.splice(0, i);
+    return delivered;
+  }
+
+  /** End the step window; anything left delivers inline so a stepper that skipped the
+   *  drain (aborted step, legacy host) can never strand cosmetic feedback. */
+  function endStep() {
+    stepDeferredActive = false;
+    stepDeferredPlayerId = null;
+    while (stepDeferredQueue.length) {
+      const item = stepDeferredQueue.shift();
+      emitAll(item.event, item.payload);
+      item.event = null;
+      item.payload = null;
+      deferredPool.push(item);
+    }
+    // Leftover drains above could still emit entity:spawned — the window stays
+    // open through them and closes here, so the batch lands after the very
+    // last individual dispatch of the step.
+    endSpawnedBatchWindow();
+  }
+
+  function pendingStepDeferredCount() {
+    return stepDeferredQueue.length;
   }
 
   function startEmitSlice(event, payload, budget, maxMs) {
@@ -416,6 +611,17 @@ export function createBus() {
   }
 
   function emit(event, payload) {
+    // Step-deferred presentation set: queue during the window, deliver once at the drain.
+    // Player-named payloads and an over-cap backlog bypass the queue (never delayed/lost).
+    if (stepDeferredActive && STEP_DEFERRED_EVENTS.has(event)
+        && !payloadTouchesPlayer(payload, stepDeferredPlayerId)
+        && stepDeferredQueue.length < STEP_DEFERRED_CARRY_MAX) {
+      const item = deferredPool.pop() || { event: null, payload: null };
+      item.event = event;
+      item.payload = payload;
+      stepDeferredQueue.push(item);
+      return;
+    }
     const budget = emitSliceSuspended ? 0 : sliceBudgets.get(event) | 0;
     // sector:exit joins the slice set for the restore session specifically: inside a
     // restore the sim is frozen, departure listeners observe no arrival state, and the
@@ -425,7 +631,34 @@ export function createBus() {
       startEmitSlice(event, payload, budget);
       return;
     }
+    // Captured before dispatch: a listener that clear()s the bus empties the releaser map,
+    // but this payload's owner still needs the record back.
+    const destroyedRelease = event === 'entity:destroyed' ? payloadReleasers.get(event) : null;
+    const spawnedRelease = event === ENTITY_SPAWNED_EVENT ? payloadReleasers.get(event) : null;
     emitAll(event, payload);
+    // A direct (non-queued) destroyed receipt must reach batch subscribers exactly like a
+    // flushed one — teardown emitters (run reset, restore cleanup, ejection) bypass the
+    // deferred queue, and batch subscribers subscribe to the uniform corpse contract.
+    if (event === 'entity:destroyed') {
+      // Latest-wins: a pending spawn receipt for this id is stale — the corpse
+      // wins inside the window and reports through destroyedBatch instead.
+      if (spawnBatchDepth > 0) noteWindowEntityDestroyed(payload);
+      emitAll(ENTITY_DESTROYED_BATCH_EVENT, { receipts: [payload], count: 1 });
+      // Delivery complete — synchronous dispatch, batch fanout and any deferred-presentation
+      // snapshots all landed above; a pooled receipt can return to its owner now.
+      if (destroyedRelease) destroyedRelease(payload);
+    }
+    // The spawn twin: inside a collection window the receipt joins the window's
+    // batch; outside one the direct emit keeps the uniform contract — individual
+    // dispatch above, one-receipt batch here, releaser after both.
+    if (event === ENTITY_SPAWNED_EVENT) {
+      if (spawnBatchDepth > 0) {
+        collectSpawnReceipt(payload);
+      } else {
+        emitAll(ENTITY_SPAWNED_BATCH_EVENT, { receipts: [payload], count: 1 });
+        if (spawnedRelease) spawnedRelease(payload);
+      }
+    }
   }
 
   // Non-presenting tasks have no frame deadline to overrun, so unlike
@@ -592,23 +825,71 @@ export function createBus() {
     const batch = deferred;
     deferred = [];
     const batchGeneration = generation;
+    // The receipts this flush delivers, collected for the one coalesced observer event at
+    // the tail. Same-step delivery is preserved: the batch lands after the per-entity
+    // deliveries inside this same flush call, so a migrated listener observes the identical
+    // corpse set — it just pays one dispatch for the whole step instead of one per corpse.
+    let destroyedReceipts = null;
+    // Captured BEFORE dispatch: a mid-flush clear() empties the releaser map, but the
+    // records this batch carries were minted by the owner that registered it — their
+    // release must still reach that owner's pool whether they deliver or drop.
+    const destroyedRelease = payloadReleasers.get('entity:destroyed');
+    // entity:spawned never queues today (synchronous contract), but a foreign or
+    // future queue() caller gets the same batch semantics: receipts delivered in
+    // this flush join the open window, or coalesce per-flush when none is.
+    // The releaser is captured pre-dispatch for the same mid-flush clear() reason.
+    const flushedSpawnRelease = payloadReleasers.get(ENTITY_SPAWNED_EVENT);
+    let flushedSpawnReceipts = null;
     for (let i = 0; i < batch.length; i++) {
       const item = batch[i];
       if (generation !== batchGeneration) {
         // clear() ran while this batch was on the stack: everything still in it predates the
         // teardown and must not reach listeners (re)bound on the new bus. Recycle the slot;
         // events queued after clear() live in the new deferred array and flush normally.
+        // A pooled payload still owes its pool the release even though it never delivered.
+        if (item.event === 'entity:destroyed' && destroyedRelease) destroyedRelease(item.payload);
         item.event = null;
         item.payload = null;
         deferredPool.push(item);
         continue;
       }
       emitAll(item.event, item.payload);
+      if (item.event === 'entity:destroyed') {
+        (destroyedReceipts || (destroyedReceipts = [])).push(item.payload);
+        // Latest-wins: this corpse supersedes any same-window spawn receipt.
+        if (spawnBatchDepth > 0) noteWindowEntityDestroyed(item.payload);
+      }
+      if (item.event === ENTITY_SPAWNED_EVENT) {
+        if (spawnBatchDepth > 0) collectSpawnReceipt(item.payload);
+        else (flushedSpawnReceipts || (flushedSpawnReceipts = [])).push(item.payload);
+      }
       item.event = null;
       item.payload = null;
       deferredPool.push(item);
     }
     batch.length = 0;
+    // Generation re-checked: a clear() inside a listener must not let a pre-teardown
+    // corpse set reach post-teardown batch subscribers.
+    if (destroyedReceipts) {
+      if (generation === batchGeneration) {
+        emitAll(ENTITY_DESTROYED_BATCH_EVENT, {
+          receipts: destroyedReceipts,
+          count: destroyedReceipts.length,
+        });
+      }
+      // The receipts' deliveries — individual dispatch and the batch fanout — are complete
+      // (delivered or generation-dropped); pooled records return to their owner now.
+      if (destroyedRelease) for (const receipt of destroyedReceipts) destroyedRelease(receipt);
+    }
+    if (flushedSpawnReceipts) {
+      if (generation === batchGeneration) {
+        emitAll(ENTITY_SPAWNED_BATCH_EVENT, {
+          receipts: flushedSpawnReceipts,
+          count: flushedSpawnReceipts.length,
+        });
+      }
+      if (flushedSpawnRelease) for (const receipt of flushedSpawnReceipts) flushedSpawnRelease(receipt);
+    }
   }
 
   function clear() {
@@ -621,8 +902,31 @@ export function createBus() {
     presentationOnceOnlyCount = 0;
     presentationSlicePool.length = 0;
     payloadSnapshots.clear();
+    // Undelivered queued payloads still owe their pools a release — the receipts were minted,
+    // they just never reached listeners. The releaser map itself clears below, so capture it
+    // before dropping the array (re-arm is the owners' job, same rule as payload snapshots).
+    for (const item of deferred) {
+      const release = payloadReleasers.get(item.event);
+      if (release) release(item.payload);
+    }
     deferred = [];
     deferredPool.length = 0;
+    stepDeferredActive = false;
+    stepDeferredPlayerId = null;
+    stepDeferredQueue.length = 0;
+    // Spawn-window receipts collected but never batched still owe their owner a
+    // release — the batch they belonged to dies with the teardown. Captured at
+    // collect time; fall back to the map in case a lease registered mid-window.
+    const spawnRelease = spawnReceiptReleaser || payloadReleasers.get(ENTITY_SPAWNED_EVENT);
+    if (spawnRelease) {
+      for (const receipt of spawnedReceiptsById.values()) spawnRelease(receipt);
+      for (const receipt of spawnedReceiptsNoId) spawnRelease(receipt);
+    }
+    spawnedReceiptsById.clear();
+    spawnedReceiptsNoId = [];
+    spawnReceiptReleaser = null;
+    spawnBatchDepth = 0;
+    payloadReleasers.clear();
     sliceBudgets.clear();
     emitSlice = null;
     // A stranded queue outlives the slice that fed it: pendingEmitSliceCount() would
@@ -636,7 +940,9 @@ export function createBus() {
     setEmitSliceBudget, drainEmitSlice, pendingEmitSliceCount, cancelSlicedEmits,
     setEmitSliceSuspended, flushSlicedEmits,
     claimPresentationDrain, drainPresentationTail, pendingPresentationCount,
-    setPayloadSnapshot,
+    setPayloadSnapshot, setPayloadRelease,
+    beginStep, drainStepDeferred, endStep, pendingStepDeferredCount,
+    beginSpawnedBatchWindow, endSpawnedBatchWindow,
     _listeners: listeners,
   };
 }

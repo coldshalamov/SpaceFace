@@ -17,7 +17,7 @@ import { quoteProvenance } from '../marketIntelligence.js';
 import { laneSetNavWaypoint } from '../../core/simLaneCommands.js';
 import { SECTORS } from '../../data/sectors.js';
 import { effectiveSectorFor } from '../../systems/sectorSim.js';
-import { isUnsellableCargo } from '../../systems/cargo.js';
+import { isUnsellableCargo, sellableCargoQuantity, slotFitFor } from '../../systems/cargo.js';
 import { formatCount } from '../numberFormat.js';
 
 const COMMODITY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
@@ -523,11 +523,9 @@ const CATEGORIES = [
 
 function maxBuyable(ctx, stationId, cmdtyId) {
   const p = ctx.state.player;
-  const def = COMMODITY_BY_ID.get(cmdtyId);
-  const vol = def && def.volPerU > 0 ? def.volPerU : 1;
   const buyP = Math.max(1, unitPrice(ctx, stationId, cmdtyId, 'buy'));
   const byCredits = Math.floor(p.credits / buyP);
-  const byRoom = Math.floor((p.cargo.capVolume - p.cargo.usedVolume) / vol);
+  const byRoom = slotFitFor(ctx.state, cmdtyId);
   return Math.max(0, Math.min(byCredits, byRoom));
 }
 
@@ -625,16 +623,14 @@ function tradeRunCapacity(state, def, buyHere, margin) {
   const player = (state && state.player) || {};
   const cargo = player.cargo || {};
   const credits = Math.max(0, Number(player.credits) || 0);
-  const cap = Math.max(0, Number(cargo.capVolume) || 0);
-  const used = Math.max(0, Number(cargo.usedVolume) || 0);
-  const freeVolume = Math.max(0, cap - used);
   const vol = def && def.volPerU > 0 ? def.volPerU : 1;
-  const holdUnits = Math.max(0, Math.floor(freeVolume / vol));
+  // Slot law: how many more units of this good the bag stacks is the hold's honest answer.
+  const holdUnits = slotFitFor(state, def && def.id);
   const affordableUnits = buyHere > 0 ? Math.max(0, Math.floor(credits / buyHere)) : 0;
   const loadUnits = Math.max(0, Math.min(holdUnits, affordableUnits));
   let loadReason = 'no load available';
   if (loadUnits <= 0) {
-    if (freeVolume < vol) loadReason = 'hold full';
+    if (holdUnits <= 0) loadReason = 'hold full';
     else if (credits < buyHere) loadReason = 'need ' + fmtCr(buyHere) + ' CR/u';
   }
   // INF-085: name the binding constraint so the card can state its cargo limit.
@@ -674,7 +670,7 @@ export function formatRouteCard(trade) {
     ? 'credits bind'
     : trade && trade.loadBound === 'stock' ? 'station stock binds'
     : trade && trade.loadBound === 'margin' ? 'smaller load preserves margin'
-    : `hold fits ${Math.max(0, Math.floor(Number(trade && trade.holdUnits) || 0))} u`;
+    : `hold fits ${Math.max(0, Math.floor(Number(trade && trade.holdUnits) || 0))} units`;
   // SFQ-B084: the handling cost of the load, forecast before purchase. The tonnes ride the
   // same cargo.usedMass carrier the flight kernel feels; a penalty-free load prints the mass
   // alone (a full hold of feathers reads full volume, full thrust).
@@ -693,7 +689,7 @@ export function formatRouteCard(trade) {
   const lane = trade && trade.laneRisk && trade.laneRisk.word ? ` · ${trade.laneRisk.word}` : '';
   return {
     units,
-    sub: `${units} u · cost ${cost.toLocaleString('en-US')} · buy ${buy.toLocaleString('en-US')} → sell ${sell.toLocaleString('en-US')}${lane} · ${intel} · ${bound}${mass}${demand} · ${basis}${cash}`,
+    sub: `${units} units · cost ${cost.toLocaleString('en-US')} · buy ${buy.toLocaleString('en-US')} → sell ${sell.toLocaleString('en-US')}${lane} · ${intel} · ${bound}${mass}${demand} · ${basis}${cash}`,
     profitText: net > 0 ? `${quoted ? 'Est. ' : ''}+${net.toLocaleString('en-US')} cr` : '—',
   };
 }
@@ -926,11 +922,13 @@ function nearestCargoBuyerStationId(state, ctx, commodityId) {
  * Returns { unitSell, unsellable }.
  */
 export function resolveCargoSellPrice(state, ctx, commodityId, destinationStationId = null) {
-  if (!state || !commodityId) return { unitSell: 0, unsellable: true };
-  if (typeof isUnsellableCargo === 'function' && isUnsellableCargo(state, commodityId)) {
+  if (!state || !commodityId || isUnsellableCargo(state, commodityId)) {
     return { unitSell: 0, unsellable: true };
   }
-  const context = ctx || { state };
+  return quoteCargoMarket(state, ctx || { state }, commodityId, destinationStationId);
+}
+
+function quoteCargoMarket(state, context, commodityId, destinationStationId) {
   if (destinationStationId) {
     const price = unitPrice(context, destinationStationId, commodityId, 'sell');
     if (price != null && price > 0) {
@@ -954,15 +952,19 @@ export function resolveCargoSellPrice(state, ctx, commodityId, destinationStatio
 /**
  * Calculates hold contents worth and formats the flight cargo bar readout.
  * EC-G19 §5: "HOLD 12/40 · ≈ 3,480 cr"
- * Shows loose towed cargo (+ 1 towed) and unsellable cargo flag (· some unsellable here).
+ * Quotes only free units in the hold and indicates when some cargo cannot be sold.
  */
 export function calculateHoldWorth(state, ctx) {
   const context = ctx || { state };
   const s = (ctx && ctx.state) || state;
   const c = (s && s.player && s.player.cargo) || {};
   const items = c.items || {};
-  const used = Math.round(Number(c.usedVolume) || 0);
-  const cap = Math.round(Number(c.capVolume) || 40);
+  // The HOLD line reads the bag (stacks over slots); volume stays an inspector readout.
+  const slotted = Array.isArray(c.slots) || Number.isFinite(c.slotCount);
+  const used = slotted ? Math.min((c.slots || []).length, Number(c.slotCount) || 0)
+    : Math.round(Number(c.usedVolume) || 0);
+  const cap = slotted ? Math.round(Number(c.slotCount) || 0)
+    : Math.round(Number(c.capVolume) || 40);
 
   // Destination resolution: nav waypoint station, or active job destination
   let destStationId = null;
@@ -985,11 +987,15 @@ export function calculateHoldWorth(state, ctx) {
   for (const [cmdtyId, qtyVal] of Object.entries(items)) {
     const qty = Math.max(0, Math.floor(Number(qtyVal) || 0));
     if (qty <= 0) continue;
-    const priceInfo = resolveCargoSellPrice(s, context, cmdtyId, destStationId);
+    const freeQty = sellableCargoQuantity(s, cmdtyId);
+    if (freeQty < qty) hasUnsellable = true;
+    if (freeQty === 0) continue;
+
+    const priceInfo = quoteCargoMarket(s, context, cmdtyId, destStationId);
     if (priceInfo.unsellable || priceInfo.unitSell <= 0) {
       hasUnsellable = true;
     } else {
-      totalWorth += qty * priceInfo.unitSell;
+      totalWorth += freeQty * priceInfo.unitSell;
     }
   }
 
@@ -1025,7 +1031,7 @@ export function calculateHoldWorth(state, ctx) {
 
   const worthFormatted = formatCount(totalWorth, s);
   let text = `HOLD ${used}/${cap} · ≈ ${worthFormatted} cr`;
-  if (hasUnsellable) text += ' · some unsellable here';
+  if (hasUnsellable) text += " · some cargo can't be sold";
   if (towedCount > 0) text += ` + ${towedCount} towed`;
 
   return {

@@ -54,6 +54,7 @@ import { occupantGenerationOf } from '../core/entity.js';
 import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
 import { strideDt } from '../core/catchupPolicy.js';
 import { counted } from '../core/numberFormat.js';
+import { isOpeningSettling } from '../onboarding/opportunityAdmission.js';
 
 
 const FACTION_ID = 'faction_vael';
@@ -166,7 +167,7 @@ const LEDGER_BARKS = Object.freeze({
   writServed: 'Served. The addendum is yours again.',
   writKilled: 'You cannot shoot a debt. The ledger keeps the shape of it.',
   writRecalled: 'The writ stands down. The bill settled elsewhere.',
-  clausePosted: 'The desk posts a clause. Proximity is a signature.',
+  clausePosted: 'The desk posts: proximity is a signature.',
   clauseSigned: 'You approached. That is a signature.',
   clauseDone: 'Clause honored. The Vael pay what the paper says.',
   clauseFailed: 'A broken signature keeps its shape. The ledger keeps it longer.',
@@ -1228,16 +1229,18 @@ export const vaelLiens = {
     const player = scan.player;
     const sectorId = state.world && state.world.currentSectorId || 'unknown';
     const inHome = VAEL_HOME.has(sectorId);
+    const openingQuiet = isOpeningSettling(state) && !inHome;
     const presence = inHome || scan.authored.length > 0;
 
-    // Post on the visit clock — bounded live count, presence-gated.
-    if (player && presence && state.mode === 'flight'
+    // Post on the visit clock — bounded live count, presence-gated, and quiet during the
+    // Helios/Act I opening route so Vael tenders do not interrupt a new pilot's first job.
+    if (player && presence && !openingQuiet && state.mode === 'flight'
         && state.simTime >= visit.nextPatrolAt
         && scan.patrols.length < VAEL_LEDGER.patrolMaxLive) {
       visit.nextPatrolAt = state.simTime + VAEL_LEDGER.patrolGapS
         + frac('patrol-gap', sectorId, v.seq) * 40;
       this._postPatrol(state, sectorId, scan);
-    } else if (state.simTime >= visit.nextPatrolAt) {
+    } else if (!openingQuiet && state.simTime >= visit.nextPatrolAt) {
       visit.nextPatrolAt = state.simTime + VAEL_LEDGER.patrolGapS; // keep the beat
     }
 
@@ -1294,15 +1297,18 @@ export const vaelLiens = {
     }
 
     // The Reading: once per sector visit, the nearest Vael signature reads the
-    // pilot's hull aloud — mass, open paper, the number on the book.
-    if (player && visit.readAt == null) {
+    // pilot's hull aloud — mass, open paper, the number on the book. Suppressed during the
+    // non-Vael opening settling window when the pilot has no open Vael bills or liens.
+    const hasOpenVaelBusiness = v.invoices.some((r) => r.state === 'open')
+      || Object.keys(v.liens).length > 0;
+    if (player && visit.readAt == null && (!openingQuiet || hasOpenVaelBusiness)) {
       for (const e of scan.authored.concat(scan.patrols)) {
         if (dist2(e.pos, player.pos) > VAEL_LEDGER.readingR * VAEL_LEDGER.readingR) continue;
         visit.readAt = num(state.simTime);
         const openInv = v.invoices.filter((r) => r.state === 'open');
         const total = openInv.reduce((a, r) => a + r.amount, 0);
         const mass = Math.round(num(player.mass));
-        const text = `HULL READ · ${mass}t · ${counted(openInv.length, 'OPEN INVOICE', 'OPEN INVOICES')} · ${total} CR ON THE BOOK`;
+        const text = `Your hull: ${mass} t · ${counted(openInv.length, 'open bill', 'open bills')} · ${total} cr owing`;
         this.bus.emit('vael:reading', {
           entityId: e.id, hullMass: mass, openInvoices: openInv.length, invoiceTotal: total, tick: state.tick,
         });
@@ -1312,7 +1318,7 @@ export const vaelLiens = {
     }
 
     // Page nine at 2pt: get close enough and the hull text is legible — once per hull.
-    if (player) {
+    if (player && (!openingQuiet || hasOpenVaelBusiness)) {
       for (const e of scan.authored.concat(scan.patrols)) {
         const key = `${e.id}:${occupantGenerationOf(e) ?? 0}`;
         if (v.hullScriptSeen[key] != null) continue;
@@ -1416,10 +1422,12 @@ export const vaelLiens = {
   _tickClauses(state, dt, scan, visit, v) {
     const player = scan.player;
     const sectorId = state.world && state.world.currentSectorId || 'unknown';
+    const inHome = VAEL_HOME.has(sectorId);
+    const openingQuiet = isOpeningSettling(state) && !inHome;
     const openCount = v.clauses.reduce((n, c) => n + (CLAUSE_OPEN.has(c.state) ? 1 : 0), 0);
     const deskOpen = this._stains(v) < VAEL_LEDGER.stainsForWork;
 
-    if (player && state.mode === 'flight' && state.simTime >= visit.nextClauseAt) {
+    if (player && !openingQuiet && state.mode === 'flight' && state.simTime >= visit.nextClauseAt) {
       visit.nextClauseAt = state.simTime + VAEL_LEDGER.clauseGapS
         + frac('clause-gap', sectorId, v.seq) * 60;
       if (deskOpen && openCount < VAEL_LEDGER.clauseMaxOpen) {
@@ -1427,6 +1435,8 @@ export const vaelLiens = {
       } else if (!deskOpen) {
         this._log(state, LEDGER_BARKS.deskClosed);
       }
+    } else if (!openingQuiet && state.simTime >= visit.nextClauseAt) {
+      visit.nextClauseAt = state.simTime + VAEL_LEDGER.clauseGapS;
     }
 
     // A copy — the honor/fail emits below can re-enter and gc this list.
@@ -1724,12 +1734,16 @@ export const vaelLiens = {
   _tickDebtors(state, dt, scan, visit, v) {
     const player = scan.player;
     const sectorId = state.world && state.world.currentSectorId || 'unknown';
+    const inHome = VAEL_HOME.has(sectorId);
+    const openingQuiet = isOpeningSettling(state) && !inHome;
     const open = v.debtors.filter((r) => r.state === 'open');
 
-    if (player && state.mode === 'flight' && state.simTime >= visit.nextDebtorAt) {
+    if (player && !openingQuiet && state.mode === 'flight' && state.simTime >= visit.nextDebtorAt) {
       visit.nextDebtorAt = state.simTime + VAEL_LEDGER.debtorGapS
         + frac('debtor-gap', sectorId, v.seq) * 80;
       if (open.length < VAEL_LEDGER.debtorMaxLive) this._postDebtor(state);
+    } else if (!openingQuiet && state.simTime >= visit.nextDebtorAt) {
+      visit.nextDebtorAt = state.simTime + VAEL_LEDGER.debtorGapS;
     }
 
     // A copy — the skip/transfer emits below can re-enter and gc this list.

@@ -1,5 +1,7 @@
 // Stage-8 diagnostic probe: worker-lane authored-visual readiness dump.
-import { chromium } from 'playwright';
+import { chromium as rawChromium } from 'playwright';
+import { quietChromium } from './lib/quietLaunch.mjs';
+const chromium = quietChromium(rawChromium);
 
 const lane = process.argv.includes('--sim-lane')
   ? process.argv[process.argv.indexOf('--sim-lane') + 1]

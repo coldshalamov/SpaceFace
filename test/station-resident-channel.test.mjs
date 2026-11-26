@@ -10,6 +10,7 @@ import { contactHailAvailability } from '../src/data/contactHail.js';
 import { stationResidentChannel, stationResidentWork, lanternWardResidentFor,
   stationResidentLine, residentsForStation } from '../src/data/stationContactPresence.js';
 import { canonicalContactsForStation, LANTERN_WARD_CONTACT_ID } from '../src/data/stationResidents.js';
+import { slotCountForCargoCap } from '../src/data/cargoSlots.js';
 import { stationContactMemoryFor, normalizeStationContactRecord } from '../src/data/stationContacts.js';
 import { generateContacts, buildReply } from '../src/ui/station/barContacts.js';
 import { missionDockAttention } from '../src/ui/station/missionDockAttention.js';
@@ -40,7 +41,12 @@ function fixture(stationId = 'station_tethys') {
   state.world.currentSectorId = sector.id;
   state.playerId = 1; state.player.targetId = 2;
   state.player.credits = 10000;
-  state.player.cargo = { items: {}, usedVolume: 0, usedMass: 0, capVolume: 80, capMass: 120 };
+  // Tests follow 7592bb895f: the hull hold is a slot bag, so the fixture starts in the shape the
+  // cargo owner derives (slots + slotCount alongside volume/mass). A hold without them is a
+  // pre-v24 hold, and the first cargo read lazily normalizes it — which the "no mutation" check
+  // below would read as the channel touching the pilot.
+  state.player.cargo = { slots: [], slotCount: slotCountForCargoCap(80),
+    items: {}, usedVolume: 0, usedMass: 0, capVolume: 80, capMass: 120 };
   const player = { id: 1, type: 'ship', alive: true, hull: 100, team: 1,
     pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, data: {} };
   const station = { id: 2, type: 'station', alive: true, occupantGeneration: 1,

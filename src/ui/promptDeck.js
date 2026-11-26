@@ -42,6 +42,7 @@ import { arcGauge } from './orrery/instruments.js';
 import { injectOrrery } from './orrery/tokens.js';
 import { setLocalizedTextTemplate } from '../localization/domBridge.js';
 import { counted } from './numberFormat.js';
+import { promptAnswerKey, promptAnswerSlot } from '../data/inputContexts.js';
 
 
 const FULL_SLOTS = 2;          // full glass frames on the ladder before collapse to chips
@@ -119,11 +120,9 @@ export function deadlineText(deadlineAt, simTime, statusFlag) {
   return `Choose a response · ${counted(seconds, 'second', 'seconds')}`;
 }
 
+// R17: answers ride 6–9 so a card that pops mid-fight can never eat a power key (1–5).
 export function digitIndex(key) {
-  const k = String(key || '');
-  if (/^[1-9]$/.test(k)) return Number(k) - 1;
-  const m = /^(?:Digit|Numpad)([1-9])$/.exec(k);
-  return m ? Number(m[1]) - 1 : -1;
+  return promptAnswerSlot(key);
 }
 
 /** The power-rail claim payload for the current display line: which digit slots the deck owns and
@@ -211,9 +210,26 @@ export function createPromptDeck(ctx = {}) {
       deckSeat = null;
     }
   }
+  // The visor skin moves its utility row aside while a prompt card is up. <body> carries that as
+  // one attribute, written here on the deck's own changes: the body-level :has() rule that used to
+  // read it made the browser re-scan the whole document on every HUD text write.
+  let promptOpenMirror = false;
+  function syncPromptOpenMirror() {
+    const open = !destroyed && !root.hidden && !!root.querySelector('.sf-prompt');
+    if (open === promptOpenMirror) return;
+    promptOpenMirror = open;
+    const body = doc.body;
+    if (!body || typeof body.setAttribute !== 'function') return;
+    if (open) body.setAttribute('data-sf-prompt-open', '1'); else body.removeAttribute('data-sf-prompt-open');
+  }
   /** Every hidden toggle funnels here so the seat claim tracks the deck's real visibility. */
   function setDeckHidden(v) {
-    if (root.hidden !== v) root.hidden = v;
+    if (root.hidden !== v) {
+      root.hidden = v;
+      doc.body?.classList.toggle('sf-flight-decision-open', !v);
+      bus?.emit?.('hud:receiptGeometryChanged');
+    }
+    syncPromptOpenMirror();
     syncDeckSeat();
   }
 
@@ -228,6 +244,7 @@ export function createPromptDeck(ctx = {}) {
   // Power-rail claim signature ('' = released). While the deck owns Digit1-N for answers/raises,
   // the rail is told so its sockets show the answers instead of powers that will not fire.
   let claimSig = '';
+  let claimedDigits = null;
   // In-flight exits, id → { timer, nodes }: a leaving frame/chip unmounts on its own timer, and a
   // re-offer of the same id kills the pair synchronously — two cards for one id never coexist.
   const leaving = new Map();
@@ -250,8 +267,8 @@ export function createPromptDeck(ctx = {}) {
   // claim releases whenever the deck cannot capture keys (hidden, fenced, modal, docked, dead), so
   // a prompt that vanishes without resolving can never leave the rail showing dead answers.
   function syncClaim() {
-    if (!bus || typeof bus.emit !== 'function') return;
-    const active = !destroyed && entries.size && !root.hidden && !fenced() && !modalOpen() && inFlight();
+    // R17: the deck answers on 6–9 now, so it never borrows a power socket (1–5) — always release.
+    const active = false;
     let payload = null;
     let sig = '';
     if (active) {
@@ -284,8 +301,9 @@ export function createPromptDeck(ctx = {}) {
     }
     if (sig === claimSig) return;
     claimSig = sig;
-    if (payload) bus.emit('hud:slotClaim', payload);
-    else bus.emit('hud:slotRelease', { claimId: 'prompt-deck' });
+    claimedDigits = payload?.slots ?? null;
+    if (payload) bus?.emit?.('hud:slotClaim', payload);
+    else bus?.emit?.('hud:slotRelease', { claimId: 'prompt-deck' });
   }
 
   // ── DOM builders ───────────────────────────────────────────────────────────────────────────
@@ -414,7 +432,7 @@ export function createPromptDeck(ctx = {}) {
       btn.disabled = !!choice.disabled;
       if (choice.reason || choice.title) btn.title = choice.reason || choice.title || '';
       else btn.removeAttribute('title');
-      const keyNum = choice.disabled ? '' : String(base + printable + 1);
+      const keyNum = choice.disabled ? '' : promptAnswerKey(base + printable);
       btn.setAttribute('aria-label', `${choice.label}.${choice.disabled ? ' Unavailable.' : ''}${keyNum ? ` Key ${keyNum}.` : ''}`);
       setText(btn.firstElementChild, keyNum);
       setText(btn.lastElementChild, choice.label);
@@ -550,7 +568,7 @@ export function createPromptDeck(ctx = {}) {
     for (const id of chips) {
       const entry = entries.get(id);
       if (!entry.chipEl) entry.chipEl = buildChip(entry);
-      setText(entry.chipKeyEl, String(digitSlot + 1));
+      setText(entry.chipKeyEl, promptAnswerKey(digitSlot));
       setText(entry.chipLabelEl, entry.spec.headline || entry.spec.id);
       // The chip's children concatenate into a name with no separators ("5PIRATE DEMAND12s") —
       // give the button an explicit name that names the verb, the card, and the key.
@@ -661,21 +679,23 @@ export function createPromptDeck(ctx = {}) {
     // Escape has the same safe meaning as gamepad Back: only an explicitly supplied
     // cancel choice. It never guesses a destructive refusal or pauses behind a live overlay.
     if (ev.key === 'Escape') {
+      if (state.ui?.cargoPanelOpen) return;
       const cancel = entries.get(raisedId)?.spec.choices?.find(choice => choice.cancel && !choice.disabled);
       if (!cancel) return;
       ev.preventDefault?.();
       ev.stopImmediatePropagation?.();
-      choose(raisedId, cancel.id, 'keyboard');
+      if (!ev.repeat) choose(raisedId, cancel.id, 'keyboard');
       return;
     }
     const route = routeDigit(
       visibleEntries().map((e) => ({ id: e.spec.id, deadlineAt: e.spec.deadlineAt, ttlAt: e.spec.ttlAt, seq: e.seq, choices: e.spec.choices })),
-      raisedId, ev.key != null ? ev.key : ev.code, currentFullSlots,
+      raisedId, ev.code || ev.key, currentFullSlots,
     );
     if (!route) return;
     if (typeof ev.preventDefault === 'function') ev.preventDefault();
     if (typeof ev.stopImmediatePropagation === 'function') ev.stopImmediatePropagation();
     else if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
+    if (ev.repeat) return;
     if (route.type === 'choose') choose(route.id, route.choiceId, 'keyboard');
     else raise(route.id);
   }
@@ -852,6 +872,7 @@ export function createPromptDeck(ctx = {}) {
     leaving.delete(id);
     clearTimeout(rec.timer);
     for (const node of rec.nodes) node.remove();
+    syncPromptOpenMirror();
   }
 
   function remove(id) {
@@ -879,11 +900,13 @@ export function createPromptDeck(ctx = {}) {
         for (const node of nodes) node.remove();
         // The last node out turns the root off; leaving nodes own the root's visibility tail.
         if (root.isConnected && !root.childElementCount) setDeckHidden(true);
+        syncPromptOpenMirror();
       }, 170);
       leaving.set(id, { timer, nodes });
     } else {
       if (frame) frame.remove();
       if (chip) chip.remove();
+      syncPromptOpenMirror();
     }
     if (raisedId === id) raisedId = null;
     layout();
@@ -914,9 +937,12 @@ export function createPromptDeck(ctx = {}) {
     syncClaim(); // release the rail claim — layout() no-ops once destroyed, so it cannot reach it
     doc.removeEventListener('keydown', onKeyDown, true);
     doc.defaultView?.removeEventListener?.('resize', onViewportResize);
+    for (const off of lifecycleOffs) { try { off(); } catch (_) { /* gone */ } }
+    lifecycleOffs.length = 0;
     clearAll();
     root.remove();
     live.remove();
+    syncPromptOpenMirror();
     if (_deck === api) setPromptDeck(null);
   }
 
@@ -926,12 +952,13 @@ export function createPromptDeck(ctx = {}) {
   // ONE lifecycle owner for the whole family. The old cards each subscribed to their own subset
   // of these and drifted; on any of these transitions every flight decision is void — producers
   // re-assert or resolve through their own events.
+  const lifecycleOffs = [];
   if (bus && typeof bus.on === 'function') {
     const voidAll = () => clearAll();
-    bus.on('sector:exit', voidAll);
-    bus.on('game:new', voidAll);
-    bus.on('game:load', voidAll);
-    bus.on('dock:docked', voidAll);
+    lifecycleOffs.push(bus.on('sector:exit', voidAll));
+    lifecycleOffs.push(bus.on('game:new', voidAll));
+    lifecycleOffs.push(bus.on('game:load', voidAll));
+    lifecycleOffs.push(bus.on('dock:docked', voidAll));
   }
 
   const api = {
@@ -940,6 +967,7 @@ export function createPromptDeck(ctx = {}) {
     choose, raise, tick, gamepadCapture, gamepadNav,
     get size() { return entries.size; },
     get raisedId() { return raisedId; },
+    get claimedDigits() { return claimedDigits; },
     destroy,
   };
   setPromptDeck(api);

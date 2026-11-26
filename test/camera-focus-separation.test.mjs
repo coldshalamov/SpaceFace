@@ -1457,7 +1457,7 @@ test('Flyby Focus only acquires valid high-speed hostile near-miss and owns time
   assert.equal(state.player.flybyFocus.targetId, hostile.id);
   assert.equal(state.player.targetId, rock.id,
     'Focus preserves the explicit persistent gun/UI selection');
-  assert.equal(state.timeScale, 0.5, 'Focus owns 50% time scale through timeEffects authority');
+  assert.equal(state.timeScale, 1, 'HARMONY-FIX 4: Focus never slows time');
   const latch = tetherGameplay._acquireTarget.call(
     { _targetScratch: [], helpers: {} },
     player,

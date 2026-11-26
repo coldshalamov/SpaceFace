@@ -124,8 +124,13 @@ test('PQ-017 browser and Electron wrappers share one fail-closed public player r
   )?.[0] || '';
   assert.match(
     autopilotPress,
-    /bringToFront\(\)[\s\S]*mouse\.move\([\s\S]*mouse\.down\(\{ button: 'middle' \}\)/,
-    'every physical MMB attempt must focus the flight route and use the unobstructed reticle',
+    /mouse\.move\([\s\S]*mouse\.down\(\{ button: 'middle' \}\)/,
+    'every physical MMB attempt must use the unobstructed reticle',
+  );
+  assert.doesNotMatch(
+    autopilotPress,
+    /bringToFront/,
+    'probe pages must not steal OS focus — quiet launch keeps test windows unfocused (19dbdc018b)',
   );
   assert.match(
     autopilotPress,

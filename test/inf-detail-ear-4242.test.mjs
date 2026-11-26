@@ -50,14 +50,14 @@ test('payoff stingers name themselves, and two deeds in one tick each speak once
   assert.equal(payoffCaption('tech:researched', { nodeId: 'node_a' }), 'Research complete.');
   assert.equal(payoffCaption('ship:purchased', {}), 'Ship purchased.');
   assert.equal(payoffCaption('ship:purchased', { name: 'Hitch' }), 'Ship purchased: Hitch.');
-  assert.equal(payoffCaption('achievement:unlocked', { name: 'First Blood' }), 'Achievement: First Blood.');
+  assert.equal(payoffCaption('achievement:unlocked', { name: 'First Blood' }), 'On your record: First Blood.', 'Adventure words demo pass');
   assert.equal(payoffCaption('career:ladder:completed', {}), 'Rank attained.');
   const { ear, bus, captions } = earWith(quietState);
   try {
     bus.emit('achievement:unlocked', { name: 'First Blood' });
     bus.emit('career:ladder:completed', { ladderId: 'hauler' });
     bus.flush();
-    assert.deepEqual(captions.map((c) => c.text), ['Achievement: First Blood.', 'Rank attained.']);
+    assert.deepEqual(captions.map((c) => c.text), ['On your record: First Blood.', 'Rank attained.'], 'Adventure words demo pass');
   } finally {
     ear.destroy();
   }
@@ -150,15 +150,15 @@ test('field lifecycle captions name deploy, warning, and collapse once each', ()
     assert.equal(fieldLifeCaption('massSeed:warning').assertive, true);
     assert.deepEqual(captions.map((c) => c.text), [
       'Mass seed deployed.',
-      'Seed unstable.',
-      'Seed collapses.',
+      'Pin slipping.',
+      'Pin broke.',
     ]);
     assert.equal(captions[1].assertive, true);
-    assert.equal(missionMomentCaption('mission:accepted'), 'Mission accepted.');
+    assert.equal(missionMomentCaption('mission:accepted'), 'The job is yours.', 'Adventure words demo pass');
     bus.emit('mission:accepted', {});
     bus.emit('mission:completed', {});
     bus.flush();
-    assert.deepEqual(captions.slice(3).map((c) => c.text), ['Mission accepted.', 'Mission complete.']);
+    assert.deepEqual(captions.slice(3).map((c) => c.text), ['The job is yours.', 'Mission complete.'], 'Adventure words demo pass');
   } finally {
     ear.destroy();
   }

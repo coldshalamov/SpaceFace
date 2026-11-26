@@ -15,6 +15,7 @@ import {
   SWARM_RULESET,
   swarmBossFor,
   swarmConcurrent,
+  swarmCourseQuota,
   swarmQuota,
   swarmRosterFor,
 } from '../src/data/swarmMode.js';
@@ -114,7 +115,8 @@ test('the stream keeps feeding light bodies on a boss wave — fodder share bend
 
 test('the swarm is reduced, not inflated — quota and concurrency shrink, hull untouched', () => {
   const plan = swarmPlan(5);
-  assert.equal(plan.swarm.killTarget, swarmQuota(5));
+  assert.equal(plan.swarm.killTarget, swarmCourseQuota(5),
+    'wave 5 owes its approved round budget — approved round budgets in swarmCourseCast.js (director 2026-11-20)');
   assert.equal(plan.swarm.concurrent, swarmConcurrent(5));
   assert.ok(plan.swarm.concurrent <= 18, 'a boss room holds fewer bodies so the capital is legible');
   assert.ok(plan.swarm.killTarget > 0, 'the swarm is reduced, not removed — chaff still flows');

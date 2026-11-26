@@ -34,6 +34,10 @@ export const REFLEX_KIND = Object.freeze({
 // Trigger table. `windowTicks` is the active duration once fired; `cooldownTicks` the refractory.
 // All ranges are evaluated against the member's own sensor frame — a reflex can never see
 // farther than the ship's own sensors do.
+// Row 491 / CW-AI: BODY_DODGE is not one shared reflex. design/overhaul/03_COMBAT.md §9 puts it
+// behind a tier table: fodder is ammunition, light hulls get one dodge per 4 s, medium hulls dodge
+// after a visible 0.3 s wind-up, and heavy/capital hulls are terrain. The per-tier cooldown and
+// wind-up live in the body-dodge helpers below; the trigger row keeps the medium defaults.
 const TRIGGERS = Object.freeze({
   [REFLEX_KIND.BODY_DODGE]: Object.freeze({ windowTicks: 30, cooldownTicks: 90, priority: 0 }),
   [REFLEX_KIND.VOLLEY_JINK]: Object.freeze({ windowTicks: 34, cooldownTicks: 120, priority: 1 }),
@@ -69,7 +73,18 @@ const BODY_MAX_ETA = 1.1;
 const BODY_WATCH_CAP = 4;
 const BODY_MISS_PAD = 14;
 const BODY_REAR_ARC = (100 * Math.PI) / 180;
-const BODY_MASS_AMP = Object.freeze({ light: 1, medium: 0.7, heavy: 0.35, capital: 0 });
+// design/overhaul/03_COMBAT.md §9 — the thrown-body tier table.
+//   fodder: never (the ammunition the throw exists for)
+//   light:  one dodge per 4 s, with the pilot's reaction beat as the tell
+//   medium: yes, after a visible 0.3 s wind-up
+//   heavy / capital: never (terrain)
+export const BODY_DODGE_TIER = Object.freeze({
+  FODDER: 'fodder', LIGHT: 'light', MEDIUM: 'medium', HEAVY: 'heavy', CAPITAL: 'capital',
+});
+const BODY_TIER_AMP = Object.freeze({ fodder: 0, light: 1, medium: 0.7, heavy: 0, capital: 0 });
+const BODY_LIGHT_COOLDOWN_TICKS = 240; // one dodge per 4 s
+const BODY_MEDIUM_COOLDOWN_TICKS = 90;
+export const BODY_WINDUP_TICKS = 18;    // 0.3 s — the medium hull's visible pre-dodge beat
 
 /**
  * Create a reflex evaluator. One engine per planner; per-entity state is kept in the caller's
@@ -245,9 +260,9 @@ export function evaluateReflexes(seed, ctx) {
 function pickBurst(seed, ctx, obs) {
   const { entityId, tick, self, contacts, target, intent, temperament, reflexState: rs } = ctx;
   const cooling = (kind) => rs.cooldowns != null && (rs.cooldowns.get(kind) || 0) > tick;
-  const setCooldown = (kind) => {
+  const setCooldown = (kind, ticks = TRIGGERS[kind].cooldownTicks) => {
     if (!rs.cooldowns) rs.cooldowns = new Map();
-    rs.cooldowns.set(kind, tick + TRIGGERS[kind].cooldownTicks);
+    rs.cooldowns.set(kind, tick + ticks);
   };
   // Row 491 consolidation: the lateral bursts share one refractory slot (see
   // DEFENSIVE_BURST_COOLDOWN_TICKS above) so chained causes cannot chain bursts.
@@ -266,10 +281,12 @@ function pickBurst(seed, ctx, obs) {
   const side = () => (hashUnit(seed, entityId, 'reflex_side', Math.floor(tick / 24)) < 0.5 ? -1 : 1);
 
   // 0) Body dodge: a thrown wreck/rock/pod/tumbling hull closing on a near-miss course.
-  //    The one rare, telegraphed dodge — it survives every cycle beat (hull integrity
-  //    outranks readability; the thrown body announces itself physically).
+  //    The tier table owns the answer (design/overhaul/03_COMBAT.md §9): fodder is ammunition,
+  //    light hulls get one dodge per 4 s, medium hulls dodge after a visible wind-up, and
+  //    heavy/capital hulls are terrain. It survives every doctrine beat — hull integrity
+  //    outranks readability; the thrown body announces itself physically.
   if (!cooling(REFLEX_KIND.BODY_DODGE) && obs.body && obs.body.ready) {
-    setCooldown(REFLEX_KIND.BODY_DODGE);
+    setCooldown(REFLEX_KIND.BODY_DODGE, obs.body.cooldownTicks);
     return {
       kind: REFLEX_KIND.BODY_DODGE,
       startTick: tick,
@@ -453,14 +470,16 @@ function bodyOccluded(self, body, contacts) {
  * only: each qualifying body keeps its own reaction clock, bodies that stop qualifying lose it.
  */
 function nearestIncomingBody(seed, entityId, tick, self, contacts, temperament, rs) {
-  const band = self.operationalMassBand;
-  const bandAmp = Object.prototype.hasOwnProperty.call(BODY_MASS_AMP, band) ? BODY_MASS_AMP[band] : 1;
-  // A detonator run, and fodder (self.bodyDodge false — Wasps and Zealots in Swarm), never dodges a thrown
-  // body: they are the ammunition the throw exists for (design/overhaul/03_COMBAT.md §9).
-  const stoic = self.combatDoctrineId === 'detonator_run' || self.bodyDodge === false;
+  const tier = bodyDodgeTierFor(self);
+  const tierAmp = BODY_TIER_AMP[tier] ?? 0;
+  // A detonator run, and fodder (the ammunition the throw exists for), never dodges a thrown
+  // body (design/overhaul/03_COMBAT.md §9). Heavy hulls and capitals are terrain: they take it.
+  const stoic = self.combatDoctrineId === 'detonator_run' || self.bodyDodge === false
+    || tier === BODY_DODGE_TIER.FODDER || tier === BODY_DODGE_TIER.HEAVY
+    || tier === BODY_DODGE_TIER.CAPITAL;
   let best = null;
   let qualifying = null;
-  if (bandAmp > 0 && !stoic && self.pos) {
+  if (tierAmp > 0 && !stoic && self.pos) {
     const selfR = planarBodyRadius(self, 16);
     const svx = self.vel ? self.vel.x : 0, svz = self.vel ? self.vel.z : 0;
     const noticeBase = clamp(0.18 + 0.32 * temperament.dash + 0.18 * (1 - temperament.aim), 0.08, 0.7);
@@ -515,7 +534,10 @@ function nearestIncomingBody(seed, entityId, tick, self, contacts, temperament, 
   rs.bodyWatch = watch;
   const bodyId = best.c.id;
   const since = watch.has(bodyId) ? watch.get(bodyId) : tick;
-  const reactionTicks = 8 + Math.round((1 - temperament.dash) * 18) + (best.rear ? 12 : 0);
+  // Medium hulls hold a visible 0.3 s wind-up on top of the pilot's reaction beat; a light hull
+  // commits as soon as it has seen the body long enough to answer it.
+  const windupTicks = tier === BODY_DODGE_TIER.MEDIUM ? BODY_WINDUP_TICKS : 0;
+  const reactionTicks = 8 + Math.round((1 - temperament.dash) * 18) + (best.rear ? 12 : 0) + windupTicks;
   const speed = Math.sqrt(best.vx * best.vx + best.vz * best.vz);
   const px = -best.vz / speed, pz = best.vx / speed;
   const across = best.dx * px + best.dz * pz;
@@ -524,12 +546,26 @@ function nearestIncomingBody(seed, entityId, tick, self, contacts, temperament, 
     : (hashUnit(seed, entityId, bodyId, 'body_dodge_side') < 0.5 ? -1 : 1);
   return {
     bodyId,
+    tier,
     eta: best.eta,
     ready: watch.has(bodyId) && tick - since >= reactionTicks,
     dodge: { x: px * sign, z: pz * sign },
-    amp: (45 + 45 * temperament.dash) * bandAmp,
-    boost: band === 'light',
+    amp: (45 + 45 * temperament.dash) * tierAmp,
+    boost: tier === BODY_DODGE_TIER.LIGHT,
+    cooldownTicks: tier === BODY_DODGE_TIER.LIGHT ? BODY_LIGHT_COOLDOWN_TICKS : BODY_MEDIUM_COOLDOWN_TICKS,
   };
+}
+
+/** The tier table for one hull: the sensor's concrete tier, else its operational mass band. */
+function bodyDodgeTierFor(self) {
+  const tier = self && self.bodyDodgeTier;
+  if (tier === BODY_DODGE_TIER.FODDER || tier === BODY_DODGE_TIER.LIGHT
+    || tier === BODY_DODGE_TIER.MEDIUM || tier === BODY_DODGE_TIER.HEAVY
+    || tier === BODY_DODGE_TIER.CAPITAL) return tier;
+  const band = self && self.operationalMassBand;
+  if (band === BODY_DODGE_TIER.LIGHT || band === BODY_DODGE_TIER.MEDIUM
+    || band === BODY_DODGE_TIER.HEAVY || band === BODY_DODGE_TIER.CAPITAL) return band;
+  return BODY_DODGE_TIER.MEDIUM;
 }
 
 function wrapPi(a) {

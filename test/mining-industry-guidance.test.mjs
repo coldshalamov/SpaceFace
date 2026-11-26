@@ -41,10 +41,10 @@ test('blocked production never displays the theoretical extractor yield as live 
   const model = machineLensModel({ defId: 'sm_extractor', powerRatio: 1,
     capability: { outputsPerMin: { cmdty_ore_iron: 8 }, powerDraw: 6 },
     status: { state: 'backlogged', ratePerMin: {} } });
-  assert.equal(model.numerals, '0u/min');
+  assert.equal(model.numerals, '0 units per minute');
   const running = machineLensModel({ defId: 'sm_refinery',
     status: { state: 'running', ratePerMin: { cmdty_refined_metals: 0.7 } } });
-  assert.match(running.numerals, /0.7u\/min/);
+  assert.match(running.numerals, /0\.7 units per minute/);
 });
 
 test('gas and veins explain preservation before the player destroys a face', () => {

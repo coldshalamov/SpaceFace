@@ -1,8 +1,10 @@
 // Renderer-only adapter: no simulation writes, private animation loop, or Three.js dependency.
 // A transparent overlay canvas and the host camera's XZ->pixel projection are the only ports.
 import {requireCapitalBossEncounter} from '../data/encounters/capital-boss.js';
+import {IRON_MAW} from '../data/encounters/capital-boss/iron-maw.js';
 import {LAST_ARGUMENT} from '../data/lastArgument.js';
 import {capitalPlatePull,capitalPlateUnderLine} from '../combat/capitalPlates.js';
+import {ironMawRecoveryInstruction,readIronMawMouth} from '../combat/capitalBossGeometry.js';
 const TAU=Math.PI*2;
 /** Closed outlines, error <= 0.5 WU for authored dimensions. Lane ends remain rounded. */
 export function capitalShapeOutlines(shape) {
@@ -21,20 +23,21 @@ export function capitalShapeOutlines(shape) {
   .concat(circleArc(shape.x,shape.z,shape.inner,lo+span,-span))];
 }
 function path(ctx,outlines,project){ctx.beginPath();for(const points of outlines){points.forEach((p,i)=>{const q=project(p);if(i===0)ctx.moveTo(q.x,q.y);else ctx.lineTo(q.x,q.y);});ctx.closePath();}}
+// One short telegraph per attack: the lit lane or cone appears on the floor this many ticks
+// (0.6 s at 60 Hz) before the hit, brightens to the hit, then goes. The boss's own tell (its turn,
+// its bark) carries the earlier warning; the floor does not sit painted through the whole wind-up.
+export const CAPITAL_WARNING_LEAD_TICKS=36;
 export function drawCapitalWarning(ctx,warning,clock,project,{reducedMotion=false}={}) {
- if(clock<warning.startedAt||clock>=warning.endAt)return;
- const active=clock>=warning.fireAt,locked=warning.locked===true;
- const phase=(clock-warning.startedAt)/Math.max(1,warning.fireAt-warning.startedAt);
- const colour=active?'#ff755e':locked?'#edba72':'#bcc6cf';
+ const shownAt=Math.max(warning.startedAt,warning.fireAt-CAPITAL_WARNING_LEAD_TICKS);
+ if(clock<shownAt||clock>=warning.endAt)return;
+ const active=clock>=warning.fireAt;
+ const phase=Math.min(1,(clock-shownAt)/Math.max(1,warning.fireAt-shownAt));
+ const colour=active?'#ff755e':'#edba72';
  for(const shape of warning.shapes){
   const outlines=capitalShapeOutlines(shape);ctx.save();path(ctx,outlines,project);
-  ctx.fillStyle=colour;ctx.globalAlpha=active?.19:.035+.035*Math.min(1,phase);ctx.fill('evenodd');
-  ctx.globalAlpha=active?1:.55+.4*phase;ctx.strokeStyle=colour;ctx.lineWidth=active?2.5:1.5;
-  ctx.setLineDash(locked?[]:[5,5]);ctx.stroke();ctx.setLineDash([]);
-  path(ctx,outlines,project);ctx.clip('evenodd');ctx.globalAlpha=active?.32:.10;
-  const offset=reducedMotion?0:(clock*.35)%24;ctx.lineWidth=1;
-  // Bounded by canvas pixels, not world population. Never shade the inner refuge.
-  for(let x=-ctx.canvas.height;x<ctx.canvas.width+ctx.canvas.height;x+=24){ctx.beginPath();ctx.moveTo(x+offset,0);ctx.lineTo(x+ctx.canvas.height+offset,ctx.canvas.height);ctx.stroke();}
+  ctx.fillStyle=colour;ctx.globalAlpha=active?.22:.06+.1*phase;ctx.fill('evenodd');
+  ctx.globalAlpha=active?.95:.5+.4*phase;ctx.strokeStyle=colour;ctx.lineWidth=active?2.5:1.5;
+  ctx.stroke();
   ctx.restore();
  }
 }
@@ -48,7 +51,7 @@ const byFightId=(a,b)=>a.fightId<b.fightId?-1:a.fightId>b.fightId?1:0;
  * (length trimmed to the live count), and a frame with no live fight allocates nothing.
  * Callers that pass nothing get a fresh array, as before.
  */
-export function capitalBossReadouts(state,out) {
+export function capitalBossReadouts(state,out,mouth=readIronMawMouth(state)) {
  const list=Array.isArray(out)?out:[];
  let n=0;
  const fights=state&&state.capitalBossEncounters&&state.capitalBossEncounters.fights;
@@ -152,17 +155,23 @@ export function capitalBossReadouts(state,out) {
    readout.partsAttached=cellN;
    readout.partsLive=!!(plateSpecN>0&&plateMatchN===plateSpecN&&r.encounterId!==LAST_ARGUMENT.scoreId);
    const cast=r.cast;
-   if(cast&&score&&Array.isArray(score.beats)){
+   const recovery=mouth?.fight===r?r.recovery:null;
+   const activeBeat=recovery||cast;
+   if(activeBeat&&score&&Array.isArray(score.beats)){
     let beat=null;
-    for(let i=0;i<score.beats.length;i+=1){const b=score.beats[i];if(b&&b.id===cast.beatId){beat=b;break;}}
+    for(let i=0;i<score.beats.length;i+=1){const b=score.beats[i];if(b&&b.id===activeBeat.beatId){beat=b;break;}}
     if(beat){
-     const fireAt=cast.startedAt+beat.tellTicks;
-     const endAt=cast.startedAt+beat.tellTicks+beat.activeTicks;
-     if(cast.startedAt<=r.clock&&r.clock<endAt){
+     const startedAt=activeBeat.startedAt;
+     const fireAt=recovery?startedAt:startedAt+beat.tellTicks;
+     const endAt=recovery?startedAt+beat.expose.durationTicks:fireAt+beat.activeTicks;
+     if(startedAt<=r.clock&&r.clock<endAt){
       const move=readout._move||(readout._move={castId:null,beatId:null,title:'',counter:'',
-       startedAt:0,fireAt:0,endAt:0,locked:false});
-      move.castId=cast.id;move.beatId=beat.id;move.title=beat.title;move.counter=beat.counter;
-      move.startedAt=cast.startedAt;move.fireAt=fireAt;move.endAt=endAt;move.locked=cast.locked===true;
+       startedAt:0,fireAt:0,endAt:0,locked:false,mouth:false});
+      move.castId=recovery?startedAt:cast.id;move.beatId=beat.id;
+      move.title=recovery?IRON_MAW.swarmMouth.recoveryTitle:beat.title;
+      move.counter=recovery?(recovery.mawCounter??ironMawRecoveryInstruction(state)):beat.counter;
+      move.startedAt=startedAt;move.fireAt=fireAt;move.endAt=endAt;
+      move.locked=!!recovery||cast.locked===true;move.mouth=!!recovery;
       readout.move=move;
      }
     }
@@ -180,6 +189,7 @@ export function createCapitalBossOverlay({canvas,bus,worldToScreen,clockForFight
  // cost, so once the canvas is known-blank an empty draw() is a no-op. A canvas resize clears to
  // blank anyway, so the flag stays honest.
  let blank=false;
+ let mouth=null;
  // GOLD-COLOSSI: attached-plate anchors and the PLATE/HOLD read ride the same canvas in
  // warning style — fed per frame from capitalBossReadouts, never allocating here.
  const anchors=[];
@@ -209,6 +219,8 @@ export function createCapitalBossOverlay({canvas,bus,worldToScreen,clockForFight
   ctx.stroke();
  };
  return {
+  hasActiveCues(){return warnings.size>0||anchors.length>0||mouth!=null;},
+  mouthAperture(aperture){mouth=aperture;},
   plateAnchors(list){
    anchors.length=0;
    if(Array.isArray(list))for(let i=0;i<list.length;i++)anchors.push(list[i]);
@@ -216,9 +228,29 @@ export function createCapitalBossOverlay({canvas,bus,worldToScreen,clockForFight
    anchors.hold=list&&list.hold||null;
   },
   draw(){
-  if(warnings.size===0&&anchors.length===0){if(!blank){ctx.clearRect(0,0,canvas.width,canvas.height);blank=true;}return;}
+  if(warnings.size===0&&anchors.length===0&&!mouth){if(!blank){ctx.clearRect(0,0,canvas.width,canvas.height);blank=true;}return;}
   ctx.clearRect(0,0,canvas.width,canvas.height);blank=false;
   for(const c of warnings.values())drawCapitalWarning(ctx,c,clockForFight(c.fightId),worldToScreen,{reducedMotion});
+  if(mouth) {
+   // Twin open intake caliper brackets instead of a closed circle around the boss mouth
+   // (no rings around things, owner 2026-11-23). Keeps the exact spatial throw target.
+   _platePt.x=mouth.x;_platePt.z=mouth.z;
+   const c=worldToScreen(_platePt);
+   _platePt.x=mouth.x+mouth.radius;_platePt.z=mouth.z;
+   const edge=worldToScreen(_platePt);
+   if(c&&edge) {
+    const rPx=Math.max(10,Math.hypot(edge.x-c.x,edge.y-c.y));
+    const arm=Math.max(6,rPx*0.42);
+    ctx.save();
+    ctx.strokeStyle='#9df1dd';ctx.lineWidth=2.2;
+    ctx.beginPath();
+    ctx.moveTo(c.x-rPx+arm,c.y-rPx*0.72);ctx.lineTo(c.x-rPx,c.y-rPx*0.72);ctx.lineTo(c.x-rPx,c.y+rPx*0.72);ctx.lineTo(c.x-rPx+arm,c.y+rPx*0.72);
+    ctx.moveTo(c.x+rPx-arm,c.y-rPx*0.72);ctx.lineTo(c.x+rPx,c.y-rPx*0.72);ctx.lineTo(c.x+rPx,c.y+rPx*0.72);ctx.lineTo(c.x+rPx-arm,c.y+rPx*0.72);
+    ctx.moveTo(c.x-5,c.y);ctx.lineTo(c.x+5,c.y);ctx.moveTo(c.x,c.y-5);ctx.lineTo(c.x,c.y+5);
+    ctx.stroke();
+    ctx.restore();
+   }
+  }
   for(let i=0;i<anchors.length;i++)drawPlateAnchor(anchors[i]);
   const hold=anchors.hold;
   if(hold){
@@ -235,7 +267,7 @@ export function createCapitalBossOverlay({canvas,bus,worldToScreen,clockForFight
    }
   }
  },
-  restore(fights){anchors.length=0;anchors.hold=null;warnings.clear();for(const r of Object.values(fights||{}))if(r.cast&&!r.suspended&&!r.terminal){
+  restore(fights){anchors.length=0;anchors.hold=null;mouth=null;warnings.clear();for(const r of Object.values(fights||{}))if(r.cast&&!r.suspended&&!r.terminal){
    const spec=requireCapitalBossEncounter(r.encounterId);
    const b=spec&&spec.score&&spec.score.beats&&spec.score.beats.find(b=>b.id===r.cast.beatId);
    if(!b) continue;

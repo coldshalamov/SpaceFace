@@ -84,7 +84,7 @@ export function createPipSpannerCrew({ host, doc = host?.ownerDocument } = {}) {
       selection = offer.id; root.dataset.state = offer.purchased ? 'installed' : 'inspect';
       status.textContent = offer.purchased ? `${offer.name || offer.defId} is already fitted.`
         : `Pip: ${offer.name || offer.defId}. ${offer.kind === 'service' ? 'Service for the current run'
-          : Number.isInteger(offer.slotIndex) ? `Mount ${offer.slotIndex + 1}` : 'Hull cradle'}. Spanner awaits confirmation.`;
+          : Number.isInteger(offer.slotIndex) ? `Mount ${offer.slotIndex + 1}` : 'Hull cradle'}. Spanner is standing by — confirm and it's fitted.`;
     },
     pending(offer) {
       root.dataset.state = 'pending';

@@ -150,7 +150,7 @@ export function createRacingSetPieces({ state, bus, helpers }) {
       anchors.push(entity);
       run.cues.push({ id: row.id, kind: 'anchor', name: row.name, label: row.name,
         gateIndex: row.gateIndex, phase: 'ready', pos, entityIds: [entity.id],
-        hint: 'Optional Massline apex anchor. The gate corridor stays clear.' });
+        hint: 'Optional apex anchor for the Line. The gate corridor stays clear.' });
     }
     for (const [kind, def] of [['crossing', defs.crossing], ['wave', defs.wave], ['shutter', defs.shutter]]) {
       // A def without a finite clock can never fire or re-open, a wave without

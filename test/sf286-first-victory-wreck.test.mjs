@@ -179,6 +179,8 @@ test('SF-286 refusal: ignoring the wreck leaves it, persistent and playable', ()
   const ctx = bootFirstFight();
   const { sim, state } = ctx;
   const hauler = killHostileHauler(ctx);
+  // Kill decoration mints on the deferred spawn lane — drain it where the step sweep would.
+  sim.helpers.drainEntitySpawnJobs();
   const wreck = state.entityList.find((e) => e && e.alive !== false && e.type === 'wreck' && e.data && e.data.markerId);
   assert.ok(wreck, 'the wreck exists whether or not the player cares');
   const marker = sim.registry.get('aftermathWrecks')._markerById(wreck.data.markerId);

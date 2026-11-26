@@ -3,7 +3,7 @@ import { CONTACT_COUNTER_DEFS, normalizeStationContactCounters } from './station
 
 const memory = (name, empty, remembered, strained = null) => Object.freeze({ name, empty, remembered, strained });
 export const CONTACT_DEED_LINES = Object.freeze({
-  'yune.trust': memory('CLERK YUNE', 'No clean freight beside your name yet.', 'Your freight cleared Helios. I kept the seal.',
+  'yune.trust': memory('CLERK YUNE', 'No clean freight beside your name yet.', 'Your freight cleared a seal I keep. The copy is mine.',
     'A spoiled seal still re-opens, courier. The fee doubles.'),
   'coldburn.grudge': memory('COLDBURN REY', 'A clean race. Let us keep it that way.', 'I remember that hold. This time I take the outside.',
     'You chose the inside lane on me once. I keep the receipt.'),

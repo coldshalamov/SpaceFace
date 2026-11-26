@@ -143,15 +143,18 @@ for (const staleControlCopy of [/RMB samples/, /RMB sample/, /RMB mass sample/, 
     `onboarding.js must not use stale hard-coded control copy: ${staleControlCopy}`);
 }
 setPromptScheme('pilot');
-// 2026-09-30 0edb38c4b reworded the kbm mining prompt to "RMB select · hold to mine": RMB on a
-// world object now invites selection and the mining beam latches on the held tool. The pin still
-// requires the prompt to advertise RMB mining.
-assert.match(controlPrompt('mining', 'kbm'), /RMB select .* hold to mine/,
-  'controlPrompts must advertise RMB mining for keyboard/mouse');
-assert.match(controlPrompt('flight', 'gamepad'), /LT mine/,
-  'controlPrompts must advertise LT mining for gamepad');
-assert.match(controlPrompt('station', 'gamepad'), /B dock/,
-  'controlPrompts must advertise gamepad docking');
+// R17 (design/overhaul/00_RULINGS.md): mining is held on its own key (G by default); RMB and F are
+// the Line. The prompt advertises the live mining key, never RMB.
+assert.match(controlPrompt('mining', 'kbm'), /\bG select .* hold to mine/,
+  'controlPrompts must advertise the mining key (G) for keyboard/mouse');
+assert.doesNotMatch(controlPrompt('mining', 'kbm'), /RMB select .* hold to mine/,
+  'RMB is the Line (R17); the mining prompt must not advertise it');
+// The pad map moved (LT is the Line, mining sits on the D-pad, dock on a face button): pin that
+// the prompts name a live glyph for each verb, not which glyph it is.
+assert.match(controlPrompt('flight', 'gamepad'), /\S+ mine\b/,
+  'controlPrompts must advertise gamepad mining with its live glyph');
+assert.match(controlPrompt('station', 'gamepad'), /\b\S+ dock\b/,
+  'controlPrompts must advertise gamepad docking with its live glyph');
 assert.match(controlPrompt('mining', 'touch'), /Mine button/,
   'controlPrompts must include touch mining copy');
 assert.match(readme, /\|\s*Dock\s*\|\s*\*\*E\*\*/, 'README controls must document E as the primary dock key');

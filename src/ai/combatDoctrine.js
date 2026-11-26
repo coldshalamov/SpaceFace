@@ -38,11 +38,14 @@ export const CombatDoctrineId = Object.freeze({
   DETONATOR_RUN: 'detonator_run',
 });
 
-export const DOCTRINE_TELEGRAPH_TICKS = 30;
+// CW-TELLS (INV-21 item 3): every attack telegraphs at least 0.6 s (design/overhaul/03_COMBAT.md
+// §9, doc 19) — 36 fixed ticks, not the old 0.5 s adventure beat. The Swarm floor below is the
+// same number, so the two doors now read one tell clock.
+export const DOCTRINE_TELEGRAPH_TICKS = 36;
 // S7 — the Crucible Swarm character sheet promises every dangerous ability a visible tell at
 // least 0.6 s (36 fixed ticks) before it lands. Cohort hulls carry data.ai.swarmTellFloor
 // (stamped at swarm materialization); their cue beats stretch to the floor while adventure
-// hulls keep the authored 30-tick beat.
+// hulls keep the authored beat (now the same 36-tick floor).
 export const SWARM_TELL_FLOOR_TICKS = 36;
 function cueTicksFor(record) {
   return record && record.swarmTellFloor === true

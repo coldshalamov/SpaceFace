@@ -219,10 +219,16 @@ export function readVisibleRaceCue() {
     return true;
   };
   if (!visible(root)) return null;
-  const finite = (value) => Number.isFinite(Number(value)) ? Number(value) : null;
+  const finite = (value) => value != null && value !== '' && Number.isFinite(Number(value)) ? Number(value) : null;
   const attr = (node, key) => node?.getAttribute?.(key);
+  const stats = root.querySelector?.('.race-tape-stats');
+  const statsText = visible(stats) ? String(stats.textContent || '') : '';
+  const speed = /\b(\d+)\s*u\/s\b/i.exec(statsText);
+  const gateNumber = /\bGATE\s+(\d+)\//i.exec(statsText);
+  const holding = /HOLD THE GRID/i.test(statsText);
   let bearingDeg = null;
   let distanceWU = null;
+  let reenter = false;
   const map = root.querySelector?.('.race-tape-map svg') || doc.querySelector?.('#race-tape .race-map');
   if (visible(map)) {
     const target = map.querySelector?.('circle');
@@ -236,8 +242,23 @@ export function readVisibleRaceCue() {
     const shipY = finite(translate?.[2]);
     const rotationDeg = finite(rotate?.[1]);
     if (targetX !== null && targetY !== null && shipX !== null && shipY !== null && rotationDeg !== null) {
-      const dx = targetX - shipX;
-      const dy = targetY - shipY;
+      let dx = targetX - shipX;
+      let dy = targetY - shipY;
+      const route = attr(map.querySelector?.('polyline'), 'points')?.trim().split(/\s+/) || [];
+      const index = gateNumber ? Number(gateNumber[1]) - 1 : -1;
+      if (index >= 0 && route[index]) {
+        const from = route[index === 0 ? 1 : index - 1]?.split(',').map(Number);
+        const approachX = (targetX - from?.[0]) * (index === 0 ? -1 : 1);
+        const approachY = (targetY - from?.[1]) * (index === 0 ? -1 : 1);
+        const length = Math.hypot(approachX, approachY);
+        if (length > 1 && (dx * approachX + dy * approachY) / length < -0.25) {
+          // A center approached from the far side cannot clear a directional gate. Fly
+          // back to the incoming leg of the visible course before trying the plane again.
+          reenter = true;
+          dx -= approachX * 0.2;
+          dy -= approachY * 0.2;
+        }
+      }
       if (Math.hypot(dx, dy) > 0.5) {
         // The map ship path points up before its authored +90deg SVG rotation. Subtracting
         // that quarter turn recovers the same +X/+Z nose frame used by the painted course.
@@ -260,9 +281,9 @@ export function readVisibleRaceCue() {
     : directionMatch ? directionMatch[1].toLowerCase() : null;
   const distanceMatch = /(\d[\d,]*(?:\.\d+)?)\s*(?:wu|u)\b/i.exec(hintText);
   if (distanceMatch) distanceWU = Number(distanceMatch[1].replace(/,/g, ''));
-  if (!direction) return null;
+  if (!direction && !holding) return null;
   if (bearingDeg === null) bearingDeg = direction === 'right' ? 30 : direction === 'left' ? -30 : 0;
-  return { direction, bearingDeg, distanceWU, hintText };
+  return { direction, bearingDeg, distanceWU, hintText, holding, reenter, speedWU: speed ? Number(speed[1]) : null };
 }
 
 async function holdPublicKeys(page, codes, seconds, until = null) {
@@ -683,6 +704,17 @@ async function searchFightBeat(page, tg, beat, minimumSearchS = 0) {
   return reachable;
 }
 
+/** Close with the visible opposition without firing so the ordinary loss route can be exercised. */
+export async function approachFightBeat(page, beat) {
+  const target = await observeTarget(page);
+  if (!target || target.none) {
+    await searchFightBeat(page, target, beat);
+    return;
+  }
+  await tapFightTurn(page, target.rel);
+  await holdKey(page, 'KeyW', 0.8, null, null, combatPhaseEnded);
+}
+
 /**
  * One beat of a kiting fighter (public input only): select the nearest reachable hostile with RMB,
  * aim at its visible lead pip (or the hull when no pip is painted), and fire,
@@ -791,8 +823,39 @@ export async function fightBeat(page, beat) {
   }
 }
 
-/** A bounded public pilot for the temporary circuit. Turn first on the painted next-gate cue;
- * only add thrust (and then a short boost) once the nose is aligned. */
+async function setRaceFullStop(page, enabled) {
+  const wheel = page.locator('#sf-context-wheel');
+  const face = page.locator('#sf-context-wheel [data-action="brake"] .sf-cwheel__face');
+  for (let attempt = 0; attempt < 2; attempt++) {
+    // The fade can end before the sim consumes the released input and allows a fresh wheel press.
+    await page.waitForFunction(() => window.SF.state.input?.actions?.contextWheel !== true,
+      null, { timeout: 10000 });
+    await wheel.waitFor({ state: 'hidden', timeout: 10000 });
+    noteKey(page, 'KeyQ');
+    await page.keyboard.down('KeyQ');
+    try {
+      try {
+        await face.waitFor({ state: 'visible', timeout: 5000 });
+      } catch (error) {
+        if (attempt === 0 && error.name === 'TimeoutError') continue;
+        throw error;
+      }
+      const active = await face.evaluate(node => node.closest('[data-action="brake"]')
+        ?.previousElementSibling?.classList.contains('is-on') === true);
+      if (active !== enabled) {
+        // The decorative face lets clicks pass to the clipped button under it.
+        const box = await face.boundingBox();
+        if (!box) throw new Error('The context wheel did not show Full Stop');
+        await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+      }
+      return;
+    } finally {
+      await page.keyboard.up('KeyQ');
+    }
+  }
+}
+
+/** Follow the painted checkpoint and fit thrust to the visible pace and handling cues. */
 export async function racingCruiseBeat(page, beat) {
   const cue = await page.evaluate(readVisibleRaceCue).catch(() => null);
   if (!cue) {
@@ -800,17 +863,31 @@ export async function racingCruiseBeat(page, beat) {
     // authored scenery. Keep a small public yaw pulse so a remounted map gets a fresh heading.
     return holdKey(page, beat % 2 ? 'KeyD' : 'KeyA', 0.18, null, null);
   }
+  if (cue.holding) return waitSim(page, 0.3);
   const bearing = Number.isFinite(cue.bearingDeg)
     ? cue.bearingDeg : cue.direction === 'right' ? 30 : cue.direction === 'left' ? -30 : 0;
   const absBearing = Math.abs(bearing);
+  const runaway = /WRONG WAY/i.test(cue.hintText) && (!cue.reenter || absBearing > 14);
+  const overspeed = /BRAKE FOR TURN/i.test(cue.hintText);
+  const badDrift = /CORRECT YOUR DRIFT/i.test(cue.hintText) && cue.speedWU > 55;
+  if (cue.speedWU > 30 && (runaway || overspeed || badDrift)) {
+    await setRaceFullStop(page, true);
+    try {
+      return await waitSim(page, 0.32);
+    } finally {
+      await setRaceFullStop(page, false);
+    }
+  }
   if (absBearing > 14) {
     const turn = bearing > 0 ? 'KeyD' : 'KeyA';
     const duration = Math.min(0.46, Math.max(0.12, absBearing / 180 * 0.7));
     return holdKey(page, turn, duration, null, null);
   }
   const pulse = Number.isFinite(cue.distanceWU) && cue.distanceWU < 120 ? 0.22 : 0.34;
-  const boost = absBearing <= 8 && (!Number.isFinite(cue.distanceWU) || cue.distanceWU > 160)
+  const clearPace = !cue.reenter && !/WRONG WAY|OFF COURSE|BRAKE FOR TURN|CORRECT YOUR DRIFT/i.test(cue.hintText);
+  const boost = clearPace && absBearing <= 8 && cue.distanceWU > 280 && cue.speedWU !== null && cue.speedWU < 120
     ? await resolveBoostCode(page) : null;
+  if (cue.speedWU >= (clearPace ? 165 : 75)) return waitSim(page, pulse);
   return holdPublicKeys(page, ['KeyW', boost], pulse);
 }
 

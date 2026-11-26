@@ -9,6 +9,7 @@ import { orchardTowIntercept } from './orchardTowIntercept.js';
 import { effectiveTetherPolicy } from '../combat/attachments.js';
 import { applyCutIntakeCourtesy } from '../world/cutIntakeCourtesy.js';
 import { tallyPassageTarget, tallyAdvanceDt, isTallyPassageJob } from './tethysTallyPassage.js';
+import { findClearSpawnPoint } from './spawnClearance.js';
 import { validateOrchardTowQuote, bindOrchardTowLease, orchardTowLease, clearOrchardTowLease, withOrchardTowAttachment, ORCHARD_TOW_HOLDER } from '../world/anvilOrchardTowAssist.js';
 import { stepCeresWorkfleet, restoreCeresWorkfleetJob, clearCeresWorkfleetControls } from './ceresWorkfleet.js';
 import { serializeCeresPlayerWinching } from './ceresPlayerWinching.js';
@@ -706,6 +707,26 @@ function occupationalRole(entity, entry) {
 /** World-voice label for a job kind — shared by the crew-response toasts. */
 function crewKindLabel(kind) {
   return { miner: 'Miner', hauler: 'Hauler', salvor: 'Salvor', tender: 'Tender', surveyor: 'Surveyor', patrol: 'Patrol' }[kind] || 'Worker';
+}
+
+/**
+ * A spoken place name for the route stop a worker is holding at. Authored route marks carry their
+ * catalogue id as the label (`helios_seam_ore_face`), which is not English: the bark said the raw
+ * id aloud. Name the thing the stop IS — a station's name, the ore face — and only humanise an
+ * unknown snake_case id, so no bark ever reads a debug key.
+ */
+function routeHoldPlaceName(waypoint) {
+  const ref = typeof waypoint?.targetRef === 'string' ? waypoint.targetRef : '';
+  if (ref.startsWith('dest:')) {
+    const station = STATION_NAME_BY_ID.get(ref.slice(5));
+    if (station) return station;
+  }
+  if (ref.startsWith('field:') || /\bore\b|ore_face|seam/.test(ref)) return 'the ore face';
+  const label = typeof waypoint?.label === 'string' ? waypoint.label.trim() : '';
+  if (!label) return null;
+  if (!label.includes('_')) return label;
+  const words = label.replace(/_/g, ' ').trim();
+  return words ? words.charAt(0).toUpperCase() + words.slice(1) : null;
 }
 
 function isTugJob(entry, entity) {
@@ -6397,6 +6418,14 @@ export const npcJobsRuntime = {
     spec.data.jobId = jobId;
     spec.data.jobKind = 'tender';
     spec.data.homeStationId = station.stationId;
+    // R11: the depart point sits off the station hull on a lane traffic uses — a parked
+    // tender is still a live body, so the shared contract seats it clear when it can.
+    const tenderSeat = findClearSpawnPoint(state, {
+      x: spec.pos.x, z: spec.pos.z,
+      radius: Number.isFinite(spec.radius) ? spec.radius : 10,
+      vel: spec.vel || null,
+    });
+    if (tenderSeat) { spec.pos.x = tenderSeat.x; spec.pos.z = tenderSeat.z; }
     const hull = this.helpers.spawnEntity(spec);
     if (!hull) return null;
     if (hull.data) hull.data.jobId = jobId;
@@ -7234,7 +7263,7 @@ export const npcJobsRuntime = {
       if (best) { px = best.pos.x; pz = best.pos.z; }
       entry.routeHold = {
         threatId: threat.id, x: px, z: pz,
-        label: best && typeof best.label === 'string' ? best.label : null,
+        label: best ? routeHoldPlaceName(best) : null,
         since: now,
       };
     }
@@ -7248,7 +7277,7 @@ export const npcJobsRuntime = {
       const where = entry.routeHold.label ? `at ${entry.routeHold.label}` : 'where I sit';
       if (this.bus && typeof this.bus.emit === 'function') {
         try {
-          this.bus.emit('toast', { text: `${kindLabel}: Lane's still hot — holding ${where} until it clears.`, kind: 'warn', ttl: 4 });
+          this.bus.emit('toast', { text: `${kindLabel}: Lane's hot. Holding ${where}.`, kind: 'warn', ttl: 4 });
           this.bus.emit('npcjobs:distress', {
             jobId: job.id, kind: job.kind, sectorId: entry.sectorId || null,
             threatId: threat.id,

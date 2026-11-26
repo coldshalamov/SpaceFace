@@ -8,6 +8,21 @@ test('ordinary game startup uses the worker simulation authority', () => {
   assert.equal(resolveSimLaneFlags('').lane, 'worker');
 });
 
+test('an explicit shared-buffer request falls back outside an isolated context', t => {
+  const prior = Object.getOwnPropertyDescriptor(globalThis, 'crossOriginIsolated');
+  Object.defineProperty(globalThis, 'crossOriginIsolated', { configurable: true, value: false });
+  t.after(() => {
+    if (prior) Object.defineProperty(globalThis, 'crossOriginIsolated', prior);
+    else delete globalThis.crossOriginIsolated;
+  });
+
+  const flags = resolveSimLaneFlags('?simSab=1&simEnvelope=1');
+  assert.equal(flags.lane, 'worker');
+  assert.equal(flags.sab, false);
+  assert.equal(flags.sabEnvelope, false);
+  assert.match(flags.warnings.join('\n'), /transfer channel/);
+});
+
 test('ordinary worker shares numeric journal slots and sends messages without the fixed envelope ring', t => {
   const prior = Object.getOwnPropertyDescriptor(globalThis, 'crossOriginIsolated');
   Object.defineProperty(globalThis, 'crossOriginIsolated', { configurable: true, value: true });
@@ -137,7 +152,12 @@ test('closing before browser worker boot clears queued init and shutdown, then t
   await readyRejected;
   assert.deepEqual(worker.delivered, []);
   assert.deepEqual(worker.dropped, []);
-  assert.equal(worker.terminated, true);
+  // 21ce76704a: close() waits a bounded window for the worker's 'bye' reply — the last carrier
+  // of durable writes — before terminating anyway. A never-booted worker cannot answer, so
+  // termination lands on the grace bound, not synchronously.
+  assert.equal(worker.terminated, false, 'teardown waits the bye grace window first');
+  await new Promise((resolve) => setTimeout(resolve, 450));
+  assert.equal(worker.terminated, true, 'the grace bound must still terminate the dead channel');
   worker.emit({ kind: 'boot' });
   assert.deepEqual(worker.delivered, [], 'a terminated channel must not flush its pre-boot queue');
 });
@@ -149,6 +169,8 @@ test('browser worker error before boot rejects the existing init readiness promi
   await readyRejected;
   assert.deepEqual(worker.delivered, []);
   assert.deepEqual(worker.dropped, []);
+  // 21ce76704a: same bye-grace teardown — a dead worker never replies, so the bound fires.
+  await new Promise((resolve) => setTimeout(resolve, 450));
   assert.equal(worker.terminated, true);
 });
 

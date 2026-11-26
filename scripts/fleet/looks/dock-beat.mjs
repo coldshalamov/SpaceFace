@@ -2,7 +2,9 @@
 // beat (veil, berth word, station screen) with timings; then undock and dock again, skipping the
 // second arrival with a key, to check the word is first-dock-only and a key ends the beat early.
 //   node scripts/fleet/game-lock.mjs run -- node scripts/fleet/looks/dock-beat.mjs [outPrefix]
-import { chromium } from 'playwright';
+import { chromium as rawChromium } from 'playwright';
+import { quietChromium } from '../../lib/quietLaunch.mjs';
+const chromium = quietChromium(rawChromium);
 import { spawn } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';

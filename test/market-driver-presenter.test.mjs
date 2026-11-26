@@ -11,6 +11,9 @@ const weapons = COMMODITIES.find((commodity) => commodity.id === 'cmdty_weapons'
 
 function warState() {
   return {
+    // Market Sense (Trading): the short-term trend driver is named only for a pilot who has
+    // learned to read it — this fixture is such a pilot.
+    player: { pilot: { nodes: ['trader_market_sense'] } },
     conflicts: { 'faction_reach:faction_scn': { state: 'war', tension: 90 } },
     sectorSim: {
       field: {
@@ -48,7 +51,8 @@ test('driver presenter explains structural, geographic, conflict, and cycle forc
         explanation: 'Active fighting raises demand for weapon systems.', direction: 'up', delta: 0.22,
       }],
     },
-    cycle: { regime: 'rising', family: 'rising' },
+    // marketRegimeStateFor's own shape: closed-form regimes carry kind + label, no wave family.
+    cycle: { kind: 'climb', label: 'Climbing' },
   });
 
   assert.deepEqual(drivers.primary.map((driver) => driver.id), ['role', 'geography', 'conflict', 'cycle']);
@@ -56,7 +60,7 @@ test('driver presenter explains structural, geographic, conflict, and cycle forc
     'Demand ↑',
     'Tight core',
     'War · weapons ↑',
-    'Rising',
+    'Climbing',
   ]);
   assert.equal(new Set(drivers.primary.map((driver) => `${driver.shortLabel}|${driver.label}`)).size, 4,
     'the expanded ribbon should add meaning rather than repeat the compact label');
@@ -86,7 +90,7 @@ test('driver presenter explains every stacked persistent demand cause', () => {
         },
       ],
     },
-    cycle: { regime: 'stable', family: 'stable' },
+    cycle: { kind: 'steady', label: 'Steady' },
   });
 
   const conflict = drivers.primary.find((driver) => driver.id === 'conflict');
@@ -112,7 +116,7 @@ test('driver presenter prefers runtime station role and security overrides', () 
     stationId: 'station_helios',
     commodity: weapons,
     entry: { role: 'consume', demandMult: 1, demandDrivers: [] },
-    cycle: { regime: 'stable', family: 'stable' },
+    cycle: { kind: 'steady', label: 'Steady' },
   });
 
   assert.match(drivers.primary[0].label, /blackmarket/i);

@@ -51,11 +51,14 @@ export function installStaticLodLeafMatrixUpdate(object) {
 export function updatePresentedObjectMatrices(root, force) {
   if (!root || typeof root.updateMatrixWorld !== 'function') return;
   const previous = presentedMatrixPass;
+  const prevThree = THREE.Object3D._sfPresentedMatrixPass;
   presentedMatrixPass = true;
+  THREE.Object3D._sfPresentedMatrixPass = true;
   try {
     root.updateMatrixWorld(force);
   } finally {
     presentedMatrixPass = previous;
+    THREE.Object3D._sfPresentedMatrixPass = prevThree;
   }
 }
 
@@ -75,10 +78,14 @@ export function updatePresentedObjectMatrices(root, force) {
 
 export function shouldFreezeStaticChild(object, root) {
   if (!object || object === root) return false;
+  if (root && root.userData && root.userData.hull === object) return false;
   if (object.isLight || object.isCamera) return false;
   const userData = object.userData || {};
   if (userData.spacefaceSocket || userData.animated || userData.hlod) return false;
   if (userData.updateRuntimeState || userData.updateDriveState || userData.updateLod) return false;
+  const tags = userData.spacefaceTags;
+  if (tags && (tags.animated || tags.fan || tags.turret || tags.drive || tags.motionGroup || tags.socket)) return false;
+  if (object.name === 'Retro_Bow_Assembly') return false;
   return true;
 }
 

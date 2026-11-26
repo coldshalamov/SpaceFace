@@ -75,6 +75,7 @@ const rows = [
   ['wpn_singularity_mortar_m', 'knot', 'A lobbed shell that drags the pack into a knot, then pops.'],
   ['wpn_debris_orbit_s', 'ring', 'Loose rocks near the hull get lashed into a circling shield.'],
   ['wpn_glaive_s', 'return', 'Flies out, carves back through you — a hit on each pass.'],
+  ['wpn_tumbler_m', 'tumble', 'A long gravity bolt: no damage — it sends them tumbling into whatever is behind them.'],
   ['wpn_arc_caster', 'arccast', 'A hit jumps to two more hulls in the pack. Crowded enemies pay for standing together.'],
 ];
 

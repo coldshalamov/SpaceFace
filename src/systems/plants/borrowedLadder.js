@@ -8,8 +8,8 @@
 // arm is a chalked hook prop at a fixed hash bearing on the docking ring, with the ladder
 // hanging beside it as a tetherable payload prop. Borrowing is proximity pickup: the
 // ladder rides your quarter, tetherable the whole way. "It is simply there when you need
-// a hand": while carried, if your hull runs low, a pier hand line gives one real shove
-// impulse toward the station (a physics nudge on vel, once per borrow). Back by the bell:
+// a hand": while carried, if your hull runs low, the pier hand calls the hook's bearing
+// to you (a word, never a shove on the hull — R23). Back by the bell:
 // return it inside hook range before phase 0.75 of the shared 240 s plant day and it is
 // re-hung. Keep it past the bell and the receipt is flag-borne
 // (state.story.flags.plantsPl279Kept): the hook goes empty (visible label), the shove
@@ -40,7 +40,6 @@ export const BORROWED_LADDER_TUNING = Object.freeze({
   pickupRangeWu: 24,
   returnRangeWu: 30,
   handHullFraction: 0.45,      // "when you need a hand"
-  handImpulseWu: 60,           // one real shove toward the pier
   handCooldownS: 45,
   carryMinBeforeReturnS: 5,    // grabbing it off the hook is not "returning" it
   ladderRadius: 4,
@@ -278,19 +277,14 @@ export function createBorrowedLadder() {
         return;
       }
 
-      // It is simply there when you need a hand: one shove per borrow, when your hull runs low.
+      // It is simply there when you need a hand: the pier hand calls out when your hull runs
+      // low (R23: no invisible shove — the line says which way, your engines do the moving).
       const hullMax = Number.isFinite(player.hullMax) && player.hullMax > 0 ? player.hullMax : Math.max(1, player.hull || 1);
       const frac = Number.isFinite(player.hull) ? player.hull / hullMax : 1;
       if (!this._kept && frac <= t.handHullFraction
           && (this._lastHandAt == null || now - this._lastHandAt >= t.handCooldownS)) {
         this._lastHandAt = now;
         this._handsGiven += 1;
-        const dx = station.pos.x - player.pos.x;
-        const dz = station.pos.z - player.pos.z;
-        const d = Math.hypot(dx, dz) || 1;
-        player.vel = player.vel || { x: 0, z: 0 };
-        player.vel.x += (dx / d) * t.handImpulseWu;
-        player.vel.z += (dz / d) * t.handImpulseWu;
         this._cue('confirm', 0.4);
         this._popup(`plants:pl279:hand:${Math.round(now)}`, 'Pier hand',
           'Easy \u2014 the ladder\u2019s got you. Hook\u2019s this way.');

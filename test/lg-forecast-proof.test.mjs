@@ -90,9 +90,10 @@ test('the market screen prints one line tracing the last move to its cause (' + 
     const entry = state.economy.markets[sid][cid];
     const def = CMDTY_BY_ID.get(cid);
 
-    // No event: the formula regime is the honest mover.
+    // No news and no trader_market_sense perk: the exchange shows a cause only when there is
+    // one to name. lastMoveCause returns { text: '' } for that quiet listing.
     const regimeCause = lastMoveCause({ state, stationId: sid, commodity: def, entry });
-    assert.ok(regimeCause.text.startsWith('Last move: '), 'always one line');
+    assert.equal(regimeCause.text, '', 'no news and no perk: the cause line stays empty');
     assert.equal(regimeCause.eventId, null);
 
     const ev = econ.injectEvent({ type: 'shortage', stationId: sid, commodityId: cid, duration: 900 });
@@ -179,8 +180,12 @@ test('a reader of the cone out-earns a non-reader by at least 30 % over a seeded
     const tape = new Map(plans.map((p) => [key(p), []]));
     for (let tick = 0; tick <= HOUR / STEP; tick++) {
       for (const p of plans) {
-        const e = state.economy.markets[p.sid][p.cid];
-        tape.get(key(p)).push({ buy: e.lastBuy, sell: e.lastSell });
+        // Closed-form markets stamp lazily: the live price is the quoted one —
+        // the same number the market screen shows when the player opens it.
+        tape.get(key(p)).push({
+          buy: econ.priceOf(p.sid, p.cid, 'buy'),
+          sell: econ.priceOf(p.sid, p.cid, 'sell'),
+        });
       }
       if (tick < HOUR / STEP) advance(state, econ, STEP);
     }
