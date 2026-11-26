@@ -119,3 +119,48 @@ test('space background holds one hidden sprite on the real shared planet materia
   empty._holdPlanetProgram();
   assert.equal(empty.group.children.length, 0, 'a sector with no planet candidates pays nothing');
 });
+
+test('sector machine program hold builds one real body per site machine kind, and joins the cohort', async () => {
+  const { buildSectorMachineProgramHold, MACHINE_PROGRAM_HOLD_NAME } = await import('../src/render/machineVisuals.js');
+  const hold = buildSectorMachineProgramHold('sector_helios_prime');
+  assert.ok(hold, 'Helios opening has the unanswered-survey prism');
+  assert.equal(hold.name, MACHINE_PROGRAM_HOLD_NAME);
+  assert.equal(hold.visible, false);
+  const body = hold.getObjectByName('Surveyor_PrismBody');
+  assert.ok(body && body.material && body.material.map, 'the live builder: map + vertex colours');
+  assert.equal(body.material.vertexColors, true);
+  assert.equal(buildSectorMachineProgramHold('sector_does_not_exist'), null);
+  assert.equal(buildSectorMachineProgramHold(null), null);
+  const scene = new THREE.Scene();
+  scene.add(hold);
+  assert.deepEqual(collectFirstFlightEffectRoots(scene), [hold]);
+  assert.ok(collectFirstFlightLayerDrawables([hold]).includes(body));
+});
+
+test('asteroid leaf warm group carries one optic cell per skin, and the keyed census collects their body pairs', async () => {
+  const { buildAsteroidLeafWarmGroup } = await import('../src/render/visualFactory.js');
+  const { collectAsteroidInstancePoolLeafResources } = await import('../src/render/asteroidInstancePool.js');
+  const { opticCellBodyMaterial } = await import('../src/render/opticCellPresentation.js');
+  const previous = globalThis.document;
+  // makeNoiseTexture needs a 2D canvas; plain node has none (same stub as rock-family-library).
+  globalThis.document = { createElement: () => ({ width: 0, height: 0,
+    getContext: () => ({ createImageData: (w, h) => ({ data: new Uint8ClampedArray(w * h * 4) }), putImageData() {} }) }) };
+  let group;
+  try { group = buildAsteroidLeafWarmGroup(); } finally { globalThis.document = previous; }
+  const optic = group.children.filter((c) => String(c.userData.rosterPrewarmLeaf || '').startsWith('asteroid:optic:'));
+  assert.deepEqual(optic.map((c) => c.userData.rosterPrewarmLeaf).sort(),
+    ['asteroid:optic:diamond', 'asteroid:optic:metal', 'asteroid:optic:spent', 'asteroid:optic:stone']);
+  const metal = optic.find((c) => c.userData.rosterPrewarmLeaf === 'asteroid:optic:metal');
+  assert.equal(metal.userData.asteroidBody.material, opticCellBodyMaterial('metal', 0), 'shared live skin material');
+  assert.equal(metal.userData.asteroidBody.material.customProgramCacheKey().startsWith('spaceface-optic-forged-iron-v1'), true);
+  const pairs = collectAsteroidInstancePoolLeafResources([group]);
+  const metalBody = metal.userData.asteroidInstanceBody;
+  assert.ok(pairs.some((p) => p.geometry === metalBody.geometry && p.material === metalBody.material),
+    'forged-iron body pair reaches the keyed specimen warm');
+  // Unflagged nested exemplars keep their old behaviour (no new twins for the AST_TYPE builds).
+  const plain = group.children.find((c) => c.userData.rosterPrewarmLeaf === 'asteroid:ast_common_rock:tinted');
+  if (plain && plain.userData.asteroidInstanceBody) {
+    assert.ok(!pairs.some((p) => p.material === plain.userData.asteroidInstanceBody.material
+      && p.geometry === plain.userData.asteroidInstanceBody.geometry));
+  }
+});

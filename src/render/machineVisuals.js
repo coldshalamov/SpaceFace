@@ -7,7 +7,7 @@
 // pylon and a prism read as the same civilization.
 
 import * as THREE from 'three';
-import { machineKindById } from '../data/precursorMachines.js';
+import { MACHINE_SITES, machineKindById } from '../data/precursorMachines.js';
 import { bindCreatureSkin } from './creatureSkinLibrary.js';
 import { getSurveyorGeometries } from './surveyorGeometry.js';
 import { attachSurveyorSurface } from './surveyorSurfaceLibrary.js';
@@ -697,6 +697,38 @@ export function buildMachineMesh(entityOrKind) {
     root.userData.machineKind = kind.id;
   }
   return root;
+}
+
+/** Name of the hidden machine program-hold group (latePipelineAdmission's first-flight cohort keys on it). */
+export const MACHINE_PROGRAM_HOLD_NAME = 'SF_MachineProgramHold';
+
+/**
+ * Program hold for a sector's site machines. A site machine (the Helios opening's surveyor prism)
+ * is built when its entity comes into view range, which lands after the first-flight cook: its
+ * MeshStandard map+vertexColor program then linked on the paced admission lane or the first draw
+ * inside flight (+0.7..+15 s, 0.3-1.1 s on software GL). Build one real body per machine kind the
+ * sector's MACHINE_SITES spawn — the same builder the live entity uses, so the programs are the
+ * live ones — for the cook to compile. Returns null when the sector has no site machines. Callers
+ * detach it after the cook and never dispose it (disposal would release the linked programs).
+ */
+export function buildSectorMachineProgramHold(sectorId) {
+  if (!sectorId) return null;
+  const kinds = new Set();
+  for (const site of Object.values(MACHINE_SITES)) {
+    if (!site || site.sectorId !== sectorId || !Array.isArray(site.machines)) continue;
+    for (const machine of site.machines) if (machine && machine.kind) kinds.add(machine.kind);
+  }
+  if (kinds.size === 0) return null;
+  const group = new THREE.Group();
+  group.name = MACHINE_PROGRAM_HOLD_NAME;
+  group.visible = false;
+  group.userData.sectorId = sectorId;
+  for (const kind of kinds) {
+    const root = buildMachineMesh({ id: `program-hold:${kind}`, type: 'machine', radius: 12,
+      pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, data: { machine: { kind } } });
+    if (root) group.add(root);
+  }
+  return group.children.length > 0 ? group : null;
 }
 
 // ── Machine place props (placeId 'machine_*') ─────────────────────────────────────────────

@@ -479,6 +479,7 @@ function bodyDamageTier(hull, hullMax) {
 }
 import { resolveLineShieldSustain, shieldBiteDir } from './vfx/lineShieldBite.js';
 import { BeaconLampLayer } from './beaconLampLife.js';
+import { buildSectorMachineProgramHold } from './machineVisuals.js';
 import {
   presentShipBoost,
   presentShipDash,
@@ -13072,6 +13073,15 @@ export const vfx = {
     // the layer's free list, never disposed) in restLiveFlightEffectsAfterCook.
     if (!this._beaconLampLife) this._beaconLampLife = new BeaconLampLayer();
     this._beaconLampLife.mountProgramHold(this._scene);
+    // Site machines build when their entity comes into range, after this cook; hold one real body
+    // per machine kind the sector spawns (machineVisuals.buildSectorMachineProgramHold).
+    const holdSector = this.state && this.state.sectorId;
+    if (this._machineProgramHold && this._machineProgramHold.userData.sectorId !== holdSector) {
+      if (this._machineProgramHold.parent) this._machineProgramHold.parent.remove(this._machineProgramHold);
+      this._machineProgramHold = null;
+    }
+    if (!this._machineProgramHold) this._machineProgramHold = buildSectorMachineProgramHold(holdSector);
+    if (this._machineProgramHold && this._machineProgramHold.parent !== this._scene) this._scene.add(this._machineProgramHold);
     const energy = this._energy;
     if (!energy) return { skipped: true, reason: 'no-energy' };
     const player = this.state.entities && this.state.entities.get(this.state.playerId);
@@ -13432,6 +13442,10 @@ export const vfx = {
     // Same for the beacon lamp hold bead: detach, and park its compiled material on the
     // layer's free list for the first live bead.
     if (this._beaconLampLife) this._beaconLampLife.releaseProgramHold();
+    // Machine hold: detach only. Never dispose — that would release the programs just linked.
+    if (this._machineProgramHold && this._machineProgramHold.parent) {
+      this._machineProgramHold.parent.remove(this._machineProgramHold);
+    }
     return { skipped: false };
   },
 

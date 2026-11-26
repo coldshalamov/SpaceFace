@@ -4774,6 +4774,26 @@ export function buildAsteroidLeafWarmGroup() {
     tintedCommon.userData.rosterPrewarmLeaf = 'asteroid:ast_common_rock:tinted';
     root.add(tintedCommon);
   }
+  // Optic lattice cells ride buildAsteroid but wear their own shared skins (opticCellPresentation:
+  // matte stone, forged-iron reflector, prism, spent prism), so none of the exemplars above link
+  // their programs: the first forged-iron cell admitted in flight linked
+  // spaceface-optic-forged-iron-v1 inside a presented frame (Asteroid_61/69, +1.4..+8.3 s,
+  // 0.2-1.0 s on software GL), and its keyed-instance twin (SF_KeyedAsteroidInstances_3x) a few
+  // seconds later. One real cell per kind covers the plain-mesh program and, through the
+  // keyed specimen census (asteroidInstanceSpecimenLeaf, collectAsteroidInstancePoolLeafResources),
+  // the instanced one.
+  for (const opticKind of ['stone', 'metal', 'diamond', 'spent']) {
+    const cell = buildAsteroid({
+      id: `leafwarm:optic:${opticKind}`, type: 'asteroid', pos: { x: 0, y: 0, z: 0 },
+      radius: 12, alive: true,
+      data: { typeId: 'ast_common_rock', opticMaterial: opticKind, opticStructureId: 'leafwarm' },
+    });
+    if (cell) {
+      cell.userData.rosterPrewarmLeaf = `asteroid:optic:${opticKind}`;
+      cell.userData.asteroidInstanceSpecimenLeaf = true;
+      root.add(cell);
+    }
+  }
   return root;
 }
 

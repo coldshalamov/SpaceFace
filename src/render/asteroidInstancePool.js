@@ -522,6 +522,9 @@ export function collectAsteroidInstancePoolLeafResources(roots) {
       root.traverse((child) => {
         const ud = child && child.userData;
         if (ud && ud.asteroidInstanceDetail === true) push(child);
+        // Warm-group exemplars nested under a group root (buildAsteroidLeafWarmGroup's optic
+        // cells) opt in by flag: their body leaf is the pair a live cell registers.
+        if (ud && ud.asteroidInstanceSpecimenLeaf === true && child !== root) push(ud.asteroidInstanceBody);
       });
     }
   }
