@@ -210,7 +210,8 @@ const flightCharge = [
   { ...P('M6.5 4H8.5 M15.5 4H17.5'), class: 'arsenal-fuse-rays' },
 ];
 const flightCloak = [
-  P('M12 3 4 19 12 15.5 M12 3 14.4 7.8 M16 11 17.6 14.2 M19.2 17.4 20 19 17 17.7 M14.5 16.6 12 15.5'),
+  // Ship inside a signature ring: the interrupted half depicts concealment.
+  P('M12 5.5 7 16.5 12 14 17 16.5Z M7.5 4.21A9 9 0 0 0 7.5 19.79 M16.5 4.21A9 9 0 0 1 19.79 7.5 M20.69 9.67A9 9 0 0 1 20.69 14.33 M19.79 16.5A9 9 0 0 1 16.5 19.79'),
 ];
 
 const flightGlyphs = Object.freeze({
@@ -219,10 +220,11 @@ const flightGlyphs = Object.freeze({
     P('M8.5 3.5 12 7 15.5 3.5 M20.5 8.5 17 12 20.5 15.5 M15.5 20.5 12 17 8.5 20.5 M3.5 15.5 7 12 3.5 8.5'),
     solid('M12 10 14 12 12 14 10 12Z'),
   ],
-  // Shove: radial expansion, diagonal vectors and a hollow origin distinguish it from Pull.
+  // Shove: three outward vectors (120 degrees apart) around a hollow origin.
+  // Unlike four square-corner arrows, this cannot read as a fullscreen control.
   field_repulsor_standard: [
-    C(12, 12, 3.1),
-    P('M3.5 8V3.5H8 M3.5 3.5 7.5 7.5 M16 3.5H20.5V8 M20.5 3.5 16.5 7.5 M20.5 16V20.5H16 M20.5 20.5 16.5 16.5 M8 20.5H3.5V16 M3.5 20.5 7.5 16.5'),
+    C(12, 12, 2.9),
+    P('M12 7 12 3 M8.5 6.5 12 3 15.5 6.5 M16.33 14.5 19.79 16.5 M18.51 11.72 19.79 16.5 15.01 17.78 M7.67 14.5 4.21 16.5 M8.99 17.78 4.21 16.5 5.49 11.72'),
   ],
   // Pin: a slender anchor spire with a split orbital field; no off-axis overlap.
   field_seed_standard: [
@@ -241,17 +243,18 @@ const flightGlyphs = Object.freeze({
   field_skim_standard: [
     P('M3 13.5 8 19.5H16L21 13.5 M8 13.5H16 M12 4V10 M9 7 12 10 15 7 M5 5V10 M19 5V10'),
   ],
-  // Line: taut diagonal cable and an open angular capture hook.
+  // Line: the taut cable meets an open capture hook, not a closed key shape.
   power_massline: [
     C(5.5, 18.5, 2.4),
-    P('M7.2 16.8 14.5 9.5 18 6H21V9L17 13V10.5'),
+    P('M7.2 16.8 15.1 8.9C18.5 5.5 22 7.7 20.9 11.1C20.1 13.7 17.2 15 14.8 13.5L16.5 11.8'),
   ],
   // Support verbs use the same flight drawing language when present.
   power_travel_burn: [
     P('M3 6.5 8.5 12 3 17.5 M10 6.5 15.5 12 10 17.5 M21 4.5V19.5'),
   ],
+  // Gather: three swept field lines curl around the collected mass, not refresh arrows.
   power_gyre: [
-    P('M4 12A8 8 0 0 1 17.66 6.34L19 7.7 M15.5 7.7H19V4.2 M20 12A8 8 0 0 1 6.34 17.66L5 16.3 M8.5 16.3H5V19.8'),
+    P('M12 3C17 3 20 8 16.4 11 M19.79 16.5C17.29 20.83 11.46 20.93 10.67 16.31 M4.21 16.5C1.71 12.17 4.54 7.07 8.93 8.69'),
     { ...C(12, 12, 2), fill: 'currentColor', stroke: 'none' },
   ],
   mod_cloak_mk1: flightCloak,

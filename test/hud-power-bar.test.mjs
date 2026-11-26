@@ -113,6 +113,11 @@ test('HUD-POWER-BAR: flight glyphs use one precise stroke and distinct geometry 
   });
   assert.equal(new Set(marks).size, ids.length, 'different verbs have different drawings, not just different IDs');
 
+  // Pull and Shove must remain distinguishable even without their HUD state colors.
+  assert.match(marks[0], /fill="currentColor" stroke="none"/, 'Pull has a solid accumulation point');
+  assert.match(marks[1], /<circle cx="12" cy="12" r="[\d.]+"\/>/, 'Shove has a hollow origin');
+  assert.doesNotMatch(marks[1], /fill="currentColor"/, 'Shove does not share Pull’s filled center');
+
   const bomb = arsenalIcon('power_charge', 44, '', true);
   assert.match(bomb, /arsenal-fuse-lamp/);
   assert.match(bomb, /arsenal-fuse-rays/);
