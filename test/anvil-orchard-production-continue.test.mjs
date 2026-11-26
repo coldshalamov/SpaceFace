@@ -45,6 +45,8 @@ test('production Orchard Continue retains loading until the real finalizer and f
     assert.deepEqual(await h.finalization(), { stale: false });
     await nextHostTurn();
     assert.equal(h.state.mode, 'flight');
+    assert.equal(h.bootMarks().filter(name => name === 'flight-entered').length, 1,
+      'real flight entry records its boot milestone exactly once');
     assert.equal(h.state.timeScale, 0, 'main still waits for an actual presentation receipt');
     assert.ok(readTimeEffectsRequests(h.state)['runtime:first-picture']);
     assert.equal(h.state.render.releaseOpeningPresentationHold(), false, 'no submitted picture cannot release control');

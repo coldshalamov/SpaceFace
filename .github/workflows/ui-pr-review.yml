@@ -69,7 +69,7 @@ jobs:
                   routes[path] = set(shots.split())
 
           route('src/ui/orrery/lampKey.js', 'station-contracts station-industry clips new-game')
-          route('src/ui/orrery/stationStandard.js', 'station-dock station-market station-contracts')
+          route('src/ui/orrery/stationStandard.js', 'station-dock station-market station-contracts station-bar')
           route('src/ui/orrery/stationLayouts.js',
                 'station-dock station-industry asteroid-works')
           route('src/ui/station/stationScreen.js',
@@ -81,7 +81,7 @@ jobs:
           route('src/ui/station/screens/factions.js', 'station-factions')
           route('src/ui/station/screens/bar.js', 'station-bar')
           route('src/ui/station/screens/ledger.js', 'station-ledger')
-          route('src/ui/orrery/stationTabsLayouts.js', 'station-industry station-shipworks')
+          route('src/ui/orrery/stationTabsLayouts.js', 'station-industry station-shipworks station-contracts')
           route('src/ui/orrery/shipworksLayouts.js src/ui/orrery/station-shipworksLayouts.js',
                 'station-shipworks station-shipworks-impound')
           route('src/ui/orrery/mobileScreenLayouts.js',
@@ -108,7 +108,8 @@ jobs:
           route('src/ui/whyReveal.js', 'popup-tooltip')
           route('src/ui/comms.js', 'popup-story-choice')
           route('src/ui/promptDeck.js', 'popup-decision')
-          route('src/ui/hud.js src/ui/orrery/hudSkin.js', 'orrery-flight popup-cargo popup-receipt')
+          route('src/ui/hud.js src/ui/orrery/hudSkin.js src/ui/views/hudStyles.js', 'orrery-flight popup-cargo popup-receipt')
+          route('src/ui/screens/automationPanel.js', 'automation automation-outposts')
           route('src/ui/screens/base.js src/ui/orrery/baseLayouts.js', 'base base-claimed')
           route('src/ui/screens/manifest.js src/ui/orrery/manifestLayouts.js', 'manifest manifest-hand')
           route('src/ui/orrery/tech-treeLayouts.js src/ui/screens/techTree.js',
