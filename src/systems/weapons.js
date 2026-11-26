@@ -1721,6 +1721,7 @@ export const weapons = {
           weaponId: w.defId, from, to: endpoint, dmgType: damageType, dpsThisTick: damage / 2,
           damagePacket: beamDamagePacket(wForPacket, def, damage / 2, damageType, dt),
           beamKey: key, twinThermal: true, hardpointIdx: w.slotIndex, dir, range, phase,
+          rayRadius: 0.45,
           sourceLocalForward: (from.x - e.pos.x) * Math.cos(dir) + (from.z - e.pos.z) * Math.sin(dir),
           sourceLocalSide: -(from.x - e.pos.x) * Math.sin(dir) + (from.z - e.pos.z) * Math.cos(dir),
         });

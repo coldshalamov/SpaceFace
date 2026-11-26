@@ -111,6 +111,11 @@ export function createWeaponImpactVfxMethods({
 
   _onBeamStop(p) {
     if (this._combatBeams) this._combatBeams.stop(p, this._t);
+    if (p?.weaponId === 'wpn_incinerator_m' && p.beamKey != null) {
+      this._beamDamageCueNext.delete(String(p.ownerId) + ':thermal-seat:' + p.beamKey);
+      this._beamDamageCueNext.delete(String(p.ownerId) + ':thermal-hit:' + p.beamKey);
+      return;
+    }
     if (p && p.ownerId != null) {
       const prefix = `${String(p.ownerId)}:`;
       for (const key of this._beamDamageCueNext.keys()) {

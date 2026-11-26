@@ -143,9 +143,10 @@ test('two receipts survive bridge projection and own independent retained HDR ge
     pool.update(.12,null,{flashOpacityScale:.3},3);
     assert.ok(pool.geometry.getAttribute('color').getX(a.slot*4)<bright*.5);
     assert.equal(pool.retarget({attackerId:w.ship.id,weaponId:ID,pos:{x:1,z:0}},.13),0);
-    pool.stop(receipts[0].flat,.15); pool.update(.15+BEAM_COOLING_S+.001,null);
-    // The other ray was not refreshed in this harness; refresh it to verify isolated release.
-    pool.upsert(receipts[1].flat,.5,profile);
+    pool.stop(receipts[0].flat,.15);
+    pool.upsert(receipts[1].flat,.3,profile);
+    pool.update(.15+BEAM_COOLING_S+.001,null);
+    assert.ok(pool._byKey.has(receipts[1].flat.beamKey));
     assert.equal(pool.activeCount,1);
     assert.equal(pool.geometry.getAttribute('aSfThermal').getX(a.slot*4),0);
   } finally {pool.dispose();}

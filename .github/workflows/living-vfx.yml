@@ -53,6 +53,11 @@ jobs:
           ESBUILD=$(node -p "require('./package.json').devDependencies.esbuild")
           npm install --prefix .vfx-ci --ignore-scripts --no-audit --no-fund $DEPS "esbuild@$ESBUILD"
           ln -s .vfx-ci/node_modules node_modules
+      - name: Verify Incinerator gameplay and retained beam contracts
+        run: |
+          mkdir -p vfx-artifact
+          set -o pipefail
+          node --test test/incinerator-twin-beam.test.mjs | tee vfx-artifact/incinerator-contract.log
       - name: Verify production VFX contracts
         run: |
           mkdir -p vfx-artifact

@@ -176,7 +176,7 @@ function applyBeamShaderStructure(material, shared, role) {
     float sfEdge = 1.0 - smoothstep(0.68, 1.0, sfAcross);
     float sfHotCore = exp(-10.0 * sfAcross * sfAcross);
     float sfEnd = (1.0 - vSfBeam.x) * vSfAxial / max(vSfBeam.x, 0.001);
-    float sfSeat = exp(-sfEnd * sfEnd * 0.075) * step(2.5, vSfThermal);
+    float sfSeat = exp(-sfEnd * sfEnd * 0.075) * step(2.5, vSfThermal) * smoothstep(0.001, 0.03, vSfBeam.x);
     float sfMicro = 0.96 + 0.04 * sin(vSfAxial * 0.58 - uSfTime * 5.0) * uSfPulse;
     diffuseColor.rgb = mix(diffuseColor.rgb * (0.62 + 0.7 * sfHotCore),
       vec3(3.0, 0.63, 0.24), sfHotCore * sfSeat * 0.82 * uSfPulse);
@@ -211,7 +211,7 @@ function applyBeamShaderStructure(material, shared, role) {
     + 0.25 * sfMuzzle * sfSheath;
   if (vSfThermal > 0.5) {
     float sfEnd = (1.0 - vSfBeam.x) * vSfAxial / max(vSfBeam.x, 0.001);
-    float sfSeat = exp(-sfEnd * sfEnd * 0.04) * step(2.5, vSfThermal);
+    float sfSeat = exp(-sfEnd * sfEnd * 0.04) * step(2.5, vSfThermal) * smoothstep(0.001, 0.03, vSfBeam.x);
     float sfAura = exp(-3.8 * sfAcross * sfAcross) * (1.0 - smoothstep(0.82, 1.0, sfAcross));
     sfEnergy = sfAura * (0.95 + 0.68 * sfSeat * uSfPulse);
     sfArrival = 0.65 + 0.35 * smoothstep(0.0, 0.065, sfAge);
@@ -507,7 +507,7 @@ export class PersistentCombatBeamPool {
       }
       // Thermal sockets carry per-ray local seats; the live resolver must never fall back
       // to a generic single aperture for a twin. Keep last measured geometry on loss.
-      if (socketOf && entry.ownerId != null && (!entry.thermalClass || Number.isFinite(entry.sourceLocalForward))) {
+      if (socketOf && entry.ownerId != null && !entry.thermalClass) {
         const socket = socketOf(entry);
         if (socket && Number.isFinite(socket.x) && Number.isFinite(socket.z)) {
           // XZ ONLY, deliberately. SOCKET_Weapon_Front sits anywhere from y 0.0 to 0.82 depending
