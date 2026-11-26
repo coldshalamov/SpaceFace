@@ -6,6 +6,7 @@ import { createPresentationWorld } from '../src/render/presentationWorld.js';
 import { createPresentationPublisher } from '../src/render/presentationPublisher.js';
 import { createPresentationJournal } from '../src/core/presentationJournal.js';
 import { createSimLaneJournal } from '../src/core/simLaneJournal.js';
+import { setActivePoseFeed } from '../src/core/simPoseTable.js';
 import { notePacedFrameSpend } from '../src/render/decodeTaskBudget.js';
 import { applyEntityMeshVisibility, shouldSubmitEntityMesh } from '../src/render/entityMeshVisibility.js';
 
@@ -97,6 +98,33 @@ test('live completed poses publish even after background admission spends its fr
   assert.equal(snapshot.simTime, DT);
   assert.equal(owner._snapshotSourceTick, 1);
   assert.deepEqual([snapshot.columns.position[0], snapshot.columns.position[3]], [10, 10]);
+});
+
+test('a repeated pose table reapplies only after journal writes or a new world', t => {
+  const world = createPresentationWorld();
+  const row = { entityId: 1, generation: 1, x: 0, y: 0, z: 0, rot: 0 };
+  world.allocateRecord(row, { id: 1 });
+  const owner = Object.assign(Object.create(render), { _presentationWorld: world });
+  const snapshot = { writes: 1, count: 1, simTime: DT,
+    rows: new Float64Array([1, 1, 0, 10, 0, 0, 0, 0, 0, 0, 0, 0]) };
+  setActivePoseFeed({ active: true, snapshot });
+  t.after(() => setActivePoseFeed(null));
+  const apply = t.mock.method(world, 'applySharedPoseTable');
+  const slot = world.getSlotForEntityId(1);
+
+  owner._applySharedPoseFeed({ applied: 0 });
+  assert.equal(world.x[slot], 10);
+  owner._applySharedPoseFeed({ applied: 0 });
+  assert.equal(apply.mock.callCount(), 1);
+  world.applyTransform({ ...row, x: 2 });
+  assert.equal(world.x[slot], 2);
+  owner._applySharedPoseFeed({ applied: 1 });
+  assert.equal(world.x[slot], 10, 'a late transform cannot restore the older pose');
+
+  const next = owner._presentationWorld = createPresentationWorld();
+  next.allocateRecord(row, { id: 1 });
+  owner._applySharedPoseFeed({ applied: 0 });
+  assert.equal(next.x[next.getSlotForEntityId(1)], 10);
 });
 
 test('entering flight replaces a parked loading pack with one coherent completed-tick snapshot', t => {

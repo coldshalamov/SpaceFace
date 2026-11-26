@@ -1036,10 +1036,9 @@ export const physics = {
     const carried = this._sg02ImpactCarry;
     if (!fresh.length && !carried.length) return 0;
     // Bus fan-out is the cost of an impact burst (a rock pile collapsing, a horde shoved into a
-    // wall): every receipt runs every physics:impact listener. Cap the non-player receipts
-    // delivered per tick and carry the rest, in order, to the next tick — nothing is dropped,
-    // a carried receipt keeps the tick it happened on, and one whose body died or whose id was
-    // recycled in between is skipped. Receipts touching the player always go now.
+    // wall): every receipt runs every physics:impact listener. Carry excess ambient receipts in
+    // order with their contact tick. Direct player contacts and the consequences of the player's
+    // own throws, kicks, and shots must publish on the contact tick.
     const cap = SG02_IMPACT_FANOUT_CAP;
     const next = this._sg02ImpactCarryNext;
     next.length = 0;
@@ -1065,12 +1064,18 @@ export const physics = {
           continue;
         }
         if (!touchesPlayer && delivered >= cap && next.length < SG02_IMPACT_CARRY_MAX) {
+          // Consult the same provenance selector as damage only when a fresh contact would
+          // otherwise wait. A later hit must never reprioritize an older carried receipt.
+          if (pass === 1 && this._emitOneSg02Impact(state, receipt, true)) {
+            emitted++;
+            continue;
+          }
           if (pass === 1) receipt.carriedFromTick = state.tick;
           next.push(receipt);
           continue;
         }
         if (!touchesPlayer) delivered++;
-        if (this._emitOneSg02Impact(state, receipt, pass === 0)) emitted++;
+        if (this._emitOneSg02Impact(state, receipt)) emitted++;
       }
     }
     // Swap the carry buffers: what waited this tick and still waits becomes the new carry.
@@ -1105,12 +1110,15 @@ export const physics = {
     return false;
   },
 
-  _emitOneSg02Impact(state, receipt, carried) {
+  _emitOneSg02Impact(state, receipt, playerCauseOnly = false) {
     {
       const a = impactBodyForReceipt(state, receipt.aId);
       const b = impactBodyForReceipt(state, receipt.bId);
       if (!a || !b || a.alive === false || b.alive === false) return false;
-      if (carried && (staleImpactGeneration(a, receipt.aGeneration) || staleImpactGeneration(b, receipt.bGeneration))) return false;
+      if (staleImpactGeneration(a, receipt.aGeneration) || staleImpactGeneration(b, receipt.bGeneration)) return false;
+      if (playerCauseOnly && !this.registry?.get?.('collisionConsequences')?.hasPlayerContactCause?.(a, b, state.tick)) {
+        return false;
+      }
       const options = this._sg02ImpactOptionsScratch;
       const material = pairMaterialInto(this._pairMaterialScratch, a, b);
       // Every option field is rewritten per receipt; receipt fields absent on non-player
@@ -2136,7 +2144,7 @@ function usesSg02DynamicAuthority(state) {
  * Contact-receipt body resolution: solver bodies that are not entities (solid dressing rows)
  * still owe their contact receipts an impact event, so fall back to the dressing table.
  */
-// Non-player impact receipts delivered to the bus per tick; the rest wait for the next tick.
+// Ambient impact receipts delivered to the bus per tick before the carry is used.
 // The carry itself is bounded: past it, receipts deliver inline rather than wait (never lost).
 export const SG02_IMPACT_FANOUT_CAP = 32;
 const SG02_IMPACT_CARRY_MAX = 512;
@@ -2147,7 +2155,7 @@ const SG02_IMPACT_CARRY_MAX = 512;
 const SG02_RESTING_CLOSING_WU_S = 5;
 const SG02_RESTING_PAIR_TICKS = 12;
 
-// A carried receipt whose body id now names a different occupant is not this impact's body.
+// Contact publication can recycle an endpoint before the next receipt is delivered.
 function staleImpactGeneration(entity, generation) {
   return Number.isSafeInteger(generation) && Number.isSafeInteger(entity.occupantGeneration)
     && entity.occupantGeneration !== generation;

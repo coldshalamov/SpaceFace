@@ -40,7 +40,8 @@ lands it.
 - Not launched by the director: do what the owner asked you, by the rule above.
 - The plan of record is [`design/overhaul/`](design/overhaul/README.md): what the game is (`01`),
   the owner's rulings (`00`), what has been inspected (`02`), and the live board
-  ([`12_PIPELINE.md`](design/overhaul/12_PIPELINE.md)).
+  ([`12_PIPELINE.md`](design/overhaul/12_PIPELINE.md)). For freezes, hitches, frame rate, and flight
+  responsiveness, use the [playable-flight spec](design/overhaul/10_ENGINE.md).
 - History, not instructions: `design/program/**` (including `fleet/QUEUE.md` and `NOW.md`),
   `build_map.md`, `design/game/` where `design/overhaul/00_RULINGS.md` overrides it, and every
   packet, handoff and review file.

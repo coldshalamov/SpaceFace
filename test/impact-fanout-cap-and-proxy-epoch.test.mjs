@@ -1,15 +1,18 @@
 // Impact bursts and the collision-proxy resolve cache (no-freeze world-speed work, 2026-11-21).
 // 1. physics:impact fan-out is capped per tick; the rest carry to the next tick in order, keep the
-//    tick they happened on, skip bodies that died or whose id was recycled, and receipts that touch
+//    tick they happened on, skip bodies that died or whose id was recycled, and receipts caused by
 //    the player always deliver at once. Nothing is dropped.
 // 2. The proxy resolve cache validates the full fingerprint once per worker sim step; inside the step
 //    a body/data/type/revision swap is still seen at once, an in-place data edit from the next step.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { physics, SG02_IMPACT_FANOUT_CAP } from '../src/core/physics.js';
+import { recordImpulseProvenance } from '../src/combat/impulseKernel.js';
+import { collisionConsequences } from '../src/systems/collisionConsequences.js';
+import { COMBAT_FLAGS } from '../src/data/featureFlags.js';
 import { resolveCollisionProxyManifest, advanceCollisionProxyResolveEpoch } from '../src/data/collisionProxyManifests.js';
 
-function harness(receiptsPerTick) {
+function harness() {
   const entities = new Map();
   const ent = (id, extra = {}) => { const e = { id, alive: true, mass: 1, occupantGeneration: 1, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, ...extra }; entities.set(id, e); return e; };
   const emits = [];
@@ -21,6 +24,9 @@ function harness(receiptsPerTick) {
   sys._sg02ImpactOptionsScratch = { normal: { x: 0, z: 0 } };
   sys._sg02ImpactCarry = [];
   sys._sg02ImpactCarryNext = [];
+  sys._sg02PairLastEmit = new Map();
+  const consequences = Object.assign(Object.create(collisionConsequences), { state });
+  sys.registry = { get: (name) => name === 'collisionConsequences' ? consequences : null };
   let queue = [];
   sys._sg02 = { drainContactImpacts: () => { const out = queue; queue = []; return out; } };
   return { sys, state, ent, emits, push: (rs) => { queue = rs; } };
@@ -47,6 +53,80 @@ test('impact fan-out: capped per tick, carried in order with its own tick, playe
   assert.ok(h.emits.slice(first).every((e) => e.tick === 1), 'a carried receipt keeps the tick it happened on');
   const order = h.emits.filter((e) => e.a !== 'P').map((e) => Number(e.a.slice(1)));
   assert.deepEqual(order, [...order].sort((x, y) => x - y), 'carried receipts keep their order');
+});
+
+test('impact fan-out delivers a player-caused wreck hit on the contact tick after the ambient budget is spent', () => {
+  const h = harness();
+  h.state.tick = 200;
+  h.ent('P');
+  const wreck = h.ent('wreck', { type: 'wreck' });
+  const victim = h.ent('victim', { type: 'ship' });
+  const ambient = h.ent('ambient', { type: 'wreck' });
+  const other = h.ent('other', { type: 'ship' });
+  recordImpulseProvenance(wreck, { actorId: 'P', tag: 'massline_throw', appliedTick: 199, magnitude: 900 });
+  // The canonical selector keeps the stronger same-tick cause even when the latest stamp is weaker.
+  recordImpulseProvenance(wreck, { actorId: 'npc', tag: 'weapon_hit', appliedTick: 199, magnitude: 30 });
+  recordImpulseProvenance(ambient, { actorId: 'P', tag: 'massline_throw', appliedTick: 198, magnitude: 900 });
+  recordImpulseProvenance(other, { actorId: 'npc', tag: 'weapon_hit', appliedTick: 199, magnitude: 30 });
+
+  const burst = [];
+  for (let i = 0; i < SG02_IMPACT_FANOUT_CAP; i++) {
+    burst.push(receipt(h.ent('a' + i).id, h.ent('b' + i).id));
+  }
+  burst.push(receipt(ambient.id, other.id), receipt(wreck.id, victim.id, { causalActorId: wreck.id }));
+  h.push(burst);
+  h.sys._emitSg02ContactImpacts(h.state);
+
+  assert.deepEqual(h.emits.slice(SG02_IMPACT_FANOUT_CAP), [
+    { a: wreck.id, b: victim.id, tick: 200 },
+  ]);
+  h.state.tick++;
+  h.sys._emitSg02ContactImpacts(h.state);
+  assert.deepEqual(h.emits.slice(SG02_IMPACT_FANOUT_CAP), [
+    { a: wreck.id, b: victim.id, tick: 200 },
+    { a: ambient.id, b: other.id, tick: 200 },
+  ]);
+});
+
+test('a carried contact preserves a later throw by the same body', (t) => {
+  const previous = COMBAT_FLAGS.weaponImpulseConsequences;
+  COMBAT_FLAGS.weaponImpulseConsequences = true;
+  t.after(() => { COMBAT_FLAGS.weaponImpulseConsequences = previous; });
+  const h = harness();
+  h.state.tick = 200;
+  h.ent('P');
+  const wreck = h.ent('wreck', { type: 'wreck' });
+  const crate = h.ent('crate', { type: 'payload' });
+  const victim = h.ent('victim', { type: 'ship' });
+
+  const consequences = h.sys.registry.get('collisionConsequences');
+  consequences._pairTicks = new Map();
+  const causes = [];
+  consequences._resolveContact = (a, b, payload, impulse, tick, provenance) => {
+    causes.push({ other: b.id, tick, actor: provenance?.actorId ?? null });
+  };
+  const emit = h.sys.bus.emit;
+  h.sys.bus.emit = (event, payload) => {
+    emit(event, payload);
+    if (event === 'physics:impact' && payload.aId === wreck.id) consequences._onImpact(payload);
+  };
+
+  const ambient = [];
+  for (let i = 0; i < SG02_IMPACT_FANOUT_CAP; i++) {
+    ambient.push(receipt(h.ent('a' + i).id, h.ent('b' + i).id));
+  }
+  h.push([...ambient, receipt(wreck.id, crate.id)]);
+  h.sys._emitSg02ContactImpacts(h.state);
+  assert.deepEqual(causes, [], 'the original contact waits because it was ambient');
+
+  h.state.tick++;
+  recordImpulseProvenance(wreck, { actorId: 'P', tag: 'massline_throw', appliedTick: 201, magnitude: 900 });
+  h.push([...ambient, receipt(wreck.id, victim.id)]);
+  h.sys._emitSg02ContactImpacts(h.state);
+  assert.deepEqual(causes, [
+    { other: crate.id, tick: 200, actor: null },
+    { other: victim.id, tick: 201, actor: 'P' },
+  ]);
 });
 
 test('impact fan-out: a carried receipt whose body died or was recycled is skipped', () => {

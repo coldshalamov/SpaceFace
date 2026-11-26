@@ -2,9 +2,9 @@
 // hand-like input for minutes in a busy Swarm round and in Adventure, plus the forced stalls
 // (ACKs withheld, the reliable reply stream held, thousands of durable rows per reply), and FAILS on:
 //   - any presented-pose age over 100 ms while unpaused (drawn ships that should be moving);
+//   - any data hold or frame gap over 100 ms, including a hold behind the recovery plate;
 //   - world speed under 0.97 over any ten-second window;
 //   - any entry in the lane's freeze log (window.__SF_FREEZE_LOG__).
-// Newest-data age and the longest presented-frame gap are printed beside them.
 //
 //   npm run check:no-freeze              (7 min Swarm + 7 min Adventure + forced stalls)
 //   node scripts/check-no-freeze.mjs --seconds=60 [--routes=swarm] [--legacy]
@@ -64,15 +64,14 @@ for (const routeName of ROUTES) {
   }
   for (const r of report.rows) {
     const why = [];
-    // Ruling: the freeze is judged on pose age net of the main-thread frame gap; a gap over 250 ms
-    // fails separately as a rendering hitch.
+    // The recovery plate is visible feedback for a failure. Time behind it still costs control.
     if (r.netPoseAgeMs == null || r.netPoseAgeMs > POSE_AGE_LIMIT_MS) why.push(`pose age (net of frame gap) ${r.netPoseAgeMs} ms > ${POSE_AGE_LIMIT_MS}`);
-    if (r.frameGapMaxMs > 250) why.push(`rendering hitch: a ${r.frameGapMaxMs} ms frame gap`);
+    if (r.dataAgeMaxMs == null || r.dataAgeMaxMs > POSE_AGE_LIMIT_MS) why.push(`simulation data age ${r.dataAgeMaxMs} ms > ${POSE_AGE_LIMIT_MS}`);
+    if (r.frameGapMaxMs == null || r.frameGapMaxMs > POSE_AGE_LIMIT_MS) why.push(`rendering hitch: a ${r.frameGapMaxMs} ms frame gap`);
     if (r.worstWindow10s != null && r.worstWindow10s < WORLD_SPEED_FLOOR) why.push(`world x${r.worstWindow10s} < ${WORLD_SPEED_FLOOR} over 10 s`);
     if (r.worstWindow10s == null && r.worldSpeed != null && r.wallS >= 2 && r.worldSpeed < WORLD_SPEED_FLOOR) {
       why.push(`world x${r.worldSpeed} < ${WORLD_SPEED_FLOOR} (phase shorter than 10 s)`);
     }
-    if (r.uncoveredStopMs > 300) why.push(`simulation stopped ${r.uncoveredStopMs} ms in live flight with no hold plate`);
     if (r.silentHoldMs > 0) why.push(`world held at time scale 0 for ${r.silentHoldMs} ms with no pause plate or screen`);
     if (r.freezeLog > 0) why.push(`${r.freezeLog} freeze-log entr${r.freezeLog === 1 ? 'y' : 'ies'}`);
     if (!(r.wallS > 0)) why.push('no unpaused flight samples');

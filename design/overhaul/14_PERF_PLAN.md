@@ -1,4 +1,7 @@
-# 14 — The performance plan: three campaigns, one bar
+# 14 — Performance evidence and experiments, November 22
+
+> For current flight priorities, architecture, and assignments, start at [10 Engine](10_ENGINE.md).
+> This page retains the November 22 measurements, proposals, and experiment log.
 
 **Written 2026-11-22 for the owner, from the repo's own measurements.** Evidence base:
 `.devshots/frame-cost/owner-r6/cur-r0.json` (the round-6 profile), the four audit lists in

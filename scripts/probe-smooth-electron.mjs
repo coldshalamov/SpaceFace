@@ -205,9 +205,11 @@ try {
   await page.evaluate(() => {
     const N = 90000;
     const R = { n: 0, t: new Float64Array(N), tn: new Float64Array(N), scr: new Uint8Array(N), pres: new Uint32Array(N), flags: new Uint8Array(N), cb: new Float32Array(N),
-      rnd: new Float32Array(N), ui: new Float32Array(N), sim: new Float64Array(N), seg: 0, callsMax: 0, loaf: [], tasks: [], samples: [], on: true, sample: {}, loafOk: null };
+      rnd: new Float32Array(N), ui: new Float32Array(N), sim: new Float64Array(N), poseClockFrames: 0,
+      seg: 0, callsMax: 0, loaf: [], tasks: [], samples: [], on: true, sample: {}, loafOk: null };
     window.__sm = R;
     const S = window.SF.state;
+    const renderOwner = window.SF.registry?.get('render');
     const live = () => S.mode === 'flight' && S.timeScale > 0 && !(S.ui && S.ui.docked === true)
       && !(S.render && S.render.flightVeilHoldsSim === true);
     const loop = (now) => {
@@ -219,7 +221,11 @@ try {
         R.scr[i] = Math.min(255, (S.ui && S.ui.screenStack && S.ui.screenStack.length) || 0);
         R.pres[i] = (S.render && S.render.worldSubmittedFrames) | 0;
         R.flags[i] = (live() ? 1 : 0) | (R.seg << 1);
-        R.sim[i] = S.simTime || 0;
+        const fence = renderOwner?._snapshotFence;
+        const presentedTime = fence?.packCount > 0 ? fence.presentedTimeS : NaN;
+        const hasPoseClock = Number.isFinite(presentedTime);
+        R.sim[i] = hasPoseClock ? presentedTime : (S.simTime || 0);
+        if (hasPoseClock && (R.flags[i] & 1) && (R.seg === 1 || R.seg === 2)) R.poseClockFrames++;
         if ((i & 15) === 0 && R.seg) { const d = window.__THREE_GAME_DIAGNOSTICS__; const c = d && d.info ? d.info.calls | 0 : 0; if (c > R.callsMax) R.callsMax = c; }
         const perf = S.perfRuntime;
         if (perf && perf.readFrameSample) {
@@ -630,7 +636,8 @@ try {
     const n = R.n;
     return { n, t: Array.from(R.t.subarray(0, n)), tn: Array.from(R.tn.subarray(0, n)), scr: Array.from(R.scr.subarray(0, n)), pres: Array.from(R.pres.subarray(0, n)), flags: Array.from(R.flags.subarray(0, n)),
       cb: Array.from(R.cb.subarray(0, n)).map((x) => +x.toFixed(2)), rnd: Array.from(R.rnd.subarray(0, n)).map((x) => +x.toFixed(2)),
-      ui: Array.from(R.ui.subarray(0, n)).map((x) => +x.toFixed(2)), sim: Array.from(R.sim.subarray(0, n)), callsMax: R.callsMax, loaf: R.loaf, loafOk: R.loafOk, tasks: R.tasks, samples: R.samples };
+      ui: Array.from(R.ui.subarray(0, n)).map((x) => +x.toFixed(2)), sim: Array.from(R.sim.subarray(0, n)),
+      poseClockFrames: R.poseClockFrames, callsMax: R.callsMax, loaf: R.loaf, loafOk: R.loafOk, tasks: R.tasks, samples: R.samples };
   });
   report.end = await page.evaluate(() => {
     const g = window.SF.simLaneDiag(); const S = window.SF.state;
@@ -820,20 +827,20 @@ try {
   }
   // ---- world speed and worker step ----
   {
-    // From the per-frame record (simulation time as the main thread holds it): the 20 Hz timer
-    // starves for seconds when the main thread is saturated, the animation callback does not.
+    // Use the presented pose clock so a late reliable reply cannot make the
+    // world appear slower in the report than it was on screen.
     const acc = [{ w: 0, sim: 0 }]; let w = 0; let sim = 0;
     const ok = (k) => liveAt[k] && (((flags[k] >> 1) & 3) === 1 || ((flags[k] >> 1) & 3) === 2);
     for (let k = 1; k < raw.n; k++) {
       if (!ok(k - 1) || !ok(k)) continue;
       const dt = (t[k] - t[k - 1]) / 1000; const ds = raw.sim[k] - raw.sim[k - 1];
-      // The main thread receives simulation time in bursts (a reply can carry many steps), so a
-      // jump is real time catching up, not an error: only a reset (negative) or a relaunch is dropped.
-      if (!(dt > 0) || dt > 3 || ds < 0 || ds > 8) continue;
+      // Keep long wall gaps. The time lost before the next live frame is part
+      // of playing the fight. Skip clock resets and replaced runs.
+      if (!(dt > 0) || ds < 0 || ds > 8) continue;
       w += dt; sim += ds; acc.push({ w, sim });
     }
     let worst = null;
-    if (w >= 20) {
+    if (w >= 10) {
       for (let i = 0; i < acc.length; i += 5) {
         const j = acc.findIndex((d, k) => k > i && d.w - acc[i].w >= 10);
         if (j < 0) break;
@@ -844,7 +851,8 @@ try {
     const windows = new Map();
     for (const s of judgedSamples) if (s.pw != null && s.stepP50 != null) windows.set(s.pw, s);
     const ws = [...windows.values()];
-    report.world = { speed: w > 0 ? +(sim / w).toFixed(3) : null, worst10s: worst == null ? null : +worst.toFixed(3), liveSeconds: +w.toFixed(1) };
+    report.world = { speed: w > 0 ? +(sim / w).toFixed(3) : null, worst10s: worst == null ? null : +worst.toFixed(3),
+      liveSeconds: +w.toFixed(1), poseClockFrames: raw.poseClockFrames };
     report.worker = { windows: ws.length, stepP50: pct(ws.map((s) => s.stepP50), 0.5), stepP95: ws.length ? +Math.max(...ws.map((s) => s.stepP95)).toFixed(1) : null,
       workP50: pct(ws.map((s) => s.workP50), 0.5), workP95: ws.length ? +Math.max(...ws.map((s) => s.workP95)).toFixed(1) : null };
   }

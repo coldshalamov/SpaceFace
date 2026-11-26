@@ -1,6 +1,8 @@
 # SpaceFace — Canonical Technical Architecture
 
-> This document is the **contract**. Every implementer follows it verbatim. Where the ten subsystem specs disagreed, this document makes one call and names the loser. Conflict resolutions are marked **[RESOLVED]**. Do not re-litigate them in code; raise a design ticket if a number must change.
+> This is the reference for the shipped runtime's state, events, ownership, and save contracts. The
+> [playable-flight spec](design/overhaul/10_ENGINE.md) governs the recovery design and its migration.
+> Update this reference when a landed change alters a contract.
 
 ---
 
@@ -194,11 +196,25 @@ Two distinct quantities that specs conflated:
 ## 2. THE FIXED-TIMESTEP GAME LOOP
 
 ### 2.1 Rates
-- **Sim: 60 Hz**, `DT = 1/60 s`. Render: every animation frame, interpolated.
+- Simulation uses a fixed 60 Hz step. The renderer interpolates poses at the selected frame cap.
 - Economy ticks at **5 s** (internal accumulator, gated inside the loop — NOT a separate timer).
 - Automation accrual runs every sim tick but credits/loss roll on their own cadences (cycle completion, raid intervals).
 
-### 2.2 The loop (`loop.js`)
+### 2.2 The simulation and presentation loops
+
+The default worker owns its fixed-step deadlines in [wholeSimBrowserWorker.js](src/core/wholeSimBrowserWorker.js).
+Pause, suspension, loading, and time effects change the clock through explicit lifecycle messages.
+Presentation heartbeats provide diagnostics and can recover reply credit. The worker continues
+stepping through a missing heartbeat and limits catch-up work per turn.
+
+The completed step publishes motion and pilot vitals through [simPoseTable.js](src/core/simPoseTable.js).
+The writer walks the journal's live entity roster. A shared table publishes only after writing the
+complete bank. The transferable path uses a separate port and keeps only the newest pending table.
+Spawn, retirement, and durable events still travel through the ordered reply path. In live flight,
+the lane sends current controls before it decodes and applies deferred replies. The renderer applies
+the latest table to matching body lives and samples its interpolation history for the draw.
+
+The in-process fallback advances the simulation from the animation frame.
 ```
 function frame(now):
   frameDt = min((now - last)/1000, 0.25)          // clamp huge stalls

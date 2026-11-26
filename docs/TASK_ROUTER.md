@@ -10,8 +10,9 @@ outcome detail, not a second queue. This page does not assign a competing queue.
 | Task or symptom | Start here |
 |---|---|
 | Finish the game, improve the default experience, or choose current work | [`design/overhaul/`](../design/overhaul/README.md) → [`12_PIPELINE.md`](../design/overhaul/12_PIPELINE.md) |
-| Performance, startup, loading, hitching, or frame pacing | The named measurement/check; preserve authored quality. Use [`VALIDATION_WORKFLOW.md`](./VALIDATION_WORKFLOW.md) for the relevant comparison. |
-| Combat, Swarm, Crucible, Fortify, AI, physics, or simulation cost | The named gameplay/test owner. |
+| Flight response, freezes, hitches, frame rate, or simulation cost | [10 Engine](../design/overhaul/10_ENGINE.md) is the recovery spec. Use [`VALIDATION_WORKFLOW.md`](./VALIDATION_WORKFLOW.md) for the relevant comparison. |
+| Startup or loading | The named route/check, with the live flight priorities in [10 Engine](../design/overhaul/10_ENGINE.md). |
+| Combat, Swarm, Crucible, Fortify, AI, or physics rules | The named gameplay/test owner. |
 | Adventure, missions, world, economy, story, audio, or screens | The named owner/spec. |
 | Find a module or event/update owner | [`MODULE_MAP.md`](./MODULE_MAP.md), then generated [`SYSTEM_REGISTRY.md`](./SYSTEM_REGISTRY.md) or [`EVENT_ROUTING.md`](./EVENT_ROUTING.md) |
 | Recurring bug or known hazard | [`COMMON_BUGS.md`](./COMMON_BUGS.md), then confirm against current source and behavior |

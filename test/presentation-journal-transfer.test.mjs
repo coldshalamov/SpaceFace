@@ -113,9 +113,13 @@ async function assertWorkerTransfersCompletedPoses(shared) {
     const state = worker.host.state;
     const player = state.entities.get(state.playerId);
     assert.ok(player);
-    const bootAck = boot.journalEnd;
+    // Materialize the opening sector before withholding ACKs from normal
+    // flight. The veil can run eight warm steps before handing over control.
+    const opening = await send(8, boot.journalEnd);
+    assert.equal(opening.journalValid, true);
+    const bootAck = opening.journalEnd;
     let prior = { x: player.pos.x, z: player.pos.z };
-    let previousEnd = boot.journalEnd;
+    let previousEnd = bootAck;
     for (let tick = 0; tick < 4; tick++) {
       const reply = await send(1, bootAck, ...(tick === 0 ? [
         { kind: 'domEvent', d: { type: 'keydown', code: 'KeyW', pressed: true, blocked: false } },

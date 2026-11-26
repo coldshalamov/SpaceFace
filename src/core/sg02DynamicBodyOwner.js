@@ -1368,6 +1368,7 @@ export class Sg02DynamicBodyOwner {
     }
 
     let dynamicCount = 0;
+    let matchedDynamicRoster = !orderedEntities;
     for (const entity of dynamicEntities) {
       if (!entity || entity.alive === false || entity.physicsBody === false) continue;
       // Lean: one read of the id for every use below (nothing in this pass writes entity.id).
@@ -1388,15 +1389,21 @@ export class Sg02DynamicBodyOwner {
       if (!spec || !(spec.radius > 0) || !spec.dynamic) continue;
       dynamicLive.add(lean ? id : entity.id);
       dynamicCount++;
-      this._syncRecord(entity, spec, id);
+      const record = this._syncRecord(entity, spec, id);
+      if (record?.spec.dynamic !== true) matchedDynamicRoster = false;
     }
-    for (const [id, rec] of this.records) {
-      if (rec.spec.dynamic && !dynamicLive.has(id)) {
-        // Past the remove budget the record stays managed one more pass — the body keeps
-        // colliding until then (deferred destruction), and the dynamic loop re-runs every
-        // sync so no version nudge is needed. Pooled retires never consume the budget.
-        if (this._removeBudget <= 0 && !this._poolRetirable(rec)) continue;
-        const world=this.world;this._removeRecord(id, rec, {orchardResidency:true});if(this.world!==world){this._mintBudget=null;this._removeBudget=null;return false;}
+    // The ordinary activity roster already visited every live dynamic handle.
+    // A failed/deferred mint or an old record still waiting to retire uses the
+    // existing ordered sweep. Static bodies are handled by the static version.
+    if (!matchedDynamicRoster || dynamicLive.size !== this.dynamicRecords.size) {
+      for (const [id, rec] of this.records) {
+        if (rec.spec.dynamic && !dynamicLive.has(id)) {
+          // Past the remove budget the record stays managed one more pass — the body keeps
+          // colliding until then (deferred destruction), and the dynamic loop re-runs every
+          // sync so no version nudge is needed. Pooled retires never consume the budget.
+          if (this._removeBudget <= 0 && !this._poolRetirable(rec)) continue;
+          const world=this.world;this._removeRecord(id, rec, {orchardResidency:true});if(this.world!==world){this._mintBudget=null;this._removeBudget=null;return false;}
+        }
       }
     }
     if (sphOn) { sph.record('sg02.syncDynamic', nowNs() - sphT); sphT = nowNs(); }

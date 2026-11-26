@@ -913,11 +913,10 @@ test('coalesced journal keeps generation reuse ordering, type remaps, and SAB bo
   }
 });
 
-test('a two-second presentation stall resumes without teleporting the world ahead', { timeout: 120000 }, async () => {
+test('the real worker publishes motion across more than two seconds without presentation', { timeout: 120000 }, async () => {
   const replies = [];
   let receive;
   let workerError;
-  let heartbeat;
   const worker = new Worker(new URL('./fixtures/whole-sim-browser-worker-thread.mjs', import.meta.url), { type: 'module' });
   const state = createGameState(4242);
   const effects = createTimeEffects(state);
@@ -953,39 +952,20 @@ test('a two-second presentation stall resumes without teleporting the world ahea
     lane.runner.setClockActive(true);
     const latest = () => replies.filter((reply) => reply.kind === 'clockTick').at(-1);
     await waitFor(() => latest()?.clockDiagnostics?.scale === 1 && (latest()?.stateTick || 0) >= 4, 60000);
-    // Simulate a 2 s main-thread stall: no presentation beats at all. The world
-    // may only step inside the initial hold window, never through the stall.
+    // Keep the clock active while presentation stops producing heartbeats.
     lane.runner.heartbeat();
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    const heldTick = latest()?.stateTick || 0;
-    const heldSimTime = latest()?.simTime || 0;
-    // Foreground presentation resumes its recurring beats; the world must resume from the held pose — a
-    // teleport would replay ~120 owed ticks and land simTime ~2 s ahead.
-    lane.runner.heartbeat();
-    heartbeat = setInterval(() => lane.runner.heartbeat(), 16);
-    await waitFor(() => (latest()?.stateTick || 0) > heldTick + 2, 30000);
-    await new Promise((resolve) => setTimeout(resolve, 600));
-    const resumed = latest() || {};
-    const resumedAdvance = (resumed.stateTick || 0) - heldTick;
-    // NO-FREEZE rule: nothing but the 1 s dead-page hold stops the clock (no ACK/backpressure
-    // throttling before it), so up to ~60 ticks run inside the hold window plus the warm-up.
-    assert.ok(heldTick <= 80,
-      `during a 2 s stall the clock held after the 1 s dead-page window (tick reached ${heldTick}, a runaway would be ~120+)`);
-    assert.ok(resumedAdvance <= 60,
-      `after the stall the world resumed at run rate (+${resumedAdvance} ticks in ~0.6 s, a teleport would burst ~105)`);
-    assert.ok((resumed.simTime || 0) - heldSimTime <= 1.2,
-      `simTime did not jump seconds ahead on resume (+${((resumed.simTime || 0) - heldSimTime).toFixed(2)} s)`);
-    assert.ok((resumed.clockDiagnostics?.heartbeatHolds || 0) > 0,
-      'the worker recorded the presentation-stall hold');
+    const start = latest().stateTick;
+    const time = latest().simTime;
+    await waitFor(() => (latest()?.stateTick || 0) >= start + 125, 30000);
+    assert.ok(latest().simTime - time >= 2, 'world time advanced without a presentation heartbeat');
     assert.equal(workerError, undefined);
   } finally {
-    clearInterval(heartbeat);
     lane?.close();
     await worker.terminate();
   }
 });
 
-test('a foreground heartbeat arriving before a throttled timer discards the hidden wall interval', async (t) => {
+test('an explicit lifecycle transition discards the hidden interval and invalidates the old timer', async (t) => {
   const previousSelf = globalThis.self;
   const replies = [];
   globalThis.self = { postMessage: (reply) => replies.push(reply) };
@@ -1024,21 +1004,23 @@ test('a foreground heartbeat arriving before a throttled timer discards the hidd
     send({ kind: 'clockControl', active: true, generation: 1, timeScale: 1 });
     await settle();
     send({ kind: 'laneHeartbeat' });
-    // ENGINE slice 5: the hold is a dead-main-thread guard (LOCAL_HEARTBEAT_HOLD_MS = 1000), so the
-    // gap must exceed it to be a hidden interval.
+    const hiddenTimer = [...timers.values()][0];
+    send({ kind: 'clockControl', active: false, generation: 2, timeScale: 1 });
+    await settle();
     now += 1500;
-    send({ kind: 'laneHeartbeat' });
-    await fireClock();
+    hiddenTimer();
+    await settle();
     assert.equal(replies.filter((reply) => reply.kind === 'clockTick').length, 0,
-      'a timer overdue across the gap may not publish a catch-up step');
+      'the timer from an inactive lifecycle cannot step the world');
 
+    send({ kind: 'clockControl', active: true, generation: 3, timeScale: 1 });
+    await settle();
     now += 1000 / 60 + 1;
     await fireClock();
     const first = replies.find((reply) => reply.kind === 'clockTick');
     assert.ok(first, 'one fresh interval resumes simulation');
     assert.equal(first.clockDiagnostics.steps, 1);
     assert.equal(first.clockDiagnostics.shedSteps, 0);
-    assert.equal(first.clockDiagnostics.heartbeatHolds, 1);
 
     send({ kind: 'clockAck', clockSequence: first.clockSequence, ackJournalEnd: first.journalEnd });
     await settle();
@@ -1173,12 +1155,8 @@ test('overdue worker wakes yield a timer and discard obsolete posted tasks', asy
     heartbeat();
     missed();
     await settle();
-    assert.equal(ticks(), beforeObsolete, 'a pending task cannot charge a missed heartbeat');
-    assert.ok(clockTimer()[1].delay > 0, 'foreground return starts a fresh deadline');
-
-    now += 1000 / 60 + 1;
-    await fireTimer();
-    assert.equal(tasks.length, 1);
+    assert.equal(ticks(), beforeObsolete + 1, 'presentation silence does not invalidate the pending wake');
+    assert.equal(tasks.length, 1, 'bounded debt is left to a later task');
     const beforeShutdown = ticks();
     send({ kind: 'shutdown', seq: 'overdue-wake-shutdown' });
     await settle();

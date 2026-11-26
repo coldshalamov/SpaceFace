@@ -145,7 +145,7 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
   // (the renderer latches _noMesh after build failures), so a suppressed destroy must
   // only apply to entities that were never journaled — a journaled entity that loses
   // eligibility mid-life still needs its destroy to close the generation.
-  const journaledEntities = new WeakSet();
+  const activeEntities = new Map();
   const records = Array.from({ length: size }, () => createPresentationJournalRecord());
 
   let generations = new Uint32Array(initialEntityCapacity + 1);
@@ -395,7 +395,7 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
       1,
       entity,
     );
-    journaledEntities.add(entity);
+    activeEntities.set(entityId, entity);
     spawnCount++;
     if (onLifeRecord) onLifeRecord('spawn', entityId, generation, sequence, tick, entity && entity.occupantGeneration, rebuilding === true);
     return sequence;
@@ -409,7 +409,10 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
 
   function recordDestroy(tick, source) {
     assertOpen();
-    if (!isEntityJournaled(source) && !journaledEntities.has(source)) return 0;
+    if (!isEntityJournaled(source)) {
+      const id = sourceEntityId(source);
+      if (id === 0 || (activeEntities.get(id) !== source && rebuildSourceEntities?.get(id) !== source)) return 0;
+    }
     const entityId = ensureEntityId(source);
     if (!prepareRecord(tick, entityId, 'destroy')) return 0;
     if (entityId === 0 || rebuildRequired) return 0;
@@ -430,6 +433,7 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
       source,
     );
     activeGenerations[entityId] = 0;
+    activeEntities.delete(entityId);
     lastTransformSequence[entityId] = 0;
     lastVisualSequence[entityId] = 0;
     // The destroy record closes the chain: the next generation must not link
@@ -654,6 +658,7 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
     if (maxEntityId > 0) growMetadata(maxEntityId);
     if (maxEntityId > highestEntityId) highestEntityId = maxEntityId;
     if (highestEntityId > 0) activeGenerations.fill(0, 0, highestEntityId + 1);
+    activeEntities.clear();
     clearRetained();
     lastRecordTick = -1;
     rebuildGeneration = nextCounter(rebuildGeneration);
@@ -746,6 +751,7 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
     records.length = 0;
     generations = new Uint32Array(0);
     activeGenerations = new Uint32Array(0);
+    activeEntities.clear();
     revisions = new Uint32Array(0);
     lastTransformSequence = new Float64Array(0);
     lastVisualSequence = new Float64Array(0);
@@ -780,8 +786,9 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
     // journal does not track it. Read-only; never mints or changes a generation.
     // Same, but only for the very entity object the journal spawned: an id reused by a body the
     // journal does not present must not inherit the previous occupant's generation.
-    getActiveGenerationFor: (entity) => (entity && journaledEntities.has(entity) && Number.isSafeInteger(entity.id)
-      && entity.id > 0 && entity.id < activeGenerations.length ? activeGenerations[entity.id] : 0),
+    activePoseEntities: () => activeEntities.values(),
+    getActiveGenerationFor: (entity) => (entity && activeEntities.get(entity.id) === entity
+      ? activeGenerations[entity.id] : 0),
     getActiveGeneration: (entityId) => (Number.isSafeInteger(entityId) && entityId > 0
       && entityId < activeGenerations.length ? activeGenerations[entityId] : 0),
     needsRebuild: () => rebuildRequired,

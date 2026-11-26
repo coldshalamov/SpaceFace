@@ -592,12 +592,14 @@ export function createContractsScreen(ctx) {
   // removal landing mid-drain retires it; a detached Accept node never falls through to whatever
   // the dossier happens to paint now.
   let pendingCommit = null;
-  let acceptHoldMs = 450;
+  let acceptHoldMs = 180;
   /** True only while the shown offer puts collateral at risk: then Accept is held. Otherwise one
    *  press (click, Enter, Space, pad A) takes the job, and the ring plays through as its receipt. */
   let acceptNeedsHold = false;
-  let pointerAt = -1;
-  let keyAt = -1;
+  // No physical interaction has occurred yet. A negative finite sentinel would suppress
+  // the first click during the first 1.5 seconds of the document's monotonic clock.
+  let pointerAt = -Infinity;
+  let keyAt = -Infinity;
   // the tether's hold painter, armed by layTether once the combined path is measured; the bench
   // reaches it as dossier.__ctHoldPath.set(p) for the deterministic 50%-hold still
   let paintHoldPath = null;
@@ -1210,9 +1212,9 @@ export function createContractsScreen(ctx) {
       if (raf && !reducedMotion()) { counter.set(0); raf(() => raf(() => counter.set(value))); }
       else counter.set(value);
     }
-    // Accept is the tab's Lamp Key, and every Accept is held: 450 ms with nothing at risk,
-    // 720 ms with collateral. The hold's progress lights the combined key-to-berth path; letting go
-    // early retracts it; at full the berth ignites and the mission commits.
+    // Accept is the tab's Lamp Key. Only an offer with collateral requires a physical 720 ms
+    // hold. With no collateral, one activation plays a short 180 ms receipt automatically.
+    // The ring and route light share the same identity-fenced commit.
     const accept = dossier.querySelector('.sx-ct-commit[data-accept]');
     const consequences = missionConsequenceSummary(m, state);
     acceptNeedsHold = consequences.collateral > 0;
@@ -1375,15 +1377,22 @@ export function createContractsScreen(ctx) {
    * key to the new YOURS row's Track control. Reduced motion skips the travel and commits.
    */
   function drainAndCommit(key, completedAt) {
-    const missionId = key ? key.getAttribute('data-accept') : null;
-    const fromRect = key && typeof key.getBoundingClientRect === 'function' ? key.getBoundingClientRect() : null;
     const drainedHold = hold;
+    const missionId = drainedHold?.missionId;
+    // A delayed RAF may run after an offer or its terms changed without a repaint. Never
+    // authorize the current key with a hold accumulated against a different contract.
+    if (!key || key.getAttribute('data-accept') !== missionId || drainedHold.terms == null
+        || offerTermsKey(missionId, ctx.state || {}) !== drainedHold.terms) {
+      endHold();
+      return;
+    }
+    const fromRect = typeof key.getBoundingClientRect === 'function' ? key.getBoundingClientRect() : null;
     // P04 — capture the held offer's identity and stated terms NOW. The retract runs ~260 ms of
     // live rAF while the board may repaint: the commit lands only on the offer that was held, and
     // only while that offer is still posted on the same terms.
     const token = pendingCommit = {
       missionId,
-      terms: offerTermsKey(missionId, ctx.state || {}),
+      terms: drainedHold.terms,
       cancelled: false,
     };
     if (routeInstrument && typeof routeInstrument.flashBerth === 'function') {
@@ -1654,7 +1663,7 @@ export function createContractsScreen(ctx) {
     setTimeout(() => renderAll(state), 60);
   }
 
-  // Accept is held, never clicked: pointer down arms, up / cancel / leave lets go; keyboard
+  // A collateral-bearing Accept is held: pointer down arms, up / cancel / leave lets go; keyboard
   // Enter/Space arms on keydown and lets go on keyup. The click that follows a pointer or key hold
   // belongs to that hold; the pad's A (a synthetic click) arms a hold that lasts while A stays down;
   // a bare activation with nothing held (assistive tech) runs the hold through on its own.
@@ -1732,7 +1741,7 @@ export function createContractsScreen(ctx) {
       // a held Accept fires from its ring, never from the tap that started the hold
       const t = holdClock();
       if (t - pointerAt < 1500 || t - keyAt < 1500) return;
-      startHold(padHeld() ? 'pad' : 'auto');
+      startHold(acceptNeedsHold && padHeld() ? 'pad' : 'auto');
       return;
     }
     const trk = ev.target.closest('[data-track]');

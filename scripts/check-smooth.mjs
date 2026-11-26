@@ -57,6 +57,7 @@ const DEFAULT_ROUTES = ['swarm-r2', 'swarm-r6', 'swarm-r12', 'swarm-r6-mill', 'a
 const names = argv.routes ? String(argv.routes).split(',').filter(Boolean) : QUICK ? ['swarm-r6'] : DEFAULT_ROUTES;
 const SECONDS = Number(argv.seconds || (QUICK ? 45 : 75));
 const BAR = { p50: 16.7, p95: 33, over100: 0, longTask: 50, world: 0.97, freeze: 0 };
+const LIVE_AGE_LIMIT_MS = 100;
 
 const git = (...a) => { try { return execFileSync('git', a, { cwd: ROOT, encoding: 'utf8' }).trim(); } catch (_) { return ''; } };
 const commit = git('rev-parse', '--short=10', 'HEAD');
@@ -87,6 +88,18 @@ for (const name of names) {
 }
 
 // ---- judgement ----
+function checkLiveContinuity(report, add) {
+  add('world speed', report.world.speed, `>= ${BAR.world}`, report.world.speed >= BAR.world);
+  if (report.world.worst10s != null) add('world speed, worst 10 s', report.world.worst10s, `>= ${BAR.world}`, report.world.worst10s >= BAR.world);
+  const { logEntries, dataAgeMaxMs, netPoseAgeMs, silentHoldMs } = report.freeze;
+  add('freeze-log entries', logEntries, '0', logEntries === 0);
+  add('newest simulation data age', dataAgeMaxMs, `<= ${LIVE_AGE_LIMIT_MS}`,
+    Number.isFinite(dataAgeMaxMs) && dataAgeMaxMs <= LIVE_AGE_LIMIT_MS, ' ms');
+  add('drawn pose age beyond frame gap', netPoseAgeMs, `<= ${LIVE_AGE_LIMIT_MS}`,
+    Number.isFinite(netPoseAgeMs) && netPoseAgeMs <= LIVE_AGE_LIMIT_MS, ' ms');
+  if (silentHoldMs > 0) add('silent hold (no pause plate)', silentHoldMs, '0', false, ' ms');
+}
+
 function judge(report) {
   const lift = report.modes.lift || null;
   const asis = report.modes.asis || null;
@@ -100,10 +113,7 @@ function judge(report) {
   const worst = Math.max(lift ? lift.all.max : 0, asis ? asis.all.max : 0);
   add('frames over 100 ms (live)', over100, '0', over100 === 0, over100 ? ` (worst ${worst} ms)` : '');
   add('longest main-thread task', report.longTasks.longestMs, `<= ${BAR.longTask}`, report.longTasks.longestMs <= BAR.longTask, ' ms');
-  add('world speed', report.world.speed, `>= ${BAR.world}`, report.world.speed >= BAR.world);
-  if (report.world.worst10s != null) add('world speed, worst 10 s', report.world.worst10s, `>= ${BAR.world}`, report.world.worst10s >= BAR.world);
-  add('freeze-log entries', report.freeze.logEntries, '0', report.freeze.logEntries === 0);
-  if (report.freeze.silentHoldMs > 0) add('silent hold (no pause plate)', report.freeze.silentHoldMs, '0', false, ' ms');
+  checkLiveContinuity(report, add);
   return { pass: checks.every((c) => c.pass), checks };
 }
 // MILESTONE 1 (director, 2026-11-22), judged on the as-he-has-it row: a locked 30.
@@ -115,8 +125,7 @@ function judgeMilestone1(report) {
     add('frame p95 as presented', asis.all.p95, '<= 33', asis.all.p95 <= 33.9, ' ms');
     add('frames over 100 ms (live)', asis.all.over100, '0', asis.all.over100 === 0, asis.all.over100 ? ` (worst ${asis.all.max} ms)` : '');
   } else add('as-he-has-it row', 'missing', 'present', false);
-  add('world speed', report.world.speed, '>= 0.97', report.world.speed >= 0.97);
-  add('freeze-log entries', report.freeze.logEntries, '0', report.freeze.logEntries === 0);
+  checkLiveContinuity(report, add);
   return { pass: checks.every((c) => c.pass), checks };
 }
 function capWord(report) {

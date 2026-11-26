@@ -363,7 +363,7 @@ import {
   snapshotHasEntityGeneration,
   snapshotIndexOf,
 } from './snapshotFence.js';
-import { getActivePoseFeed, POSE_ROW_STRIDE } from '../core/simPoseTable.js';
+import { getActivePoseFeed } from '../core/simPoseTable.js';
 import { recordPresentedPoseAge, notePoseAgeRebase } from './poseAgeRecorder.js';
 import { createPoseContinuity } from './poseContinuity.js';
 import {
@@ -12489,8 +12489,7 @@ export const render = {
                 if (splitIssue) issueReceipts.push(new Promise((resolve) => { acknowledgeIssue = resolve; }));
                 const submit = () => compileSubjectColorAndDepth(entry.subject, route, {
                   ...compileOptions,
-                  ...(splitIssue ? { onIssueComplete: acknowledgeIssue, restoreTargetAfterIssue: true,
-                    readinessBatch: linkBatch } : {}),
+                  ...(splitIssue ? { onIssueComplete: acknowledgeIssue, readinessBatch: linkBatch } : {}),
                   // A serial reservation cannot wait on the enclosing batch it prevents
                   // from draining, even if capabilities change while environment stamping yields.
                   ...(submitSerial ? { skipSharedBatch: true } : {}),
@@ -30550,7 +30549,7 @@ export const render = {
   // once per frame; here every body this world already holds takes that pose AFTER the journal
   // consume, so a lagging or stalled journal can never hold the picture still (and a late journal
   // transform can never move a body backwards). Returns the feed facts the fence pack uses.
-  _applySharedPoseFeed() {
+  _applySharedPoseFeed(publication) {
     const out = this._poseFeedResult || (this._poseFeedResult = {
       active: false, writes: -1, simTime: 0, applied: 0, advancedForPack: false,
     });
@@ -30559,28 +30558,34 @@ export const render = {
     out.advancedForPack = false;
     const feed = getActivePoseFeed();
     const world = this._presentationWorld;
-    if (!feed || feed.active !== true || !world || typeof world.applySharedPose !== 'function') return out;
+    if (!feed || feed.active !== true || !world || typeof world.applySharedPoseTable !== 'function') {
+      this._poseFeedAppliedSnapshot = null;
+      return out;
+    }
     const snap = feed.snapshot;
-    const rows = snap.rows;
-    let applied = 0;
-    for (let i = 0, o = 0; i < snap.count; i++, o += POSE_ROW_STRIDE) {
-      if (world.applySharedPose(rows[o], rows[o + 1], rows[o + 2], rows[o + 3], rows[o + 4],
-        rows[o + 5], rows[o + 6], rows[o + 7], rows[o + 8])) applied++;
-    }
-    if (typeof world.hideRowsRetiredBy === 'function' && snap.writes !== this._poseFeedRetireWrites) {
-      this._poseFeedRetireWrites = snap.writes;
-      const gens = this._poseFeedGenScratch || (this._poseFeedGenScratch = new Map());
-      const occs = this._poseFeedOccScratch || (this._poseFeedOccScratch = new Map());
-      gens.clear();
-      occs.clear();
-      for (let i = 0, o = 0; i < snap.count; i++, o += POSE_ROW_STRIDE) { gens.set(rows[o], rows[o + 1]); occs.set(rows[o], rows[o + 2]); }
-      world.hideRowsRetiredBy(gens, occs);
-    }
-    out.active = true;
     out.writes = snap.writes;
     out.simTime = snap.simTime;
-    out.applied = applied;
     out.advancedForPack = snap.writes !== this._poseFeedPackedWrites;
+    // A fast present with no new pose or structural publication already has
+    // the right rows. Reapply when a journal visit could have changed them.
+    if (this._poseFeedAppliedSnapshot === snap && this._poseFeedAppliedWrites === snap.writes
+      && this._poseFeedAppliedWorld === world && publication
+      && !(publication.applied > 0 || publication.rebuilt || publication.refreshed)) {
+      out.active = true;
+      return out;
+    }
+    const retire = !snap.overflow
+      && (snap.writes !== this._poseFeedRetireWrites || world !== this._poseFeedRetireWorld);
+    const applied = world.applySharedPoseTable(snap, retire);
+    if (retire) {
+      this._poseFeedRetireWrites = snap.writes;
+      this._poseFeedRetireWorld = world;
+    }
+    this._poseFeedAppliedSnapshot = snap;
+    this._poseFeedAppliedWrites = snap.writes;
+    this._poseFeedAppliedWorld = world;
+    out.active = true;
+    out.applied = applied;
     return out;
   },
 
@@ -33396,7 +33401,7 @@ export const render = {
         ? this._presentationPublisher.getLastAppliedSequence()
         : null;
     }
-    const poseFeed = tryPresentedCall(this, 'pose-table', () => this._applySharedPoseFeed())
+    const poseFeed = tryPresentedCall(this, 'pose-table', () => this._applySharedPoseFeed(publication))
       || this._poseFeedResult || { active: false, advancedForPack: false };
     // A rebind drive that faulted parks on the service epoch like the residency
     // lanes — the heavy O(_meshes) re-mint suppresses until the next

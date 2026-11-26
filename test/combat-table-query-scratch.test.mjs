@@ -52,6 +52,13 @@ test('a throwing append-style query cannot contaminate the next successful query
 for(const warmups of [0,2,100])test(`ordinary vector mine issues exactly one authored impulse per target after ${warmups} earlier queries`,()=>{
  const {state}=fixture(),calls=[];
  for(let i=0;i<warmups;i++)queryCombatTableEntities(state,0,0,100,[],FLAGS.SHIP);
+ const hash = state.spatialHash;
+ const originalQuery = hash.queryRadius.bind(hash);
+ let radiusQueries = 0;
+ hash.queryRadius = (...args) => {
+  radiusQueries++;
+  return originalQuery(...args);
+ };
  weapons._detonateVectorMine.call({helpers:{}},
   {id:1000,alive:true,pos:{x:0,z:0}},{blastRadius:100,impulse:10,ownerId:1,weaponId:'test-vector-mine'},state);
  // Blast impulses route through the physics-authority queue (deliverPhysicalImpulse ->
@@ -60,6 +67,7 @@ for(const warmups of [0,2,100])test(`ordinary vector mine issues exactly one aut
   const command=consumePhysicsCommand(e);
   for(const impulse of command?.impulses||[])calls.push({entityId:e.id,impulse});
  }
+ assert.equal(radiusQueries, 1, 'one radius query serves both live and combat candidates');
  assert.equal(calls.length,64);assert.equal(new Set(calls.map(c=>c.entityId)).size,64);
  for(const call of calls){const e=state.entities.get(call.entityId),expected=10*(1-Math.max(0,Math.hypot(e.pos.x,e.pos.z)-(e.radius||0))/100);assert.ok(Math.abs(Math.hypot(call.impulse.x,call.impulse.z)-expected)<1e-12);}
 });
@@ -88,7 +96,7 @@ async function fieldTrace(freshScratch){
    if(freshScratch)state.combatTable._hashScratch=[];
    const result=owner._applyForces(DT,state,state.fields);native.step(DT);
    trace.push({result,poses:ships.map(e=>[e.pos.x,e.pos.z,e.vel.x,e.vel.z]),native:createHash('sha256').update(JSON.stringify(native.exportWorldSnapshot())).digest('hex')});
-   assert.ok(state.combatTable._hashScratch.length<=64);
+   assert.ok((state.combatTable._hashScratch?.length || 0) <= 64);
   }
   return trace;
  }finally{owner.destroy?.();native.dispose();bus.clear?.();}

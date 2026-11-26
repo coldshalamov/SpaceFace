@@ -48,6 +48,9 @@ import {
 // Shared pose table writer (simPoseTable.js). Bound on a worker-local init; every fixed step
 // publishes the poses latest-wins so the picture never waits on the reply journal or its ACKs.
 let poseWriter = null;
+let posePort = null;
+let poseTransferSequence = 0;
+let poseTransferInFlight = 0;
 function writePoseTable(state, journal) {
   if (!poseWriter || localClock.stopped) return;
   poseWriter.write(state, journal, {
@@ -61,9 +64,18 @@ function writePoseTable(state, journal) {
   });
 }
 function postPoseTableTransfer() {
-  if (!poseWriter || poseWriter.shared) return;
+  if (!poseWriter || poseWriter.shared || localClock.stopped || poseTransferInFlight) return;
   const buffer = poseWriter.takeTransfer();
-  if (buffer) self.postMessage({ kind: 'poseTable', buffer }, [buffer]);
+  if (!buffer) return;
+  const sequence = ++poseTransferSequence;
+  (posePort || self).postMessage({ kind: 'poseTable', sequence, buffer }, [buffer]);
+  poseTransferInFlight = sequence;
+}
+
+function releasePoseTableTransfer(msg) {
+  if (msg.kind !== 'poseTableAck' || msg.sequence !== poseTransferInFlight) return;
+  poseTransferInFlight = 0;
+  postPoseTableTransfer();
 }
 
 const { tick, init, finalize, shutdown, drainStorageOps, hasPendingDurable, reclaimLaneStorage,
@@ -200,17 +212,8 @@ const LEGACY_STALE_ACK_MS = 3000;
 const LOCAL_MAX_UNACKED = 2;
 const LOCAL_TIMER_MS = LOCAL_FIXED_DT * 1000;
 const LOCAL_MAX_CONSECUTIVE_TASK_WAKES = 4;
-// Main-thread presentation heartbeat. Every rAF callback posts one; a stall stops the beats.
-// The fence has ~150-300 ms of history, so after that it holds the picture. If the worker kept
-// stepping through the stall, the first frame after it would re-seat seconds ahead — the
-// freeze-then-teleport jump. Hold the clock instead; the world resumes from the held pose.
-// ENGINE slice 5: a hidden/backgrounded page already stops the clock through the lifecycle
-// (presentationRunner → clockControl). The hold remains only as a dead-main-thread guard, so an
-// ordinary 250–900 ms render stall no longer stops the world; the fence plays the backlog out.
-const LOCAL_HEARTBEAT_HOLD_MS = 1000;
-// While held there is no new presentation to protect. Recheck on a coarse timer instead of
-// rearming fixed-step debt that cannot run; producer-stamped holds deliberately keep that debt.
-const LOCAL_HEARTBEAT_RECHECK_MS = 100;
+// Presentation gaps are diagnostics. Clock control messages own deliberate pause and suspension.
+const LOCAL_PRESENTATION_GAP_MS = 1000;
 // PERF-02 lane accounting window. The clockDiagnostics scalars already diff
 // across any two reads; a completed window adds the distribution facts (per-step
 // worker cost, measured wake cadence) that bare counters cannot carry. Samples
@@ -255,21 +258,7 @@ const localClock = {
   lastHeartbeatSentAtMs: 0,
   lastHeartbeatProductionGapMs: 0,
   lastHeartbeatProcessingLagMs: 0,
-  heartbeatHeld: false,
-  // heartbeatHolds/heartbeatHeldMs/heartbeatHeldTurns measure exactly one thing:
-  // wall time the worker's own stepping was parked because no fresh production
-  // was known. Either hold kind (provisional producer-stamped or legacy
-  // receipt-time) counts the same, so transport congestion and a dead page are
-  // not conflated with each other or with deliberate silence below.
-  heartbeatHolds: 0,
-  heartbeatHoldStartMs: 0,
-  heartbeatHeldMs: 0,
-  heartbeatHeldTurns: 0,
-  // Confirmed producer silence: episodes where two consecutive same-period
-  // stamps prove the page produced nothing past the grace window, and the
-  // production time deliberately discarded across them. Kept apart from the
-  // parking counters so "the worker waited" and "the page was dead" stay
-  // incomparable measurements.
+  // A gap between producer timestamps measures silence independently of message delivery.
   heartbeatSilences: 0,
   heartbeatSilenceMs: 0,
   // Ticks the wall clock has owed while active — stepped vs owed is the
@@ -335,29 +324,6 @@ function localHeartbeatClockKind() {
 function localWallNowMs() {
   return localHeartbeatClockKind() === 'performance'
     ? performance.timeOrigin + performance.now() : Date.now();
-}
-
-function localHeartbeatWorkerMs(sentAtMs) {
-  return localHeartbeatClockKind() === 'performance'
-    ? sentAtMs - performance.timeOrigin : sentAtMs;
-}
-
-function accrueLocalClockThrough(targetMs) {
-  if (!localClock.active || localClock.scale <= 0 || localClock.anchorMs <= 0) return;
-  const endMs = Math.min(targetMs, localNowMs());
-  const elapsedMs = Math.max(0, endMs - localClock.anchorMs);
-  if (!(elapsedMs > 0)) return;
-  const owedSeconds = localElapsedSeconds(elapsedMs) * localClock.scale;
-  localClock.accumulator += owedSeconds * localClock.dilation;
-  localClock.owedTicks += owedSeconds / LOCAL_FIXED_DT;
-  if (localClock.accumulator > LOCAL_MAX_DEBT_SECONDS) {
-    const shedSteps = Math.max(0, Math.ceil(
-      (localClock.accumulator - LOCAL_MAX_DEBT_SECONDS) / LOCAL_FIXED_DT - 1e-9,
-    ));
-    localClock.accumulator -= shedSteps * LOCAL_FIXED_DT;
-    localClock.shedStepCount += shedSteps;
-  }
-  localClock.anchorMs = endMs;
 }
 
 function localHeartbeatAgeMs(nowMsValue, wallNowMsValue) {
@@ -465,19 +431,11 @@ function localElapsedSeconds(elapsedMs) {
 
 function resetLocalClockTiming() {
   if (localClock.wake) cancelLocalClockWake();
-  // A pause/rate boundary ends the comparable production stream. The first beat
-  // after reactivation starts a fresh gap baseline instead of charging intentional
-  // paused time as a dead-page interval.
+  // Do not count an intentional pause or rate change as a presentation gap.
+  localClock.lastHeartbeatAtMs = 0;
   localClock.lastHeartbeatSentAtMs = 0;
   localClock.lastHeartbeatProductionGapMs = 0;
   localClock.lastHeartbeatProcessingLagMs = 0;
-  // Beats from before the boundary must not be aged across it either: the control
-  // message itself proves the main thread was alive at the boundary, so an armed
-  // guard re-baselines receipt time here. Without this a reactivation timer that
-  // fires before the first new-period beat charged the deliberate pause as a
-  // dead-page hold. A never-armed guard stays unarmed — before the first beat a
-  // stall cannot be told from a page that never presented.
-  if (localClock.lastHeartbeatAtMs > 0) localClock.lastHeartbeatAtMs = localNowMs();
   localClock.consecutiveTaskWakes = 0;
   localClock.anchorMs = localNowMs();
   localClock.deadlineMs = 0;
@@ -1107,23 +1065,12 @@ function localPerfPercentile(samples, p) {
 
 const localPerfRound = (value) => (Number.isFinite(value) ? Math.round(value * 100) / 100 : null);
 
-// Held time is a monotonic read — closed episodes plus the still-open segment —
-// so a window or a probe diff that ends mid-hold still attributes the held time.
-function localHeartbeatHeldMsTotal(now) {
-  return localClock.heartbeatHeldMs
-    + (localClock.heartbeatHeld && localClock.heartbeatHoldStartMs > 0
-      ? Math.max(0, now - localClock.heartbeatHoldStartMs) : 0);
-}
-
-function localPerfMark(now) {
+function localPerfMark() {
   return {
     steps: localClock.stepCount,
     owedTicks: localClock.owedTicks,
     shed: localClock.shedStepCount,
     deferred: localClock.budgetDeferredStepCount,
-    heldMs: localHeartbeatHeldMsTotal(now),
-    holds: localClock.heartbeatHolds,
-    heldTurns: localClock.heartbeatHeldTurns,
     fires: localClock.timerFires,
     directives: localClock.directiveTick,
     backpressureMs: localClock.backpressureTotalMs,
@@ -1149,12 +1096,12 @@ function localPerfSample(reply, elapsedMs, timerTurn) {
 function localPerfRotate(now) {
   if (!localPerf.marks) {
     localPerf.windowStartMs = now;
-    localPerf.marks = localPerfMark(now);
+    localPerf.marks = localPerfMark();
     return;
   }
   if (now - localPerf.windowStartMs < LOCAL_PERF_WINDOW_MS) return;
   const start = localPerf.marks;
-  const end = localPerfMark(now);
+  const end = localPerfMark();
   localPerf.lastWindow = {
     index: ++localPerf.windowIndex,
     endedAtMs: Math.round(now),
@@ -1165,9 +1112,6 @@ function localPerfRotate(now) {
     owedTicks: localPerfRound(end.owedTicks - start.owedTicks),
     shedSteps: end.shed - start.shed,
     budgetDeferredSteps: end.deferred - start.deferred,
-    heartbeatHeldMs: Math.round(end.heldMs - start.heldMs),
-    heartbeatHolds: end.holds - start.holds,
-    heartbeatHeldTurns: end.heldTurns - start.heldTurns,
     backpressureMs: Math.round(end.backpressureMs - start.backpressureMs),
     staleAckRecoveries: end.staleAckRecoveries - start.staleAckRecoveries,
     samples: localPerf.workMs.length,
@@ -1193,29 +1137,6 @@ async function runLocalClockTick(force = false, explicitSteps = 0, publishReply 
   runInjectedStall();
   const now = localNowMs();
   const hasExplicit = Number.isSafeInteger(explicitSteps) && explicitSteps > 0;
-  const heartbeatAgeMs = localHeartbeatAgeMs(now, localWallNowMs());
-  if (!force && !hasExplicit && heartbeatAgeMs !== null
-    && heartbeatAgeMs > LOCAL_HEARTBEAT_HOLD_MS) {
-    // The page cannot present. Do not advance the world into a picture it will later jump
-    // across. With producer timestamps this may be worker congestion rather than a dead page;
-    // keep the debt intact and let a continuous producer stream revive it honestly. Legacy
-    // unstamped beats cannot make that distinction, so they keep the old destructive hold.
-    // Either way the worker IS parked now: count the episode at entry, never deferred to a
-    // later producer gap, so the count cannot read zero while stepping is already stopped.
-    const producerStamped = localClock.lastHeartbeatSentAtMs > 0;
-    if (!localClock.heartbeatHeld) {
-      localClock.heartbeatHeld = true;
-      localClock.heartbeatHolds += 1;
-      localClock.heartbeatHoldStartMs = now;
-    }
-    localClock.heartbeatHeldTurns += 1;
-    if (!producerStamped) {
-      localClock.anchorMs = now;
-      localClock.accumulator = 0;
-    }
-    scheduleLocalClock();
-    return;
-  }
   const elapsedMs = localClock.anchorMs > 0 ? Math.max(0, now - localClock.anchorMs) : 0;
   // NO-FREEZE: the world's clock never waits for the screen. A dense retained reply or a late
   // ACK no longer stops stepping; the retained reply keeps merging (bounded below) and poses
@@ -1368,10 +1289,6 @@ async function runLocalClockTick(force = false, explicitSteps = 0, publishReply 
     staleAckRecoveries: localClock.staleAckRecoveries || 0,
     stallApplications: localClock.stallApplications || 0,
     stallTotalMs: localClock.stallTotalMs || 0,
-    heartbeatHolds: localClock.heartbeatHolds || 0,
-    heartbeatHeld: localClock.heartbeatHeld === true,
-    heartbeatHeldMs: Math.round(localHeartbeatHeldMsTotal(now)),
-    heartbeatHeldTurns: localClock.heartbeatHeldTurns || 0,
     heartbeatSilences: localClock.heartbeatSilences || 0,
     heartbeatSilenceMs: Math.round(localClock.heartbeatSilenceMs || 0),
     owedTicks: localPerfRound(localClock.owedTicks),
@@ -1501,15 +1418,11 @@ function scheduleLocalClock() {
   const pendingDebt = localClock.accumulator
     + localElapsedSeconds(now - localClock.anchorMs) * localClock.scale;
   const hasWholeDebt = pendingDebt + 1e-12 >= LOCAL_FIXED_DT;
-  if (localClock.heartbeatHeld) localClock.deadlineMs = now + LOCAL_HEARTBEAT_RECHECK_MS;
-  else if (!hasWholeDebt) localClock.deadlineMs = nextLocalClockDeadline(localClock.deadlineMs, now);
-  const delayMs = localClock.heartbeatHeld ? LOCAL_HEARTBEAT_RECHECK_MS
-    : hasWholeDebt ? 0 : Math.max(0, localClock.deadlineMs - now);
-  // A task avoids the nested-timer delay only while whole ticks are already owed and
-  // presentation is responsive. After four tasks, yield a timer turn to other work.
-  const heartbeatAgeMs = localHeartbeatAgeMs(now, localWallNowMs());
-  const useTask = hasWholeDebt && !localClock.heartbeatHeld && heartbeatAgeMs !== null
-    && heartbeatAgeMs <= LOCAL_HEARTBEAT_HOLD_MS
+  if (!hasWholeDebt) localClock.deadlineMs = nextLocalClockDeadline(localClock.deadlineMs, now);
+  const delayMs = hasWholeDebt ? 0 : Math.max(0, localClock.deadlineMs - now);
+  // Owed ticks can use a worker task to avoid nested timer delay. The task has a
+  // timer fallback and yields regularly so incoming commands can still run.
+  const useTask = hasWholeDebt
     && localClock.consecutiveTaskWakes < LOCAL_MAX_CONSECUTIVE_TASK_WAKES
     && localClockWakeChannel !== false && typeof MessageChannel === 'function';
   if (useTask && localClock.tickQueued) return;
@@ -1744,6 +1657,13 @@ async function dispatchDirective(msg) {
       localClock.directiveMarks = msg.directiveMarks === true;
       poseWriter = localClock.enabled && !localClock.legacy
         ? createPoseTableWriter(msg.poseTable || null) : null;
+      poseTransferInFlight = 0;
+      if (poseWriter && !poseWriter.shared && msg.posePort) {
+        posePort = msg.posePort;
+        posePort.onmessage = (event) => {
+          if (event?.data) releasePoseTableTransfer(event.data);
+        };
+      }
       localClock.stopped = false;
       // E1 stall harness (?simStall=): the main lane ships the requested cycle on init.
       localClock.stallCycle = Array.isArray(msg.simStall) && msg.simStall.length
@@ -1790,6 +1710,10 @@ async function dispatchDirective(msg) {
     } else if (msg.kind === 'shutdown') {
       localClock.stopped = true;
       localClock.active = false;
+      if (posePort) {
+        posePort.close();
+        posePort = null;
+      }
       localDisarmStaleAckWatchdog();
       cancelLocalClockWake();
       closeLocalClockWakeChannel();
@@ -1880,8 +1804,10 @@ export { localMergeReply, localMaterializePack, localAckReplyAction };
 self.onmessage = (event) => {
   const msg = event && event.data;
   if (!msg || typeof msg !== 'object') return;
-  // Presentation heartbeat: lane bookkeeping only, never parked behind the serial chain. A beat
-  // resumes a held clock from the held pose without charging the stalled wall interval.
+  if (msg.kind === 'poseTableAck') {
+    releasePoseTableTransfer(msg);
+    return;
+  }
   // Probe harness: one blocked worker turn of `ms` (a heavy authoritative step), on demand.
   if (msg.kind === 'laneInjectStall') {
     const ms = Number(msg.ms);
@@ -1898,89 +1824,29 @@ self.onmessage = (event) => {
   }
   if (msg.kind === 'laneHeartbeat') {
     const now = localNowMs();
-    const wallNow = localWallNowMs();
     const sentAtMs = Number(msg.sentAtMs);
     const stamped = Number.isFinite(sentAtMs) && sentAtMs > 0
       && msg.clockKind === localHeartbeatClockKind();
-    if (stamped) {
+    localClock.lastHeartbeatAtMs = now;
+    if (stamped && sentAtMs > localClock.lastHeartbeatSentAtMs) {
       const lastSentAt = localClock.lastHeartbeatSentAtMs;
-      const productionGapMs = lastSentAt > 0 ? Math.max(0, sentAtMs - lastSentAt) : 0;
-      const processingLagMs = Math.max(0, wallNow - sentAtMs);
-      localClock.lastHeartbeatProductionGapMs = productionGapMs;
-      localClock.lastHeartbeatProcessingLagMs = processingLagMs;
-      if (sentAtMs > localClock.lastHeartbeatSentAtMs) localClock.lastHeartbeatSentAtMs = sentAtMs;
-      localClock.lastHeartbeatAtMs = now;
-      const producerStopped = localClock.active && localClock.scale > 0 && lastSentAt > 0
-        && productionGapMs > LOCAL_HEARTBEAT_HOLD_MS;
-      if (producerStopped) {
-        // Discard only the confirmed producer-silent interval past the grace window.
-        // Bank debt through lastSent + HOLD_MS first: an uncongested clock keeps
-        // stepping for that first silent second before its own hold engages, so a
-        // congested one owes the same grace interval. Then move the anchor to the
-        // producer restart in worker coordinates — forward only, never backwards —
-        // so the confirmed live suffix stays ordinary capped catch-up debt even
-        // when this batch is processed late, instead of vanishing at receipt time.
-        accrueLocalClockThrough(localHeartbeatWorkerMs(lastSentAt) + LOCAL_HEARTBEAT_HOLD_MS);
-        localClock.heartbeatSilences += 1;
-        localClock.heartbeatSilenceMs += productionGapMs - LOCAL_HEARTBEAT_HOLD_MS;
-        const restartWorkerMs = Math.min(now, localHeartbeatWorkerMs(sentAtMs));
-        if (restartWorkerMs > localClock.anchorMs) localClock.anchorMs = restartWorkerMs;
-        if (localClock.heartbeatHeld) {
-          localClock.heartbeatHeld = false;
-          localClock.heartbeatHeldMs += Math.max(0, now - localClock.heartbeatHoldStartMs);
-          localClock.heartbeatHoldStartMs = 0;
-        }
-        cancelLocalClockWake();
-        localClock.consecutiveTaskWakes = 0;
-        scheduleLocalClock();
-      } else {
-        const currentProduction = processingLagMs <= LOCAL_HEARTBEAT_HOLD_MS;
-        if (localClock.heartbeatHeld && currentProduction) {
-          // A current beat proves the provisional hold was delivery lag. Replace the coarse
-          // 100 ms parked recheck immediately so recovery does not wait another timer turn.
-          localClock.heartbeatHeld = false;
-          localClock.heartbeatHeldMs += Math.max(0, now - localClock.heartbeatHoldStartMs);
-          localClock.heartbeatHoldStartMs = 0;
-          cancelLocalClockWake();
-          localClock.consecutiveTaskWakes = 0;
-          scheduleLocalClock();
-        } else if (!localClock.heartbeatHeld && localClock.wake
-          && now - localClock.wake.dueAtMs >= LOCAL_TIMER_MS) {
-          localClock.wake.fire();
-        }
+      const gap = lastSentAt > 0 ? sentAtMs - lastSentAt : 0;
+      localClock.lastHeartbeatSentAtMs = sentAtMs;
+      localClock.lastHeartbeatProductionGapMs = gap;
+      localClock.lastHeartbeatProcessingLagMs = Math.max(0, localWallNowMs() - sentAtMs);
+      if (localClock.active && localClock.scale > 0 && gap > LOCAL_PRESENTATION_GAP_MS) {
+        localClock.heartbeatSilences++;
+        localClock.heartbeatSilenceMs += gap - LOCAL_PRESENTATION_GAP_MS;
       }
-    } else {
-      // Mixed or unsupported heartbeat clocks use receipt-time legacy handling. Clear the
-      // stamped baseline so fresh unstamped beats are not aged against an old producer stamp.
+    } else if (!stamped) {
       localClock.lastHeartbeatSentAtMs = 0;
       localClock.lastHeartbeatProductionGapMs = 0;
       localClock.lastHeartbeatProcessingLagMs = 0;
-      const lastBeat = localClock.lastHeartbeatAtMs;
-      const holdDeadline = lastBeat + LOCAL_HEARTBEAT_HOLD_MS;
-      // A throttled worker timer may still be queued when the foreground message arrives.
-      // Check the previous beat before refreshing it so that timer cannot charge the gap.
-      const missedHold = localClock.active && localClock.scale > 0 && lastBeat > 0
-        && now > holdDeadline && localClock.anchorMs <= holdDeadline;
-      localClock.lastHeartbeatAtMs = now;
-      if (localClock.heartbeatHeld || missedHold) {
-        if (!localClock.heartbeatHeld) {
-          localClock.heartbeatHolds += 1;
-          localClock.heartbeatHoldStartMs = holdDeadline;
-        }
-        localClock.heartbeatHeld = false;
-        localClock.heartbeatHeldMs += Math.max(0, now - localClock.heartbeatHoldStartMs);
-        localClock.heartbeatHoldStartMs = 0;
-        localClock.anchorMs = now;
-        localClock.accumulator = 0;
-        if (localClock.wake?.token) cancelLocalClockWake();
-        localClock.consecutiveTaskWakes = 0;
-        scheduleLocalClock();
-      } else if (localClock.wake && now - localClock.wake.dueAtMs >= LOCAL_TIMER_MS) {
-        // A foreground message can still be delivered when Chromium delays the
-        // worker's timer queue. Claim the same overdue wake rather than queue a
-        // second tick. The task/timer becomes obsolete when fire clears it.
-        localClock.wake.fire();
-      }
+    }
+    // A heartbeat can prompt an overdue wake, but its absence never gates the
+    // worker's own task/timer path or changes its anchor and accumulated time.
+    if (localClock.wake && now - localClock.wake.dueAtMs >= LOCAL_TIMER_MS) {
+      localClock.wake.fire();
     }
     // Apply a valid ACK before checking the deadline. A foreground message can
     // recover an expired credit even when the worker timer queue is delayed.
@@ -1998,7 +1864,6 @@ self.onmessage = (event) => {
         active: localClock.active,
         scale: localClock.scale,
         lifecycleGeneration: localClock.lifecycleGeneration,
-        heartbeatHeld: localClock.heartbeatHeld,
         steps: localClock.stepCount,
         directiveTicks: localClock.directiveTick,
         appliedCommandSequence: localClock.appliedCommandSequence,

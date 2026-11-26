@@ -1660,7 +1660,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
         for (const leaf of leaves) {
           if (disposed || worksTearingDown) return false;
           links.push(bloom.compileScenePipelines(leaf, camera, scene, {
-            readinessBatch: batch, restoreTargetAfterIssue: true,
+            readinessBatch: batch,
           }).catch(error => ({ skipped: true, reason: error?.message })));
           if (batch.paceQueue) await batch.paceQueue();
           else await new Promise(resolve => setTimeout(resolve, 0));

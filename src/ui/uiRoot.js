@@ -692,6 +692,8 @@ export const ui = {
     this._shipModeOff = null;
     this._shipScreenTopOff?.();
     this._shipScreenTopOff = null;
+    this._screenPrewarmWakeOff?.();
+    this._screenPrewarmWakeOff = null;
     this._shipScreenRegistration = null;
     if (this._destroyFlightCursor) this._destroyFlightCursor();
     this.windowTitle?.stop();
@@ -833,6 +835,7 @@ export const ui = {
     ctx.screens = this.screenManager;
     this._screenRegistrationCycle = beginScreenRegistrationCycle(this, this.screenManager);
     this._screenPrewarmQueue = [];
+    this._bindScreenPrewarmWake(this._screenRegistrationCycle);
     this._stationScreenRegistration = null;
     this._drillScreenRegistration = null;
 
@@ -1929,11 +1932,8 @@ export const ui = {
         catch (err) { console.error(`[ui] register("${def.id}") failed:`, err); return; }
         if (!this._registeredScreens) this._registeredScreens = new Set();
         this._registeredScreens.add(def.id);
-        // Mount + paint-warm on the serialized drain — one screen per yielded frame, in
-        // menu dwell AND on flight-idle slices (a fast embark used to strand the whole
-        // rest-wave behind the mode==='menu' gate). station (a whole app — it warms under
-        // the dock veil instead) and ship (the shared stage owns the second GL context)
-        // keep their owner-scheduled mounts.
+        // Registration stays available for immediate opens. The optional hidden mount
+        // and layout run only when loading, at the title, docked or explicitly paused.
         if (!SCREEN_PREWARM_DEFER.has(def.id)) {
           (this._screenPrewarmQueue || (this._screenPrewarmQueue = [])).push(def.id);
           this._drainScreenPrewarmQueue(registrationCycle);
@@ -1992,62 +1992,59 @@ export const ui = {
     }
   },
 
-  // One queued screen mount+paint-warm per yielded frame. New Game owns its form dwell:
-  // unrelated hidden layouts must not contend with its opening or embark preparation.
-  // Keep the queue intact until Back/Launch; a new registration cycle re-fills it.
-  _drainScreenPrewarmQueue(registrationCycle) {
-    if (this._screenPrewarmDraining) return;
+  _bindScreenPrewarmWake(registrationCycle) {
+    // ScreenManager publishes the top before onShow commits a direct Pause mode write.
+    const wake = () => queueMicrotask(() => this._drainScreenPrewarmQueue(registrationCycle));
+    const offMode = this.bus.on('mode:changed', wake);
+    const offScreen = this.bus.on('ui:screenTop', wake);
+    this._screenPrewarmWakeOff = () => {
+      offMode();
+      offScreen();
+    };
+  },
+
+  _canPrewarmScreens(screenManager) {
+    const mode = this.state?.mode;
+    if (mode === 'loading') return true;
+    // New Game owns its form dwell and embark preparation.
+    const top = screenManager.top();
+    if (top === 'newGame') return false;
+    return mode === 'menu' || this.state?.ui?.docked === true || (mode === 'paused' && !!top);
+  },
+
+  _drainScreenPrewarmQueue(registrationCycle = this._screenRegistrationCycle) {
     const queue = this._screenPrewarmQueue;
-    if (!queue || !queue.length) return;
+    if (this._screenPrewarmDraining || !queue?.length || !isScreenRegistrationCycleCurrent(registrationCycle)) return;
+    const { screenManager } = registrationCycle;
+    const canDrain = () => isScreenRegistrationCycleCurrent(registrationCycle) && this._canPrewarmScreens(screenManager);
+    if (!canDrain()) return;
+
     this._screenPrewarmDraining = true;
     (async () => {
       try {
         while (queue.length) {
-          if (this.state?.mode !== 'loading' && this.screenManager?.top?.() === 'newGame') {
-            await yieldPresentationFrame();
-            if (registrationCycle && !isScreenRegistrationCycleCurrent(registrationCycle)) return;
-            continue;
-          }
-          const id = queue.shift();
-          try {
-            const t0 = (typeof performance !== 'undefined' && performance.now) ? performance.now() : 0;
-            try { this.screenManager.prewarm(id); }
-            catch (e) { dedupError('ui.screen-prewarm', `[ui] prewarm("${id}")`, e); }
-            // A mount that already ate the slice (multi-bank template parse, lazy GL) gets
-            // its own frame before the hidden layout pass — the two costs never share a
-            // flight-idle frame even when the mount alone exceeds the budget.
-            const mountedMs = (typeof performance !== 'undefined' && performance.now) ? performance.now() - t0 : 0;
-            if (mountedMs > 6) {
-              await yieldPresentationFrame();
-              if (registrationCycle && !isScreenRegistrationCycleCurrent(registrationCycle)) return;
-              // The form may have opened while a costly mount yielded. Its cached mount
-              // stays ready, but defer the still-unpaid layout along with the other warms.
-              if (this.state?.mode !== 'loading' && this.screenManager?.top?.() === 'newGame') {
-                queue.unshift(id);
-                continue;
-              }
-            }
-            const tp = (typeof performance !== 'undefined' && performance.now) ? performance.now() : 0;
-            try { this.screenManager.paintWarm(id); }
-            catch (e) { dedupError('ui.screen-paintwarm', `[ui] paintWarm("${id}")`, e); }
-            // paintWarm's forced style+layout (void el.offsetHeight) runs untimed — a big screen
-            // can land ~14ms in one flight-idle slice. The trailing yield below is unconditional,
-            // but gate the NEXT warm on the paint's own cost so two heavy screens never chain.
-            const paintMs = (typeof performance !== 'undefined' && performance.now) ? performance.now() - tp : 0;
-            if (paintMs > 6) {
-              await yieldPresentationFrame();
-              if (registrationCycle && !isScreenRegistrationCycleCurrent(registrationCycle)) return;
-            }
-          }
-          catch (e) { dedupError('ui.screen-warm-cycle', `[ui] prewarm("${id}")`, e); }
+          // Even the first optional mount waits until the eligible screen has had a frame.
           await yieldPresentationFrame();
-          if (registrationCycle && !isScreenRegistrationCycleCurrent(registrationCycle)) return;
+          if (!canDrain()) return;
+
+          const id = queue[0];
+          const startedAt = globalThis.performance?.now?.() ?? 0;
+          try { screenManager.prewarm(id); }
+          catch (e) { dedupError('ui.screen-prewarm', '[ui] screen mount prewarm', e); }
+
+          // Give an expensive mount its own slice before forcing hidden layout. If flight
+          // or New Game started in between, keep the cached mount queued for layout later.
+          if ((globalThis.performance?.now?.() ?? 0) - startedAt > 6) await yieldPresentationFrame();
+          if (!canDrain()) return;
+
+          queue.shift();
+          try { screenManager.paintWarm(id); }
+          catch (e) { dedupError('ui.screen-paintwarm', '[ui] screen layout prewarm', e); }
         }
       } finally {
         this._screenPrewarmDraining = false;
-        if (queue.length && (!registrationCycle || isScreenRegistrationCycleCurrent(registrationCycle))) {
-          this._drainScreenPrewarmQueue(registrationCycle);
-        }
+        // A replacement manager may already have registered work while this one yielded.
+        if (!isScreenRegistrationCycleCurrent(registrationCycle)) this._drainScreenPrewarmQueue();
       }
     })();
   },
@@ -2439,6 +2436,8 @@ export const ui = {
     this._shipModeOff = null;
     this._shipScreenTopOff?.();
     this._shipScreenTopOff = null;
+    this._screenPrewarmWakeOff?.();
+    this._screenPrewarmWakeOff = null;
     invalidateDockedStationPresentation(this);
     this._cancelPendingScreenRetry();
     if (this._destroyFlightCursor) this._destroyFlightCursor();

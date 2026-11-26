@@ -1,8 +1,7 @@
 # 11 — Order of work: tweak now, build next
 
-> **2026-11-20 (ruling R13).** How work is dispatched, reviewed and landed is `12_PIPELINE.md`. This
-> page keeps the list of tweaks and productions. Its old steps that required a review before a
-> commit, a fixed order, or a cap on work in flight no longer apply.
+> **Work inventory.** This page preserves the original tweaks and productions. Follow
+> [root AGENTS.md](../../AGENTS.md) for assignments and [10 Engine](10_ENGINE.md) for playable-flight recovery.
 
 **Director, 2026-11-18.** The owner's instruction for executing this folder (same evening):
 
