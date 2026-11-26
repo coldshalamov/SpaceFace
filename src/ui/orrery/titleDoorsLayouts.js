@@ -87,6 +87,7 @@ ${DOOR} {
   width:100% !important; height:clamp(244px, 34vh, 300px) !important; min-height:0 !important;
   margin:0 !important; padding:0 20px 18px !important; box-sizing:border-box;
   text-align:left !important; white-space:normal !important; cursor:pointer;
+  pointer-events:auto !important; touch-action:manipulation; user-select:none;
   color:#f4f5f7 !important; background:#141416 !important;
   border:1px solid rgb(255 255 255 / .12) !important; border-radius:10px !important; outline:none !important;
   box-shadow:none !important; text-shadow:none !important;
@@ -94,6 +95,8 @@ ${DOOR} {
   transform:none !important; opacity:1 !important;
   transition:border-color .16s ${EASE}, transform .16s ${EASE} !important; }
 ${DOOR}::before, ${DOOR}::after { display:none !important; content:none !important; }
+/* The art, caption and painted verb are one native control, never nested hit targets. */
+${DOOR} > * { pointer-events:none !important; user-select:none; }
 /* the picture is a clipped frame (the art span) around a painted plate (its ::before), so the awake zoom
    stays inside the frame: a scaled frame used to widen the door's scroll box by ~7px, which read as a
    horizontal clip to the layout checks */
@@ -201,7 +204,7 @@ ${T} > .dp-frame__foot .dp-menu__item--fine:focus-visible { outline:2px solid ${
 @media (max-width:700px) {
   ${T} .of-title-actions { position:relative !important; left:auto !important; bottom:auto !important; width:100% !important; margin:24px 0 0 !important; }
   ${LIST} > li.of-title-door { flex:1 1 100% !important; }
-  ${DOOR} { height:auto !important; min-height:0 !important; padding:0 16px 14px !important; justify-content:flex-start !important; }
+  ${DOOR} { height:auto !important; min-height:0 !important; padding:144px 16px 14px !important; justify-content:flex-start !important; }
   ${DOOR} > .of-door__art { height:132px; }
   ${DOOR} > .of-door__kicker { display:none; }
   ${T} { overflow-y:auto !important; overscroll-behavior:contain; }
@@ -215,6 +218,7 @@ ${T} > .dp-frame__foot .dp-menu__item--fine:focus-visible { outline:2px solid ${
 }
 /* reduced motion is the game's setting (html.sf-reduce-motion), never the OS query alone */
 html.sf-reduce-motion ${DOOR}, html.sf-reduce-motion ${DOOR} > *, html.sf-reduce-motion ${ROW_BTN} { transition:none !important; }
+html.sf-reduce-motion ${DOOR}:active, html.sf-reduce-motion ${ROW_BTN}:active { transform:none !important; }
 html.sf-reduce-motion ${DOOR}:is(:hover, :focus, [data-awake]) > .of-door__art::before { transform:none; transition:none; }
 `;
 

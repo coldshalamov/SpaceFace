@@ -92,6 +92,8 @@ jobs:
           route('src/ui/orrery/pauseLayouts.js src/ui/screens/pause.js', 'pause')
           route('src/ui/orrery/helpLayouts.js src/ui/screens/help.js', 'help')
           route('src/ui/orrery/settingsLayouts.js src/ui/screens/settings.js', 'settings')
+          route('src/ui/screens/mainMenu.js src/ui/orrery/titleDoorsLayouts.js', 'title title-save')
+          route('src/ui/orrery/cruciblePreparation.js', 'crucible-door crucible-draft crucible-rearm crucible-refit crucible-fortify')
           route('src/ui/orrery/achievementsLayouts.js src/ui/screens/achievements.js', 'achievements')
           route('src/ui/orrery/crucible-doorLayouts.js src/ui/screens/crucible.js',
                 'crucible-door crucible-rearm crucible-results')

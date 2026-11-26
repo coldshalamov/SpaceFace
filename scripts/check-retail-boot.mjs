@@ -61,7 +61,7 @@ const MIN_THRUST_SPEED_GAIN = 5;
 
 export const MENU_SELECTOR = '[data-screen="mainMenu"]';
 export const NEW_GAME_SELECTOR = '[data-screen="mainMenu"] button[data-action="newGame"]';
-const SWARM_SELECTOR = '[data-screen="mainMenu"] [data-action="swarm"]';
+export const SWARM_SELECTOR = '[data-screen="mainMenu"] button[data-action="swarm"]';
 const LAUNCH_SELECTOR = '[data-screen="newGame"] button[data-action="launch"]';
 export const CHECK_NAMES = Object.freeze([
   'build', 'bundle-shape', 'server', 'page-load', 'menu', 'flight', 'thrust', 'world-picture',
@@ -139,7 +139,7 @@ const display = (path) => {
 /** The lines --dry-run prints (and a real run prints as its header). Pure: touches nothing. */
 export function buildPlan(options) {
   const route = options.mode === 'swarm'
-    ? 'Swarm -> Choose ship (Hornet) -> Review equipment -> Launch round 1'
+    ? 'Swarm -> Choose ship (Hornet) -> Select starting gun -> Launch round 1'
     : 'New Game -> Launch';
   return [
     `mode: ${options.build ? 'build then boot' : 'boot an existing bundle (no build)'}`,
@@ -451,25 +451,34 @@ export function summarizeWorldPicture(before, after) {
 
 async function launchSwarm(page, options, flight) {
   const timeout = options.menuTimeoutMs;
-  const swarm = page.locator(`${SWARM_SELECTOR}:visible`).first();
-  const more = page.locator(`${MENU_SELECTOR} [data-title-more]:visible`).first();
+  const swarm = page.locator(SWARM_SELECTOR);
   flight.stage = 'Swarm door';
-  if (!(await swarm.isVisible()) && await more.isVisible()) await more.click({ timeout });
   await swarm.click({ timeout });
-  const door = page.locator('[data-screen="crucible"]');
-  await door.locator('.sf-crd-mode[data-ruleset="swarm"]:visible').click({ timeout });
 
+  // This must be the public setup, not the old hidden lab or a quick-start bypass.
+  const front = page.locator('[data-screen="crucible"][data-door-view="play"] .sf-play');
+  await front.waitFor({ state: 'visible', timeout });
+  const ship = front.locator('[data-pick="ship"]');
+  const selectedShip = ship.locator('[role="radio"][aria-checked="true"]');
   flight.stage = 'Hornet ship setup';
-  await door.getByRole('button', { name: /^Choose ship/ }).click({ timeout });
-  await door.locator('.sf-crd-hull[data-starter-id="hull:ship_hornet"][aria-pressed="true"]')
-    .waitFor({ state: 'visible', timeout });
-  await door.getByRole('button', { name: /^Review equipment/ }).click({ timeout });
+  await ship.locator('[role="radio"][data-value="ship_hornet"][aria-checked="true"]').waitFor({ state: 'visible', timeout });
+  // Exercise the real selector in both directions. Keyboard activation on a ship must
+  // not deploy the run. Select back to Hornet before choosing a gun.
+  await selectedShip.press('Enter', { timeout });
+  const nextShip = await selectedShip.getAttribute('data-value', { timeout });
+  if (!nextShip || nextShip === 'ship_hornet') throw new Error('Ship Enter did not select the next hull');
+  await ship.getByRole('button', { name: 'Previous ship' }).click({ timeout });
+  await ship.locator('[role="radio"][data-value="ship_hornet"][aria-checked="true"]').waitFor({ state: 'visible', timeout });
 
-  flight.stage = 'Ship equipment';
-  await waitForFlightObservation(page, options.flightTimeoutMs, flight,
-    (seen) => seen.armoryVisible && !seen.overlayVisible);
-  await page.locator('[data-screen="crucibleDraft"]').getByRole('button', { name: /^Launch round 1\b/ })
-    .click({ timeout });
+  flight.stage = 'Starting gun selection';
+  const gun = front.locator('[data-pick="gun"]');
+  const selectedGun = gun.locator('[role="radio"][aria-checked="true"]');
+  const before = await selectedGun.getAttribute('data-value', { timeout });
+  await gun.getByRole('button', { name: 'Next starting gun' }).click({ timeout });
+  const chosen = await selectedGun.getAttribute('data-value', { timeout });
+  if (!chosen || !before || chosen === before) throw new Error('Starting gun selector did not change the fit');
+  flight.setup = { hullId: 'ship_hornet', gunDefId: chosen };
+  await front.getByRole('button', { name: 'Launch round 1', exact: true }).click({ timeout });
 }
 
 async function exerciseFlight(page, options, record) {

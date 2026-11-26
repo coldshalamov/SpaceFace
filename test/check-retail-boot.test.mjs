@@ -52,7 +52,7 @@ test('--dry-run --use-existing skips the build and honours --dir and route timeo
 test('--mode=swarm plans the ordinary Hornet and Equipment route', () => {
   const result = run('--dry-run', '--mode=swarm');
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /Swarm -> Choose ship \(Hornet\) -> Review equipment -> Launch round 1 -> first playable picture/);
+  assert.match(result.stdout, /Swarm -> Choose ship \(Hornet\) -> Select starting gun -> Launch round 1 -> first playable picture/);
   assert.match(result.stdout, /check speed and world pixels under W/);
   assert.match(result.stdout, /dry-run OK/);
 });

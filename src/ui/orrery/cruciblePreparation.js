@@ -469,8 +469,8 @@ export function createSwarmPlayFront({
   }
 
   const go = make('button', 'sf-play__go');
-  go.append(make('span', 'sf-play__go-word', 'Play'), make('span', 'sf-play__key', 'Enter'));
-  go.setAttribute('aria-label', 'Play. Starts round 1.');
+  go.append(make('span', 'sf-play__go-word', 'Launch round 1'), make('span', 'sf-play__key', 'Enter'));
+  go.setAttribute('aria-label', 'Launch round 1');
   go.addEventListener('click', () => onPlay());
   const alt = make('div', 'sf-play__alt');
   const more = make('button', 'sf-play__quiet sf-play__more');
@@ -497,11 +497,11 @@ export function createSwarmPlayFront({
   const stops = () => [...rows.map((r) => r.buttons.find((b) => b.getAttribute('aria-checked') === 'true')), go,
     ...alt.querySelectorAll('button')].filter(Boolean);
   front.addEventListener('keydown', (event) => {
-    // Enter is PLAY from anywhere on the front except a quiet key, whose own Enter wins.
+    // Let each native button own its action. In particular Enter on a selector must
+    // change that selection, not launch an unreviewed run.
     if (event.key === 'Enter') {
-      if (event.repeat || alt.contains(event.target)) return;
-      event.preventDefault(); event.stopPropagation();
-      onPlay();
+      if (event.repeat) event.preventDefault();
+      event.stopPropagation();
       return;
     }
     if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
@@ -567,9 +567,9 @@ export function createSwarmPlayFront({
     el: front,
     play: go,
     update: paint,
-    focus() { try { go.focus({ preventScroll: true }); } catch { /* best-effort */ } },
-    /** True when focus sits on a quiet key whose own Enter must win over PLAY. */
-    ownsEnter(active) { return !!active && alt.contains(active); },
+    focus() { try { (stops()[0] || go).focus({ preventScroll: true }); } catch { /* best-effort */ } },
+    /** All non-launch controls own their native Enter action. */
+    ownsEnter(active) { return !!active && active !== go && front.contains(active); },
     dispose() { front.remove(); },
   };
 }
