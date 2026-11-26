@@ -13067,6 +13067,11 @@ export const vfx = {
     // sf-cause-marks material joins the first-flight cohort instead of linking on the first
     // scar inside a presented frame.
     this._ensureCauseMarks();
+    // Beacon lamp beads mount only when a beacon enters scan range (seconds into flight); hold one
+    // hidden bead on a real layer material so its program joins the cohort. Released (material to
+    // the layer's free list, never disposed) in restLiveFlightEffectsAfterCook.
+    if (!this._beaconLampLife) this._beaconLampLife = new BeaconLampLayer();
+    this._beaconLampLife.mountProgramHold(this._scene);
     const energy = this._energy;
     if (!energy) return { skipped: true, reason: 'no-energy' };
     const player = this.state.entities && this.state.entities.get(this.state.playerId);
@@ -13424,6 +13429,9 @@ export const vfx = {
       exemplarMesh.visible = false;
       if (exemplarMesh.parent) exemplarMesh.parent.remove(exemplarMesh);
     }
+    // Same for the beacon lamp hold bead: detach, and park its compiled material on the
+    // layer's free list for the first live bead.
+    if (this._beaconLampLife) this._beaconLampLife.releaseProgramHold();
     return { skipped: false };
   },
 

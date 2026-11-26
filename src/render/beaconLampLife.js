@@ -185,6 +185,9 @@ export function createBeaconLampPrecompileMesh() {
   return mesh;
 }
 
+/** Name of the hidden program-hold bead (latePipelineAdmission's first-flight cohort keys on it). */
+export const BEACON_LAMP_HOLD_NAME = 'sf-beacon-lamp-hold';
+
 export class BeaconLampLayer {
   constructor() {
     this.slots = new Map();
@@ -197,6 +200,46 @@ export class BeaconLampLayer {
     // drops WebGLPrograms.usedTimes to 0 and triggers mid-flight shader recompilation on the
     // next beacon admission.
     this._freeMaterials = [];
+  }
+
+  /**
+   * Program hold for the first-flight cook. Beads mount only when a beacon is in scan range, which
+   * on most routes is first true seconds after the veil lifts, so the bead program linked inside
+   * a presented frame (0.2-3.5 s on software GL). Mount one hidden bead on a REAL layer material
+   * under `parent` so the cohort compiles it (by name, latePipelineAdmission.js); it never draws.
+   * releaseProgramHold() parks that material on the free list, so the first live beacon bead
+   * draws with the very material that was compiled behind the shell.
+   */
+  mountProgramHold(parent) {
+    if (!parent || typeof parent.add !== 'function') return null;
+    if (!this._holdBead) {
+      const material = this._freeMaterials.length > 0 ? this._freeMaterials.pop() : createBeaconLampMaterial();
+      material.opacity = 0;
+      const bead = new THREE.Mesh(this.geometry, material);
+      bead.name = BEACON_LAMP_HOLD_NAME;
+      bead.renderOrder = 6;
+      bead.visible = false;
+      bead.frustumCulled = false;
+      bead.scale.setScalar(0.001);
+      this._holdBead = bead;
+    }
+    if (this._holdBead.parent !== parent) {
+      if (this._holdBead.parent) this._holdBead.parent.remove(this._holdBead);
+      parent.add(this._holdBead);
+    }
+    return this._holdBead;
+  }
+
+  /** Detach the hold bead after the cook; its material (never disposed) joins the free list. */
+  releaseProgramHold() {
+    const bead = this._holdBead;
+    if (!bead) return false;
+    this._holdBead = null;
+    if (bead.parent) bead.parent.remove(bead);
+    bead.material.opacity = 0;
+    if (this._freeMaterials.length < BEACON_LAMP_CAP) this._freeMaterials.push(bead.material);
+    else bead.material.dispose();
+    return true;
   }
 
   /**
@@ -264,6 +307,11 @@ export class BeaconLampLayer {
   }
 
   dispose() {
+    if (this._holdBead) {
+      if (this._holdBead.parent) this._holdBead.parent.remove(this._holdBead);
+      this._holdBead.material.dispose();
+      this._holdBead = null;
+    }
     for (const slot of this.slots.values()) {
       slot.root.remove(slot.bead);
       slot.material.dispose();

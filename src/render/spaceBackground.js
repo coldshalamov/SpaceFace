@@ -99,6 +99,8 @@ const PLANET_STYLE_GLSL = /* glsl */`
   outgoingLight *= mix(vec3(1.0), mix(vec3(0.16, 0.19, 0.27), vec3(1.0), sfPlit), sfPbody);
 `;
 
+export const PLANET_PROGRAM_HOLD_NAME = 'L5_planet_programHold';
+
 function stylePlanetMaterial(material) {
   material.onBeforeCompile = (shader) => {
     const needle = 'outgoingLight = diffuseColor.rgb;';
@@ -2630,6 +2632,39 @@ export class SpaceBackground {
     }
     this.heroPlacement = list;
     this._admitHero();
+    this._holdPlanetProgram();
+  }
+
+  // Program hold for the L5 planet impostor. A planet is admitted only when the camera reaches
+  // its cell, so most openings build no planet sprite behind the loading shell and the shared
+  // illustrated-planet sprite program linked on the first admission inside flight (+1.8 s,
+  // 0.5-1.2 s on software GL). Every planet material shares that one program, so one hidden
+  // sprite carrying the REAL cached material of the nearest candidate is enough: the first-flight
+  // cohort compiles it by name (latePipelineAdmission.js), it never draws (visible=false), and
+  // the cache-owned material keeps the program pinned. The texture it binds is the one that
+  // candidate's admission would bake anyway, so that bake moves behind the shell as well.
+  _holdPlanetProgram() {
+    if (this._planetProgramHold || !this.group) return;
+    let spec = null;
+    let best = Infinity;
+    for (const candidate of this.heroPlacement || []) {
+      if (!candidate || candidate.kind !== 'planet') continue;
+      const d = Math.hypot(candidate.bx - this.camX * PLANET_PAR, candidate.bz - this.camZ * PLANET_PAR);
+      if (d < best) { best = d; spec = candidate; }
+    }
+    if (!spec) return;
+    let mat = null;
+    try { mat = this._getPlanetSpriteMaterial(this._getPlanetTexture(spec)); } catch (_) { return; }
+    if (!mat) return;
+    const sprite = new THREE.Sprite(mat);
+    sprite.name = PLANET_PROGRAM_HOLD_NAME;
+    sprite.visible = false;
+    sprite.frustumCulled = false;
+    sprite.renderOrder = -60;
+    sprite.position.y = HERO_DEPTH;
+    sprite.userData.spacefacePlanetProgramHold = true;
+    this.group.add(sprite);
+    this._planetProgramHold = sprite;
   }
 
   // Approximate drawn body radius for a not-yet-spawned spec (world units at the hero plane).

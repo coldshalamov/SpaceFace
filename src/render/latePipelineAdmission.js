@@ -189,6 +189,12 @@ function isLiveFirstFlightEffect(object) {
   // The comet streak sprite lives on the background group from build time but is hidden and
   // outside the opening leaf census; its SpriteMaterial linked at first reveal (+19 s).
   if (name === 'L6_comet') return true;
+  // Same for the L5 planet impostor: planets mount only when the camera reaches their cell, so
+  // the background holds one hidden sprite on the real shared planet material for this cohort.
+  if (name === 'L5_planet_programHold') return true;
+  // Beacon lamp beads mount only when a beacon enters scan range; vfx holds one hidden bead on a
+  // real layer material through the cook (beaconLampLife.js mountProgramHold).
+  if (name === 'sf-beacon-lamp-hold') return true;
   // Rigid-opaque batch chunks attach straight to the scene (no instance-pool userData flag) —
   // their USE_BATCHING material variant otherwise links on the first chunk's flight draw.
   if (data.spacefaceRigidOpaqueBatch === true) return true;

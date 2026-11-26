@@ -1,0 +1,121 @@
+// Post-lift program holds (Perf Lane, 2026-11-26). Four first-use programs still linked inside
+// presented flight on master 1e21de3b71 because their owners never existed (or never sat in a
+// walked scene) while the first-flight cohort compiled: the weapon/well distortion producers draw
+// private scenes, beacon lamp beads and the L5 planet impostor mount only once their beacon or cell
+// comes into range. Each now compiles its REAL material behind the shell.
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import * as THREE from 'three';
+import { createBloom } from '../src/render/bloom.js';
+import { WeaponVfxPresenter } from '../src/render/weapons/presenter.js';
+import { BEACON_LAMP_HOLD_NAME, BeaconLampLayer } from '../src/render/beaconLampLife.js';
+import { collectFirstFlightEffectRoots, collectFirstFlightLayerDrawables } from '../src/render/latePipelineAdmission.js';
+import { PLANET_PROGRAM_HOLD_NAME, SpaceBackground } from '../src/render/spaceBackground.js';
+
+function compileRecorder() {
+  let target = null;
+  const compiles = [];
+  const renderer = {
+    capabilities: { isWebGL2: false, maxSamples: 0 }, autoClear: true,
+    getRenderTarget: () => target,
+    setRenderTarget(value) { target = value; },
+    getClearColor(out) { return out; },
+    getClearAlpha: () => 1,
+    setClearColor() {},
+    clear() {},
+    initRenderTarget() {},
+    render() {},
+    compile(scene) { compiles.push({ scene, target }); },
+  };
+  return { renderer, compiles };
+}
+
+test('bloom prepareResources links every attached distortion producer against the distortion target', async () => {
+  const h = compileRecorder();
+  const bloom = createBloom(h.renderer, 640, 360);
+  const presenter = new WeaponVfxPresenter({ scene: new THREE.Scene() });
+  try {
+    presenter.attachGraph(bloom);
+    const target = bloom.contextLossResources().find((rt) => rt && rt.texture && rt.texture.name === 'Bloom:Distortion');
+    assert.ok(target, 'attaching producers allocates the distortion target');
+    await bloom.prepareResources();
+    const producerCompiles = h.compiles.filter((c) => c.scene === presenter.distortion.scene
+      || c.scene === presenter.wellDistortion.scene);
+    assert.equal(producerCompiles.length, 2, 'weapon haze and Well lens both link behind the shell');
+    for (const c of producerCompiles) assert.equal(c.target, target, 'compiled against the target it draws into');
+    assert.equal(presenter.distortion.mesh.name, 'SF_WeaponDistortion');
+  } finally { bloom.dispose(); }
+});
+
+test('bloom without producers compiles no distortion scene', async () => {
+  const h = compileRecorder();
+  const bloom = createBloom(h.renderer, 640, 360);
+  try {
+    await bloom.prepareResources();
+    assert.ok(h.compiles.every((c) => c.scene.name !== 'SF_WeaponDistortionScene'));
+  } finally { bloom.dispose(); }
+});
+
+test('beacon lamp hold bead joins the first-flight cohort and hands its material to the first live bead', () => {
+  const scene = new THREE.Scene();
+  const layer = new BeaconLampLayer();
+  const bead = layer.mountProgramHold(scene);
+  assert.equal(bead.name, BEACON_LAMP_HOLD_NAME);
+  assert.equal(bead.visible, false, 'the hold never draws');
+  assert.equal(bead.parent, scene);
+  assert.equal(layer.mountProgramHold(scene), bead, 'idempotent');
+  const roots = collectFirstFlightEffectRoots(scene);
+  assert.ok(roots.includes(bead), 'cohort picks the hold up by name');
+  assert.ok(collectFirstFlightLayerDrawables(roots).includes(bead), 'hidden drawable still compiles');
+  const material = bead.material;
+  let disposed = 0;
+  material.addEventListener('dispose', () => { disposed++; });
+  assert.equal(layer.releaseProgramHold(), true);
+  assert.equal(bead.parent, null);
+  assert.equal(disposed, 0, 'release never disposes the compiled material (keeps its program)');
+  const root = new THREE.Group();
+  layer.update([{ id: 7, type: 'beacon', alive: true, pos: { x: 0, z: 0 }, radius: 5,
+    data: { storyPropKind: 'route_buoy' }, view: { root } }], 10, false);
+  const live = root.children.find((c) => String(c.name).startsWith('sf-beacon-lamp-'));
+  assert.ok(live, 'a live beacon in range mounts a bead');
+  assert.equal(live.material, material, 'first live bead draws with the compiled material');
+  assert.equal(layer.releaseProgramHold(), false);
+  layer.dispose();
+});
+
+test('planet program hold name is a first-flight cohort root', () => {
+  const scene = new THREE.Scene();
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial());
+  sprite.name = PLANET_PROGRAM_HOLD_NAME;
+  sprite.visible = false;
+  const group = new THREE.Group();
+  group.add(sprite);
+  scene.add(group);
+  assert.deepEqual(collectFirstFlightEffectRoots(scene), [sprite]);
+});
+
+test('space background holds one hidden sprite on the real shared planet material of the nearest candidate', () => {
+  const bg = Object.create(SpaceBackground.prototype);
+  bg.group = new THREE.Group();
+  bg.camX = 0; bg.camZ = 0;
+  const near = { kind: 'planet', bx: 10, bz: 0, type: 'rocky', seed: 1 };
+  const far = { kind: 'planet', bx: 900, bz: 0, type: 'gas', seed: 2 };
+  bg.heroPlacement = [{ kind: 'wormhole', bx: 1, bz: 0 }, far, near];
+  const textures = new Map([[near, new THREE.Texture()], [far, new THREE.Texture()]]);
+  const asked = [];
+  bg._getPlanetTexture = (spec) => { asked.push(spec); return textures.get(spec); };
+  bg._holdPlanetProgram();
+  const hold = bg.group.children.find((c) => c.name === PLANET_PROGRAM_HOLD_NAME);
+  assert.ok(hold && hold.isSprite, 'hold sprite mounted on the background group');
+  assert.equal(hold.visible, false);
+  assert.deepEqual(asked, [near], 'nearest planet candidate only');
+  assert.equal(hold.material, bg._getPlanetSpriteMaterial(textures.get(near)), 'the cache-owned material a live admission reuses');
+  assert.equal(hold.material.customProgramCacheKey(), 'spaceface-illustrated-planet-v3');
+  bg._holdPlanetProgram();
+  assert.equal(bg.group.children.filter((c) => c.name === PLANET_PROGRAM_HOLD_NAME).length, 1, 'one hold per background');
+  const empty = Object.create(SpaceBackground.prototype);
+  empty.group = new THREE.Group(); empty.camX = 0; empty.camZ = 0; empty.heroPlacement = [{ kind: 'wormhole', bx: 0, bz: 0 }];
+  empty._getPlanetTexture = () => { throw new Error('no planet, no bake'); };
+  empty._holdPlanetProgram();
+  assert.equal(empty.group.children.length, 0, 'a sector with no planet candidates pays nothing');
+});

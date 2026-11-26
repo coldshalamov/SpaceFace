@@ -2682,6 +2682,24 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     return distortionLiveCount;
   }
 
+  // Distortion producers (weapon haze SF_WeaponDistortion, the well lens) draw their own private
+  // scenes into rtDistortion, so no scene-graph census or first-flight cohort ever reaches them:
+  // the first shot or well linked the producer program inside a presented frame (+8 s, ~1 s on
+  // software GL). Link each producer scene here, against rtDistortion itself — the target fixes
+  // the program's output-colour-space key, so a canvas-bound compile would warm the wrong
+  // variant. The producer's real material and mesh are compiled; nothing is drawn.
+  function compileDistortionProducers() {
+    if (!rtDistortion || !distortionProducers || typeof renderer.compile !== 'function') return 0;
+    let compiled = 0;
+    renderer.setRenderTarget(rtDistortion);
+    for (let i = 0; i < distortionProducers.length; i++) {
+      const producer = distortionProducers[i];
+      if (!producer || !producer.scene) continue;
+      try { renderer.compile(producer.scene, quadCam); compiled++; } catch (_) { /* best effort: first draw links it */ }
+    }
+    return compiled;
+  }
+
   function renderDistortionPass(camera, tier1) {
     const priorAlpha = renderer.getClearAlpha();
     renderer.getClearColor(priorDistortionClear);
@@ -3571,6 +3589,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
         quadMesh.material = upsampleMat;
         if (typeof renderer.compile === 'function') renderer.compile(quadScene, quadCam);
       }
+      compileDistortionProducers();
       quadMesh.material = compositeMat;
       renderer.setRenderTarget(null);
       if (typeof renderer.compile === 'function') renderer.compile(quadScene, quadCam);

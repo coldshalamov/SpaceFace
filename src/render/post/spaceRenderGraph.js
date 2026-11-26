@@ -660,6 +660,16 @@ export class SpaceRenderGraph {
       if (this._bloomActive()) this._renderBloom();
       // A real private draw admits the fullscreen quad geometry and its input textures even when
       // AO and bloom are off. Distortion is neutral here, so the destination is never sampled.
+      // Distortion producers draw private scenes into distortionTarget, outside every
+      // scene-graph census: link their programs here against that target (it fixes the
+      // output-colour-space key) instead of on the first shot inside a presented frame.
+      if (typeof renderer.compile === 'function' && options.camera) {
+        renderer.setRenderTarget(this.distortionTarget);
+        this._forEachDistortionProducer((producer) => {
+          if (!producer || !producer.scene) return;
+          try { renderer.compile(producer.scene, options.camera); } catch (_) { /* first draw links it */ }
+        });
+      }
       this._distortionLive = false;
       this._renderComposite(this.distortionTarget);
       this.quad.mesh.material = this.compositeMaterial;
