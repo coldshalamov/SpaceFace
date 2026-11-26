@@ -39,6 +39,9 @@ jobs:
             /vendor/
             /docs/visual-assets/
             /assets/vfx/
+            /assets/fx/sprites/
+            /assets/ships/motions/
+            /assets/ships/release/render-packages/_shared/
             /assets/ships/release/render-packages/kestrel/
             /assets/ships/release/render-packages/helios-rock-a/
             /assets/ships/release/render-packages/colossus-production-v1/
