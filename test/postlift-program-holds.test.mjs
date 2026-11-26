@@ -190,3 +190,55 @@ test('distortion producers attached after prepareResources link on attach, with 
     assert.ok(queried.includes(presenter.distortion.mesh.material), 'link status queried behind the shell');
   } finally { bloom.dispose(); }
 });
+
+// ── visible-first first use of unused programs (veil drain) ─────────────────────────────────────
+function fakeLinkRenderer() {
+  const gl = { LINK_STATUS: 0x8b82, isContextLost: () => false, getProgramParameter: () => true };
+  const programs = [];
+  const renderer = {
+    debug: { checkShaderErrors: true }, info: { programs }, domElement: { addEventListener() {} },
+    getContext: () => gl, properties: { store: new Map(), get(m) { if (!this.store.has(m)) this.store.set(m, {}); return this.store.get(m); } },
+  };
+  const make = (name) => {
+    let uses = 0;
+    const p = { name, program: {}, getUniforms() { uses += 1; return {}; }, getAttributes() { uses += 1; return {}; }, get uses() { return uses; } };
+    programs.push(p);
+    return p;
+  };
+  return { renderer, make };
+}
+
+test('veil drain links the visible scene programs first, then falls back to creation order', async () => {
+  const { installShaderLinkReporter } = await import('../src/render/shaderLinkReporter.js');
+  const { createVeilSettle } = await import('../src/render/veilSettle.js');
+  const { renderer, make } = fakeLinkRenderer();
+  assert.equal(installShaderLinkReporter(renderer), true);
+  const scene = new THREE.Scene();
+  const mk = (name, visible) => {
+    const mesh = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshBasicMaterial());
+    mesh.name = name; mesh.visible = visible; scene.add(mesh);
+    const program = make(name);
+    renderer.properties.get(mesh.material).currentProgram = program;
+    return program;
+  };
+  const early = make('never-drawn-early');
+  const hiddenOne = mk('hidden', false);
+  const visibleLate = mk('visible-late', true);
+  const pool = renderer.userData.spacefaceUnusedPrograms;
+  assert.equal(pool.size, 3);
+  assert.equal(pool.drainVisible(scene, 0), 1, 'zero budget still links one program');
+  assert.equal(visibleLate.uses, 1, 'visible scene program first-used');
+  assert.equal(early.uses, 0);
+  assert.equal(hiddenOne.uses, 0, 'hidden objects are not preferred');
+  assert.equal(pool.drainVisible(scene, 0), 0, 'nothing visible left');
+  const keyed = mk('SF_KeyedAsteroidInstances_2', false);
+  assert.equal(pool.drainVisible(scene, 0), 1, 'parked keyed instance pool is the second tier');
+  assert.equal(keyed.uses, 1);
+  assert.equal(hiddenOne.uses, 0, 'other hidden objects stay unpreferred');
+  // veil step: visible first; when none is left the generic drain takes the oldest.
+  const render = { flightVeilHoldsSim: true, firstPlayableFrameAt: 1, scene };
+  let now = 0;
+  const veil = createVeilSettle(render, { host: {}, now: () => (now += 20), unusedPrograms: () => pool, drainCapMs: 10_000 });
+  veil();
+  assert.equal(early.uses, 1, 'generic drain continues in creation order');
+});

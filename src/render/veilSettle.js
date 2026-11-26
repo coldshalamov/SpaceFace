@@ -25,6 +25,8 @@ export const VEIL_SETTLE_IDLE_PERIODS = 3;
 // ADMISSION_DRAIN_CAP_MS (3000, loadingPresenter.js), so in practice the veil release ends it.
 export const VEIL_DRAIN_CAP_MS = 4000;
 export const VEIL_DRAIN_GAP_MS = 8;
+// Wall-clock budget for one step's visible-first first uses (always at least one program when any exists).
+export const VEIL_VISIBLE_DRAIN_BUDGET_MS = 160;
 
 const nowMs = () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
   ? performance.now() : Date.now());
@@ -57,7 +59,12 @@ export function createVeilSettle(render, options = {}) {
     lastDrain = t;
     if (pool.size === 0) return 0;
     const before = pool.size;
-    const left = pool.drain(1);
+    // Programs the visible scene holds go first: they are what the first presented frames draw.
+    let visible = 0;
+    if (typeof pool.drainVisible === 'function' && render && render.scene) {
+      try { visible = pool.drainVisible(render.scene, VEIL_VISIBLE_DRAIN_BUDGET_MS) | 0; } catch (_) { visible = 0; }
+    }
+    const left = visible > 0 ? pool.size : pool.drain(1);
     drained += Math.max(0, before - left);
     render.veilDrain = { drained, left, ms: Math.round(elapsed) };
     return left > 0 ? 1 : 0;

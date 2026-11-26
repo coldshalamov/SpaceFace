@@ -50,6 +50,7 @@ export function installShaderLinkReporter(renderer, options = {}) {
     // veil force those first uses while it still owns the picture.
     unused: new Set(),
     programs: renderer.info.programs,
+    renderer,
   };
   // Where the main thread waited on a driver link inside a draw. Read by the launch probes
   // (renderer.userData.spacefaceLinkBlocks) so a stall is named by program, time and stack.
@@ -60,6 +61,9 @@ export function installShaderLinkReporter(renderer, options = {}) {
     drain: (max = 1) => drainUnused(context, max),
     // First-use the listed programs now (still-unused, settled ones only); returns how many linked.
     linkNow: (programs) => linkUnusedNow(context, programs),
+    // First-use the still-unused programs of the VISIBLE part of `root` first (what the first presented
+    // frames will draw), within a wall-clock budget; returns how many linked.
+    drainVisible: (root, budgetMs) => drainVisibleUnused(context, root, budgetMs),
   };
   guardProgramList(renderer, context);
   const canvas = renderer.domElement;
@@ -166,6 +170,55 @@ function drainUnused(context, max) {
     try { program.getUniforms(); } catch (_) { /* a failed discovery reports through the draw path */ }
   }
   return context.unused.size;
+}
+
+// The veil's generic drain walks the unused set in creation order, one program per frame. On a
+// serial-link driver (no KHR_parallel_shader_compile; software GL) each first use pays the whole
+// link, a scene holds ~190 unused programs, and the veil lasts a few seconds — so a program that
+// the first presented frames DO draw (a rock admitted at the first picture, a placed prop's
+// specimen) can sit behind hundreds of programs nothing draws yet, and pays its link (0.1-0.8 s)
+// inside a presented frame after the lift. Link what the visible scene holds first, then fall back
+// to the generic order. Programs still pending on a parallel link are skipped (settled ones only).
+function drainVisibleUnused(context, root, budgetMs) {
+  if (!root || typeof root.traverseVisible !== 'function' || pruneUnused(context) === 0) return 0;
+  const props = context.renderer && context.renderer.properties;
+  if (!props || typeof props.get !== 'function') return 0;
+  try {
+    if (typeof context.gl.isContextLost === 'function' && context.gl.isContextLost()) return 0;
+  } catch (_) { return 0; }
+  const budget = Number.isFinite(budgetMs) ? Math.max(0, budgetMs) : 0;
+  const started = nowMs();
+  let linked = 0;
+  let spent = false;
+  const take = (program) => {
+    if (!program || !context.unused.has(program) || !programSettled(program, context)) return;
+    context.unused.delete(program);
+    try { program.getUniforms(); linked += 1; } catch (_) { /* reported through the draw path */ }
+    if (nowMs() - started >= budget) spent = true;
+  };
+  const scan = (node) => {
+    if (spent || !node.material) return;
+    const mats = Array.isArray(node.material) ? node.material : [node.material];
+    for (let i = 0; i < mats.length && !spent; i += 1) {
+      let rec = null;
+      try { rec = props.get(mats[i]); } catch (_) { rec = null; }
+      if (!rec) continue;
+      take(rec.currentProgram);
+      if (rec.programs && typeof rec.programs.values === 'function') {
+        for (const program of rec.programs.values()) { if (spent) break; take(program); }
+      }
+    }
+  };
+  root.traverseVisible(scan);
+  // Second tier, only once the visible scene is settled: the keyed asteroid instance pools are parked
+  // hidden until the first live rock of their key is admitted, then draw (c-8: SF_KeyedAsteroidInstances_2
+  // linked 552 ms at +15.8 s, created -4.4 s).
+  if (linked === 0 && !spent && typeof root.traverse === 'function') {
+    root.traverse((node) => {
+      if (typeof node.name === 'string' && node.name.startsWith('SF_KeyedAsteroidInstances')) scan(node);
+    });
+  }
+  return linked;
 }
 
 function linkUnusedNow(context, programs) {
