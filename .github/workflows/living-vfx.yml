@@ -65,10 +65,17 @@ jobs:
           set -o pipefail
           node scripts/living-vfx-verify.mjs | tee vfx-artifact/verification.log
       - name: Install capture browser
-        if: github.event_name != 'pull_request'
         run: |
           python -m pip install playwright pillow
           python -m playwright install --with-deps chromium
+      - name: Capture Incinerator lifecycle at gameplay scale
+        run: |
+          python -m http.server 8769 > vfx-artifact/server.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          sleep 2
+          python scripts/capture-vfx-gameplay-demo.py --scenario incinerator-twin --width 1280 --height 800 --video --output vfx-artifact/incinerator
+          python scripts/capture-vfx-gameplay-demo.py --scenario incinerator-twin --width 1280 --height 800 --reduced-motion --reduced-flash --no-bloom --output vfx-artifact/incinerator-accessible
       - name: Capture released-asset production lab
         if: github.event_name != 'pull_request'
         run: |

@@ -13,3 +13,7 @@ Both simulation and presentation use separate generation-keyed beam identities. 
 - Native visual review: held beam, blocked ray, both rays on a moving target, release and burning flight, expiry, reduced-flash/motion and bloom-off. The isolated lab is visual evidence, not proof the whole game is stable.
 
 Use the focused CI contract; do not weaken the unrelated failing master checks. Direct game playtesting and final artistic sign-off are still required.
+
+## Reproducible visual review
+
+The released-asset VFX lab includes **Incinerator Twin**, a deterministic two-ray receipt fixture using the production ray entry function, beam pool, fire-receipt consumer and status matter owner. It shows both rays feeding a living released Kestrel hull, then the victim retreating with hull-attached residual burning until expiry. It is an isolated visual fixture, not a full gameplay performance benchmark. Open `scripts/vfx-gameplay-demo.html` from the local dev server, or inspect the Living VFX review workflow's artifact (normal bloom and reduced-motion/flash, bloom disabled). The workflow runs the focused simulation/renderer contracts before attempting captures.

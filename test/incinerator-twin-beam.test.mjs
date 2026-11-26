@@ -16,6 +16,7 @@ import { SWARM_RULESET } from '../src/data/swarmMode.js';
 import { projectBridgeEvent } from '../scripts/lib/simEventBridge.mjs';
 import * as THREE from 'three';
 import { PersistentCombatBeamPool, BEAM_COOLING_S } from '../src/render/combat/persistentBeams.js';
+import { vfx } from '../src/render/vfx.js';
 
 const ID = 'wpn_incinerator_m', DT = 1/60;
 const def = WEAPONS.find(w => w.id === ID);
@@ -159,4 +160,37 @@ test('occlusion on one ray does not let it damage a hull behind its first contac
   for(let i=0;i<5;i++)w.tick();
   assert.ok(cover.hull<cover.hullMax && other.hull<other.hullMax);
   assert.equal(behind.hull,behind.hullMax);
+});
+
+// Exercise the native receipt consumer, not a parallel test-only VFX recipe.
+test('two thermal work faces ignite independently without per-tick flashing; shield/miss emit no flames',()=>{
+  const system=Object.create(vfx), pool=new PersistentCombatBeamPool(THREE);
+  const sprites=[], streaks=[], lights=[];
+  system._scene={}; system._combatBeams=pool; system._beamDamageCueNext=new Map();
+  system.state={simTime:0,settings:{video:{},accessibility:{}}};
+  system._t=0; system.helpers={}; system._ent=()=>null; system._dirAngle=()=>0;
+  system._muzzleProfile=()=>resolveMuzzleProfile(ID,null);
+  system._spawnMuzzleBeam=()=>{};
+  system._spawnSprite=(...args)=>sprites.push(args);
+  system._spawnProjectileTrailStreak=(...args)=>streaks.push(args);
+  system._eventLight=(...args)=>lights.push(args);
+  const receipt=(side,contact)=>({beamKey:'1:incinerator:'+side,ownerId:1,weaponId:ID,
+    continuous:true,from:{x:0,z:side*6},to:{x:30+side*10,z:side*6},dir:0,thermalContact:contact});
+  const a=receipt(0,'material'),b=receipt(1,'material');
+  try {
+    system._onFire(a);system._onFire(b);
+    assert.equal(sprites.length,6);assert.equal(streaks.length,10);assert.equal(lights.length,2);
+    assert.ok(sprites.some(s=>s[1]===30)&&sprites.some(s=>s[1]===40),'distinct contact points');
+    for(let i=1;i<=5;i++){system.state.simTime=i/60;system._t=i/60;system._onFire(a);system._onFire(b);}
+    assert.equal(sprites.length,6,'do not emit at simulation rate');
+    system.state.simTime=.2;system._t=.2;system._onFire({...a,thermalContact:'shield'});system._onFire({...b,thermalContact:null});
+    assert.equal(sprites.length,6);
+    system.state.settings.accessibility.flashReduce=true;
+    system._onFire(a);system._onFire(b);
+    assert.equal(sprites.length,10,'reduced mode retains dim flame and smoke');
+    assert.equal(streaks.length,10);assert.equal(lights.length,2);
+    system._onBeamStop(a);
+    assert.ok(!system._beamDamageCueNext.has('1:thermal-seat:'+a.beamKey));
+    assert.ok(system._beamDamageCueNext.has('1:thermal-seat:'+b.beamKey));
+  }finally{pool.dispose();}
 });
