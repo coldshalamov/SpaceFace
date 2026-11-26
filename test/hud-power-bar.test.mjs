@@ -93,6 +93,17 @@ test('HUD-POWER-BAR: cooldown seconds, armed Detonate, active rings, and loaded 
   assert.equal(ord['6'].running, true, 'Active Line carries active ring');
 });
 
+test('HUD-POWER-BAR: planetary scoop never claims the independent Plow socket', () => {
+  const state = baseState({ planet: { active: true, player: { collectorOn: true } } });
+  const bindings = { rig: ['Digit5'] };
+  assert.equal(readRailModel(state, state.simTime)[5].state, 'ready');
+  assert.equal(readRailModel(state, state.simTime)[5].running, false);
+  assert.notEqual(readOrdnanceModel(state, createCooldownTracker(), bindings)['5'].running, true);
+  state.fields.coneActive = true;
+  assert.equal(readRailModel(state, state.simTime)[5].running, true);
+  assert.equal(readOrdnanceModel(state, createCooldownTracker(), bindings)['5'].running, true);
+});
+
 test('HUD-POWER-BAR: flight glyphs use one precise stroke and distinct geometry at compact size', () => {
   const ids = [
     'field_well_standard', 'field_repulsor_standard', 'field_seed_standard',
@@ -131,6 +142,9 @@ test('HUD-POWER-BAR: flight glyphs use one precise stroke and distinct geometry 
   assert.match(labeled, /role="img" aria-label="Pull &amp; gather"/);
   assert.match(labeled, /width="44" height="44"/);
   assert.equal(arsenalIcon('not_a_real_power', 32, '', true), '');
+  assert.equal(arsenalIcon('bomb_not_in_catalog', 32, '', true), '');
+  assert.equal(arsenalIcon({ defId: 'field_well_standard' }, 32, '', true), arsenalIcon('field_well_standard', 32, '', true));
+  assert.equal(arsenalIcon({ id: 'bomb_emp' }, 44, '', true), arsenalIcon('bomb_emp', 44, '', true));
 
   // The armory/outfit glyphs keep their established drawing style and fallback behavior.
   assert.match(arsenalIcon('field_well_standard', 24), /stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/);

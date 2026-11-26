@@ -263,11 +263,14 @@ const flightGlyphs = Object.freeze({
 });
 
 export function arsenalIcon(id, size = 24, label = '', flight = false) {
-  const flightKey = flight && typeof id === 'string' && !Object.hasOwn(flightGlyphs, id) && id.startsWith('bomb_')
-    ? 'power_charge' : id;
+  const key = typeof id === 'string' ? id : id?.defId || id?.id;
+  if (typeof key !== 'string') return '';
+  // Only catalogued bombs share the flight socket. An unknown ID must remain unknown.
+  const flightKey = flight && key.startsWith('bomb_') && arsenalIdentity(key)?.id === key
+    ? 'power_charge' : key;
   const isFlightGlyph = flight && Object.hasOwn(flightGlyphs, flightKey);
-  const paths = isFlightGlyph ? flightGlyphs[flightKey] : arsenalGlyph(id);
+  const paths = isFlightGlyph ? flightGlyphs[flightKey] : arsenalGlyph(key);
   if (!paths) return '';
   const dimension = Number.isFinite(Number(size)) ? Math.max(8, Math.min(128, Number(size))) : 24;
-  return `<svg xmlns="http://www.w3.org/2000/svg" class="dp-icon arsenal-icon" viewBox="0 0 24 24" width="${dimension}" height="${dimension}" fill="none" stroke="currentColor" stroke-width="${isFlightGlyph ? '1.62' : '1.5'}" stroke-linecap="${isFlightGlyph ? 'butt' : 'round'}" stroke-linejoin="${isFlightGlyph ? 'bevel' : 'round'}" ${label ? `role="img" aria-label="${escape(label)}"` : 'aria-hidden="true" focusable="false"'} data-arsenal="${escape(id)}">${paths.map(({ tag, ...attrs }) => `<${tag} ${Object.entries(attrs).map(([key, value]) => `${key}="${escape(value)}"`).join(' ')}/>`).join('')}</svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" class="dp-icon arsenal-icon" viewBox="0 0 24 24" width="${dimension}" height="${dimension}" fill="none" stroke="currentColor" stroke-width="${isFlightGlyph ? '1.62' : '1.5'}" stroke-linecap="${isFlightGlyph ? 'butt' : 'round'}" stroke-linejoin="${isFlightGlyph ? 'bevel' : 'round'}" ${label ? `role="img" aria-label="${escape(label)}"` : 'aria-hidden="true" focusable="false"'} data-arsenal="${escape(key)}">${paths.map(({ tag, ...attrs }) => `<${tag} ${Object.entries(attrs).map(([key, value]) => `${key}="${escape(value)}"`).join(' ')}/>`).join('')}</svg>`;
 }

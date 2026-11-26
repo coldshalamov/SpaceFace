@@ -46,6 +46,7 @@ jobs:
             assets/characters/ruckus
             assets/audio
             assets/fx/thruster
+            assets/fx/sprites
             assets/wreck-court
       - uses: actions/setup-node@v4
         with:
