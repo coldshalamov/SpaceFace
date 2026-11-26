@@ -31691,7 +31691,9 @@ export const render = {
         }
       });
     }
-    this._creditChipSubmittable.length = 0;
+    // The optional batch scratch is absent in partial/headless owners and after teardown.
+    // Match the guarded preamble and batch submit; the rest of this frame must still publish.
+    if (this._creditChipSubmittable) this._creditChipSubmittable.length = 0;
 
     if (!slipstreamSeen) writeSlipstreamState(this.state, false, 0);
 
