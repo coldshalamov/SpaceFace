@@ -4239,6 +4239,13 @@ export const vfx = {
             beamPose.toZ = targetPose.z + Math.sin(a) * entry.contactLocalX + Math.cos(a) * entry.contactLocalZ;
           }
         }
+        // An interpolated victim seat may move laterally during a fast turn. Clip the
+        // displayed ray by its longitudinal projection; never draw a gimballed twin.
+        if (entry.blocked) {
+          const along = Math.max(0, (beamPose.toX - beamPose.x) * c + (beamPose.toZ - beamPose.z) * s);
+          beamPose.toX = beamPose.x + c * along;
+          beamPose.toZ = beamPose.z + s * along;
+        }
         return beamPose;
       }
       const helpers = this.helpers;

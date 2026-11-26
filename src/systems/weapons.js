@@ -33,6 +33,8 @@ import {
   modelTruthMineSensorRadius,
   modelTruthShotOrigin,
   modelTruthSocketWorld,
+  modelTruthRow,
+  modelTruthRowForEntity,
 } from '../data/modelTruth.js';
 import { wrapAngle } from '../core/rng.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
@@ -3866,25 +3868,73 @@ function resetWeaponDiagnostics(diag) {
   diag.autoFireCandidates = 0;
 }
 
-/** Symmetric nose apertures in the simulation plane. The muzzle supplies authored longitudinal
- * reach when available; never inherit its lateral offset (a fitted side mount is not the nose).
- */
+// The measured silhouette is normalized once per hull and battery count. Synthetic bodies
+// without a model row retain the radius-based fixture fallback. No scene queries in simulation.
+const incineratorLaneCache = new WeakMap();
+function measuredIncineratorLanes(row, count) {
+  if (!row) return null;
+  let byCount = incineratorLaneCache.get(row);
+  if (!byCount) { byCount = new Map(); incineratorLaneCache.set(row, byCount); }
+  if (byCount.has(count)) return byCount.get(count);
+  const outline = row.collider?.outline, reference = Number(row.gameplay?.entityRadius);
+  if (!Array.isArray(outline) || outline.length < 3 || !(reference > 0)) {
+    byCount.set(count, null); return null;
+  }
+  const points = outline.map((radius, i) => {
+    const angle = -Math.PI + ((i + 0.5) / outline.length) * Math.PI * 2;
+    const n = Math.max(0, Number(radius) || 0) / reference;
+    return { x: Math.cos(angle) * n, z: Math.sin(angle) * n };
+  });
+  const halfWidth = Math.min(Math.max(...points.map(p => p.z)), -Math.min(...points.map(p => p.z)));
+  if (!(halfWidth > 0.05)) { byCount.set(count, null); return null; }
+  const halfSpan = halfWidth * (count === 1 ? 0.50 : 0.73);
+  const step = 2 * halfSpan / (2 * count - 1);
+  const forwardAt = z => {
+    let forward = -Infinity;
+    for (let i = 0; i < points.length; i++) {
+      const a = points[i], b = points[(i + 1) % points.length];
+      const dz = b.z - a.z;
+      if (Math.abs(dz) < 1e-9) {
+        if (Math.abs(z - a.z) < 1e-9) forward = Math.max(forward, a.x, b.x);
+        continue;
+      }
+      const t = (z - a.z) / dz;
+      if (t >= 0 && t <= 1) forward = Math.max(forward, a.x + (b.x - a.x) * t);
+    }
+    return forward;
+  };
+  const lanes = Array.from({ length: count * 2 }, (_, i) => {
+    const z = -halfSpan + i * step;
+    // Use the front skin at the actual lateral seat, not the central nose's x coordinate.
+    // A small inset hides the aperture in the silhouette and prevents floating beams.
+    return { z, x: Math.min(forwardAt(z), forwardAt(-z)) - 0.045 };
+  });
+  const result = lanes.every(p => Number.isFinite(p.x) && p.x > 0) ? lanes : null;
+  byCount.set(count, result);
+  return result;
+}
+
+/** Symmetric front-hull apertures in the simulation plane; each beam remains nose-parallel. */
 export function incineratorBeamOrigins(ship, muzzle, ordinal = 0, batteryCount = 1) {
   const dir = Number.isFinite(ship.rot) ? ship.rot : 0;
   const c = Math.cos(dir), s = Math.sin(dir);
   const r = Math.max(2, Number(ship.radius) || 6);
-  const forward = Math.max(r * 0.52, (muzzle.x - ship.pos.x) * c + (muzzle.z - ship.pos.z) * s);
   const count = Math.max(1, Math.trunc(batteryCount));
   const lane = Math.max(0, Math.min(count - 1, Math.trunc(ordinal)));
+  const row = modelTruthRowForEntity(ship) || modelTruthRow(ship.data?.shipId);
+  const measured = measuredIncineratorLanes(row, count);
+  if (measured) return measured.slice(lane * 2, lane * 2 + 2).map(p => ({
+    x: ship.pos.x + r * (c * p.x - s * p.z),
+    z: ship.pos.z + r * (s * p.x + c * p.z),
+    y: 0.35,
+  }));
+  const forward = Math.max(r * 0.52, (muzzle.x - ship.pos.x) * c + (muzzle.z - ship.pos.z) * s);
   const halfSpan = Math.max(1.2, r * (count === 1 ? 0.32 : 0.48));
   const step = 2 * halfSpan / (2 * count - 1);
   const port = -halfSpan + lane * 2 * step, starboard = port + step;
   const x = ship.pos.x + c * forward, z = ship.pos.z + s * forward;
-  // Combat is planar. The two drawn cores share a low deck height instead of a
-  // socket-height-dependent elevated plane that could float above the struck surface.
-  const y = 0.35;
-  return [{ x: x - s * port, z: z + c * port, y },
-    { x: x - s * starboard, z: z + c * starboard, y }];
+  return [{ x: x - s * port, z: z + c * port, y: 0.35 },
+    { x: x - s * starboard, z: z + c * starboard, y: 0.35 }];
 }
 
 /** One tick of a continuous beam: the authored packet plus its share of the armor window. */

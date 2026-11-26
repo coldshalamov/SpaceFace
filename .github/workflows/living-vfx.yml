@@ -70,6 +70,7 @@ jobs:
       - name: Install capture browser
         run: |
           python -m pip install playwright pillow
+          sudo apt-get update -q && sudo apt-get install -y -q ffmpeg
           python -m playwright install --with-deps chromium
       - name: Capture Incinerator lifecycle at gameplay scale
         run: |

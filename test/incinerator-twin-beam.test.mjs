@@ -194,3 +194,16 @@ test('two thermal work faces ignite independently without per-tick flashing; shi
     assert.ok(system._beamDamageCueNext.has('1:thermal-seat:'+b.beamKey));
   }finally{pool.dispose();}
 });
+
+test('measured Kestrel emitters sit behind the central nose, remain symmetric and scale with hull radius', () => {
+  const a = { id: 'test-kestrel', type: 'ship', pos: { x: 0, z: 0 }, rot: 0, radius: 10, data: { defId: 'ship_kestrel' } };
+  const nose = { x: 30, z: 0 };
+  const pair = incineratorBeamOrigins(a, nose);
+  assert.ok(pair[0].x > 0 && pair[0].x < nose.x);
+  assert.ok(pair[0].z < 0 && pair[1].z > 0);
+  assert.ok(Math.abs(pair[0].x - pair[1].x) < 1e-8);
+  assert.ok(Math.abs(pair[0].z + pair[1].z) < 1e-8);
+  const scaled = incineratorBeamOrigins({ ...a, radius: 20 }, { x: 60, z: 0 });
+  assert.ok(Math.abs(scaled[0].x - 2 * pair[0].x) < 1e-8);
+  assert.ok(Math.abs(scaled[0].z - 2 * pair[0].z) < 1e-8);
+});
