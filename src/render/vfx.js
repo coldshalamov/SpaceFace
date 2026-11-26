@@ -2993,6 +2993,11 @@ export const vfx = {
       // Damage-path statuses spend ≥1 tick in pendingStatuses and land via applyActive
       // with no statusNextPendingSeq bump — a cadence pull inside that window would
       // re-latch and hide the sink for its whole life. Wake on the sink's application.
+      if (p?.statusId === 'status_burning') {
+        // Application happens after scheduling; the empty presentation latch must wake on both.
+        this._statusAttachedQuietEmpty = false;
+        this._statusAttachedQuietSeq = -1;
+      }
       if (p && p.statusId === MOMENTUM_SINK_STATUS_ID) {
         this._momentumSinkQuietEmpty = false;
         this._momentumSinkQuietSeq = -1;
@@ -4209,7 +4214,33 @@ export const vfx = {
     // aperture in 60 Hz steps behind the hull. This resolver re-seats the DRAWN origin on the
     // firing socket every displayed frame. It cannot touch the contact end, which stays exactly
     // where the simulation put it, so no hit can be invented here.
+    const beamPose = { x: 0, z: 0, toX: 0, toZ: 0 };
+    const targetPose = { x: 0, z: 0 };
     this._beamOriginResolver = (entry) => {
+      if (entry.thermalClass) {
+        const owner = this._ent(entry.ownerId);
+        if (!owner || owner.alive === false || (entry.sourceLife != null && owner.occupantGeneration !== entry.sourceLife)) return null;
+        const alpha = this._renderInterpolationAlpha();
+        presentedAnchorXZ(owner, alpha, beamPose);
+        const yaw = presentedAnchorRot(owner, alpha);
+        const c = Math.cos(yaw), s = Math.sin(yaw);
+        beamPose.x += c * entry.sourceLocalForward - s * entry.sourceLocalSide;
+        beamPose.z += s * entry.sourceLocalForward + c * entry.sourceLocalSide;
+        beamPose.toX = entry.toX; beamPose.toZ = entry.toZ;
+        if (!entry.blocked) {
+          const length = Math.hypot(entry.toX - entry.fromX, entry.toZ - entry.fromZ);
+          beamPose.toX = beamPose.x + c * length; beamPose.toZ = beamPose.z + s * length;
+        } else if (entry.contactId != null && Number.isFinite(entry.contactLocalX)) {
+          const victim = this._ent(entry.contactId);
+          if (victim && victim.alive !== false && (entry.contactLife == null || victim.occupantGeneration === entry.contactLife)) {
+            presentedAnchorXZ(victim, alpha, targetPose);
+            const a = presentedAnchorRot(victim, alpha);
+            beamPose.toX = targetPose.x + Math.cos(a) * entry.contactLocalX - Math.sin(a) * entry.contactLocalZ;
+            beamPose.toZ = targetPose.z + Math.sin(a) * entry.contactLocalX + Math.cos(a) * entry.contactLocalZ;
+          }
+        }
+        return beamPose;
+      }
       const helpers = this.helpers;
       if (!helpers || typeof helpers.socketWorldPose !== 'function') return null;
       return helpers.socketWorldPose(entry.ownerId, WEAPON_SOCKET_NAME);
@@ -4294,7 +4325,7 @@ export const vfx = {
     const tgt = this._ent(p.targetId);
     // OVH-06b: the struck hull flashes for two frames (a hit on bare hull or armor; a held shield
     // answers with its own ripple instead). One slot write, no allocation.
-    if (tgt && (p.hullHit || p.armorHit) && bodyHitEnabled()) {
+    if (tgt && (p.hullHit || p.armorHit) && p.weaponId !== 'wpn_incinerator_m' && bodyHitEnabled()) {
       const maxHull = Number(tgt.hullMax) || 0;
       const power = maxHull > 0 ? Math.min(1, 0.45 + ((Number(p.amount) || 0) / maxHull) * 4) : 0.7;
       hullHitFlashBook.noteHit(tgt.id, Number(this.state && this.state.simTime) || 0, power);
@@ -4328,7 +4359,7 @@ export const vfx = {
     const impulseAngle = impactAxisAngle(hitRead);
     // OVH-06b: a spark spray leaves the hit point along the shot's REFLECTION off the plate, three
     // seeded streaks fanned a little either side. Bare hull and armor only; a held shield has its own read.
-    if ((p.hullHit || p.armorHit) && bodyHitEnabled() && normalSigned && p.approach
+    if ((p.hullHit || p.armorHit) && p.weaponId !== 'wpn_incinerator_m' && bodyHitEnabled() && normalSigned && p.approach
       && (Number(p.approach.x) || Number(p.approach.z))) {
       reflectAxis(Number(p.approach.x) || 0, Number(p.approach.z) || 0, nx, nz, _bodyReflectOut);
       const sprayKey = (this.state && this.state.tick | 0) + (tgt && Number(tgt.id) | 0) * 31;
@@ -4351,6 +4382,13 @@ export const vfx = {
       const now = Number(this.state && this.state.simTime) || this._t;
       if (!p.brokeShield && now < (this._beamDamageCueNext.get(cueKey) || 0)) return;
       this._beamDamageCueNext.set(cueKey, now + 0.08);
+      if (p.weaponId === 'wpn_incinerator_m' && !p.shieldAbsorbed && !p.brokeShield) {
+        // The heat-specific work face is seated by the authoritative ray receipt, not by
+        // generic projectile breach flashes every tick. Keep a real combat feedback cue.
+        if (p.hullHit) this._emitJuiceCue('combat.damage.hull', p, 1);
+        else if (p.armorHit) this._emitJuiceCue('combat.damage.armor', p, 1);
+        return;
+      }
     }
     // The contact's own receipt decides admission. `combat:damage` carries the attacker/target
     // pair, so a player-caused or player-target hit derives the high priority its player deserves,

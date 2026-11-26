@@ -32,6 +32,7 @@ import {
   modelTruthFlashOrigin,
   modelTruthMineSensorRadius,
   modelTruthShotOrigin,
+  modelTruthSocketWorld,
 } from '../data/modelTruth.js';
 import { wrapAngle } from '../core/rng.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
@@ -1671,7 +1672,7 @@ export const weapons = {
 
     // A continuous beam still originates from its hardpoint facing and gimbal-assists toward aim.
     const twinThermal = def.id === 'wpn_incinerator_m';
-    const dir = twinThermal ? e.rot : (arcadeAim || pilotAim ? beamAim : this._hardpointDir(e, w, beamAim != null ? beamAim : e.rot, 0));
+    const dir = twinThermal ? (Number.isFinite(e.rot) ? e.rot : 0) : (arcadeAim || pilotAim ? beamAim : this._hardpointDir(e, w, beamAim != null ? beamAim : e.rot, 0));
     const origin = this._muzzle(e, w, dir);
     const to = { x: origin.x + Math.cos(dir) * range, z: origin.z + Math.sin(dir) * range };
     // RW-01: a siege-class beam pushes its firing hull backward for as long as it holds the beam.
@@ -1696,9 +1697,18 @@ export const weapons = {
     if (twinThermal) {
       // A battery spends heat/cap once. Two parallel rays each own half of the advertised DPS
       // and their own independent first-skin contact and release key. Never aim at the mouse.
-      const origins = incineratorBeamOrigins(e, origin);
+      // Use the measured forward socket rather than the arbitrary ordinal of the fitted slot.
+      // All fitted batteries (including a temporarily disabled one) occupy a stable lane.
+      let count = 0, ordinal = 0;
+      for (const mount of e.data?.weapons || [w]) {
+        if (mount.defId !== 'wpn_incinerator_m') continue;
+        if (mount === w) ordinal = count;
+        count++;
+      }
+      const nose = modelTruthSocketWorld(e, 'SOCKET_Weapon_Front') || origin;
+      const origins = incineratorBeamOrigins(e, nose, ordinal, count || 1);
       for (let side = 0; side < origins.length; side++) {
-        const key = beamKey + ':incinerator:' + side;
+        const key = beamKey + ':incinerator:' + String(occupantGenerationOf(e) ?? 'fixture') + ':' + side;
         const phase = this._beamFiringPrev.has(key) ? 'update' : 'begin';
         this._beamFiring.add(key);
         if (!this._beamActiveMeta.has(key)) this._beamActiveMeta.set(key, {
@@ -1711,6 +1721,8 @@ export const weapons = {
           weaponId: w.defId, from, to: endpoint, dmgType: damageType, dpsThisTick: damage / 2,
           damagePacket: beamDamagePacket(wForPacket, def, damage / 2, damageType, dt),
           beamKey: key, twinThermal: true, hardpointIdx: w.slotIndex, dir, range, phase,
+          sourceLocalForward: (from.x - e.pos.x) * Math.cos(dir) + (from.z - e.pos.z) * Math.sin(dir),
+          sourceLocalSide: -(from.x - e.pos.x) * Math.sin(dir) + (from.z - e.pos.z) * Math.cos(dir),
         });
       }
       // Combat publishes each final ray on the existing fire channel after resolving cover.
@@ -3856,16 +3868,22 @@ function resetWeaponDiagnostics(diag) {
 /** Symmetric nose apertures in the simulation plane. The muzzle supplies authored longitudinal
  * reach when available; never inherit its lateral offset (a fitted side mount is not the nose).
  */
-export function incineratorBeamOrigins(ship, muzzle) {
+export function incineratorBeamOrigins(ship, muzzle, ordinal = 0, batteryCount = 1) {
   const dir = Number.isFinite(ship.rot) ? ship.rot : 0;
   const c = Math.cos(dir), s = Math.sin(dir);
   const r = Math.max(2, Number(ship.radius) || 6);
   const forward = Math.max(r * 0.52, (muzzle.x - ship.pos.x) * c + (muzzle.z - ship.pos.z) * s);
-  const lateral = Math.max(1.2, r * 0.32);
+  const count = Math.max(1, Math.trunc(batteryCount));
+  const lane = Math.max(0, Math.min(count - 1, Math.trunc(ordinal)));
+  const halfSpan = Math.max(1.2, r * (count === 1 ? 0.32 : 0.48));
+  const step = 2 * halfSpan / (2 * count - 1);
+  const port = -halfSpan + lane * 2 * step, starboard = port + step;
   const x = ship.pos.x + c * forward, z = ship.pos.z + s * forward;
-  const y = Number.isFinite(muzzle.y) ? muzzle.y : 0.35;
-  return [{ x: x + s * lateral, z: z - c * lateral, y },
-    { x: x - s * lateral, z: z + c * lateral, y }];
+  // Combat is planar. The two drawn cores share a low deck height instead of a
+  // socket-height-dependent elevated plane that could float above the struck surface.
+  const y = 0.35;
+  return [{ x: x - s * port, z: z + c * port, y },
+    { x: x - s * starboard, z: z + c * starboard, y }];
 }
 
 /** One tick of a continuous beam: the authored packet plus its share of the armor window. */

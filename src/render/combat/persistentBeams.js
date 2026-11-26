@@ -64,6 +64,7 @@ function createBeamBatch(THREE, capacity, name) {
   // Lifecycle clocks are per-vertex attributes so the shader can show an aperture arrival and a
   // directional drain without rebuilding geometry or allocating a second mesh for every beam.
   const born = new Float32Array(capacity * 4);
+  const thermal = new Float32Array(capacity * 4);
   const stopTimes = new Float32Array(capacity * 4);
   stopTimes.fill(-1);
   const indices = new Uint16Array(capacity * 6);
@@ -103,9 +104,12 @@ function createBeamBatch(THREE, capacity, name) {
   stopAttribute.setUsage(THREE.DynamicDrawUsage);
   geometry.setAttribute('aSfBorn', bornAttribute);
   geometry.setAttribute('aSfStop', stopAttribute);
+  const thermalAttribute = new THREE.BufferAttribute(thermal, 1);
+  thermalAttribute.setUsage(THREE.DynamicDrawUsage);
+  geometry.setAttribute('aSfThermal', thermalAttribute);
   return {
     geometry, positions, colors, position, color, axial, axialAttribute,
-    born, stopTimes, bornAttribute, stopAttribute,
+    born, stopTimes, bornAttribute, stopAttribute, thermal, thermalAttribute,
   };
 }
 
@@ -122,11 +126,11 @@ function applyBeamShaderStructure(material, shared, role) {
     shader.uniforms.uSfTime = shared.time;
     shader.uniforms.uSfPulse = shared.pulse;
     shader.vertexShader = shader.vertexShader
-      .replace('#include <common>', '#include <common>\nvarying vec2 vSfBeam;\nvarying float vSfAxial;\nvarying float vSfBorn;\nvarying float vSfStop;\nattribute float aSfAxial;\nattribute float aSfBorn;\nattribute float aSfStop;')
-      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvSfBeam = uv;\nvSfAxial = aSfAxial;\nvSfBorn = aSfBorn;\nvSfStop = aSfStop;');
+      .replace('#include <common>', '#include <common>\nvarying vec2 vSfBeam;\nvarying float vSfAxial;\nvarying float vSfBorn;\nvarying float vSfStop;\nvarying float vSfThermal;\nattribute float aSfAxial;\nattribute float aSfBorn;\nattribute float aSfStop;\nattribute float aSfThermal;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvSfBeam = uv;\nvSfAxial = aSfAxial;\nvSfBorn = aSfBorn;\nvSfStop = aSfStop;\nvSfThermal = aSfThermal;');
     if (role === 'core') {
       shader.fragmentShader = shader.fragmentShader
-        .replace('#include <common>', '#include <common>\nvarying vec2 vSfBeam;\nvarying float vSfAxial;\nvarying float vSfBorn;\nvarying float vSfStop;\nuniform float uSfTime;\nuniform float uSfPulse;')
+        .replace('#include <common>', '#include <common>\nvarying vec2 vSfBeam;\nvarying float vSfAxial;\nvarying float vSfBorn;\nvarying float vSfStop;\nvarying float vSfThermal;\nuniform float uSfTime;\nuniform float uSfPulse;')
         .replace('#include <color_fragment>', `#include <color_fragment>
 {
   float sfAcross = abs(vSfBeam.y * 2.0 - 1.0);
@@ -166,12 +170,26 @@ function applyBeamShaderStructure(material, shared, role) {
   float sfMuzzle = smoothstep(0.12, 0.0, vSfBeam.x);
   float sfEnergy = sfLoadedBody * (0.72 + 0.28 * sfTravel * uSfPulse)
     + sfWorkFace * 0.66 + sfMuzzle * 0.32;
+  // Thermal laser: continuous hot filament with smooth red walls, not traveling packets.
+  // Contact class is authoritative: 1 empty space, 2 shield, 3 material.
+  if (vSfThermal > 0.5) {
+    float sfEdge = 1.0 - smoothstep(0.68, 1.0, sfAcross);
+    float sfHotCore = exp(-10.0 * sfAcross * sfAcross);
+    float sfEnd = (1.0 - vSfBeam.x) * vSfAxial / max(vSfBeam.x, 0.001);
+    float sfSeat = exp(-sfEnd * sfEnd * 0.075) * step(2.5, vSfThermal);
+    float sfMicro = 0.96 + 0.04 * sin(vSfAxial * 0.58 - uSfTime * 5.0) * uSfPulse;
+    diffuseColor.rgb = mix(diffuseColor.rgb * (0.62 + 0.7 * sfHotCore),
+      vec3(3.0, 0.63, 0.24), sfHotCore * sfSeat * 0.82 * uSfPulse);
+    sfEnergy = (0.74 + sfHotCore * 0.5 + sfSeat * 0.45) * sfMicro;
+    sfArrival = 0.65 + 0.35 * smoothstep(0.0, 0.065, sfAge);
+    diffuseColor.a *= sfEdge;
+  }
   diffuseColor.rgb *= sfEnergy * sfArrival * sfCooling * (0.18 + 0.82 * sfDrain);
   diffuseColor.a *= clamp(sfArrival * sfCooling * (0.26 + 0.74 * sfDrain), 0.0, 1.0);
 }`);
     } else {
       shader.fragmentShader = shader.fragmentShader
-        .replace('#include <common>', '#include <common>\nvarying vec2 vSfBeam;\nvarying float vSfAxial;\nvarying float vSfBorn;\nvarying float vSfStop;\nuniform float uSfTime;\nuniform float uSfPulse;')
+        .replace('#include <common>', '#include <common>\nvarying vec2 vSfBeam;\nvarying float vSfAxial;\nvarying float vSfBorn;\nvarying float vSfStop;\nvarying float vSfThermal;\nuniform float uSfTime;\nuniform float uSfPulse;')
         .replace('#include <color_fragment>', `#include <color_fragment>
 {
   float sfAcross = abs(vSfBeam.y * 2.0 - 1.0);
@@ -191,6 +209,13 @@ function applyBeamShaderStructure(material, shared, role) {
   float sfMuzzle = smoothstep(0.2, 0.0, vSfBeam.x);
   float sfEnergy = sfSheath * (0.26 + 0.74 * sfTravel * uSfPulse) + sfWorkFace * 0.42
     + 0.25 * sfMuzzle * sfSheath;
+  if (vSfThermal > 0.5) {
+    float sfEnd = (1.0 - vSfBeam.x) * vSfAxial / max(vSfBeam.x, 0.001);
+    float sfSeat = exp(-sfEnd * sfEnd * 0.04) * step(2.5, vSfThermal);
+    float sfAura = exp(-3.8 * sfAcross * sfAcross) * (1.0 - smoothstep(0.82, 1.0, sfAcross));
+    sfEnergy = sfAura * (0.95 + 0.68 * sfSeat * uSfPulse);
+    sfArrival = 0.65 + 0.35 * smoothstep(0.0, 0.065, sfAge);
+  }
   diffuseColor.rgb *= sfEnergy * sfArrival * sfCooling * (0.16 + 0.84 * sfDrain);
   diffuseColor.a *= clamp(sfArrival * sfCooling * (0.20 + 0.80 * sfDrain), 0.0, 1.0);
 }`);
@@ -243,6 +268,7 @@ export function createPersistentBeamPrecompileMeshes(THREE) {
   const shared = { time: { value: 0 }, pulse: { value: 1 } };
   const mats = createBeamLayerMaterials(THREE, shared);
   const geometry = new THREE.PlaneGeometry(2, 2);
+  geometry.setAttribute('aSfThermal', new THREE.BufferAttribute(new Float32Array(4), 1));
   const core = new THREE.Mesh(geometry, mats.coreMaterial);
   const halo = new THREE.Mesh(geometry, mats.haloMaterial);
   core.name = 'SF_Precompile_CombatBeam_Core';
@@ -273,6 +299,9 @@ export class PersistentCombatBeamPool {
       key: null,
       ownerId: null,
       weaponId: null,
+      sourceLife: null, sourceLocalForward: null, sourceLocalSide: null,
+      blocked: false, contactId: null, contactLife: null, contactLocalX: null, contactLocalZ: null,
+      thermalClass: 0, radiance: 1,
       fromX: 0,
       fromZ: 0,
       toX: 0,
@@ -376,6 +405,17 @@ export class PersistentCombatBeamPool {
     entry.widthMul = Math.max(0.5, finite(profile && profile.sizeMul, 1));
     entry.ownerId = payload.ownerId == null ? entry.ownerId : payload.ownerId;
     entry.weaponId = payload.weaponId == null ? entry.weaponId : payload.weaponId;
+    entry.thermalClass = entry.weaponId === 'wpn_incinerator_m'
+      ? (payload.thermalContact === 'material' ? 3 : payload.thermalContact === 'shield' ? 2 : 1) : 0;
+    entry.sourceLife = payload.sourceLife ?? null;
+    entry.sourceLocalForward = payload.sourceLocalForward ?? null;
+    entry.sourceLocalSide = payload.sourceLocalSide ?? null;
+    entry.blocked = payload.blocked === true;
+    entry.contactId = payload.contactId ?? null;
+    entry.contactLife = payload.contactLife ?? null;
+    entry.contactLocalX = payload.contactLocalX ?? null;
+    entry.contactLocalZ = payload.contactLocalZ ?? null;
+    this._writeThermalClass(entry);
     entry.lastSeen = finite(timeS, 0);
     this._writeSlotLifecycle(this._coreBatch, entry.slot, entry.bornAt, entry.stopAt);
     this._writeSlotLifecycle(this._haloBatch, entry.slot, entry.bornAt, entry.stopAt);
@@ -385,6 +425,7 @@ export class PersistentCombatBeamPool {
     const birthIntensity = 0.24 + 0.76 * birth;
     this._color.set(colorValue(profile && profile.coreColor, 0xffffff));
     const radiance = Math.max(1, finite(profile && profile.beamRadiance, 1));
+    entry.radiance = radiance;
     entry.coreR = this._color.r * radiance;
     entry.coreG = this._color.g * radiance;
     entry.coreB = this._color.b * radiance;
@@ -464,9 +505,9 @@ export class PersistentCombatBeamPool {
         matricesChanged = true;
         continue;
       }
-      // The ordinary resolver has one shared weapon socket; applying it to a twin battery
-      // collapses its two authoritative apertures into one. Keep the simulation seats.
-      if (socketOf && entry.ownerId != null && entry.weaponId !== 'wpn_incinerator_m') {
+      // Thermal sockets carry per-ray local seats; the live resolver must never fall back
+      // to a generic single aperture for a twin. Keep last measured geometry on loss.
+      if (socketOf && entry.ownerId != null && (!entry.thermalClass || Number.isFinite(entry.sourceLocalForward))) {
         const socket = socketOf(entry);
         if (socket && Number.isFinite(socket.x) && Number.isFinite(socket.z)) {
           // XZ ONLY, deliberately. SOCKET_Weapon_Front sits anywhere from y 0.0 to 0.82 depending
@@ -474,14 +515,20 @@ export class PersistentCombatBeamPool {
           // socket's height would tilt nothing and lift everything: the far end would float off
           // the contact point and out of the plane the impact owner draws in. The aperture
           // follows the gun across the deck; the beam stays in the combat plane.
-          entry.fromX = socket.x;
-          entry.fromZ = socket.z;
+          if (!entry.thermalClass) {
+            entry.fromX = socket.x;
+            entry.fromZ = socket.z;
+          }
+          // Thermal source/target transforms are returned as presentation-only overrides.
+          // Keep the authoritative receipt intact for repeated updates and rebases.
         }
       }
-      localize(entry.fromX, entry.fromZ, this._localA);
+      const thermalPose = entry.thermalClass && !entry.stopping && socketOf
+        && Number.isFinite(entry.sourceLocalForward) ? socketOf(entry) : null;
+      localize(finite(thermalPose?.x, entry.fromX), finite(thermalPose?.z, entry.fromZ), this._localA);
       const ax = this._localA.x;
       const az = this._localA.z;
-      localize(entry.toX, entry.toZ, this._localB);
+      localize(finite(thermalPose?.toX, entry.toX), finite(thermalPose?.toZ, entry.toZ), this._localB);
       const bx = this._localB.x;
       const bz = this._localB.z;
       const dx = bx - ax;
@@ -499,10 +546,16 @@ export class PersistentCombatBeamPool {
         : 1;
       const width = Math.max(
         (reducedFlash ? 0.55 : 0.85) * entry.widthMul * birthWidth * coolWidth,
-        entry.weaponId === 'wpn_incinerator_m' ? Math.min(1.3, cameraFloor || 0) : (cameraFloor || 0),
+        entry.thermalClass ? Math.min(1.3, cameraFloor || 0) : (cameraFloor || 0),
       );
+      if (entry.thermalClass) {
+        // HDR color is reduced on the actual retained geometry, not just on the spark sprites.
+        const intensity = (0.24 + 0.76 * birth) * (reducedFlash ? 0.42 : 1);
+        this._writeSlotColor(this._coreBatch, entry.slot, entry.coreR * intensity, entry.coreG * intensity, entry.coreB * intensity);
+        this._writeSlotColor(this._haloBatch, entry.slot, entry.haloR * intensity, entry.haloG * intensity, entry.haloB * intensity);
+      }
       this._writeSlotQuad(this._coreBatch, entry.slot, ax, az, bx, bz, entry.y, width, length);
-      this._writeSlotQuad(this._haloBatch, entry.slot, ax, az, bx, bz, entry.y - 0.01, width * 3.4, length);
+      this._writeSlotQuad(this._haloBatch, entry.slot, ax, az, bx, bz, entry.y - 0.01, width * (entry.thermalClass ? 4.0 : 3.4), length);
       matricesChanged = true;
     }
     if (matricesChanged) {
@@ -561,6 +614,8 @@ export class PersistentCombatBeamPool {
     entry.key = null;
     entry.ownerId = null;
     entry.weaponId = null;
+    entry.thermalClass = 0;
+    this._writeThermalClass(entry);
     entry.lastSeen = -Infinity;
     entry.bornAt = -Infinity;
     entry.stopping = false;
@@ -581,6 +636,15 @@ export class PersistentCombatBeamPool {
     entry.stopAt = finite(timeS, entry.lastSeen);
     this._writeSlotLifecycle(this._coreBatch, entry.slot, entry.bornAt, entry.stopAt);
     this._writeSlotLifecycle(this._haloBatch, entry.slot, entry.bornAt, entry.stopAt);
+  }
+
+  _writeThermalClass(entry) {
+    const start = entry.slot * 4;
+    for (const batch of [this._coreBatch, this._haloBatch]) {
+      if (batch.thermal[start] === entry.thermalClass) continue;
+      batch.thermal.fill(entry.thermalClass, start, start + 4);
+      batch.thermalAttribute.needsUpdate = true;
+    }
   }
 
   _writeSlotColor(batch, slot, r, g, b) {

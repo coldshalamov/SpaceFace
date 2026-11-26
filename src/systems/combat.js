@@ -1448,7 +1448,7 @@ export const combat = {
           beam.to.x = ax + dx * wall.t;
           beam.to.z = az + dz * wall.t;
           acceptIntercept(state, wall, PYLON_CONTACT.BEAM, { damage: beam.dpsThisTick }, beam.ownerId);
-          if (beam.twinThermal) beam.thermalContact = 'shield';
+          if (beam.twinThermal) { beam.thermalContact = 'shield'; beam.blocked = true; }
           continue;
         }
       }
@@ -1460,7 +1460,8 @@ export const combat = {
           const contactT = opticE ? opticT : bestT;
           beam.to.x = ax + dx * contactT;
           beam.to.z = az + dz * contactT;
-          if (beam.twinThermal) beam.thermalContact = 'material';
+          // Do not show a material burning until promotion and the damage/heat owner accepts it.
+          if (beam.twinThermal) beam.blocked = true;
           continue;
         }
         if (opticE) opticE = admitted;
@@ -1502,8 +1503,15 @@ export const combat = {
           pos: { x: beam.to.x, z: beam.to.z },
         });
         if (beam.twinThermal) {
+          beam.blocked = true;
           beam.thermalContact = result?.armorDamage > 0 || result?.hullDamage > 0 || isEnvironmentalBody(bestE)
             ? 'material' : result?.shieldDamage > 0 ? 'shield' : null;
+          beam.contactId = bestE.id;
+          beam.contactLife = occupantGenerationOf(bestE);
+          const yaw = Number.isFinite(bestE.rot) ? bestE.rot : 0;
+          const cx = beam.to.x - bestE.pos.x, cz = beam.to.z - bestE.pos.z;
+          beam.contactLocalX = cx * Math.cos(yaw) + cz * Math.sin(yaw);
+          beam.contactLocalZ = -cx * Math.sin(yaw) + cz * Math.cos(yaw);
         }
       }
     }
@@ -1516,6 +1524,10 @@ export const combat = {
         beamKey: beam.beamKey, from: beam.from, origin: beam.from, to: beam.to,
         continuous: true, phase: beam.phase, dir: beam.dir, range: beam.range,
         damageType: beam.dmgType, thermalContact: beam.thermalContact || null,
+        sourceLife: beam.sourceLife, sourceLocalForward: beam.sourceLocalForward, sourceLocalSide: beam.sourceLocalSide,
+        blocked: beam.blocked === true, contactId: beam.contactId ?? null, contactLife: beam.contactLife ?? null,
+        contactLocalX: beam.contactLocalX ?? null, contactLocalZ: beam.contactLocalZ ?? null,
+        simTick: state.tick,
       });
     }
   },

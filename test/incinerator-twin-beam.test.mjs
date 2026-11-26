@@ -9,6 +9,13 @@ import { combat } from '../src/systems/combat.js';
 import { WEAPONS } from '../src/data/weapons.js';
 import { SWARM_DRAFT_OFFERS } from '../src/data/swarmDraft.js';
 import { resolveMuzzleProfile } from '../src/render/vfxProfiles.js';
+import { SHIPS } from '../src/data/ships.js';
+import { buildSlotList, fits, buildWeaponList } from '../src/systems/ships.js';
+import { offerDraft } from '../src/data/survivalDraft.js';
+import { SWARM_RULESET } from '../src/data/swarmMode.js';
+import { projectBridgeEvent } from '../scripts/lib/simEventBridge.mjs';
+import * as THREE from 'three';
+import { PersistentCombatBeamPool, BEAM_COOLING_S } from '../src/render/combat/persistentBeams.js';
 
 const ID = 'wpn_incinerator_m', DT = 1/60;
 const def = WEAPONS.find(w => w.id === ID);
@@ -33,6 +40,7 @@ function world() {
     packCombatTable(state);
     state.input.fire=fire;
     state.input.aimAngle=Math.PI/2; // the battery must not follow mouse aim
+    fight.kernel.prePhysics(DT);
     gun.update(DT,state);
     fight.update(DT,state);
     state.simTime+=DT; state.tick++;
@@ -74,6 +82,7 @@ test('a bare hull burns after release; shield-only contact never ignites',()=>{
   w.tick(false);
   const burn=()=>w.state.combat.entities[String(a.id)]?.statuses?.status_burning;
   assert.equal(burn()?.stacks,3);
+  assert.equal(burn()?.expiresTick, 250, 'last exposure at tick 9 expires 240 ticks after next-tick application');
   assert.ok(!w.state.combat.entities[String(shielded.id)]?.statuses?.status_burning);
   const after=a.hull;
   for(let i=0;i<90;i++)w.tick(false);
@@ -83,4 +92,70 @@ test('a bare hull burns after release; shield-only contact never ignites',()=>{
   const expired=a.hull;
   for(let i=0;i<60;i++)w.tick(false);
   assert.equal(a.hull,expired,'expired fire stops damaging');
+});
+
+// A front-only fit is legal on real ships and appears through the actual Swarm armory,
+ // not simply in the authored source table. Side/rear/ring sockets must refuse it.
+
+test('real front-only fitting, runtime zero gimbal and late Swarm shelf admission',()=>{
+  const hull=SHIPS.find(s=>s.id==='ship_hornet');
+  const slots=buildSlotList(hull);
+  const slot=slots.find(s=>s.type==='weapon'&&s.facing==='front');
+  const fittings=Array(slots.length).fill(null);
+  for(const facing of ['rear','left','right','turret']) assert.equal(fits({...slot,facing},def),false);
+  assert.equal(fits(slot,def),true);
+  const earlier=offerDraft({hullId:hull.id, fittings, seed:44, wave:9, count:1000, ruleset:SWARM_RULESET});
+  assert.ok(earlier.ok && !earlier.offers.some(o=>o.defId===ID));
+  const late=offerDraft({hullId:hull.id,fittings,seed:44,wave:10,count:1000,ruleset:SWARM_RULESET});
+  const offer=late.offers.find(o=>o.defId===ID);
+  assert.ok(offer,'real draft offers a fit that meets capacity');
+  fittings[offer.slotIndex]=ID;
+  assert.equal(buildWeaponList(hull,fittings,true)[0].gimbalArc,0);
+});
+test('a second fitted battery gets distinct, stable forward apertures',()=>{
+  const s={pos:{x:0,z:0},rot:0,radius:10};
+  const a=incineratorBeamOrigins(s,{x:8,z:0},0,2);
+  const b=incineratorBeamOrigins(s,{x:8,z:0},1,2);
+  assert.equal(new Set([...a,...b].map(p=>p.z)).size,4);
+  assert.ok([...a,...b].every(p=>p.x===8));
+  assert.ok(Math.abs([...a,...b].reduce((n,p)=>n+p.z,0))<1e-8);
+});
+test('two receipts survive bridge projection and own independent retained HDR geometry',()=>{
+  const w=world(); w.target(40,-1.92); w.target(70,1.92);
+  const receipts=[];
+  w.bus.on('combat:fire', p=>{if(p.weaponId===ID)receipts.push(projectBridgeEvent('combat:fire',p));});
+  w.tick();
+  assert.equal(receipts.length,2);
+  const pool=new PersistentCombatBeamPool(THREE);
+  const profile=resolveMuzzleProfile(ID,null);
+  try {
+    for(const r of receipts){
+      assert.ok(!r.dropped && r.flat.thermalContact==='material');
+      pool.upsert(structuredClone(r.flat),0,profile);
+    }
+    pool.update(.1,null,null,3);
+    const [a,b]=receipts.map(r=>pool._byKey.get(r.flat.beamKey));
+    assert.ok(a.toX<b.toX && a.fromZ!==b.fromZ);
+    assert.equal(pool.activeCount,2);
+    assert.equal(pool.geometry.getAttribute('aSfThermal').getX(a.slot*4),3);
+    assert.ok(pool.geometry.getAttribute('color').getX(a.slot*4)>1);
+    const bright=pool.geometry.getAttribute('color').getX(a.slot*4);
+    pool.update(.12,null,{flashOpacityScale:.3},3);
+    assert.ok(pool.geometry.getAttribute('color').getX(a.slot*4)<bright*.5);
+    assert.equal(pool.retarget({attackerId:w.ship.id,weaponId:ID,pos:{x:1,z:0}},.13),0);
+    pool.stop(receipts[0].flat,.15); pool.update(.15+BEAM_COOLING_S+.001,null);
+    // The other ray was not refreshed in this harness; refresh it to verify isolated release.
+    pool.upsert(receipts[1].flat,.5,profile);
+    assert.equal(pool.activeCount,1);
+    assert.equal(pool.geometry.getAttribute('aSfThermal').getX(a.slot*4),0);
+  } finally {pool.dispose();}
+});
+test('occlusion on one ray does not let it damage a hull behind its first contact',()=>{
+  const w=world();
+  const cover=w.target(35,-1.92);
+  const behind=w.target(80,-1.92);
+  const other=w.target(65,1.92);
+  for(let i=0;i<5;i++)w.tick();
+  assert.ok(cover.hull<cover.hullMax && other.hull<other.hullMax);
+  assert.equal(behind.hull,behind.hullMax);
 });

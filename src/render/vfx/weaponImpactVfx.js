@@ -60,30 +60,38 @@ export function createWeaponImpactVfxMethods({
       if (p.weaponId === 'wpn_incinerator_m' && p.thermalContact === 'material') {
         // Each ray has its own hot work face, but emits at a capped presentation cadence.
         const key = String(p.ownerId) + ':thermal-seat:' + p.beamKey;
-        const now = Number(this.state?.simTime) || this._t;
-        if (now >= (this._beamDamageCueNext.get(key) || 0)) {
+        const now = Number.isFinite(this.state?.simTime) ? this.state.simTime : this._t;
+        if (now >= (this._beamDamageCueNext.get(key) ?? -Infinity)) {
           this._beamDamageCueNext.set(key, now + 0.09);
           const x = p.to.x, z = p.to.z, back = base + Math.PI;
           const dx = Math.cos(back), dz = Math.sin(back);
-          const reduced = this._isReduced();
-          this._spawnSprite(SPR_COMBUSTION, x, 0.30, z, 0.24, 1.2, 3.0,
-            reduced ? 0.28 : 0.8, 0, '#ff4d16', dx * 5, dz * 5, 1.65, back);
-          this._spawnSprite(SPR_PUFF, x, 0.15, z, 0.48, 1.1, 4.2,
-            0.4, 0, '#49302b', dx * 5, dz * 5, 1.7, back);
+          const reduced = resolveVfxAccessibilityProfile(this.state?.settings).id !== 'full';
+          const n = Math.floor(now * 60) + hashVfxId(p.beamKey);
+          const variation = 0.5 + 0.5 * Math.sin(n * 2.399963);
+          // Overlapping flame volumes, rolling dark exhaust, a coherent incandescent pool.
+          // The beam shader carries the stable white-hot tip; never strobe a white flash at 11 Hz.
+          this._spawnSprite(SPR_COMBUSTION, x, 0.30, z, 0.30, 1.35, 3.2 + variation * 1.3,
+            reduced ? 0.26 : 0.8, 0, '#ff4510', dx * 5, dz * 5, 1.65, back);
+          this._spawnSprite(SPR_PUFF, x + dx * 1.2, 0.15, z + dz * 1.2, 0.54, 1.1, 4.6,
+            reduced ? 0.18 : 0.38, 0, '#49302b', dx * 7, dz * 7, 1.9, back);
           if (!reduced) {
-            this._spawnSprite(SPR_FLASH, x, 0.38, z, 0.10, 1.15, 2.8,
-              0.82, 0, '#fff1c8', 0, 0, 1.25, base);
-            for (let i = 0; i < 4; i++) {
-              const a = back + (i - 1.5) * 0.48;
-              const vx = Math.cos(a), vz = Math.sin(a);
-              this._spawnProjectileTrailStreak(x, 0.30, z, 0.18, 0.16, 3.1,
-                0.85, i % 2 ? '#ff7730' : '#fff0a8', vx * 30, vz * 30, vx, vz);
+            this._spawnSprite(SPR_COMBUSTION, x, 0.38, z, 0.18, 0.8, 2.0,
+              0.76, 0, '#ffd68a', dx * 3, dz * 3, 1.2, back + variation * 0.6);
+            for (let i = 0; i < 5; i++) {
+              const a = back + (i - 2) * 0.48 + (variation - 0.5) * 0.4;
+              const vx = Math.cos(a), vz = Math.sin(a), speed = 18 + 24 * (0.5 + 0.5 * Math.sin(n + i * 2.1));
+              this._spawnProjectileTrailStreak(x, 0.30, z, 0.20 + variation * 0.08, 0.12 + (i % 2) * 0.04, 2.6 + variation,
+                0.78, i % 2 ? '#ff7730' : '#fff0a8', vx * speed, vz * speed, vx, vz);
             }
-            this._eventLight({ x, z }, 'impact', { color: '#ff381c', sizeMul: 1.25 });
+            this._eventLight({ x, z }, 'impact', { color: '#ff381c', peak: 2.8, decay: 7, distance: 24, sizeMul: 1.25 });
           }
         }
       }
       if (this._combatBeams.startCount === startsBefore) return;
+      if (p.weaponId === 'wpn_incinerator_m') {
+        this._spawnMuzzleBeam(origin, base, profile, this._burst || 1);
+        return;
+      }
     }
     const burst = this._burst || 1;
     if (this._weaponPresenter && recipeUsesSweptMuzzle(resolveWeaponRecipe(p && p.weaponId, p))) {

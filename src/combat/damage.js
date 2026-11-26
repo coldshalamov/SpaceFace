@@ -503,19 +503,15 @@ export function createDamageRouter(context, statusService, options = {}) {
     runtime.heat = clamp(runtime.heat + packet.heat, 0, runtime.heatMax);
     const heatApplied = runtime.heat - heatBefore;
     for (const status of packet.statuses) {
-      if (packet.source?.weaponId === 'wpn_incinerator_m' && status.id === 'status_burning') {
-        // Shields can intercept photons, but cannot themselves catch fire. A continuous beam
-        // must not queue sixty identical status refreshes per emitter each second. Refresh
-        // inside a 12-tick window without resetting the shared periodic damage clock.
-        if (!(armorDamage > 0 || hullDamage > 0) || !(target.hull > 0)) continue;
-        const active = runtime.statuses?.[status.id];
-        if (active?.stacks >= status.stacks && active.expiresTick - state.tick > status.durationTicks - 12) continue;
-        if (runtime.pendingStatuses?.some(pending => pending.id === status.id
-          && pending.stacks >= status.stacks && pending.durationTicks >= status.durationTicks)) continue;
-      }
+      const sustainedBurn = packet.source?.weaponId === 'wpn_incinerator_m' && status.id === 'status_burning';
+      // An intact shield is not combustible. Once the packet reaches material, the status
+      // service owns the refresh, expiry and periodic clock; no extra tick-rate status events.
+      if (sustainedBurn && (!(armorDamage > 0 || hullDamage > 0) || !(target.hull > 0)
+        || runtime.immunityTags?.includes('thermal_immune'))) continue;
       statusService.schedule(target, runtime, status, {
         attackerId: input && input.attackerId,
         actionId: origin && origin.kind === 'action' ? origin.id : null,
+        ...(sustainedBurn ? { sustainedBurn: true } : null),
       });
     }
 
