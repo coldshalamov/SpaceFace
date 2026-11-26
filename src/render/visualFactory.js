@@ -4738,6 +4738,11 @@ export function buildOpticCellProgramHold() {
     twin.frustumCulled = false;
     group.add(twin);
   }
+  // Live cells exit buildAsteroid through stampBuiltVisual, which rewrites the shared materials'
+  // customProgramCacheKey to the canonical family key; three folds that string into the program
+  // key. An unstamped glass (Physical) body linked a default-keyed twin the live cell never
+  // matched (c-2: hold program at -9.8 s, live Asteroid_13 link at +5.5 s).
+  canonicalizeObjectSurfaceProgramKeys(group);
   return group.children.length ? group : null;
 }
 

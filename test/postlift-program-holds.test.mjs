@@ -129,6 +129,7 @@ test('sector machine program hold builds one real body per site machine kind, an
   const body = hold.getObjectByName('Surveyor_PrismBody');
   assert.ok(body && body.material && body.material.map, 'the live builder: map + vertex colours');
   assert.equal(body.material.vertexColors, true);
+  assert.equal(body.material.customProgramCacheKey(), '', 'canonical family key, as stampBuiltVisual leaves live bodies (the key three folds into the program)');
   assert.equal(buildSectorMachineProgramHold('sector_does_not_exist'), null);
   assert.equal(buildSectorMachineProgramHold(null), null);
   const scene = new THREE.Scene();
@@ -154,6 +155,9 @@ test('optic cell program hold carries the shared skin pairs as plain + one-insta
   assert.equal(metalUsers.length, 2, 'forged-iron: one plain mesh and one instanced twin');
   assert.equal(metalUsers.filter((c) => c.isInstancedMesh).length, 1);
   assert.ok(metal.customProgramCacheKey().startsWith('spaceface-optic-forged-iron-v1'));
+  const diamond = hold.children.find((c) => c.material === opticCellBodyMaterial('diamond', 0));
+  assert.ok(diamond, 'glass prism body is held');
+  assert.ok(!diamond.material.customProgramCacheKey().startsWith('onBeforeCompile'), 'canonical family key, not the default hook source');
   const stoneKeys = hold.children.filter((c) => /:o:stone:/.test(c.name)).map((c) => c.name);
   assert.ok(stoneKeys.every((n) => n.includes(':o:stone:0')), 'one stone variant (they share a program)');
   for (const twin of hold.children.filter((c) => c.isInstancedMesh)) assert.equal(twin.count, 1);

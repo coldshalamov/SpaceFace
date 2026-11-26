@@ -11,6 +11,7 @@ import { MACHINE_SITES, machineKindById } from '../data/precursorMachines.js';
 import { bindCreatureSkin } from './creatureSkinLibrary.js';
 import { getSurveyorGeometries } from './surveyorGeometry.js';
 import { attachSurveyorSurface } from './surveyorSurfaceLibrary.js';
+import { canonicalizeObjectSurfaceProgramKeys } from './illustratedSurface.js';
 
 const PALE_METAL = 0xb9c4bd;   // nacre-adjacent pale metal
 const DARK_SEAM = 0x2a3430;    // recessed seam material
@@ -728,6 +729,11 @@ export function buildSectorMachineProgramHold(sectorId) {
       pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, data: { machine: { kind } } });
     if (root) group.add(root);
   }
+  // Live machines exit visualFactory through stampBuiltVisual, which rewrites each material's
+  // customProgramCacheKey to the canonical family key (a default key is the onBeforeCompile source;
+  // the canonical one is ''). three folds that string into the program key, so an unstamped hold
+  // linked a twin the live body never matched (c-2: hold program at -10 s, live link at +2.8 s).
+  canonicalizeObjectSurfaceProgramKeys(group);
   return group.children.length > 0 ? group : null;
 }
 
