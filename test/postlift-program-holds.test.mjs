@@ -242,3 +242,16 @@ test('veil drain links the visible scene programs first, then falls back to crea
   veil();
   assert.equal(early.uses, 1, 'generic drain continues in creation order');
 });
+
+test('wanted search ring is minted hidden on demand, named for the first-flight cohort', async () => {
+  const { vfx, WANTED_SEARCH_RING_NAME } = await import('../src/render/vfx.js');
+  const self = { _scene: new THREE.Scene(), _wantedRing: null };
+  const ring = vfx._ensureWantedSearchRing.call(self);
+  assert.ok(ring && ring.isMesh);
+  assert.equal(ring.name, WANTED_SEARCH_RING_NAME);
+  assert.equal(ring.visible, false, 'never draws until a wanted volume exists');
+  assert.equal(ring.material.isShaderMaterial, true);
+  assert.equal(vfx._ensureWantedSearchRing.call(self), ring, 'idempotent');
+  assert.deepEqual(collectFirstFlightEffectRoots(self._scene), [ring]);
+  assert.equal(vfx._ensureWantedSearchRing.call({ _scene: null, _wantedRing: null }), null);
+});

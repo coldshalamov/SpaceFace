@@ -637,6 +637,8 @@ export function visiblePointLightBudget(_video) {
   return weaponVisiblePointLightBudget(EVENT_LIGHT_POOL_SIZE);
 }
 
+export const WANTED_SEARCH_RING_NAME = 'SF_WantedSearchRing';
+
 export function activeWeaponRenderGraph(state) {
   const graph = state && state.render && state.render.renderGraph;
   return graph && state?.settings?.video?.renderGraph === true ? graph : state?.render?.bloom || null;
@@ -7609,6 +7611,30 @@ export const vfx = {
   _updateWantedSearchRing() {
     const volume = readWantedSearchVolume(this.state,
       this._wantedVolume || (this._wantedVolume = {}));
+    this._ensureWantedSearchRing();
+    const mesh = this._wantedRing;
+    if (!mesh) return;
+    if (!volume) {
+      mesh.visible = false;
+      return;
+    }
+    const local = this._toLocalXZ(volume.x, volume.z, this._spawnLocalXZ);
+    mesh.position.set(local.x, 0.6, local.z);
+    mesh.scale.set(volume.radius, 1, volume.radius);
+    // A ShaderMaterial ignores material.opacity — the volume alpha rides uOp.
+    // The sweep clock uses the established sim-time pattern, written before the
+    // ring re-shows so a reappearance never draws on a stale phase (the quartet
+    // latch only holds while every overlay here is hidden — a live heatZone
+    // keeps this reader running).
+    mesh.material.uniforms.uTime.value = this._causeNow();
+    mesh.material.uniforms.uOp.value = volume.opacity;
+    mesh.visible = true;
+  },
+
+  // Built hidden on first need. warmupLiveFlightEffectsForLoading ensures it behind the shell:
+  // the first WANTED level mid-flight otherwise linked this ShaderMaterial inside a presented
+  // frame (c-10: Mesh<Scene ShaderMaterial uCol/uOp/uTime, 872 ms at +17 s).
+  _ensureWantedSearchRing() {
     if (!this._wantedRing && this._scene) {
       // Shader ring on the same one mesh the hairline annulus used: the quiet
       // full circumference IS the search boundary and always draws; a brighter
@@ -7658,26 +7684,11 @@ export const vfx = {
       mesh.frustumCulled = false;
       mesh.visible = false;
       mesh.renderOrder = 4;
+      mesh.name = WANTED_SEARCH_RING_NAME;
       this._scene.add(mesh);
       this._wantedRing = mesh;
     }
-    const mesh = this._wantedRing;
-    if (!mesh) return;
-    if (!volume) {
-      mesh.visible = false;
-      return;
-    }
-    const local = this._toLocalXZ(volume.x, volume.z, this._spawnLocalXZ);
-    mesh.position.set(local.x, 0.6, local.z);
-    mesh.scale.set(volume.radius, 1, volume.radius);
-    // A ShaderMaterial ignores material.opacity — the volume alpha rides uOp.
-    // The sweep clock uses the established sim-time pattern, written before the
-    // ring re-shows so a reappearance never draws on a stale phase (the quartet
-    // latch only holds while every overlay here is hidden — a live heatZone
-    // keeps this reader running).
-    mesh.material.uniforms.uTime.value = this._causeNow();
-    mesh.material.uniforms.uOp.value = volume.opacity;
-    mesh.visible = true;
+    return this._wantedRing || null;
   },
 
   // Two edges, not a disc: Helios is a corridor, Tethys is a cone, Dione is a funnel.
@@ -13069,6 +13080,7 @@ export const vfx = {
     // sf-cause-marks material joins the first-flight cohort instead of linking on the first
     // scar inside a presented frame.
     this._ensureCauseMarks();
+    this._ensureWantedSearchRing();
     // Beacon lamp beads mount only when a beacon enters scan range (seconds into flight); hold one
     // hidden bead on a real layer material so its program joins the cohort. Released (material to
     // the layer's free list, never disposed) in restLiveFlightEffectsAfterCook.
