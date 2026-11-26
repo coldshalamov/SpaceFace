@@ -480,6 +480,7 @@ function bodyDamageTier(hull, hullMax) {
 import { resolveLineShieldSustain, shieldBiteDir } from './vfx/lineShieldBite.js';
 import { BeaconLampLayer } from './beaconLampLife.js';
 import { buildSectorMachineProgramHold } from './machineVisuals.js';
+import { buildOpticCellProgramHold } from './visualFactory.js';
 import {
   presentShipBoost,
   presentShipDash,
@@ -13075,13 +13076,27 @@ export const vfx = {
     this._beaconLampLife.mountProgramHold(this._scene);
     // Site machines build when their entity comes into range, after this cook; hold one real body
     // per machine kind the sector spawns (machineVisuals.buildSectorMachineProgramHold).
-    const holdSector = this.state && this.state.sectorId;
+    // The live sector id is world.currentSectorId (precursorMachines spawns from it); state.sectorId
+    // is unset during a fresh adventure's cook, which left this hold empty.
+    const holdSector = (this.state && this.state.world && this.state.world.currentSectorId)
+      || (this.state && this.state.sectorId) || null;
     if (this._machineProgramHold && this._machineProgramHold.userData.sectorId !== holdSector) {
       if (this._machineProgramHold.parent) this._machineProgramHold.parent.remove(this._machineProgramHold);
       this._machineProgramHold = null;
     }
     if (!this._machineProgramHold) this._machineProgramHold = buildSectorMachineProgramHold(holdSector);
     if (this._machineProgramHold && this._machineProgramHold.parent !== this._scene) this._scene.add(this._machineProgramHold);
+    // Optic lattice skins: plain + instanced variants against the baked env (visualFactory.buildOpticCellProgramHold).
+    if (this._opticProgramHold === undefined) this._opticProgramHold = buildOpticCellProgramHold();
+    if (this._opticProgramHold && this._opticProgramHold.parent !== this._scene) this._scene.add(this._opticProgramHold);
+    // Weapon haze draws a private scene into the compositor's distortion target. The presenter
+    // attaches its producers on the first vfx update, which can land after the compositor's
+    // prepareResources, so the producer program first linked on the first shot (+8 s, ~1.3 s on
+    // software GL). Attach now; the compositor links newly attached producers on attach.
+    try {
+      if (!this._weaponPresenter && typeof this._initWeaponPresenter === 'function') this._initWeaponPresenter();
+      if (this._weaponPresenter) this._weaponPresenter.attachGraph(activeWeaponRenderGraph(this.state));
+    } catch (_) { /* best effort: the per-frame attach still runs */ }
     const energy = this._energy;
     if (!energy) return { skipped: true, reason: 'no-energy' };
     const player = this.state.entities && this.state.entities.get(this.state.playerId);
@@ -13445,6 +13460,10 @@ export const vfx = {
     // Machine hold: detach only. Never dispose — that would release the programs just linked.
     if (this._machineProgramHold && this._machineProgramHold.parent) {
       this._machineProgramHold.parent.remove(this._machineProgramHold);
+    }
+    // Optic hold: shared pool pairs, detach only.
+    if (this._opticProgramHold && this._opticProgramHold.parent) {
+      this._opticProgramHold.parent.remove(this._opticProgramHold);
     }
     return { skipped: false };
   },

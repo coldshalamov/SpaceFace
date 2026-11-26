@@ -2642,6 +2642,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
   let distortionProducers = null;
   let rtDistortion = null;
   let distortionLiveCount = 0;
+  let distortionResourcesPrepared = false;
   const singleDistortionProducer = [null];
   const distortionClear = new THREE.Color(0.5, 0.5, 0);
   const priorDistortionClear = new THREE.Color();
@@ -2664,6 +2665,16 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     } else if (!next && rtDistortion) {
       rtDistortion.dispose();
       rtDistortion = null;
+    }
+    // Producers attached after prepareResources (the presenter attaches on its first vfx update,
+    // or at the vfx pre-cook seam) link here instead of on the first shot.
+    if (next && distortionResourcesPrepared) {
+      const previousTarget = typeof renderer.getRenderTarget === 'function' ? renderer.getRenderTarget() : null;
+      try {
+        if (typeof renderer.initRenderTarget === 'function') renderer.initRenderTarget(rtDistortion);
+        compileDistortionProducers();
+      } catch (_) { /* best effort: first draw links it */ }
+      renderer.setRenderTarget(previousTarget);
     }
   }
 
@@ -2695,9 +2706,27 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     for (let i = 0; i < distortionProducers.length; i++) {
       const producer = distortionProducers[i];
       if (!producer || !producer.scene) continue;
-      try { renderer.compile(producer.scene, quadCam); compiled++; } catch (_) { /* best effort: first draw links it */ }
+      try {
+        renderer.compile(producer.scene, quadCam);
+        settleProducerLinks(producer.scene);
+        compiled++;
+      } catch (_) { /* best effort: first draw links it */ }
     }
     return compiled;
+  }
+
+  // compile() only issues the link; on a deferred-link driver (software GL) the blocking
+  // link-status query then lands on the first presented draw. Query it here, behind the
+  // loading shell, through three's own first-use path (WebGLProgram.getUniforms).
+  function settleProducerLinks(scene) {
+    if (!renderer.properties || typeof renderer.properties.get !== 'function') return;
+    scene.traverse((object) => {
+      const mats = Array.isArray(object.material) ? object.material : (object.material ? [object.material] : []);
+      for (let i = 0; i < mats.length; i++) {
+        const program = renderer.properties.get(mats[i]).currentProgram;
+        if (program && typeof program.getUniforms === 'function') program.getUniforms();
+      }
+    });
   }
 
   function renderDistortionPass(camera, tier1) {
@@ -3590,6 +3619,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
         if (typeof renderer.compile === 'function') renderer.compile(quadScene, quadCam);
       }
       compileDistortionProducers();
+      distortionResourcesPrepared = true;
       quadMesh.material = compositeMat;
       renderer.setRenderTarget(null);
       if (typeof renderer.compile === 'function') renderer.compile(quadScene, quadCam);

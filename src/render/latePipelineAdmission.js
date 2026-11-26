@@ -198,6 +198,8 @@ function isLiveFirstFlightEffect(object) {
   // Site machines build when their entity comes into range; vfx holds one real body per kind the
   // sector spawns through the cook (machineVisuals.buildSectorMachineProgramHold).
   if (name === 'SF_MachineProgramHold') return true;
+  // Optic lattice skins, plain + instanced, against the baked env (visualFactory.buildOpticCellProgramHold).
+  if (name === 'SF_OpticCellProgramHold') return true;
   // Rigid-opaque batch chunks attach straight to the scene (no instance-pool userData flag) —
   // their USE_BATCHING material variant otherwise links on the first chunk's flight draw.
   if (data.spacefaceRigidOpaqueBatch === true) return true;

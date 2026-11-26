@@ -4698,6 +4698,49 @@ export function asteroidPoolWarmResources() {
   return resources;
 }
 
+export const OPTIC_CELL_PROGRAM_HOLD_NAME = 'SF_OpticCellProgramHold';
+
+/**
+ * Optic lattice cells (opticCellPresentation skins: matte stone, forged-iron reflector, prism,
+ * spent prism) are already in the keyed-pool resource list, but that warm compiles before the
+ * cook bakes the PMREM, so it links the env-less variants. Every live optic material is then
+ * env-stamped (bindEnvironmentToStandardMaterials) and the first live cell relinked
+ * spaceface-optic-forged-iron-v1 with the envMap bit inside a presented frame (Asteroid_61/69,
+ * +0.5..+8 s), and its keyed-instance twin (SF_KeyedAsteroidInstances_3x, nocturne look too)
+ * seconds later. This hidden group carries the same shared (geometry, material) pairs, once as a
+ * plain mesh and once as a one-instance InstancedMesh, so the first-flight effect cohort
+ * (latePipelineAdmission.isLiveFirstFlightEffect) compiles both variants against the baked
+ * environment behind the loading shell. Stone variants share one program; one is enough.
+ * Nothing here owns the shared resources: detach the group, never dispose it.
+ */
+export function buildOpticCellProgramHold() {
+  const group = new THREE.Group();
+  group.name = OPTIC_CELL_PROGRAM_HOLD_NAME;
+  group.visible = false;
+  const pairs = opticCellPoolResources((variant) => {
+    const common = AST_TYPE.ast_common_rock;
+    return astDisplacedGeometry('ast_common_rock', common, variant);
+  });
+  for (const res of pairs) {
+    if (!res || !res.geometry || !res.material) continue;
+    if (/^o:stone:[1-9]/.test(res.key)) continue;
+    const mesh = new THREE.Mesh(res.geometry, res.material);
+    mesh.name = `${OPTIC_CELL_PROGRAM_HOLD_NAME}:${res.key}`;
+    mesh.castShadow = res.castShadow === true;
+    mesh.receiveShadow = res.receiveShadow === true;
+    mesh.frustumCulled = false;
+    group.add(mesh);
+    const twin = new THREE.InstancedMesh(res.geometry, res.material, 1);
+    twin.name = `${OPTIC_CELL_PROGRAM_HOLD_NAME}:${res.key}:instanced`;
+    twin.count = 1;
+    twin.castShadow = mesh.castShadow;
+    twin.receiveShadow = mesh.receiveShadow;
+    twin.frustumCulled = false;
+    group.add(twin);
+  }
+  return group.children.length ? group : null;
+}
+
 /**
  * The logical pool keys one asteroid record contributes — body bucket key plus one entry
  * per detail record (veins, shards, inclusions), so a field census can size each keyed
@@ -4773,26 +4816,6 @@ export function buildAsteroidLeafWarmGroup() {
   if (tintedCommon) {
     tintedCommon.userData.rosterPrewarmLeaf = 'asteroid:ast_common_rock:tinted';
     root.add(tintedCommon);
-  }
-  // Optic lattice cells ride buildAsteroid but wear their own shared skins (opticCellPresentation:
-  // matte stone, forged-iron reflector, prism, spent prism), so none of the exemplars above link
-  // their programs: the first forged-iron cell admitted in flight linked
-  // spaceface-optic-forged-iron-v1 inside a presented frame (Asteroid_61/69, +1.4..+8.3 s,
-  // 0.2-1.0 s on software GL), and its keyed-instance twin (SF_KeyedAsteroidInstances_3x) a few
-  // seconds later. One real cell per kind covers the plain-mesh program and, through the
-  // keyed specimen census (asteroidInstanceSpecimenLeaf, collectAsteroidInstancePoolLeafResources),
-  // the instanced one.
-  for (const opticKind of ['stone', 'metal', 'diamond', 'spent']) {
-    const cell = buildAsteroid({
-      id: `leafwarm:optic:${opticKind}`, type: 'asteroid', pos: { x: 0, y: 0, z: 0 },
-      radius: 12, alive: true,
-      data: { typeId: 'ast_common_rock', opticMaterial: opticKind, opticStructureId: 'leafwarm' },
-    });
-    if (cell) {
-      cell.userData.rosterPrewarmLeaf = `asteroid:optic:${opticKind}`;
-      cell.userData.asteroidInstanceSpecimenLeaf = true;
-      root.add(cell);
-    }
   }
   return root;
 }

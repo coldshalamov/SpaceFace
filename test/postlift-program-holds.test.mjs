@@ -137,30 +137,52 @@ test('sector machine program hold builds one real body per site machine kind, an
   assert.ok(collectFirstFlightLayerDrawables([hold]).includes(body));
 });
 
-test('asteroid leaf warm group carries one optic cell per skin, and the keyed census collects their body pairs', async () => {
-  const { buildAsteroidLeafWarmGroup } = await import('../src/render/visualFactory.js');
-  const { collectAsteroidInstancePoolLeafResources } = await import('../src/render/asteroidInstancePool.js');
+test('optic cell program hold carries the shared skin pairs as plain + one-instance twins, and joins the cohort', async () => {
+  const { buildOpticCellProgramHold, OPTIC_CELL_PROGRAM_HOLD_NAME } = await import('../src/render/visualFactory.js');
   const { opticCellBodyMaterial } = await import('../src/render/opticCellPresentation.js');
   const previous = globalThis.document;
-  // makeNoiseTexture needs a 2D canvas; plain node has none (same stub as rock-family-library).
+  // The displaced stone geometry path may touch a 2D canvas; same stub as rock-family-library.
   globalThis.document = { createElement: () => ({ width: 0, height: 0,
     getContext: () => ({ createImageData: (w, h) => ({ data: new Uint8ClampedArray(w * h * 4) }), putImageData() {} }) }) };
-  let group;
-  try { group = buildAsteroidLeafWarmGroup(); } finally { globalThis.document = previous; }
-  const optic = group.children.filter((c) => String(c.userData.rosterPrewarmLeaf || '').startsWith('asteroid:optic:'));
-  assert.deepEqual(optic.map((c) => c.userData.rosterPrewarmLeaf).sort(),
-    ['asteroid:optic:diamond', 'asteroid:optic:metal', 'asteroid:optic:spent', 'asteroid:optic:stone']);
-  const metal = optic.find((c) => c.userData.rosterPrewarmLeaf === 'asteroid:optic:metal');
-  assert.equal(metal.userData.asteroidBody.material, opticCellBodyMaterial('metal', 0), 'shared live skin material');
-  assert.equal(metal.userData.asteroidBody.material.customProgramCacheKey().startsWith('spaceface-optic-forged-iron-v1'), true);
-  const pairs = collectAsteroidInstancePoolLeafResources([group]);
-  const metalBody = metal.userData.asteroidInstanceBody;
-  assert.ok(pairs.some((p) => p.geometry === metalBody.geometry && p.material === metalBody.material),
-    'forged-iron body pair reaches the keyed specimen warm');
-  // Unflagged nested exemplars keep their old behaviour (no new twins for the AST_TYPE builds).
-  const plain = group.children.find((c) => c.userData.rosterPrewarmLeaf === 'asteroid:ast_common_rock:tinted');
-  if (plain && plain.userData.asteroidInstanceBody) {
-    assert.ok(!pairs.some((p) => p.material === plain.userData.asteroidInstanceBody.material
-      && p.geometry === plain.userData.asteroidInstanceBody.geometry));
-  }
+  let hold;
+  try { hold = buildOpticCellProgramHold(); } finally { globalThis.document = previous; }
+  assert.ok(hold);
+  assert.equal(hold.name, OPTIC_CELL_PROGRAM_HOLD_NAME);
+  assert.equal(hold.visible, false);
+  const metal = opticCellBodyMaterial('metal', 0);
+  const metalUsers = hold.children.filter((c) => c.material === metal);
+  assert.equal(metalUsers.length, 2, 'forged-iron: one plain mesh and one instanced twin');
+  assert.equal(metalUsers.filter((c) => c.isInstancedMesh).length, 1);
+  assert.ok(metal.customProgramCacheKey().startsWith('spaceface-optic-forged-iron-v1'));
+  const stoneKeys = hold.children.filter((c) => /:o:stone:/.test(c.name)).map((c) => c.name);
+  assert.ok(stoneKeys.every((n) => n.includes(':o:stone:0')), 'one stone variant (they share a program)');
+  for (const twin of hold.children.filter((c) => c.isInstancedMesh)) assert.equal(twin.count, 1);
+  const scene = new THREE.Scene();
+  scene.add(hold);
+  assert.deepEqual(collectFirstFlightEffectRoots(scene), [hold]);
+  assert.equal(collectFirstFlightLayerDrawables([hold]).length, hold.children.length);
+});
+
+test('distortion producers attached after prepareResources link on attach, with their link status queried', async () => {
+  const h = compileRecorder();
+  const queried = [];
+  const programs = new Map();
+  h.renderer.properties = { get(material) {
+    if (!programs.has(material)) programs.set(material, { currentProgram: { getUniforms() { queried.push(material); } } });
+    return programs.get(material);
+  } };
+  const bloom = createBloom(h.renderer, 640, 360);
+  const presenter = new WeaponVfxPresenter({ scene: new THREE.Scene() });
+  try {
+    await bloom.prepareResources();
+    assert.equal(h.compiles.filter((c) => c.scene === presenter.distortion.scene).length, 0);
+    const before = h.renderer.getRenderTarget();
+    presenter.attachGraph(bloom);
+    const target = bloom.contextLossResources().find((rt) => rt && rt.texture && rt.texture.name === 'Bloom:Distortion');
+    const late = h.compiles.filter((c) => c.scene === presenter.distortion.scene);
+    assert.equal(late.length, 1, 'weapon haze links on attach');
+    assert.equal(late[0].target, target, 'against the distortion target');
+    assert.equal(h.renderer.getRenderTarget(), before, 'render target restored');
+    assert.ok(queried.includes(presenter.distortion.mesh.material), 'link status queried behind the shell');
+  } finally { bloom.dispose(); }
 });
