@@ -179,6 +179,8 @@ function drainUnused(context, max) {
 // specimen) can sit behind hundreds of programs nothing draws yet, and pays its link (0.1-0.8 s)
 // inside a presented frame after the lift. Link what the visible scene holds first, then fall back
 // to the generic order. Programs still pending on a parallel link are skipped (settled ones only).
+const DEFERRED_FIRST_USE_ROOT_RE = /^(SF_KeyedAsteroidInstances|sf-static-merge|SF_PlacePropSpecimenWarm)/;
+
 function drainVisibleUnused(context, root, budgetMs) {
   if (!root || typeof root.traverseVisible !== 'function' || pruneUnused(context) === 0) return 0;
   const props = context.renderer && context.renderer.properties;
@@ -210,12 +212,15 @@ function drainVisibleUnused(context, root, budgetMs) {
     }
   };
   root.traverseVisible(scan);
-  // Second tier, only once the visible scene is settled: the keyed asteroid instance pools are parked
-  // hidden until the first live rock of their key is admitted, then draw (c-8: SF_KeyedAsteroidInstances_2
-  // linked 552 ms at +15.8 s, created -4.4 s).
+  // Second tier, only once the visible scene is settled: objects parked hidden (or placed far off
+  // frustum) whose programs the first live draw of their kind pays for — the keyed asteroid instance
+  // pools (c-8: SF_KeyedAsteroidInstances_2, 552 ms at +15.8 s, created -4.4 s), the static-merge
+  // meshes (c-14: sf-static-merge, 467 ms at +17.1 s, created -22 s) and the place-prop specimens
+  // (c-11: CeresWorkfleetCutContact, 185 ms at +1.2 s, created -20.7 s).
   if (linked === 0 && !spent && typeof root.traverse === 'function') {
     root.traverse((node) => {
-      if (typeof node.name === 'string' && node.name.startsWith('SF_KeyedAsteroidInstances')) scan(node);
+      if (spent || typeof node.name !== 'string' || !DEFERRED_FIRST_USE_ROOT_RE.test(node.name)) return;
+      if (typeof node.traverse === 'function') node.traverse(scan);
     });
   }
   return linked;

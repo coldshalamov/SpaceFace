@@ -47,6 +47,22 @@ function buildRecord(group, rec) {
   });
 }
 
+// Material.clone() copies parameters, not the instance-level program identity: the canonical
+// customProgramCacheKey and the surface onBeforeCompile hook (illustrated surface, packed ORM, triplanar
+// rock) live on the instance. A bare clone therefore keyed as a DEFAULT material — a program the
+// opening never compiled, linked inside the presented frame of the first hit (c-12: the flat
+// AuthoredResolvingStandIn hull, 798 ms at +3.1 s) — and drew without the authored surface patch for the
+// two flash frames. Carrying both makes the clone resolve the original's cached program (same key,
+// same defines; the hook rebuilds the shader.uniforms the program expects, per material).
+function carryProgramIdentity(source, clone) {
+  if (Object.prototype.hasOwnProperty.call(source, 'customProgramCacheKey')) {
+    clone.customProgramCacheKey = source.customProgramCacheKey;
+  }
+  if (Object.prototype.hasOwnProperty.call(source, 'onBeforeCompile')) {
+    clone.onBeforeCompile = source.onBeforeCompile;
+  }
+}
+
 function swapIn(rec) {
   for (let i = 0; i < rec.meshes.length; i += 1) {
     const mesh = rec.meshes[i];
@@ -55,6 +71,7 @@ function swapIn(rec) {
     if (!clone) {
       clone = rec.orig[i].clone();
       clone.userData = { ...(rec.orig[i].userData || {}), sfHitFlashClone: true };
+      carryProgramIdentity(rec.orig[i], clone);
       rec.clones[i] = clone;
     }
     mesh.material = clone;

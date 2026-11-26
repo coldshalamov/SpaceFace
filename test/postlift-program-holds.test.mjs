@@ -235,6 +235,13 @@ test('veil drain links the visible scene programs first, then falls back to crea
   assert.equal(pool.drainVisible(scene, 0), 1, 'parked keyed instance pool is the second tier');
   assert.equal(keyed.uses, 1);
   assert.equal(hiddenOne.uses, 0, 'other hidden objects stay unpreferred');
+  const merge = mk('sf-static-merge', false);
+  const specimenRoot = new THREE.Group(); specimenRoot.name = 'SF_PlacePropSpecimenWarm'; specimenRoot.visible = false; scene.add(specimenRoot);
+  const specimenMesh = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshBasicMaterial()); specimenRoot.add(specimenMesh);
+  const specimen = make('specimen'); renderer.properties.get(specimenMesh.material).currentProgram = specimen;
+  assert.equal(pool.drainVisible(scene, 1e9), 2, 'static merge + place-prop specimen programs (second tier)');
+  assert.equal(merge.uses, 1); assert.equal(specimen.uses, 1);
+  assert.equal(hiddenOne.uses, 0);
   // veil step: visible first; when none is left the generic drain takes the oldest.
   const render = { flightVeilHoldsSim: true, firstPlayableFrameAt: 1, scene };
   let now = 0;
@@ -254,4 +261,26 @@ test('wanted search ring is minted hidden on demand, named for the first-flight 
   assert.equal(vfx._ensureWantedSearchRing.call(self), ring, 'idempotent');
   assert.deepEqual(collectFirstFlightEffectRoots(self._scene), [ring]);
   assert.equal(vfx._ensureWantedSearchRing.call({ _scene: null, _wantedRing: null }), null);
+});
+
+test('hull hit-flash clone keeps the original program identity (key + compile hook), so a first hit links nothing', async () => {
+  const { syncHullHitFlash } = await import('../src/render/hullHitFlash.js');
+  const { createHitFlashBook } = await import('../src/render/vfx/bodyHitRead.js');
+  const book = createHitFlashBook(8);
+  const standIn = new THREE.MeshStandardMaterial({ color: 0x6a7688, emissive: 0, roughness: 0.9 });
+  standIn.customProgramCacheKey = () => '';
+  const hook = function surfaceHook() {};
+  standIn.onBeforeCompile = hook;
+  const plain = new THREE.MeshStandardMaterial({ color: 0x884422 });
+  const mesh = new THREE.Mesh(new THREE.BufferGeometry(), standIn);
+  const mesh2 = new THREE.Mesh(new THREE.BufferGeometry(), plain);
+  const group = new THREE.Group();
+  group.add(mesh, mesh2);
+  book.noteHit(77, 1.0, 1);
+  const level = syncHullHitFlash(77, group, 1.0, false, book);
+  assert.ok(level > 0, 'flash applied');
+  assert.notEqual(mesh.material, standIn, 'a private clone is swapped in');
+  assert.equal(mesh.material.customProgramCacheKey(), '', 'canonical key survives the clone');
+  assert.equal(mesh.material.onBeforeCompile, hook, 'surface hook survives the clone');
+  assert.equal(mesh2.material.customProgramCacheKey(), plain.customProgramCacheKey(), 'default materials unchanged in identity');
 });
