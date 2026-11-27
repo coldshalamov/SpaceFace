@@ -69,7 +69,7 @@ jobs:
                   routes[path] = set(shots.split())
 
           route('src/ui/orrery/lampKey.js', 'station-contracts station-industry clips new-game')
-          route('src/ui/orrery/stationStandard.js', 'station-dock station-market station-contracts')
+          route('src/ui/orrery/stationStandard.js', 'station-dock station-market station-contracts station-bar')
           route('src/ui/orrery/stationLayouts.js',
                 'station-dock station-industry asteroid-works')
           route('src/ui/station/stationScreen.js',
@@ -81,7 +81,7 @@ jobs:
           route('src/ui/station/screens/factions.js', 'station-factions')
           route('src/ui/station/screens/bar.js', 'station-bar')
           route('src/ui/station/screens/ledger.js', 'station-ledger')
-          route('src/ui/orrery/stationTabsLayouts.js', 'station-industry station-shipworks')
+          route('src/ui/orrery/stationTabsLayouts.js', 'station-industry station-shipworks station-contracts')
           route('src/ui/orrery/shipworksLayouts.js src/ui/orrery/station-shipworksLayouts.js',
                 'station-shipworks station-shipworks-impound')
           route('src/ui/orrery/mobileScreenLayouts.js',
@@ -92,6 +92,8 @@ jobs:
           route('src/ui/orrery/pauseLayouts.js src/ui/screens/pause.js', 'pause')
           route('src/ui/orrery/helpLayouts.js src/ui/screens/help.js', 'help')
           route('src/ui/orrery/settingsLayouts.js src/ui/screens/settings.js', 'settings')
+          route('src/ui/screens/mainMenu.js src/ui/orrery/titleDoorsLayouts.js', 'title title-save crucible-door')
+          route('src/ui/orrery/cruciblePreparation.js', 'crucible-door crucible-draft crucible-rearm crucible-refit crucible-fortify')
           route('src/ui/orrery/achievementsLayouts.js src/ui/screens/achievements.js', 'achievements')
           route('src/ui/orrery/crucible-doorLayouts.js src/ui/screens/crucible.js',
                 'crucible-door crucible-rearm crucible-results')
@@ -108,7 +110,8 @@ jobs:
           route('src/ui/whyReveal.js', 'popup-tooltip')
           route('src/ui/comms.js', 'popup-story-choice')
           route('src/ui/promptDeck.js', 'popup-decision')
-          route('src/ui/hud.js src/ui/orrery/hudSkin.js', 'orrery-flight popup-cargo popup-receipt')
+          route('src/ui/hud.js src/ui/orrery/hudSkin.js src/ui/views/hudStyles.js', 'orrery-flight popup-cargo popup-receipt')
+          route('src/ui/screens/automationPanel.js', 'automation automation-outposts')
           route('src/ui/screens/base.js src/ui/orrery/baseLayouts.js', 'base base-claimed')
           route('src/ui/screens/manifest.js src/ui/orrery/manifestLayouts.js', 'manifest manifest-hand')
           route('src/ui/orrery/tech-treeLayouts.js src/ui/screens/techTree.js',
@@ -139,6 +142,7 @@ jobs:
                 'footprint footprint-clean')
           all_shots = set().union(*routes.values())
           routes['src/ui/orrery/screenLayouts.js'] = all_shots
+          routes['src/ui/uiRoot.js'] = all_shots
 
           # Follow relative module/style dependencies backwards to the first known
           # screen owner. A new helper no longer expands every PR to every fixture.

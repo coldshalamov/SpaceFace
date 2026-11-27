@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createRunTransitionGuard } from '../../src/core/runTransitionGuard.js';
 import { createTimeEffects } from '../../src/core/timeEffects.js';
+import { bootMark } from '../../src/core/bootTimeline.js';
 import { resetCombatInputMode } from '../../src/core/newGameBoot.js';
 import { laneCommandSink, laneSetMode } from '../../src/core/simLaneCommands.js';
 import { GameStartReadinessError, describeGameStartFailure } from '../../src/core/newGameStartTransition.js';
@@ -24,6 +25,7 @@ function section(first, next) {
 }
 const finalizerSource = section('async function finalizeLoadedGame(', '\n\nconst _loadingClearColor');
 const modeSource = section('function enterLoadingMode(', '\nasync function waitForAuthoredPartLibrary');
+const flightMarkSource = section('let flightFrameMarkPending = false;', '\nfunction noteFlightFrameMarks(');
 const routingSource = section('    helpers.deferLoadedGameRestore =', '    helpers.finalizeLoadedGame =');
 export const nextHostTurn = () => new Promise(resolve => setImmediate(resolve));
 export function deferred() {
@@ -49,9 +51,13 @@ export async function productionContinueFixture({
   const helpers = {}, guard = createRunTransitionGuard();
   let runtime;
   const errors = [], events = [], loadCalls = [];
+  // Isolate real boot marks from the host's global timeline. The source-executed
+  // frame-arm function remains real; no headless fixture claims a painted GPU frame.
+  const bootHost = { performance };
   const testConsole = { ...console, error: (...args) => errors.push(args) };
   const deps = {
     resetCombatInputMode, createTimeEffects, laneCommandSink, laneSetMode,
+    bootMark: (name, detail) => bootMark(name, detail, bootHost),
     GameStartReadinessError, describeGameStartFailure, holdOpeningPresentationUntilPaint, openingGateBudgetMs,
     // Production imports captured by the extracted finalizer. Locale preparation and accessibility
     // are outside this fixture's contract, so provide deterministic ports instead of omitting the bindings.
@@ -68,7 +74,7 @@ export async function productionContinueFixture({
     setTimeout: (fn, ms) => { const timer = setTimeout(fn, ms); timer.unref?.(); return timer; },
   };
   const finalize = new Function(...Object.keys(deps),
-    `${modeSource}\n${finalizerSource}\nreturn finalizeLoadedGame;`)(...Object.values(deps));
+    `${flightMarkSource}\n${modeSource}\n${finalizerSource}\nreturn finalizeLoadedGame;`)(...Object.values(deps));
   const close = () => {
     guard.begin('headless-fixture-close');
     runtime?.state.render?.cancelOpeningPresentationHold?.();
@@ -131,6 +137,7 @@ export async function productionContinueFixture({
     };
     return {
       runtime, state, bus, registry, saves, envelope, events, errors, loadCalls, close,
+      bootMarks: () => bootHost.__SF_BOOT_TIMELINE__?.marks.map(mark => mark.name) ?? [],
       finalizerCalls: () => finalizerCalls,
       finalization: () => finalizerPromise,
       async load(data = envelope) {

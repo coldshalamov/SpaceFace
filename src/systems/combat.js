@@ -1443,11 +1443,12 @@ export const combat = {
       // contact is only recorded here and the shieldPylons system debits it once.
       if (hasBlockingPanels(state)) {
         const wall = interceptSegment(state, PYLON_CONTACT.BEAM, beam.ownerId, ax, az, beam.to.x, beam.to.z, 0,
-          { fallbackTeam: beam.sourceTeam ?? ownerTeam, sourceLife: beam.sourceLife === undefined ? occupantGenerationOf(owner) : beam.sourceLife });
+          { fallbackTeam: beam.sourceTeam ?? owner?.team, sourceLife: beam.sourceLife === undefined ? occupantGenerationOf(owner) : beam.sourceLife });
         if (wall && wall.t < (bestE ? bestT : Infinity) && wall.t < (opticE ? opticT : Infinity)) {
           beam.to.x = ax + dx * wall.t;
           beam.to.z = az + dz * wall.t;
           acceptIntercept(state, wall, PYLON_CONTACT.BEAM, { damage: beam.dpsThisTick }, beam.ownerId);
+          if (beam.twinThermal) { beam.thermalContact = 'shield'; beam.blocked = true; }
           continue;
         }
       }
@@ -1459,6 +1460,8 @@ export const combat = {
           const contactT = opticE ? opticT : bestT;
           beam.to.x = ax + dx * contactT;
           beam.to.z = az + dz * contactT;
+          // Do not show a material burning until promotion and the damage/heat owner accepts it.
+          if (beam.twinThermal) beam.blocked = true;
           continue;
         }
         if (opticE) opticE = admitted;
@@ -1485,16 +1488,47 @@ export const combat = {
         // the ray through cover (and could hit a small hull behind a larger, nearer surface).
         beam.to.x = ax + dx * bestT;
         beam.to.z = az + dz * bestT;
-        this.onHit({
+        const result = this.onHit({
           targetId: bestE.id,
           ownerId: beam.ownerId,
           damage: beam.dpsThisTick,
           damageType: beam.dmgType || 'energy',
-          damagePacket: beam.damagePacket || null,
+          damagePacket: beam.twinThermal ? {
+            ...beam.damagePacket,
+            hit: { ...beam.damagePacket.hit, approach: { x: dx, z: dz },
+              normal: { x: beam.to.x - bestE.pos.x, z: beam.to.z - bestE.pos.z } },
+          } : beam.damagePacket || null,
           weaponId: beam.weaponId || null,
+          ...(beam.twinThermal ? { origin: { kind: 'weapon', id: beam.weaponId, beamKey: beam.beamKey } } : null),
           pos: { x: beam.to.x, z: beam.to.z },
         });
+        if (beam.twinThermal) {
+          beam.blocked = true;
+          beam.thermalContact = result?.armorDamage > 0 || result?.hullDamage > 0 || isEnvironmentalBody(bestE)
+            ? 'material' : result?.shieldDamage > 0 ? 'shield' : null;
+          beam.contactId = bestE.id;
+          beam.contactLife = occupantGenerationOf(bestE);
+          const yaw = Number.isFinite(bestE.rot) ? bestE.rot : 0;
+          const cx = beam.to.x - bestE.pos.x, cz = beam.to.z - bestE.pos.z;
+          beam.contactLocalX = cx * Math.cos(yaw) + cz * Math.sin(yaw);
+          beam.contactLocalZ = -cx * Math.sin(yaw) + cz * Math.cos(yaw);
+        }
       }
+    }
+    // Publish final geometry even for misses and blocked shots. The twin presentation must not
+    // infer its endpoints from target damage events (two rays can hit two different surfaces).
+    for (const beam of beams) {
+      if (!beam?.twinThermal) continue;
+      this.bus?.emit('combat:fire', {
+        ownerId: beam.ownerId, weaponId: beam.weaponId, hardpointIdx: beam.hardpointIdx,
+        beamKey: beam.beamKey, from: beam.from, origin: beam.from, to: beam.to,
+        continuous: true, phase: beam.phase, dir: beam.dir, range: beam.range,
+        damageType: beam.dmgType, thermalContact: beam.thermalContact || null,
+        sourceLife: beam.sourceLife, sourceLocalForward: beam.sourceLocalForward, sourceLocalSide: beam.sourceLocalSide,
+        blocked: beam.blocked === true, contactId: beam.contactId ?? null, contactLife: beam.contactLife ?? null,
+        contactLocalX: beam.contactLocalX ?? null, contactLocalZ: beam.contactLocalZ ?? null,
+        simTick: state.tick,
+      });
     }
   },
 };

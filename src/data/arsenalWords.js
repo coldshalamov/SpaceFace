@@ -55,29 +55,28 @@ export function shoveWords() {
   const rep = FIELD_DEFS.repulsor;
   return {
     name: 'Shove', verb: 'Pushes away', role: 'Clear', glyph: 'field_repulsor_standard',
-    sentence: `Push everything outward from your ship (${wu(rep.radius)} ring) and set off every armed charge and bomb you have out.`,
-    limits: [`The ring recharges in ${sec(rep.cooldownS)}, but your armed explosives still go off while it does.`],
+    sentence: `Push everything outward from your ship (${wu(rep.radius)} ring) to clear space or slam light hulls and rocks into obstacles.`,
+    limits: [`Recharges in ${sec(rep.cooldownS)}. Heavy hulls resist the push.`],
     target: 'your ship',
     range: { shape: 'ring', radiusWu: rep.radius, reachWu: 0 },
     cost: null, cooldownS: rep.cooldownS,
-    combos: ['Throw a charge onto a body, then Shove sets it off to make the collision you want.'],
-    sources: { range: 'data/fields.FIELD_DEFS.repulsor', cooldown: 'data/fields.FIELD_DEFS.repulsor.cooldownS',
-      detonation: 'systems/impulseCharges + bombs.commandDetonate + emergentPrimitives.stickies' },
+    combos: ['Pull or gather a pack near stone, then Shove them into the wall.'],
+    sources: { range: 'data/fields.FIELD_DEFS.repulsor', cooldown: 'data/fields.FIELD_DEFS.repulsor.cooldownS' },
   };
 }
 
 export function pinWords() {
   const travel = MASS_SEED_DEF.travelSpeed * MASS_SEED_DEF.travelTimeS;
   return {
-    name: 'Pin', verb: 'Drop anchor', role: 'Anchor', glyph: 'field_seed_standard',
-    sentence: `Fire an anchor that locks in place about ${wu(travel)} out and holds for ${sec(MASS_SEED_DEF.anchorTtlS)}. Latch your Line to it to swing or haul; it does not hold or root enemies.`,
-    limits: [`One anchor at a time. It recharges ${sec(MASS_SEED_DEF.cooldownS)} after the last one ends, and it can be shot down (${MASS_SEED_DEF.hull} hull).`],
-    target: 'ahead of your nose',
+    name: 'Pin', verb: 'Stake or anchor', role: 'Anchor', glyph: 'field_seed_standard',
+    sentence: `Aim at a ship or rock within ${wu(travel)} to stake it in place (~${sec(MASS_SEED_DEF.stake.holdS)}, shorter on heavy hulls). In open space, plants a fixed anchor for ${sec(MASS_SEED_DEF.anchorTtlS)} that your Line can hitch to.`,
+    limits: [`One pin at a time. Recharges ${sec(MASS_SEED_DEF.cooldownS)} after it ends; an anchor post can be shot down (${MASS_SEED_DEF.hull} hull).`],
+    target: 'your aim',
     range: { shape: 'line', radiusWu: FIELD_DEFS.seed.radius, reachWu: travel },
     cost: null, cooldownS: MASS_SEED_DEF.cooldownS,
-    combos: ['Pin an anchor, hitch your Line to it, then swing or release to throw yourself or a hauled body.'],
+    combos: ['Pin a moving target to hold it in your sights, or plant a post in open space and swing on your Line.'],
     sources: { range: 'data/massSeed.MASS_SEED_DEF', cooldown: 'data/massSeed.MASS_SEED_DEF.cooldownS',
-      lifetime: 'data/massSeed.MASS_SEED_DEF.anchorTtlS' },
+      lifetime: 'data/massSeed.MASS_SEED_DEF.anchorTtlS', stake: 'data/massSeed.MASS_SEED_DEF.stake' },
   };
 }
 
@@ -105,11 +104,11 @@ export function bombWords(act) {
     const c = IMPULSE_CHARGES.charge_standard;
     return {
       name: 'Bomb', verb: 'Throw charge', role: 'Detonate', glyph: 'power_charge',
-      sentence: `Throws a sticky impulse charge that sticks where it lands (${wu(c.radius)} blast). Shove sets it off, so the shove lands where you choose.`,
+      sentence: `Throws a sticky impulse charge that sticks where it lands (${wu(c.radius)} blast). Press Bomb again once armed to detonate it where you choose.`,
       limits: [`Up to ${act.capacity} deployed at once; a new throw needs ${sec(c.armTimeS)} between lobs. Cycle the ordnance to reach your drift bombs.`],
       target: 'your aim', range: { shape: 'ring', radiusWu: c.radius, reachWu: c.throwSpeed * 3 },
       cost: { kind: 'stock', unit: 'charge' }, cooldownS: c.armTimeS,
-      combos: ['Throw a charge onto a body or rock, then Shove: the blast shoves it into the next thing.'],
+      combos: ['Throw a charge onto a body or rock, then press Bomb again to detonate it into the next thing.'],
       sources: { payload: 'data/impulseCharges.IMPULSE_CHARGES.charge_standard', stock: 'cargo.items.cmdty_impulse_charge',
         selection: 'systems/powerVerbs.bombUsesCharge' },
     };
@@ -129,7 +128,7 @@ export function bombWords(act) {
     return {
       name: 'Bomb', verb: `Drop ${payloadShortName(def)}`, role: 'Detonate', glyph: def.id,
       sentence: `${arsenalSentence(def)} Drops behind you, arms after ${sec(BOMB_DRIFT.armS)}; proximity (${wu(def.triggerRadius)}) or a ${sec(def.fuzeS)} fuze sets it off.`,
-      limits: [`${wu(def.radius)} blast, friendly fire applies. Shove sets off every armed drift bomb. At most ${BOMB_DRIFT.maxActive} out at once.`],
+      limits: [`${wu(def.radius)} blast, friendly fire applies. Press Bomb again to set off every armed drift bomb early. At most ${BOMB_DRIFT.maxActive} out at once.`],
       target: 'behind your ship', range: { shape: 'ring', radiusWu: def.radius, reachWu: 0 },
       cost: { kind: 'stock', unit: 'bomb' }, cooldownS: def.cooldownS,
       combos: [], sources: { payload: `data/bombs.BOMB_DEFS.${def.id}`, stock: 'bombs.rack.cells', selection: 'bombs.selectedId' },
@@ -201,7 +200,7 @@ export function cloakWords(read) {
 
 // Baselines for the verbs whose meaning depends on state (the live projection says which variant is
 // effective; a surface with no state says both).
-const BOMB_BASELINE = 'Throws a sticky charge that Shove sets off. With none aboard it drops the drift bomb the cycle chose.';
+const BOMB_BASELINE = 'Throws a sticky charge, or drops the chosen drift bomb when none are aboard. Press Bomb again to detonate armed ordnance.';
 const RIG_BASELINE = 'Opens the forward clearing wedge: it pushes loose debris out of your path. The socket names the state before you press.';
 
 /**

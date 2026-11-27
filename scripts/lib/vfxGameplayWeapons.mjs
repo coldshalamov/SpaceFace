@@ -1,6 +1,8 @@
 // Deterministic inputs for the shipping weapon and shield owners. No lab-only shaders/recipes.
 import * as THREE from 'three';
 import { WEAPONS } from '../../src/data/weapons.js';
+import { incineratorBeamOrigins } from '../../src/systems/weapons.js';
+import { opticBeamHit } from '../../src/combat/opticField.js';
 import { modelTruthBoltRadius, modelTruthMineSensorRadius } from '../../src/data/modelTruth.js';
 import { WeaponVfxPresenter } from '../../src/render/weapons/presenter.js';
 import { resolveWeaponRecipe, WEAPON_SOCKET_NAME } from '../../src/render/weapons/recipes.js';
@@ -20,14 +22,14 @@ import { ActionVfx } from '../../src/render/actionVfx.js';
 export const GAMEPLAY_WEAPON_SCENARIOS = Object.freeze({
   pulse: 5.2, 'thermal-bolt': 6.5, 'siege-lance': 7, railgun: 4.6, 'shield-impact': 2.2,
   autocannon: 6.5, 'emp-disruptor': 6.5, concussion: 6.5, missile: 8.5,
-  'vector-mine': 5, 'combat-beam': 5.5, flak:5, torpedo:9,
+  'vector-mine': 5, 'combat-beam': 5.5, 'incinerator-twin': 6.4, flak:5, torpedo:9,
 });
 const WEAPON_IDS = Object.freeze({
   pulse: 'wpn_pulse_laser_s', 'thermal-bolt': 'wpn_plasma_cannon_m',
   'siege-lance': 'wpn_siege_lance_l', railgun: 'wpn_railgun_m', 'shield-impact': 'wpn_pulse_laser_s',
   autocannon: 'wpn_autocannon_s', 'emp-disruptor': 'wpn_emp_disruptor_m',
   concussion: 'wpn_concussion_cannon_m', missile: 'wpn_missile_rack_m',
-  'vector-mine': 'wpn_vector_mine_m', 'combat-beam': 'wpn_beam_laser_m',
+  'vector-mine': 'wpn_vector_mine_m', 'combat-beam': 'wpn_beam_laser_m', 'incinerator-twin': 'wpn_incinerator_m',
   flak:'wpn_flak_turret_s',torpedo:'wpn_torpedo_l',
 });
 const STEP = 1 / 60;
@@ -54,6 +56,7 @@ export function createGameplayWeapons({ scene, state, camera = state?.render?.ca
   if (!scene || !state || !camera || !shipMesh || !targetMesh) {
     throw new Error('Weapons lab needs scene, state, camera and both authored meshes');
   }
+  const defaultTargetMesh = targetMesh, defaultTargetEntity = targetEntity;
   const root = new THREE.Group(); root.name = 'ProductionWeaponVfx'; scene.add(root);
   const actions = new ActionVfx(root);
   const entities = new Map(), meshes = new Map(), auxMeshes = new Map();
@@ -129,9 +132,11 @@ export function createGameplayWeapons({ scene, state, camera = state?.render?.ca
       mineOwner._integrateParticles(dt); mineOwner._integrateSprites(dt);
       mineOwner._integrateTrailStreaks(dt); mineOwner._decayEventLights(dt);
       mineOwner._gas?.setAccessibility(profile); mineOwner._gas?.update(clock, camera);
+      mineOwner._statusMatterVfx?.update(privateState);
     }
   }
   function clearExtraOwners() {
+    if (mineOwner && mineOwner._combatBeams === combatBeams) mineOwner._combatBeams = null;
     combatBeams?.dispose(); combatBeams = null;
     mineOwner?.destroy(); mineOwner = null;
     // Factory projectile/mine resources are shared by the game. These cases create no cloned
@@ -153,6 +158,10 @@ export function createGameplayWeapons({ scene, state, camera = state?.render?.ca
     launchCount = impactCount = 0; socketMode = 'radius fallback';
     clearExtraOwners();
     presenter?.dispose();
+    targetMesh = options.targetMesh || defaultTargetMesh;
+    targetEntity = options.targetEntity || defaultTargetEntity;
+    privateState.combat = { entities: {}, statusNextPendingSeq: 0 };
+    privateState.tick = Math.round(clock * 60);
     ship = copyEntity(shipEntity || state.entities?.get(state.playerId ?? 1), shipMesh, 1, 'ship');
     target = copyEntity(targetEntity || state.entities?.get(2), targetMesh, 2, 'asteroid');
     if (ship.id === target.id) throw new Error('Weapon demonstration needs distinct entities');
@@ -222,18 +231,42 @@ export function createGameplayWeapons({ scene, state, camera = state?.render?.ca
     shot = { source, victim, weaponId, weapon, recipe, shield, beam, mine, muzzle: !shield && !mine, axis, start, end,
       launchAt, hitAt, releaseAt, armedAt, flightFrames, travel, launched: false, hit: false,
       stopped: false, nextContactAt: launchAt, projectile: null };
+    if (id === 'incinerator-twin') {
+      shot.twin = true;
+      shot.releaseAt = launchAt + 1.4;
+      shot.targetStart = { ...victim.pos };
+      shot.targetRot = victim.rot || 0;
+      // Native VFX event consumers with a private deterministic visual fixture. The separate
+      // simulation contracts cover real combat, costs and expiry; this lab never edits live saves.
+      seeded(createMineOwner);
+      privateState.combat.entities[victim.id] = { statuses: {} };
+      socketMode = 'production nose socket + independent twin seats';
+    }
     if (beam) {
       combatBeams = new PersistentCombatBeamPool(THREE, { scene: root, maxBeams: 16, timeoutS: 0.14 });
       root.add(combatBeams.group);
       shot.beamReceipt = { beamKey: `${source.id}:0`, ownerId: source.id, weaponId, hardpointIdx: 0,
         from: start, to: end, continuous: true, phase: 'begin' };
       shot.beamProfile = resolveMuzzleProfile(weaponId);
+      if (shot.twin) {
+        mineOwner._combatBeams = combatBeams;
+        shot.twinReceipts = incineratorBeamOrigins(source, start).map((from, side) => {
+          const dir = source.rot || 0;
+          const to = { x: from.x + Math.cos(dir) * weapon.range, z: from.z + Math.sin(dir) * weapon.range };
+          return { beamKey: `${source.id}:incinerator:${side}`, ownerId: source.id, weaponId, hardpointIdx: 0,
+            from, origin: from, to, dir, continuous: true, phase: 'begin', rayRadius: 0.45 };
+        });
+      }
     }
     if (mine) seeded(createMineOwner);
     return inspect();
   }
   function launch() {
     shot.launched = true; launchCount++;
+    if (shot.twin) {
+      events.push({ event: 'beam-start', at: frameTime(clock - born), weaponId: shot.weaponId, rays: 2 });
+      return;
+    }
     if (shot.beam) {
       combatBeams.upsert(shot.beamReceipt, clock, shot.beamProfile);
       presenter.handleFire({ ...shot.weapon, weaponId: shot.weaponId, ownerId: shot.source.id },
@@ -296,12 +329,66 @@ export function createGameplayWeapons({ scene, state, camera = state?.render?.ca
     if (shot.shield) shieldBubble.material.uniforms.uFlash.value = 0.8;
     events.push({ event: shot.beam ? 'beam-contact' : shot.shield ? 'shield-impact' : 'hull-impact', at: frameTime(clock - born) });
   }
+  function updateTwin(age) {
+    const victim = shot.victim, status = privateState.combat.entities[victim.id].statuses;
+    mineOwner._t = clock;
+    if (age + 1e-8 >= shot.releaseAt) {
+      if (!shot.stopped) {
+        for (const receipt of shot.twinReceipts) mineOwner._onBeamStop(receipt);
+        shot.stopped = true;
+        events.push({ event: 'beam-stop', at: frameTime(age), rays: 2 });
+      }
+      // Retreating target demonstrates that the residual fire is hull-attached, not a
+      // detached world-space explosion at the old contact. Keep the visual fixture in frame.
+      const retreat = Math.min(1, Math.max(0, (age - shot.releaseAt) / 2.4));
+      const eased = retreat * retreat * (3 - 2 * retreat);
+      victim.prevPos = { ...victim.pos }; victim.prevRot = victim.rot;
+      victim.pos.x = shot.targetStart.x + eased * 12;
+      victim.pos.z = shot.targetStart.z + eased * 14;
+      victim.rot = shot.targetRot + eased * 0.52;
+      victim.vel.x = (victim.pos.x - victim.prevPos.x) / STEP;
+      victim.vel.z = (victim.pos.z - victim.prevPos.z) / STEP;
+      targetMesh.position.set(victim.pos.x, 0, victim.pos.z);
+      targetMesh.rotation.y = -victim.rot;
+      targetMesh.updateMatrixWorld(true);
+    } else {
+      let contacted = false;
+      for (const receipt of shot.twinReceipts) {
+        const full = { x: receipt.from.x + Math.cos(receipt.dir) * shot.weapon.range,
+          z: receipt.from.z + Math.sin(receipt.dir) * shot.weapon.range };
+        const hit = opticBeamHit({ ...receipt, to: full }, victim);
+        receipt.to = hit?.pos || full;
+        receipt.thermalContact = hit ? 'material' : null;
+        receipt.blocked = !!hit;
+        mineOwner._onFire(receipt);
+        receipt.phase = 'update';
+        if (hit) contacted = true;
+      }
+      if (contacted) {
+        const first = !status.status_burning;
+        status.status_burning = { expiresTick: privateState.tick + shot.weapon.statuses[0].durationTicks,
+          stacks: shot.weapon.statuses[0].stacks };
+        if (first) { privateState.combat.statusNextPendingSeq++; shot.hit = true; impactCount++;
+          events.push({ event: 'twin-contact', at: frameTime(age), targetId: victim.id });
+        }
+      }
+    }
+    if (status.status_burning?.expiresTick <= privateState.tick) {
+      delete status.status_burning;
+      events.push({ event: 'burn-expired', at: frameTime(age) });
+    }
+    if (status.status_burning) mineOwner._ensureStatusMatterVfx()?.touchStatus(
+      { entityId: victim.id, statusId: 'status_burning' }, privateState);
+  }
   function step(dt) {
     clock += dt; privateState.simTime = clock;
+    privateState.tick = Math.round(clock * 60);
     const age = clock - born;
     shieldBubble.material.uniforms.uFlash.value *= Math.pow(0.05, dt);
     if (shot && !shot.launched && age + 1e-8 >= shot.launchAt) launch();
-    if (shot?.launched && shot.beam && !shot.stopped) {
+    if (shot?.launched && shot.twin) {
+      updateTwin(age);
+    } else if (shot?.launched && shot.beam && !shot.stopped) {
       if (age + 1e-8 >= shot.releaseAt) {
         combatBeams.stop(shot.beamReceipt); shot.stopped = true;
         events.push({ event: 'beam-stop', at: frameTime(age) });
@@ -353,6 +440,8 @@ export function createGameplayWeapons({ scene, state, camera = state?.render?.ca
       transport: presenter?.quarks?.flow.live || 0,
       mineParticles: mineOwner?._liveCount || 0, mineSprites: mineOwner?._liveSpriteCount || 0,
       mineLights: mineOwner?._activeLightCount || 0,
+      burningHullSurfaces: mineOwner?._statusMatterVfx?.stats.surfaces || 0,
+      burningHullParticles: mineOwner?._statusMatterVfx?.stats.particles || 0,
       actionSurfaces: actions.batch.count, actionParticles: actions.particles.live,
       contacts: ship && hasShieldContact(ship.id) ? 1 : 0 };
     const hitAt = shot?.hitAt || 0;
@@ -363,9 +452,12 @@ export function createGameplayWeapons({ scene, state, camera = state?.render?.ca
       dead: GAMEPLAY_WEAPON_SCENARIOS[scenario] } : {};
     if (shot?.beam) Object.assign(samples, { working: shot.launchAt + 0.6, release: shot.releaseAt,
       spread: shot.releaseAt + 6 * STEP, cooling: shot.releaseAt + 0.6 });
+    if (shot?.twin) Object.assign(samples, { burningRetreat: shot.releaseAt + 1.4,
+      burnExpiry: shot.releaseAt + 4, dead: GAMEPLAY_WEAPON_SCENARIOS[scenario] });
     if (shot?.mine) Object.assign(samples, { armed: shot.armedAt, working: shot.armedAt + 0.15,
       detonation: shot.hitAt });
-    return { owner: shot?.beam ? 'PersistentCombatBeamPool + WeaponVfxPresenter'
+    return { owner: shot?.twin ? 'PersistentCombatBeamPool + live fire receipts + StatusMatterVfx'
+      : shot?.beam ? 'PersistentCombatBeamPool + WeaponVfxPresenter'
       : shot?.mine ? 'visualFactory vectormine + vfx._onPresentationCue'
         : 'WeaponVfxPresenter + visualFactory + renderer.syncShipAuxPools', scenario, seed, time: clock - born,
       weaponId: shot?.weaponId || null, family: shot?.recipe.family || null, variant: shot?.recipe.variant || null,
@@ -378,6 +470,9 @@ export function createGameplayWeapons({ scene, state, camera = state?.render?.ca
         armedAt: shot.armedAt, releaseAt: shot.releaseAt,
         physicalTravelSeconds: shot.travel } : null, events: events.slice(), live,
       contacts: ship ? Array.from(readShieldContacts(ship.id, contactData) || contactData) : [],
+      ...(shot?.twin ? { twin: { burn: !!privateState.combat.entities[shot.victim.id].statuses.status_burning,
+        rays: shot.twinReceipts.map(r => ({ from: { ...r.from }, to: { ...r.to }, contact: r.thermalContact })),
+        target: { ...shot.victim.pos }, targetRot: shot.victim.rot } } : {}),
       // Same native distortion composition as default gameplay bloom.
       // Report a rendered producer, not merely a field attached to the scene.
       distortionComposited: Boolean(state.render?.bloom?.diagnostics?.().passFamilies?.distortion),

@@ -287,7 +287,10 @@ test('actual renderer submit runs keeper correctness on retained LOD2 even when 
     const lod = t.boundary.userData.updateLod;
     t.boundary.userData.updateLod = level => {lodCalls++; lod(level);};
     t.boundary.userData.updateAuthoredMotion = () => {motionCalls++;};
+    assert.equal(t.view._creditChipSubmittable, undefined, 'CPU presentation has no credit-chip batch');
     t.view.syncEntityViews(1);
+    assert.equal(t.state.render.entityViewSync?.candidates, 1, 'the sync tail publishes its frame diagnostics even without the optional batch');
+    assert.notEqual(t.view._entityViewSyncFaultWarned, true, 'no swallowed view-sync fault');
     assert.equal(visibleKeeperNames(t.boundary).length, 3);
     assert.equal(lodCalls, 0); assert.equal(motionCalls, 0);
     // A stale life must be removed before this very submit, despite retained LOD.

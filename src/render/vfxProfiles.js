@@ -436,6 +436,10 @@ const IMPACT_PRESENTATION_PROFILES = Object.freeze({
 // kinetic trail and damage identity); only its impact gets its own entry, so the taxonomy is not
 // forked to fix a presentation problem.
 const IMPACT_PRESENTATION_BY_VARIANT = Object.freeze({
+  'incinerator-beam': Object.freeze({
+    mode: 'sustained-contact', primaryShape: 'contact-line', life: 0.23, fragmentCount: 6,
+    coreColor: '#fff1d8', accentColor: '#ff280d', lightPeak: 3.5,
+  }),
   flak: Object.freeze({
     // A proximity-fuzed fragmentation burst: many small fragments thrown outward, not one
     // directional spray off a hit surface. `fragmentCount` is double the autocannon's and
@@ -465,6 +469,7 @@ export function resolveImpactPresentationProfile(weaponId, weaponData = null) {
 }
 
 const VARIANT_MUZZLE_COLORS = Object.freeze({
+  'incinerator-beam': Object.freeze({ coreColor: '#ff9b83', accentColor: '#ff150c', lightColor: '#ff3320' }),
   filament: Object.freeze({ coreColor: '#d7fff4', accentColor: '#3d8f86', lightColor: '#b6ffe8' }),
   'field-ring': Object.freeze({ coreColor: '#7ee7ff', accentColor: '#2450aa', lightColor: '#9af0ff' }),
   'filament-latch': Object.freeze({ coreColor: '#ffb15a', accentColor: '#6a3418', lightColor: '#ffc888' }),
@@ -520,6 +525,10 @@ export function resolveMuzzleProfile(weaponId, weaponPartId) {
     ...colors,
   };
   if (presentation.variant === 'cooker-seam') muzzle.sizeMul = 1.85;
+  if (presentation.variant === 'incinerator-beam') {
+    muzzle.sizeMul = 1.05;
+    muzzle.beamRadiance = 2.4;
+  }
   return muzzle;
 }
 

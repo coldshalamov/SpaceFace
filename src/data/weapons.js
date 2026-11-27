@@ -30,7 +30,7 @@ import {
 import { EMERGENT_WEAPON_DEFS } from './emergentPrimitives.js';
 import { SAUCER_WEAPONS } from './saucer.js';
 
-const SHIPPED_WEAPONS = [
+export const SHIPPED_WEAPONS = [
   ...SAUCER_WEAPONS,
   {
     id: 'wpn_snarl_s', name: 'Snarl Webcaster', slotType: 'weapon', size: 'S', tier: 3,
@@ -161,6 +161,17 @@ const SHIPPED_WEAPONS = [
     projSpeed: Infinity, range: 240, tracking: 'hitscan',
     continuous: true, heatPerSec: 55, heatMax: 100, heatDissip: 22,
     impulsePerHit: 10, tumbleTorque: 0.8, impulseProvenance: 'light_beam_pressure',
+  },
+  {
+    id: 'wpn_incinerator_m', name: 'Incinerator Twin Laser M', slotType: 'weapon', size: 'M',
+    tier: 4, mass: 11, price: 98000, requiresTech: 'tech_capital_weapons', mount: 'spinal',
+    sentence: 'Two nose-locked thermal rays carve through plating and leave the hull ablaze.',
+    // dmg/dps and resource costs describe the complete two-emitter battery, not each ray.
+    dmg: 180, rof: 0, dps: 180, damageType: 'thermal', energyCost: 24,
+    projSpeed: Infinity, range: 280, tracking: 'hitscan',
+    continuous: true, heatPerSec: 46, heatMax: 100, heatDissip: 23,
+    impulsePerHit: 12, tumbleTorque: 0.5, impulseProvenance: 'incinerator_twin_heat',
+    statuses: [{ id: 'status_burning', stacks: 3, durationTicks: 240 }],
   },
   {
     id: 'unique_veil_cutter', baseId: 'wpn_beam_laser_m', name: 'Veil-Cutter', slotType: 'weapon', size: 'M', tier: 3, mass: 7, price: 0,

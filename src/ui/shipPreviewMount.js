@@ -1124,7 +1124,7 @@ export function createShipPreviewMount(canvas, opts) {
   }
 
   function renderNow() {
-    if (disposed) return;
+    if (disposed || !active) return;
     resize();
     if (current && rotating) {
       yaw += 0.012;

@@ -563,7 +563,8 @@ export function opticBeamHit(beam, target) {
   const tz = Number(beam.to.z) || 0;
   const cx = Number(target.pos.x) || 0;
   const cz = Number(target.pos.z) || 0;
-  const radius = (Number(target.radius) || 0) + OPTIC_RAY_RADIUS;
+  const radius = (Number(target.radius) || 0) + (Number.isFinite(beam.rayRadius)
+    ? Math.max(0, beam.rayRadius) : OPTIC_RAY_RADIUS);
   // A muzzle already inside the skin contacts where it stands, not at the far exit.
   const relX = fx - cx;
   const relZ = fz - cz;

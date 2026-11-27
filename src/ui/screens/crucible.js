@@ -819,8 +819,8 @@ const GHOST_CARD = Object.freeze({
 });
 
 /** What a run is, in the front's own words (04_SWARM.md §1-2). */
-export const SWARM_FRONT_PITCH = 'Thirty rounds, a boss every fifth. Kills pay Scrap for the guns on the floor, '
-  + 'and every level up is a card that changes how you fight.';
+export const SWARM_FRONT_PITCH = 'Thirty rounds, a boss every fifth. Start with your chosen gun, other mounts empty, and 0 Scrap. '
+  + 'Kills fund equipment; level up to shape your build.';
 
 /** The ship's weight in one line: what the Line does in a light hull and in a heavy one. */
 export function swarmHullLine(ship) {
@@ -2702,9 +2702,11 @@ export const crucibleScreen = {
         if (launching) return;
         const hullId = playHullId();
         const setup = swarmPlaySetup({ arenaId, hullId, gunDefId: playGun, stake });
-        if (!setup) {
+        if (!setup || !playHulls.some(choice => choice.hullId === hullId)
+            || setup.hullId !== hullId || setup.arenaId !== arenaId || !playGun
+            || setup.retryOpeningEquipment?.gun?.defId !== playGun) {
           cue('deny');
-          ctx.bus.emit('toast', { text: 'That run could not be built. Pick another ship.', kind: 'error', ttl: 4 });
+          ctx.bus.emit('toast', { text: 'That setup is unavailable. Choose another ship, arena or gun.', kind: 'error', ttl: 4 });
           return;
         }
         launching = true;
@@ -2721,18 +2723,6 @@ export const crucibleScreen = {
         art: () => kitUrl((ARENA_TILE[arenaId] || MODE_TILE.swarm).replace(/\.png$/, '@2x.png')),
         roomName: () => (arenaDescriptions[arenaId] || [])[0] || '',
         picks: [
-          {
-            id: 'arena', label: 'Arena',
-            options: () => playArenas().map((a) => ({ value: a.id, name: arenaDescriptions[a.id][0], line: arenaDescriptions[a.id][1] })),
-            value: () => arenaId,
-            choose: (id) => { arenaId = id; cue('confirm'); syncArena(); },
-          },
-          {
-            id: 'difficulty', label: 'Difficulty',
-            options: () => SWARM_STAKES.map((s) => ({ value: s.id, name: s.label, line: s.blurb })),
-            value: () => stake,
-            choose: (id) => { stake = id; cue('confirm'); syncStake(); syncGhost(); },
-          },
           {
             id: 'ship', label: 'Ship',
             options: () => playHulls.map((c) => {
@@ -2751,6 +2741,18 @@ export const crucibleScreen = {
             options: () => swarmOpeningGuns(playHullId()).map((g) => ({ value: g.defId, name: g.name, line: g.line })),
             value: () => playGun,
             choose: (id) => { playGun = id; cue('confirm'); },
+          },
+          {
+            id: 'arena', label: 'Arena',
+            options: () => playArenas().map((a) => ({ value: a.id, name: arenaDescriptions[a.id][0], line: arenaDescriptions[a.id][1] })),
+            value: () => arenaId,
+            choose: (id) => { arenaId = id; cue('confirm'); syncArena(); },
+          },
+          {
+            id: 'difficulty', label: 'Difficulty',
+            options: () => SWARM_STAKES.map((s) => ({ value: s.id, name: s.label, line: s.blurb })),
+            value: () => stake,
+            choose: (id) => { stake = id; cue('confirm'); syncStake(); syncGhost(); },
           },
         ],
         onPlay: playSwarm,
@@ -2819,12 +2821,12 @@ export const crucibleScreen = {
     }
   },
 
-  /** Enter is PLAY anywhere on the front, unless a quiet key (More, Back) holds focus. */
+  /** A native selector owns its Enter key. Only the explicit Launch control may start a run. */
   onKey(ev) {
-    if (!this._front || this._doorView !== 'play' || ev.key !== 'Enter' || ev.repeat) return false;
+    if (!this._front || this._doorView !== 'play' || ev.key !== 'Enter') return false;
     const active = typeof document !== 'undefined' ? document.activeElement : null;
-    if (this._front.ownsEnter(active)) return false;
-    this._playSwarm?.();
+    if (active !== this._front.play) return false;
+    if (!ev.repeat) this._playSwarm?.();
     return true;
   },
 

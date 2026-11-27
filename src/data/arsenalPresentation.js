@@ -89,10 +89,10 @@ function bindingFor(bindings, action, ownDigit) {
   return { action, codes, label: formatBindingCode(preferred), all, bound: true };
 }
 
-// ── armed explosives (what a Shove press will set off) ──────────────────────────────────────────
+// — armed explosives (what a second Bomb press will set off; R17) ───────────────────────────────
 
 /**
- * Count the explosives a Shove press will detonate, by the owners' own predicates:
+ * Count the explosives a Bomb press will detonate, by the owners' own predicates:
  * armed sticky impulse charges (impulseCharges `_handleDetonate`), armed drift bombs
  * (bombs `commandDetonate`: phase 'drift', not retired, past its arming time) and planted
  * sticky-detonator charges (emergentPrimitives `detonateStickies`).
@@ -395,24 +395,30 @@ export function createArsenalPresentation() {
           : `Tap ${entry.binding.label} to use immediately.`)
         : `Bind ${entry.name} in Settings → Controls to use it.`];
     }
-    // — Shove: how many armed explosives the press will set off.
-    const counts = armedOrdnanceCounts(state, nowS);
+    // — Shove: R17 — ship-centered repulsor pulse only; detonation rides Bomb (4).
     const shove = entries.shove;
-    shove.detonates = counts;
-    shove.label = counts.total > 0 ? `Shove · Pushes away + ${counted(counts.total, 'blast', 'blasts')}` : 'Shove · Pushes away';
-    if (counts.total > 0) {
-      shove.sentence += ` Armed now: ${detonationText(counts)} will go off.`;
-      shove.ready = { state: 'armed', reason: `Armed — sets off ${detonationText(counts)}`, cooldownMs: shove.ready.cooldownMs };
-    }
-    // — Bomb: the exact payload, its stock, and whether the next use throws, calls in or drops.
+    shove.label = 'Shove · Pushes away';
+    // — Bomb: the exact payload, its stock, and whether the next use detonates, throws or drops (R17).
+    const counts = armedOrdnanceCounts(state, nowS);
     const b = entries.bomb;
-    b.payload = { id: bomb.id, name: bomb.name, stock: bomb.stock, capacity: bomb.capacity, next: bomb.action };
+    b.detonates = counts;
+    b.payload = {
+      id: bomb.id, name: bomb.name, stock: bomb.stock, capacity: bomb.capacity,
+      next: counts.total > 0 ? 'detonate' : bomb.action,
+    };
     b.charges = bomb.stock == null ? null : { count: bomb.stock, capacity: bomb.capacity };
     const stockText = bomb.stock == null ? '' : ` ×${bomb.stock}`;
-    b.next = bomb.action === 'throw' ? 'throw' : bomb.action === 'callin' ? 'call in' : bomb.action === 'drop' ? 'drop' : '';
-    b.label = bomb.action === 'empty' ? (bomb.kind === 'dry' ? `Bomb · ${bomb.short} empty` : 'Bomb · none left')
-      : `Bomb · ${b.next} ${bomb.short}${stockText}`;
-    if (bomb.action !== 'empty') b.sentence = `Next use: ${b.next} ${bomb.name}${stockText}. ${b.sentence}`;
+    if (counts.total > 0) {
+      b.next = 'detonate';
+      b.label = `Bomb · Detonate ${counted(counts.total, 'blast', 'blasts')}`;
+      b.sentence = `Armed now: press again to set off ${detonationText(counts)}. ${b.sentence}`;
+      b.ready = { state: 'armed', reason: `Armed — press again to set off ${detonationText(counts)}`, cooldownMs: b.ready.cooldownMs };
+    } else {
+      b.next = bomb.action === 'throw' ? 'throw' : bomb.action === 'callin' ? 'call in' : bomb.action === 'drop' ? 'drop' : '';
+      b.label = bomb.action === 'empty' ? (bomb.kind === 'dry' ? `Bomb · ${bomb.short} empty` : 'Bomb · none left')
+        : `Bomb · ${b.next} ${bomb.short}${stockText}`;
+      if (bomb.action !== 'empty') b.sentence = `Next use: ${b.next} ${bomb.name}${stockText}. ${b.sentence}`;
+    }
     // — Rig: the CURRENT function before use.
     const rig = entries.rig;
     rig.on = rigOn;

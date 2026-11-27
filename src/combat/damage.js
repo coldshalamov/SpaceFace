@@ -503,9 +503,15 @@ export function createDamageRouter(context, statusService, options = {}) {
     runtime.heat = clamp(runtime.heat + packet.heat, 0, runtime.heatMax);
     const heatApplied = runtime.heat - heatBefore;
     for (const status of packet.statuses) {
+      const sustainedBurn = packet.source?.weaponId === 'wpn_incinerator_m' && status.id === 'status_burning';
+      // An intact shield is not combustible. Once the packet reaches material, the status
+      // service owns the refresh, expiry and periodic clock; no extra tick-rate status events.
+      if (sustainedBurn && (!(armorDamage > 0 || hullDamage > 0) || !(target.hull > 0)
+        || runtime.immunityTags?.includes('thermal_immune'))) continue;
       statusService.schedule(target, runtime, status, {
         attackerId: input && input.attackerId,
         actionId: origin && origin.kind === 'action' ? origin.id : null,
+        ...(sustainedBurn ? { sustainedBurn: true } : null),
       });
     }
 
@@ -676,6 +682,8 @@ export function createDamageRouter(context, statusService, options = {}) {
       dp.origin = origin;
       dp.weaponId = weaponId;
       const collisionPresentation = packet && packet.source && packet.source.collisionPresentation;
+      dp.targetGeneration = collisionPresentation?.targetGeneration ?? null;
+      dp.tick = collisionPresentation?.tick ?? null;
       dp.impactorId = collisionPresentation && collisionPresentation.otherId != null
         ? collisionPresentation.otherId : null;
       dp.impactorGeneration = collisionPresentation && collisionPresentation.otherGeneration != null
@@ -884,7 +892,7 @@ function createDamageEmitPayload() {
     pos: null, approach: null, normal: null,
     factionId: null, factionLawful: false, targetHostileToPlayer: false,
     subsystemId: null, origin: null, weaponId: null,
-    impactorId: null, impactorGeneration: null,
+    targetGeneration: null, impactorId: null, impactorGeneration: null, tick: null,
   };
   // Non-enumerable so the pooled scratch never shows up in listener key scans,
   // snapshotDamagePayload spreads, or any serialized copy of the emitted record.

@@ -346,20 +346,43 @@ function planPull(state, player, rail, opts) {
 }
 
 function planShove(state, player, rail, opts) {
+  // R17: Shove is the ship-centered repulsor pulse only; armed ordnance detonates on Bomb (4).
+  if (!fieldsFlag('enabled')) return null;
+  const now = simNow(state);
+  const repCooling = finite(state.fields && state.fields.cooldowns && state.fields.cooldowns.repulsor) > now;
+  const center = { x: player.pos.x, z: player.pos.z };
+  const spec = playerFieldSpec('repulsor', player, state);
+  spec.radius *= swarmFieldRadiusScale(state); // A01-05
+  if (repCooling) {
+    const slot = rail[2];
+    return {
+      center, radius: FIELD_DEFS.repulsor.radius, areas: [fieldArea('field', spec)], moves: [],
+      blocked: (slot && slot.why) || `Recharging — ${Math.ceil(state.fields.cooldowns.repulsor - now)}s`,
+    };
+  }
+  const { moves } = fieldMoves(state, player, spec, { ...opts, live: liveFields(state) });
+  return {
+    center, radius: FIELD_DEFS.repulsor.radius, areas: [fieldArea('field', spec)],
+    moves: sortAndCap(moves, center.x, center.z), blocked: null,
+  };
+}
+
+function planBombDetonate(state, player) {
   const now = simNow(state);
   const areas = [];
   const kicks = [];
-  // Every armed charge goes off now (impulseCharges._handleDetonate does not filter by owner).
+  let firstCenter = null;
+  let firstRadius = 0;
+  // R17: pressing Bomb while your own ordnance is armed detonates all armed charges and drift bombs.
   for (const c of indexedTypeScan(state, 'charges')) {
-    if (!c || !c.alive || c.type !== 'charge' || !c.data || !c.data.armed || !c.pos) continue;
+    if (!c || !c.alive || c.type !== 'charge' || !c.data || !c.data.armed || c.data.ownerId !== player.id || !c.pos) continue;
     const def = IMPULSE_CHARGES[c.data.chargeId] || IMPULSE_CHARGES.charge_standard;
+    if (!firstCenter) { firstCenter = { x: c.pos.x, z: c.pos.z }; firstRadius = def.radius; }
     areas.push(ring('blast', c.pos.x, c.pos.z, def.radius));
     kicks.push(...blastKicks(state, player, {
       x: c.pos.x, z: c.pos.z, radius: def.radius, impulse: def.impulse, falloff: 'linear', excludeId: c.id,
     }));
   }
-  // The player's armed drift bombs commit to the warning beat and go off ~0.18 s later where they
-  // have drifted to (bombs.commandDetonate → _prime → resolveAt).
   const bombList = state.entityIndex && state.entityIndex.__spacefaceEntityIndexV1 && state.entityIndex.ready === true
     && Array.isArray(state.entityIndex.bombs) ? state.entityIndex.bombs : (state.entityList || []);
   const drift = { x: 0, z: 0, vx: 0, vz: 0 };
@@ -370,6 +393,7 @@ function planShove(state, player, rail, opts) {
     const def = resolvedBombDef(d);
     const t = Math.max(0, Math.min(finite(d.detonateAt, now + BOMB_DRIFT.warningS), now + BOMB_DRIFT.warningS) - now);
     integrateBombDrift(drift, b.pos.x, b.pos.z, finite(b.vel && b.vel.x), finite(b.vel && b.vel.z), t, BOMB_DRIFT.dragPerS);
+    if (!firstCenter) { firstCenter = { x: drift.x, z: drift.z }; firstRadius = def.radius; }
     if (def.field && def.field.kind === 'singularity') { areas.push(ring('field', drift.x, drift.z, def.radius)); continue; }
     areas.push(ring('blast', drift.x, drift.z, def.radius));
     kicks.push(...blastKicks(state, player, {
@@ -377,33 +401,15 @@ function planShove(state, player, rail, opts) {
       excludeId: b.id, tangentRatio: def.tangentRatio || 0,
     }));
   }
+  if (!areas.length) return null;
   const kicksById = new Map();
   for (const k of kicks) {
     const list = kicksById.get(k.e.id);
     if (list) list.push(k); else kicksById.set(k.e.id, [k]);
   }
-  for (const list of kicksById.values()) list.sort((a, b) => a.t - b.t);
-
-  const repOff = !fieldsFlag('enabled');
-  const repCooling = !repOff && finite(state.fields && state.fields.cooldowns && state.fields.cooldowns.repulsor) > now;
-  const center = { x: player.pos.x, z: player.pos.z };
-  let moves = [];
-  let seen = new Set();
-  let note = null;
-  if (!repCooling && !repOff) {
-    const spec = playerFieldSpec('repulsor', player, state);
-    spec.radius *= swarmFieldRadiusScale(state); // A01-05
-    areas.unshift(fieldArea('field', spec));
-    ({ moves, seen } = fieldMoves(state, player, spec, { ...opts, live: liveFields(state), kicksById }));
-  } else if (kicks.length || areas.length) {
-    const slot = rail[2];
-    note = `Repulsor recharging — ${Math.ceil(state.fields.cooldowns.repulsor - now)}s`;
-    if (slot && slot.state === 'cooling') note = slot.why;
-  }
-  // A body the repulsor does not hold still takes its blast: a straight arrow from where it is
-  // when the blast lands.
-  for (const [id, list] of kicksById) {
-    if (seen.has(id)) continue;
+  const moves = [];
+  for (const list of kicksById.values()) {
+    list.sort((a, b) => a.t - b.t);
     const first = list[0];
     let dvx = 0, dvz = 0;
     for (const k of list) { dvx += k.dvx; dvz += k.dvz; }
@@ -411,19 +417,11 @@ function planShove(state, player, rail, opts) {
     path.push(...kickArrow(first.x, first.z, dvx, dvz));
     moves.push(moveRow(first.e, path));
   }
-  if (repOff && !areas.length) return null;
-  if (repCooling && !areas.length) {
-    // Nothing armed and the repulsor recharging: the release does nothing. Show where the ring
-    // would be (drawn dim) so the key still answers.
-    const slot = rail[2];
-    const spec = playerFieldSpec('repulsor', player, state);
-    spec.radius *= swarmFieldRadiusScale(state); // A01-05
-    return {
-      center, radius: FIELD_DEFS.repulsor.radius, areas: [fieldArea('field', spec)], moves: [],
-      blocked: (slot && slot.why) || note || 'Recharging',
-    };
-  }
-  return { center, radius: FIELD_DEFS.repulsor.radius, areas, moves: sortAndCap(moves, center.x, center.z), blocked: null, note };
+  return {
+    center: firstCenter, radius: firstRadius, areas,
+    moves: sortAndCap(moves, firstCenter.x, firstCenter.z), blocked: null,
+    note: 'Press Bomb to detonate armed ordnance',
+  };
 }
 
 function planPin(state, player, rail) {
@@ -500,7 +498,7 @@ function planChargeThrow(state, player) {
   }
   const areas = [{ kind: 'route', role: 'route', points: route }, ring('armed', sx, sz, def.radius)];
   const host = stuck ? { id: stuck.id, x: stuck.pos.x, z: stuck.pos.z, radius: finite(stuck.radius, 10) || 10 } : null;
-  return { center: { x: sx, z: sz }, radius: def.radius, areas, moves: [], host, blocked, note: 'Sticks — Shove sets it off' };
+  return { center: { x: sx, z: sz }, radius: def.radius, areas, moves: [], host, blocked, note: 'Sticks — press Bomb again to detonate' };
 }
 
 function planDriftBomb(state, player, rail) {
@@ -637,7 +635,7 @@ export function powerPreviewPlan(state, power, opts = {}) {
   else if (p === 'pull') plan = planPull(state, player, rail, o);
   else if (p === 'shove') plan = planShove(state, player, rail, o);
   else if (p === 'pin') plan = planPin(state, player, rail);
-  else if (p === 'bomb') plan = bombUsesCharge(state) ? planChargeThrow(state, player) : planDriftBomb(state, player, rail);
+  else if (p === 'bomb') plan = planBombDetonate(state, player) || (bombUsesCharge(state) ? planChargeThrow(state, player) : planDriftBomb(state, player, rail));
   else plan = planRig(state, player, rail, o);
   if (!plan) return null;
   return Object.freeze({

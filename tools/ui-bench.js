@@ -1120,7 +1120,9 @@ const manager = {
   popScreen() { void back(); },
   replaceScreen(id) { stack.length = 0; void goto(id); },
   closeAll() { stack.length = 0; screensEl.innerHTML = ''; },
-  hasScreen() { return stack.length > 0; },
+  // Match ScreenManager.hasScreen(id): availability belongs to the loader registry,
+  // not the navigation stack (which is still empty during the first title mount).
+  hasScreen(id) { return Object.hasOwn(SCREENS, id) && typeof SCREENS[id] === 'function'; },
   isOpen(id) { return stack.includes(id); },
   top() { return stack[stack.length - 1] || null; },
   getActiveScreenDef() { return currentScreen; },
@@ -1300,6 +1302,21 @@ async function finishShot(shot) {
   window.__BENCH_READY = true;
 }
 
+function releaseCurrentBenchScreen() {
+  const outgoing = currentScreen;
+  const outgoingId = current;
+  currentScreen = null;
+  if (!outgoing) return;
+  const ctx = { state, bus, screenManager: manager, registry, screenMemory, writeStorePage() {}, publishStoreStill() {} };
+  // The bench replaces the root rather than caching it. Follow ScreenManager.releaseScreen:
+  // stop visible work while the root still exists, then dispose its retained resources.
+  try { outgoing.onHide?.(ctx); }
+  finally {
+    if (outgoingId === 'drill') outgoing._cleanup?.();
+    outgoing.dispose?.();
+  }
+}
+
 async function goto(rawId) {
   releaseFlightPopup?.();
   releaseFlightPopup = null;
@@ -1318,20 +1335,12 @@ async function goto(rawId) {
   }
   currentAlias = null;
   window.__BENCH_READY = false;
+  releaseCurrentBenchScreen();
   if (manifestFixture) {
-    currentScreen?.dispose?.();
     manifestFixture.table.dispose();
     state.player.credits = manifestFixture.credits;
     state.ui.manifestOpponent = manifestFixture.opponent;
     manifestFixture = null;
-  }
-  // The drill module owns a live session and its own frame loop. Retire that instance before
-  // replacing its DOM or reseeding the next shot; otherwise its singleton still says _active
-  // and onShow skips the new board, leaving the walk on the empty claim screen.
-  if (current === 'drill' && currentScreen) {
-    currentScreen.onHide?.();
-    currentScreen._cleanup?.();
-    currentScreen = null;
   }
   window.__BENCH_OVERLAY = '';
   window.__BENCH_OVERLAY_EL = null;

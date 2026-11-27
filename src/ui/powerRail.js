@@ -4,10 +4,10 @@
 // Blast, Seed, Well, Repel, Cone, Skim, Bomb) became five, one job each, and the rank shows exactly
 // those five on the number row, plus the Line and the travel-drive lamp:
 //   1 PULL   a gravity well at the aim point; it grips the locked target three times as hard.
-//   2 SHOVE  the repulsor pulse at the ship, plus every armed charge and drift bomb goes off.
-//   3 PIN    the anchor Mass Seed; it locks where it lands, ready for the Line.
-//   4 BOMB   the selected ordnance: a drift bomb, or the sticky charge (Comma cycles).
-//   5 RIG    the clearing cone, or the skim scoop in a planet band.
+//   2 SHOVE  the repulsor pulse at the ship (clearing shove; does not detonate bombs).
+//   3 PIN    the anchor Mass Seed; stakes a body under the cursor or plants a post for the Line.
+//   4 BOMB   the selected ordnance: press 4 again while armed to detonate (Comma cycles).
+//   5 PLOW   the forward debris wedge; the planetary scoop is a separate system.
 //   LINE     the tether (Space / F).
 // Each power is its own band, so the ORRERY Cluster prints each one by name with its key
 // ("PULL 1 · SHOVE 2 …") instead of hiding several behind a group label. Nothing here invents a
@@ -51,7 +51,7 @@ import { repulsionTrapFitted, resolveImpulseChargeCapacity } from '../data/impul
 import { cruiseChargeProgress, isCharging, isCruising } from '../systems/cruise.js';
 import { isSwarmRuleset } from '../systems/survivalSwarm.js';
 import { indexedTypeScan } from '../world/livingWorldViews.js';
-import { bombUsesCharge, playerImpulseCharges, resolveRigTarget } from '../systems/powerVerbs.js';
+import { bombUsesCharge, playerImpulseCharges } from '../systems/powerVerbs.js';
 import { injectPowerRailLayouts } from './orrery/power-railLayouts.js';
 
 // The rail's composition sheet rides the model's import path: every surface that renders the rail
@@ -335,10 +335,10 @@ export function applyClaims(slotState, claims, now) {
  * field below is read from that system's real writer, not from a HUD-local mirror:
  *
  *   1 pull   state.fields.cooldowns.well              (fields.js, seconds, runtime-only)
- *   2 shove  state.fields.cooldowns.repulsor + the armed charge net and armed drift bombs
+ *   2 shove  state.fields.cooldowns.repulsor
  *   3 pin    state.player.massSeed.cooldownUntil      (massSeed.js, seconds)
- *   4 bomb   the sticky charge while one is aboard, else the bomb bay model (bombUsesCharge)
- *   5 rig    state.fields.coneActive / the planet record's collectorOn + band (resolveRigTarget)
+ *   4 bomb   the sticky charge while one is aboard, else the bomb bay model (bombUsesCharge), plus armed-detonate state
+ *   5 plow   state.fields.coneActive / active player cone field; never the planetary scoop
  *   6 line   state.player.tether
  *
  * `nowS` is sim seconds, matching the cooldown clocks.
@@ -684,11 +684,6 @@ function rigSlotState(state) {
       glyph: 'cone',
       why: plowRocks > 0 ? `Holding ${plowRocks} — press again to launch` : 'Plow active — press again to release',
     };
-  }
-  const planet = state && state.planet;
-  const rec = planet && planet.active && planet.player ? planet.player : null;
-  if (rec && rec.collectorOn === true) {
-    return { state: 'armed', running: true, plowRocks: 0, name: 'Plow', glyph: 'cone', why: 'Plow active — press again to release' };
   }
   return { state: 'ready', running: false, plowRocks: 0, name: 'Plow', glyph: 'cone', why: 'Ready' };
 }

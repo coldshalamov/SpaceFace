@@ -20,6 +20,20 @@ export function createStatusService(context) {
     }
     const stacks = Math.max(1, Math.floor(application.stacks || 1));
     const applyTick = Number.isInteger(application.applyTick) ? application.applyTick : state.tick + 1;
+    // Continuous ignition is an extension of one already-burning status, NOT a new stack
+    // application at 60 Hz. Keep the periodic clock, original attribution and modifiers.
+    // For a newly ignited hull the usual next-tick scheduler still owns the first application.
+    if (source.sustainedBurn === true && def.id === 'status_burning') {
+      const duration = Number.isInteger(application.durationTicks) ? application.durationTicks : def.durationTicks;
+      const active = runtime.statuses?.[def.id];
+      const desiredStacks = Math.min(def.stacking?.maxStacks || 1, stacks);
+      if (active && active.expiresTick > state.tick && active.stacks >= desiredStacks) {
+        active.expiresTick = Math.max(active.expiresTick, applyTick + duration);
+        return { ok: true, refreshed: true };
+      }
+      if (runtime.pendingStatuses.some(row => row.id === def.id && row.applyTick === applyTick
+        && row.stacks >= desiredStacks && row.durationTicks >= duration)) return { ok: true, coalesced: true };
+    }
     if (!Number.isInteger(state.combat.statusNextPendingSeq) || state.combat.statusNextPendingSeq < 1) {
       state.combat.statusNextPendingSeq = 1;
     }

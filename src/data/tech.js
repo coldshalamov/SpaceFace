@@ -68,7 +68,7 @@ export const TECH_NODES = [
   {
     id: 'tech_capital_weapons', name: 'Capital Weapons', branch: 'combat', prereqs: ['tech_warship_license', 'tech_fire_control'],
     cost: { credits: 52000, rp: 52 },
-    unlocks: { ships: ['ship_warden'], modules: ['wpn_heavy_beam_l', 'wpn_torpedo_l'] },
+    unlocks: { ships: ['ship_warden'], modules: ['wpn_heavy_beam_l', 'wpn_torpedo_l', 'wpn_incinerator_m'] },
   },
   {
     id: 'tech_capital_hulls', name: 'Capital Hulls', branch: 'combat', prereqs: ['tech_capital_weapons'],

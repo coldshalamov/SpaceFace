@@ -70,3 +70,9 @@ test('the doors are the composition at every size, and the lab verbs are hidden 
   assert.match(MENU, /for \(const li of aside\.children\) li\.hidden = !labOpen;/);
   assert.match(MENU, /if \(!IS_DEV\) return false;/);
 });
+
+test('public Swarm opens setup; title never directly issues the quick-start command', () => {
+  assert.match(MENU, /case 'swarm':\s*case 'swarmSetup':\s*case 'crucible': pushWhenReady\(ctx, 'crucible', 'Swarm'\)/);
+  assert.doesNotMatch(MENU, /requestSwarmQuickStart\(/);
+  assert.match(CSS, /pointer-events:auto !important; touch-action:manipulation; user-select:none;/);
+});

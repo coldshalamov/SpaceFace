@@ -80,7 +80,11 @@ test('Again replays the Course on a ladder run and deals a fresh layout off it',
 });
 
 test('PLAY boots round 1 in flight: chosen hull, its free gun fitted, zero Scrap, no armory', async () => {
-  for (const [hullId, gunDefId] of [['ship_hornet', 'wpn_concussion_cannon_s'], ['ship_colossus', 'wpn_pulse_laser_s']]) {
+  for (const [hullId, gunDefId] of [
+    ['ship_hornet', 'wpn_concussion_cannon_s'],
+    ['ship_kestrel', 'wpn_pulse_laser_s'],
+    ['ship_colossus', 'wpn_pulse_laser_s'],
+  ]) {
     const bus = createBus(); let opts;
     bus.on('game:new', (value) => { opts = structuredClone(value); });
     const setup = swarmPlaySetup({ arenaId: 'helios_core', hullId, gunDefId, stake: 'contender' });

@@ -12,6 +12,7 @@ const raw = {
   concussion: [P('M3 9H9L12 12 9 15H3Z M14 6Q21 12 14 18 M18 3Q27 12 18 21')],
   bank: [P('M3 20 15 8H21 M14 4H21V11 M3 13 8 8 M8 21 13 16 M4 4 7 4')],
   beam: [P('M4 9H8V15H4Z M8 12H21 M11 8H19 M11 16H19')],
+  incinerator: [P('M7 20V9L9 6V2M17 20V9L15 6V2M7 15H17M10 20H14'), { ...P('M4 2V8M20 2V8'), opacity: '.55' }],
   rail: [P('M4 20 18 6 M8 22 22 8 M12 14 21 5 M16 4 21 3 20 8')],
   siege: [P('M4 21 4 14 14 4 20 4 20 10 10 20Z M8 16 17 7 M3 8 8 3 M16 21 21 16')],
   plasma: [P('M12 3C15 7 19 8 19 13A7 7 0 0 1 5 13C5 10 8 8 9 6L10 12Z'), C(12,15,2)],
@@ -200,64 +201,77 @@ export function arsenalGlyphKey(id) {
 
 const escape = value => String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
 
+// Flight sockets are precision insignia: angular cuts, a single inherited stroke, and
+// open negative space. Draw for the 32px compact visor first, not an enlarged illustration.
+// Solid cores/debris are intentional silhouettes, never an extra stroke weight.
+const solid = d => ({ ...P(d), fill: 'currentColor', stroke: 'none' });
+const flightCharge = [
+  P('M8 8H16L19 11V18L16 21H8L5 18V11Z M8.5 14.5H15.5'),
+  { ...C(12, 4, 1.4), class: 'arsenal-fuse-lamp', fill: 'currentColor', stroke: 'none' },
+  { ...P('M6.5 4H8.5 M15.5 4H17.5'), class: 'arsenal-fuse-rays' },
+];
+const flightCloak = [
+  // Ship inside a signature ring: the interrupted half depicts concealment.
+  P('M12 5.5 7 16.5 12 14 17 16.5Z M7.5 4.21A9 9 0 0 0 7.5 19.79 M16.5 4.21A9 9 0 0 1 19.79 7.5 M20.69 9.67A9 9 0 0 1 20.69 14.33 M19.79 16.5A9 9 0 0 1 16.5 19.79'),
+];
+
 const flightGlyphs = Object.freeze({
-  // Pull: converging arrows on a point.
+  // Pull: four inward chevrons, with a solid point of accumulation.
   field_well_standard: [
-    { ...P('M12 1.5v6.8m-3.1-3L12 8.5l3.1-3.2M22.5 12h-6.8m3-3.1L15.5 12l3.2 3.1M12 22.5v-6.8m-3.1 3L12 15.5l3.1 3.2M1.5 12h6.8m-3-3.1L8.5 12l-3.2 3.1'), 'stroke-linecap': 'square' },
-    { ...C(12, 12, 1.8), fill: 'currentColor', stroke: 'none' },
+    P('M8.5 3.5 12 7 15.5 3.5 M20.5 8.5 17 12 20.5 15.5 M15.5 20.5 12 17 8.5 20.5 M3.5 15.5 7 12 3.5 8.5'),
+    solid('M12 10 14 12 12 14 10 12Z'),
   ],
-  // Shove: a pressure front bursting forward from a ship bow.
+  // Shove: three outward vectors (120 degrees apart) around a hollow origin.
+  // Unlike four square-corner arrows, this cannot read as a fullscreen control.
   field_repulsor_standard: [
-    { ...P('M2 8.2L8.2 12 2 15.8 4.4 12Z'), fill: 'currentColor', stroke: 'none' },
-    { ...P('M10.4 5.2Q14.6 12 10.4 18.8'), 'stroke-width': '1.9' },
-    { ...P('M13.8 12h7.6M18.6 9.2L21.4 12l-2.8 2.8M13.2 7.2L19.4 4.2M13.2 16.8L19.4 19.8'), 'stroke-width': '1.65' },
+    C(12, 12, 2.9),
+    P('M12 7 12 3 M8.5 6.5 12 3 15.5 6.5 M16.33 14.5 19.79 16.5 M18.51 11.72 19.79 16.5 15.01 17.78 M7.67 14.5 4.21 16.5 M8.99 17.78 4.21 16.5 5.49 11.72'),
   ],
-  // Pin: a stake driven through a point with a small orbit arc.
+  // Pin: a slender anchor spire with a split orbital field; no off-axis overlap.
   field_seed_standard: [
-    { ...P('M8.2 3h7.6'), 'stroke-width': '1.9' },
-    { ...P('M10.5 3h3l-1 13.8L12 21l-.5-4.2Z'), fill: 'currentColor', stroke: 'none' },
-    { ...C(12, 13.6, 2.2), 'stroke-width': '1.5' },
-    { ...P('M4 12A8.4 3.8 -12 1 0 19.9 15.1'), 'stroke-width': '1.4' },
-    { ...C(19.6, 14.3, 1.3), fill: 'currentColor', stroke: 'none' },
+    solid('M12 2.75 15 8.5 12 21.25 9 8.5Z'),
+    P('M6.9 10.3C4.3 11 3 12.1 3 13.2S5.2 15.7 8.3 16.3 M17.1 10.3C19.7 11 21 12.1 21 13.2S18.8 15.7 15.7 16.3'),
   ],
-  // Bomb: a charge with a blinking fuse lamp.
-  power_charge: [
-    { ...P('M6.8 9.6L9.2 7.2h5.6l2.4 2.4v8.2l-2.4 2.4H9.2l-2.4-2.4Z'), 'stroke-width': '1.65' },
-    { ...P('M6.8 14h10.4M10.2 11h3.6M10.5 7.2V5.4h3v1.8'), 'stroke-width': '1.45' },
-    { tag: 'circle', class: 'arsenal-fuse-lamp', cx: '12', cy: '3.2', r: '1.9', fill: 'currentColor', stroke: 'none' },
-    { tag: 'path', class: 'arsenal-fuse-rays', d: 'M7.2 3.2h1.6M15.2 3.2h1.6M9.1 1.1l1.1 1.1M14.9 1.1l-1.1 1.1', 'stroke-width': '1.25' },
-  ],
-  bomb_frag: [
-    { ...P('M6.8 9.6L9.2 7.2h5.6l2.4 2.4v8.2l-2.4 2.4H9.2l-2.4-2.4Z'), 'stroke-width': '1.65' },
-    { ...P('M6.8 14h10.4M10.2 11h3.6M10.5 7.2V5.4h3v1.8'), 'stroke-width': '1.45' },
-    { tag: 'circle', class: 'arsenal-fuse-lamp', cx: '12', cy: '3.2', r: '1.9', fill: 'currentColor', stroke: 'none' },
-    { tag: 'path', class: 'arsenal-fuse-rays', d: 'M7.2 3.2h1.6M15.2 3.2h1.6M9.1 1.1l1.1 1.1M14.9 1.1l-1.1 1.1', 'stroke-width': '1.25' },
-  ],
-  // Plow: a wedge at a bow pushing three rocks.
+  // Bomb: chamfered charge housing; keep the existing animated fuse hooks.
+  power_charge: flightCharge,
+  bomb_frag: flightCharge,
+  // Plow: a forward sweep and three debris marks.
   field_cone_standard: [
-    { ...P('M9.2 21.5L12 17.8l2.8 3.7'), 'stroke-width': '1.75' },
-    { ...P('M2.8 16.2L12 11.4l9.2 4.8M6.2 17.6L12 14.6l5.8 3'), 'stroke-width': '1.75' },
-    { ...P('M10 6.4L12 4.1l2.2 1.8-.8 2.8h-2.8Z M3.8 10.4L6 8l2.5 1.4-.8 2.7H4.8Z M15.5 9.4L18 8l2.2 2.4-.9 1.7h-2.9Z'), fill: 'currentColor', 'stroke-width': '1.1' },
+    P('M3 16 12 10 21 16 M7 19 12 15.5 17 19'),
+    solid('M12 2.5 14 4.5 12 6.5 10 4.5Z M5.5 6 7.3 7.8 5.5 9.6 3.7 7.8Z M18.5 6 20.3 7.8 18.5 9.6 16.7 7.8Z'),
   ],
+  // Skim: material flows into a scoop, not out of a plow.
   field_skim_standard: [
-    { ...P('M9.2 21.5L12 17.8l2.8 3.7'), 'stroke-width': '1.75' },
-    { ...P('M2.8 16.2L12 11.4l9.2 4.8M6.2 17.6L12 14.6l5.8 3'), 'stroke-width': '1.75' },
-    { ...P('M10 6.4L12 4.1l2.2 1.8-.8 2.8h-2.8Z M3.8 10.4L6 8l2.5 1.4-.8 2.7H4.8Z M15.5 9.4L18 8l2.2 2.4-.9 1.7h-2.9Z'), fill: 'currentColor', 'stroke-width': '1.1' },
+    P('M3 13.5 8 19.5H16L21 13.5 M8 13.5H16 M12 4V10 M9 7 12 10 15 7 M5 5V10 M19 5V10'),
   ],
-  // Line: a hook on a cable (clear open J-hook + barb on a taut diagonal cable).
+  // Line: the taut cable meets an open capture hook, not a closed key shape.
   power_massline: [
-    { ...C(3.8, 19.6, 1.8), 'stroke-width': '1.65' },
-    { ...P('M5.3 18.2C8.4 15.2 10.6 13.8 13.6 10.8'), 'stroke-width': '1.75' },
-    { ...P('M12.4 9.6l2.4 2.4'), 'stroke-width': '1.6' },
-    { ...P('M13.6 10.8l3.5-3.5c1.8-1.8 4.4-.9 4.5 1.5.1 2.2-1.8 4.2-4.2 3.9l1.3-1.8'), 'stroke-width': '1.9' },
+    C(5.5, 18.5, 2.4),
+    P('M7.2 16.8 15.1 8.9C18.5 5.5 22 7.7 20.9 11.1C20.1 13.7 17.2 15 14.8 13.5L16.5 11.8'),
   ],
+  // Support verbs use the same flight drawing language when present.
+  power_travel_burn: [
+    P('M3 6.5 8.5 12 3 17.5 M10 6.5 15.5 12 10 17.5 M21 4.5V19.5'),
+  ],
+  // Gather: three swept field lines curl around the collected mass, not refresh arrows.
+  power_gyre: [
+    P('M12 3C17 3 20 8 16.4 11 M19.79 16.5C17.29 20.83 11.46 20.93 10.67 16.31 M4.21 16.5C1.71 12.17 4.54 7.07 8.93 8.69'),
+    { ...C(12, 12, 2), fill: 'currentColor', stroke: 'none' },
+  ],
+  mod_cloak_mk1: flightCloak,
+  mod_cloak_mk2: flightCloak,
+  unique_quietcloak: flightCloak,
 });
 
 export function arsenalIcon(id, size = 24, label = '', flight = false) {
-  const flightKey = flight && typeof id === 'string' && !Object.hasOwn(flightGlyphs, id) && id.startsWith('bomb_')
-    ? 'power_charge' : id;
-  const paths = (flight && Object.hasOwn(flightGlyphs, flightKey) && flightGlyphs[flightKey]) || arsenalGlyph(id);
+  const key = typeof id === 'string' ? id : id?.defId || id?.id;
+  if (typeof key !== 'string') return '';
+  // Only catalogued bombs share the flight socket. An unknown ID must remain unknown.
+  const flightKey = flight && key.startsWith('bomb_') && arsenalIdentity(key)?.id === key
+    ? 'power_charge' : key;
+  const isFlightGlyph = flight && Object.hasOwn(flightGlyphs, flightKey);
+  const paths = isFlightGlyph ? flightGlyphs[flightKey] : arsenalGlyph(key);
   if (!paths) return '';
   const dimension = Number.isFinite(Number(size)) ? Math.max(8, Math.min(128, Number(size))) : 24;
-  return `<svg xmlns="http://www.w3.org/2000/svg" class="dp-icon arsenal-icon" viewBox="0 0 24 24" width="${dimension}" height="${dimension}" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" ${label ? `role="img" aria-label="${escape(label)}"` : 'aria-hidden="true" focusable="false"'} data-arsenal="${escape(id)}">${paths.map(({ tag, ...attrs }) => `<${tag} ${Object.entries(attrs).map(([key, value]) => `${key}="${escape(value)}"`).join(' ')}/>`).join('')}</svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" class="dp-icon arsenal-icon" viewBox="0 0 24 24" width="${dimension}" height="${dimension}" fill="none" stroke="currentColor" stroke-width="${isFlightGlyph ? '1.62' : '1.5'}" stroke-linecap="${isFlightGlyph ? 'butt' : 'round'}" stroke-linejoin="${isFlightGlyph ? 'bevel' : 'round'}" ${label ? `role="img" aria-label="${escape(label)}"` : 'aria-hidden="true" focusable="false"'} data-arsenal="${escape(key)}">${paths.map(({ tag, ...attrs }) => `<${tag} ${Object.entries(attrs).map(([key, value]) => `${key}="${escape(value)}"`).join(' ')}/>`).join('')}</svg>`;
 }

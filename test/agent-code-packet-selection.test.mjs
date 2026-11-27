@@ -56,3 +56,18 @@ test('agent-code-packet selection rejects a truncated GitHub tree', () => {
   assert.equal(r.status, 1);
   assert.match(r.stderr, /truncated/i);
 });
+
+test('agent-code-packet excludes derived release JSONs but retains source asset metadata', () => {
+  const tree = [
+    { type: 'blob', path: 'src/render/renderPackageManifest.js', size: 1000 },
+    { type: 'blob', path: 'assets/ships/release/manifest.json', size: 400 },
+    { type: 'blob', path: 'assets/ships/pilots/ship/render-package.json', size: 500 },
+    { type: 'blob', path: 'assets/ships/release/render-packages/ship/metadata.json', size: 600 },
+    { type: 'blob', path: 'assets/ships/release/render-packages/ship/render-package.json', size: 4_000_000 },
+  ];
+  const r = runTree({ truncated: false, tree });
+  assert.equal(r.status, 0, r.stderr || r.stdout);
+  assert.match(r.stdout, /selected_files=4\b/);
+  assert.match(r.stdout, /selected_bytes=2500\b/);
+  assert.match(r.stdout, /omitted_bytes=4000000\b/);
+});

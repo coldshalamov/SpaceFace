@@ -31691,7 +31691,7 @@ export const render = {
         }
       });
     }
-    this._creditChipSubmittable.length = 0;
+    if (this._creditChipSubmittable) this._creditChipSubmittable.length = 0;
 
     if (!slipstreamSeen) writeSlipstreamState(this.state, false, 0);
 

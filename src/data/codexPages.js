@@ -260,6 +260,9 @@ const WEAPON_OVERLAYS = Object.freeze({
   wpn_missile_rack_m: {
     maker: 'Rack of six, dumb until told otherwise. The tell is the lock-tone, not the launch.',
   },
+  wpn_incinerator_m: {
+    maker: 'Twin fixed nose emitters. Keep the target between the rails until its armor starts to glow.',
+  },
   wpn_heavy_beam_l: {
     maker: 'L-frame lance. Ships this size stop being vehicles and start being weather.',
     casualty: 'The first capital duel in Charon Expanse used two of these. The Expanse kept the glass.',

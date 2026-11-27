@@ -106,6 +106,7 @@ export const GUN_FAMILY_BY_WEAPON_ID = Object.freeze({
   wpn_thermal_cooker: 'burn',      // continuous thermal cook — the melt verb literally.
   wpn_plasma_cannon_m: 'burn',     // thermal slugs that "melt" while they lean.
   wpn_plasma_cone_s: 'burn',       // the close-range thermal fan.
+  wpn_incinerator_m: 'burn',       // fixed twin thermal conduit.
   wpn_heavy_beam_l: 'burn',        // siege-class continuous cut.
   unique_lighthouse_heavy_beam: 'burn', // the siege cut tuned hotter.
 

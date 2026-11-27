@@ -207,7 +207,8 @@ function makeCtx(offersList) {
 const offer = (id, title, reward, extra = {}) => ({
   id, title, type: 'delivery', reward,
   destStationId: 'station_beta', destSectorId: 'sector_beta',
-  factionId: null, clauses: [], ...extra,
+  // All physical hold cases exercise collateral-bearing offers. Risk-free tap has its own case.
+  factionId: null, clauses: [], collateral: 1000, ...extra,
 });
 
 async function main() {
@@ -252,6 +253,59 @@ async function main() {
   const acceptEmits = (emitted) => emitted.filter((e) => e.type === 'ui:acceptMission').map((e) => e.payload.missionId);
 
   try {
+    // A risk-free offer is a single press, even during the first second after page navigation.
+    // A controller's short press must not become a physical hold either.
+    {
+      const oldClock = clockNow;
+      const priorNavigator = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
+      try {
+        clockNow = 100;
+        for (const source of ['pointer', 'key', 'pad']) {
+          const { ctx, emitted } = makeCtx([offer('m_alpha', 'Alpha Run', 5000, { collateral: 0 })]);
+          const screen = createContractsScreen(ctx), sc = dom.last();
+          screen.onShow(ctx);
+          const key = sc.dossier.currentAccept();
+          let pressed = true;
+          Object.defineProperty(globalThis, 'navigator', { configurable: true,
+            value: { getGamepads: () => source === 'pad' ? [{ buttons: [{ pressed }] }] : [] } });
+          if (source === 'key') {
+            sc.root.fire('keydown', { target: key, key: 'Enter' });
+            sc.root.fire('keyup', { target: key, key: 'Enter' });
+          } else {
+            if (source === 'pointer') {
+              sc.root.fire('pointerdown', { target: key, button: 0 });
+              sc.root.fire('pointerup', { target: key, button: 0 });
+            }
+            sc.root.fire('click', { target: key });
+          }
+          pressed = false;
+          advance(600);
+          await settleAsync();
+          assert.deepEqual(acceptEmits(emitted), ['m_alpha'], source + ' accepts risk-free on one press');
+          screen.dispose();
+        }
+      } finally {
+        if (priorNavigator) Object.defineProperty(globalThis, 'navigator', priorNavigator);
+        else delete globalThis.navigator;
+        clockNow = Math.max(oldClock, clockNow);
+      }
+    }
+
+    // A board can change before the next paint. The hold must validate the original terms,
+    // not recapture the new price when its RAF eventually executes.
+    {
+      const { ctx, state, emitted } = makeCtx([offer('m_alpha', 'Alpha Run', 5000)]);
+      const screen = createContractsScreen(ctx), sc = dom.last();
+      screen.onShow(ctx);
+      sc.root.fire('pointerdown', { target: sc.dossier.currentAccept(), button: 0 });
+      stepFrame(200);
+      state.missions.boards.station_alpha.slots = [offer('m_alpha', 'Alpha Run', 9000)];
+      stepFrame(6000);
+      await settleAsync();
+      assert.deepEqual(acceptEmits(emitted), [], 'an unpainted terms change cannot authorize a new offer');
+      screen.dispose();
+    }
+
     // The clock keeps the authored hold + retract duration when frames are delayed.
     // A compositor stall cannot turn one activation into a minimum frame count.
     for (const source of ['auto', 'pointer', 'key']) {
@@ -349,7 +403,7 @@ async function main() {
       assert.deepEqual(acceptEmits(emitted), [], 'duplicate release cannot finish an ended press');
       key = sc.dossier.currentAccept();
       sc.root.fire('pointerdown', { target: key, button: 0 });
-      clockNow += 260; // retained progress plus this fresh press exceeds the threshold
+      clockNow += 540; // retained 200 ms plus this fresh press exceeds the 720 ms threshold
       dom.doc.fire('pointerup', { target: key });
       advance(400);
       await settleAsync();
@@ -430,7 +484,7 @@ async function main() {
       assert(keyA && keyA.getAttribute('data-accept') === 'm_alpha', 'dossier A paints an armed Accept');
 
       sc.root.fire('pointerdown', { target: keyA, button: 0 });
-      advance(600); // 450 ms hold fills and fires; the ~260 ms drain is still in flight
+      advance(800); // 720 ms hold fills and fires; the ~260 ms drain is still in flight
       state.missions.boards.station_alpha.slots = [offer('m_beta', 'Beta Haul', 9000)];
       screen.refresh(ctx); // remove A / paint B mid-drain — the classic P04 swap
       const keyB = sc.dossier.currentAccept();
@@ -451,7 +505,7 @@ async function main() {
       screen.onShow(ctx);
       const keyA = sc.dossier.currentAccept();
       sc.root.fire('pointerdown', { target: keyA, button: 0 });
-      advance(600);
+      advance(800);
       screen.refresh(ctx); // identical offer repainted (duplicate updates, mission:updated churn)
       screen.refresh(ctx);
       const keyA2 = sc.dossier.currentAccept();
@@ -471,7 +525,7 @@ async function main() {
       screen.onShow(ctx);
       const keyA = sc.dossier.currentAccept();
       sc.root.fire('pointerdown', { target: keyA, button: 0 });
-      advance(600);
+      advance(800);
       state.missions.boards.station_alpha.slots = [offer('m_alpha', 'Alpha Run', 9000, { collateral: 1200 })];
       screen.refresh(ctx); // same id, repriced — not the contract the player held
       advance(600);
@@ -489,7 +543,7 @@ async function main() {
       const keyA = sc.dossier.currentAccept();
       assert(keyA && keyA.getAttribute('data-accept') === 'm_alpha', 'the focused offer is armed');
       sc.root.fire('keydown', { target: keyA, key: 'Enter' });
-      advance(600);
+      advance(800);
       // the player picks another row before the drain lands — a selection change is a context change
       const rowB = { closest: (sel) => (sel === '[data-mid]' ? rowB : null), getAttribute: () => 'm_beta', focus() {} };
       sc.board.fire('click', { target: rowB });
@@ -507,7 +561,7 @@ async function main() {
       screen.onShow(ctx);
       const keyA = sc.dossier.currentAccept();
       sc.root.fire('pointerdown', { target: keyA, button: 0 });
-      advance(600);
+      advance(800);
       screen.onHide();
       advance(600);
       await settleAsync();
@@ -524,7 +578,7 @@ async function main() {
       screen.onShow(ctx);
       const keyA = sc.dossier.currentAccept();
       sc.root.fire('click', { target: keyA }); // no pointer/key held — assistive activation self-arms
-      advance(800); // the auto hold still fills for 450 ms, then the motionless drain commits at once
+      advance(800); // the auto hold still fills for 720 ms, then the motionless drain commits at once
       await settleAsync();
       assert.deepEqual(acceptEmits(emitted), ['m_alpha'], 'reduced motion commits the held offer at once');
       screen.dispose();

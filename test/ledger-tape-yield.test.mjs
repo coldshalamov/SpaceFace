@@ -210,3 +210,26 @@ test('no figure prints on an axis numeral, whatever its width', () => {
   }
   AXIS_CHAR_W = CHAR_W;
 });
+
+test('short filled and empty tapes retain major ticks while labeling only the ceilings', () => {
+  const doc = installDoc();
+  const populated = [{ id: 'one', type: 'trade', at: 3000, cycleLabel: 'CYCLE 0007', amount: 2500 }];
+  for (const entries of [[], populated]) {
+    for (const [h, count] of [[120, 2], [200, 4]]) {
+      const host = fakeHost(doc, 640, h);
+      const tape = createLedgerTape(host, {});
+      tape.set({ entries, selectedId: null, nowCycle: 'CYCLE 0007' });
+      const axis = host.all((n) => n.classList.contains('orr-ltape__axis'))[0];
+      assert.ok(axis, 'axis remains present');
+      const labels = axis.all((n) => n.tagName === 'text' && n.classList.contains('orr-ltape__axis-n')).map((n) => n.textContent);
+      assert.equal(labels.length, count);
+      assert.ok(labels.includes('2,500 cr'));
+      assert.ok(labels.includes('−2,500'));
+      assert.equal(labels.includes('1,250'), count === 4);
+      const majors = axis.all((n) => n.tagName === 'path' && n.classList.contains('orr-ltape__axis-line'))
+        .find((n) => ((n.getAttribute('d') || '').match(/M /g) || []).length === 4);
+      assert.ok(majors, 'all four major marks stay');
+      tape.dispose();
+    }
+  }
+});

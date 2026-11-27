@@ -325,7 +325,7 @@ function objectiveSummaryText(meta) {
 let refs = null;
 
 /** The door that holds focus on arrival: Continue when a save exists, else the Swarm door — the
- *  fastest way into the fight for a stranger (one press to round 1). */
+ *  first step into a run for a stranger: choose a ship and its opening equipment. */
 export function titlePrimaryAction(hasSave) {
   return hasSave ? 'continue' : 'swarm';
 }
@@ -337,7 +337,7 @@ export function titlePrimaryAction(hasSave) {
  * probe and screen reader that looks for those words still finds them.
  */
 export const TITLE_DOORS = Object.freeze({
-  swarm: Object.freeze({ kicker: 'Arcade runs', name: 'Swarm', line: 'Survive the horde in Madame Kiln’s Foundry', go: 'Play' }),
+  swarm: Object.freeze({ kicker: 'Arcade runs', name: 'Swarm', line: 'Survive the horde in Madame Kiln’s Foundry', go: 'Set up run' }),
   adventure: Object.freeze({ kicker: 'Open world', name: 'Adventure', line: 'Start as hired labour in the Helios harbour', go: 'New game', goSaved: 'Continue' }),
 });
 
@@ -399,7 +399,7 @@ function titleSpatialTarget(items, active, key) {
  * already promised ("the scored ten-wave Survival run", "the authored intro cinematics").
  */
 export const MENU_MODE_GLOSSES = Object.freeze({
-  swarm: 'Straight into round 1. Level up, pick a build, survive.',
+  swarm: 'Choose a ship and gun. Level up, pick a build, survive.',
   crucible: 'A scored ten-wave survival run',
   archive: 'Authored intro reels, in the Codex',
   circuits: 'Race rivals or run time trials',
@@ -565,7 +565,7 @@ export const mainMenuScreen = {
     const bQuit = byAction('quit');
     if (bNew) bNew.setAttribute('aria-label', coreText('newGame'));
     if (bContinue) bContinue.setAttribute('aria-label', coreText('continue'));
-    if (bSwarm) bSwarm.setAttribute('aria-label', 'Swarm — start round 1');
+    if (bSwarm) bSwarm.setAttribute('aria-label', 'Swarm — choose ship and equipment');
     if (bSwarmSetup) bSwarmSetup.setAttribute('aria-label', 'Customize the Swarm run: ship, room, difficulty');
     if (bLoad) bLoad.setAttribute('aria-label', coreText('loadGame'));
     if (bArchive) bArchive.setAttribute('aria-label', coreText('signalArchive'));
@@ -785,7 +785,7 @@ export const mainMenuScreen = {
         return;
       }
       case 'load': pushWhenReady(ctx, 'saveLoad', 'Load Game'); return;
-      case 'swarm': this._launchSwarm(ctx); return;
+      case 'swarm':
       case 'swarmSetup':
       case 'crucible': pushWhenReady(ctx, 'crucible', 'Swarm'); return;
       case 'help': pushWhenReady(ctx, 'help', 'Help'); return;
@@ -799,26 +799,6 @@ export const mainMenuScreen = {
       case 'quit': requestQuit(ctx); return;
       default: return;
     }
-  },
-
-  /**
-   * ONE PRESS TO THE FIGHT: the Swarm door starts round 1 with the remembered defaults
-   * (crucibleLaunch.requestSwarmQuickStart). The setup screen is the "Customize Swarm" key.
-   * A second press while the launch is on its way does nothing.
-   */
-  _launchSwarm(ctx) {
-    if (!screenReady(ctx, 'crucible')) { pushWhenReady(ctx, 'crucible', 'Swarm'); return; }
-    if (this._swarmLaunching) return;
-    this._swarmLaunching = true;
-    import('../crucibleLaunch.js').then((launch) => {
-      if (!launch.requestSwarmQuickStart(ctx.bus)) {
-        this._swarmLaunching = false;
-        pushWhenReady(ctx, 'crucible', 'Swarm');
-      }
-    }).catch(() => {
-      this._swarmLaunching = false;
-      pushWhenReady(ctx, 'crucible', 'Swarm');
-    });
   },
 
   // Cheap signature of everything the render reads that can change while the menu sits on top.
@@ -976,7 +956,6 @@ export const mainMenuScreen = {
   },
 
   onShow(ctx) {
-    this._swarmLaunching = false; // back on the title: the Swarm door may launch again
     this._render(ctx);
     this._shown = true;
     this._showToken = (this._showToken || 0) + 1;

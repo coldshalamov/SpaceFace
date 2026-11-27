@@ -513,6 +513,14 @@ const BEAM = Object.freeze({
   }),
 });
 
+const INCINERATOR = Object.freeze({
+  ...BEAM, variant: 'incinerator-beam',
+  muzzle: Object.freeze({ ...BEAM.muzzle, width: 1.5, lightPeak: 3.6, lightDistance: 16,
+    coreColor: '#ff9b83', accentColor: '#ff150c', lightColor: '#ff3320' }),
+  flight: Object.freeze({ ...BEAM.flight, coreColor: '#ff9b83', sheathColor: '#ff150c' }),
+  hull: Object.freeze({ ...BEAM.hull, scorchLife: 5.5, sparks: true, sparkScale: 1.4 }),
+});
+
 const MINE = Object.freeze({
   family: 'mine',
   variant: 'vector-mine',
@@ -735,6 +743,7 @@ const RECIPES_BY_VARIANT = Object.freeze({
   missile: MISSILE,
   torpedo: TORPEDO,
   'continuous-beam': BEAM,
+  'incinerator-beam': INCINERATOR,
   'vector-mine': MINE,
   filament: FILAMENT,
   'field-ring': FIELD_RING,
@@ -762,6 +771,7 @@ const WEAPON_ART_SCALE = Object.freeze({
   missile: { pixel: 1.80, dash: 1.30, width: 1.20, intensity: 1.15, ribbon: 1.30, linger: 1.20, muzzle: 1.20 },
   torpedo: { pixel: 2.00, dash: 1.25, width: 1.25, intensity: 1.20, ribbon: 1.30, linger: 1.20, muzzle: 1.30 },
   'continuous-beam': { pixel: 1.30, muzzle: 1.20 },
+  'incinerator-beam': { pixel: 1.30, muzzle: 1.20 },
   filament: { pixel: 1.40, dash: 1.15, width: 1.20, intensity: 1.10, ribbon: 1.20, muzzle: 1.15 },
   'field-ring': { pixel: 1.80, dash: 1.30, width: 1.30, intensity: 1.15, ribbon: 1.30, muzzle: 1.20 },
   'filament-latch': { pixel: 1.70, dash: 1.20, width: 1.25, intensity: 1.15, ribbon: 1.20, muzzle: 1.15 },
@@ -813,6 +823,17 @@ const ART_RECIPES_BY_VARIANT = Object.freeze(Object.fromEntries(
 export function resolveWeaponRecipe(weaponId, weaponData = null) {
   const presentation = resolveWeaponPresentationFamily(weaponId, weaponData);
   return ART_RECIPES_BY_VARIANT[presentation.variant] || ART_RECIPES_BY_VARIANT.autocannon;
+}
+
+const weaponDrawRecipes = Object.values(ART_RECIPES_BY_VARIANT);
+const weaponDrawKeys = new Map(weaponDrawRecipes.map((recipe, index) => [recipe, index + 1]));
+
+export function weaponDrawKey(weaponId, weaponData) {
+  return weaponDrawKeys.get(resolveWeaponRecipe(weaponId, weaponData));
+}
+
+export function weaponDrawRecipe(key) {
+  return weaponDrawRecipes[key - 1];
 }
 
 const projectileMeshSkipVerdicts = new WeakMap();

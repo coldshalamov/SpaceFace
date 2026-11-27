@@ -124,6 +124,19 @@ test('R17: Escape never starts a round — it only puts focus on Launch', () => 
   }
 });
 
+test('R17: controller ui:cancel never starts a round — it only puts focus on Launch', () => {
+  for (const credits of [0, 100000]) {
+    const m = mountShop({ credits });
+    try {
+      m.screen.onShow(m.ctx);
+      m.ctx.bus.emit('ui:cancel', { source: 'gamepad' });
+      m.ctx.bus.emit('ui:cancel', { source: 'gamepad' });
+      assert.equal(m.picks().length, 0, 'R17: ui:cancel must never click Launch or start a round');
+      assert.ok(m.focused() >= 1, 'ui:cancel moves focus to Launch');
+    } finally { m.screen.onHide(); m.restore?.(); }
+  }
+});
+
 test('affordableOfferCount counts only what the wallet can buy now', () => {
   assert.equal(affordableOfferCount([]), 0);
   assert.equal(affordableOfferCount(null), 0);
@@ -169,33 +182,35 @@ test('nothing affordable: the first Escape launches at once, exactly as before',
   } finally { m.restore(); }
 });
 
-test('pad cancel uses the Escape guard and only the visible armory answers', () => {
+test('R17: pad cancel focuses Launch without launching, and only the visible armory answers', () => {
   const m = mountShop();
   try {
     m.screen.onShow();
     const focusedBefore = m.focused();
     m.ctx.bus.emit('ui:cancel', {});
-    assert.equal(m.picks().length, 0, 'first B warns without launching');
-    assert.equal(m.focused(), focusedBefore + 1);
-    assert.equal(m.screen._note.textContent, launchGuardLine(1));
+    assert.equal(m.picks().length, 0, 'first B never launches');
+    assert.equal(m.focused(), focusedBefore + 1, 'B moves focus to Launch');
     m.ctx.bus.emit('ui:cancel', {});
-    assert.deepEqual(m.picks(), [['run:draftPickRequested', { offerId: null }]], 'second B launches once');
+    assert.equal(m.picks().length, 0, 'R17: repeated B still never launches');
+    const focusedAfterSecond = m.focused();
     m.ctx.screenManager.top = () => 'crucibleRefit';
     m.ctx.bus.emit('ui:cancel', {});
-    assert.equal(m.screen._launchWarned, false, 'a covering screen owns its cancel');
+    assert.equal(m.focused(), focusedAfterSecond, 'a covering screen owns its cancel');
     m.screen.onHide();
     m.ctx.screenManager.top = () => 'crucibleDraft';
     m.ctx.bus.emit('ui:cancel', {});
-    assert.equal(m.screen._launchWarned, false, 'hidden armory unsubscribes');
+    assert.equal(m.focused(), focusedAfterSecond, 'hidden armory unsubscribes');
   } finally { m.screen.dispose(); m.restore(); }
 });
 
-test('pad cancel with no affordable card launches immediately', () => {
+test('R17: pad cancel with no affordable card still focuses Launch instead of launching', () => {
   const m = mountShop({ credits: 0, offers: [offer('a', { available: false })] });
   try {
     m.screen.onShow();
+    const focusedBefore = m.focused();
     m.ctx.bus.emit('ui:cancel', {});
-    assert.deepEqual(m.picks(), [['run:draftPickRequested', { offerId: null }]]);
+    assert.deepEqual(m.picks(), [], 'R17: cancel never launches even with zero affordable cards');
+    assert.equal(m.focused(), focusedBefore + 1, 'focus moves to Launch so A/Enter confirms');
   } finally { m.screen.dispose(); m.restore(); }
 });
 

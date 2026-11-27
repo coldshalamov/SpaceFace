@@ -210,6 +210,10 @@ export class StatusMatterVfx {
     const heat=cold?.12*(1-retired):1;
     const p=this.composer;
     if(s.kind==='burn'){
+      // Three fixed damage seats feed unequal rolling tongues. Stack count controls
+      // the sustained inferno, not merely a hidden number in the status bag.
+      const burnLoad = clamp((s.stacks - 1) / 2);
+      const burnScale = 0.86 + burnLoad * 0.46;
       // Three fixed damage seats feed unequal rolling tongues. A tongue sheds its
       // downstream edge and renews locally; neither the hull mark nor the assembly spins.
       for(let i=0;i<3;i++){
@@ -222,9 +226,9 @@ export class StatusMatterVfx {
         const body=s.entity,vx=finite(body.vel?.x),vz=finite(body.vel?.z),speed=Math.hypot(vx,vz);
         const wind=speed>3?Math.atan2(-vz,-vx):s.angle+Math.PI;
         const fold=Math.sin(clock*(2.8+i*.57)+seed+i*1.9);
-        p.piece(1,x,z,wind+(i-1)*.26,-scale*.08,scale*(1.25+i*.23),
-          scale*(.28+i*.035),scale*(.48+i*.07),scale*.21*fold,0,0,i*2.3,
-          alpha*(.74+i*.07),arrival,-.1,1.20+fold*.14);
+        p.piece(1,x,z,wind+(i-1)*.26,-scale*.08,scale*(1.25+i*.23)*burnScale,
+          scale*(.28+i*.035)*burnScale,scale*(.48+i*.07)*burnScale,scale*.21*fold,0,0,i*2.3,
+          alpha*(.74+i*.07),arrival,-.1,1.15+burnLoad*.44+fold*.14);
       }
     }else if(s.kind==='goo'){
       // Adjacent lenticular deposits have unequal wet rims and redistribute thickness
@@ -331,7 +335,7 @@ export class StatusMatterVfx {
         if(this.toLocal)this.toLocal(this.pose.x,this.pose.z,this.local);else{this.local.x=this.pose.x;this.local.z=this.pose.z;}
         const b=this.burst;b.x=this.local.x;b.z=this.local.z;b.y=s.top+.25;
         b.dx=-Math.cos(s.angle);b.dz=-Math.sin(s.angle);b.radius=scale*.9;
-        b.seed=s.seed+pulse*.381966;b.count=flash?1:2;b.life=.25;b.strength=flash?.32:.64;
+        b.seed=s.seed+pulse*.381966;b.count=flash?1:Math.min(4,1+s.stacks);b.life=.25;b.strength=flash?.32:.64;
         this.particles.emit(b);
       }
     }

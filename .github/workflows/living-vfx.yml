@@ -39,6 +39,9 @@ jobs:
             /vendor/
             /docs/visual-assets/
             /assets/vfx/
+            /assets/fx/sprites/
+            /assets/ships/motions/
+            /assets/ships/release/render-packages/_shared/
             /assets/ships/release/render-packages/kestrel/
             /assets/ships/release/render-packages/helios-rock-a/
             /assets/ships/release/render-packages/colossus-production-v1/
@@ -53,6 +56,11 @@ jobs:
           ESBUILD=$(node -p "require('./package.json').devDependencies.esbuild")
           npm install --prefix .vfx-ci --ignore-scripts --no-audit --no-fund $DEPS "esbuild@$ESBUILD"
           ln -s .vfx-ci/node_modules node_modules
+      - name: Verify Incinerator gameplay and retained beam contracts
+        run: |
+          mkdir -p vfx-artifact
+          set -o pipefail
+          node --test test/incinerator-twin-beam.test.mjs | tee vfx-artifact/incinerator-contract.log
       - name: Verify production VFX contracts
         run: |
           mkdir -p vfx-artifact
@@ -60,10 +68,18 @@ jobs:
           set -o pipefail
           node scripts/living-vfx-verify.mjs | tee vfx-artifact/verification.log
       - name: Install capture browser
-        if: github.event_name != 'pull_request'
         run: |
           python -m pip install playwright pillow
+          sudo apt-get update -q && sudo apt-get install -y -q ffmpeg
           python -m playwright install --with-deps chromium
+      - name: Capture Incinerator lifecycle at gameplay scale
+        run: |
+          python -m http.server 8769 > vfx-artifact/server.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          sleep 2
+          python scripts/capture-vfx-gameplay-demo.py --scenario incinerator-twin --width 1280 --height 800 --video --output vfx-artifact/incinerator
+          python scripts/capture-vfx-gameplay-demo.py --scenario incinerator-twin --width 1280 --height 800 --reduced-motion --reduced-flash --no-bloom --output vfx-artifact/incinerator-accessible
       - name: Capture released-asset production lab
         if: github.event_name != 'pull_request'
         run: |

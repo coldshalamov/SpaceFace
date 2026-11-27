@@ -42,6 +42,8 @@ export function createStageHull(stageEl, {
   let driftRaf = 0;
   let ctxRef = null;
   let released = false;
+  let shownSignature = null;
+  let shownDefId = null;
 
   // The produced render of the hull on show (src/ui/hullPosters.js). It sits over the canvas until
   // the authored hull has drawn, then fades out (.k-stage.is-live, a kit rule): the stage is never
@@ -94,7 +96,9 @@ export function createStageHull(stageEl, {
           framed = true;
           if (mount && mount.getAssetState() === 'authored') ready();
         },
-        onAssetSettled: ({ state }) => { if (state === 'authored') ready(); },
+        onAssetSettled: ({ state, defId }) => {
+          if (state === 'authored' && (!defId || defId === shownDefId)) ready();
+        },
       });
     } catch (e) {
       mount = null;
@@ -105,21 +109,30 @@ export function createStageHull(stageEl, {
 
   function show(defId, o = {}) {
     const next = defId || NEW_GAME.shipId;
+    const nextSignature = JSON.stringify([next, o.fittings || null, o.weapons || null, o.appearance || null]);
+    const changed = nextSignature !== shownSignature;
+    shownSignature = nextSignature;
+    shownDefId = next;
     setPoster(next);
     // poster-only: the produced render IS the stage; a ship without one falls back to the live hull
     if (!live && !poster.hidden) { posterReady(); return; }
     if (!live && !mount && !released) mountHull();
     // A different hull is not on the glass until its own authored frame; the poster covers the swap.
-    if (!mount || (typeof mount.getDefId === 'function' && mount.getDefId() !== next)) setLive(false);
+    if (!mount || changed) setLive(false);
     if (!mount) return;
     try {
       mount.show(defId || NEW_GAME.shipId, {
         rotating: false,
         fittings: Array.isArray(o.fittings) ? o.fittings : null,
         weapons: Array.isArray(o.weapons) ? o.weapons : null,
+        ...(o.appearance ? { appearance: o.appearance } : {}),
+        preserveView: o.preserveView === true,
         isPlayer: true,
       });
-      mount.setZoom(zoom);
+      if (o.preserveView !== true) mount.setZoom(zoom);
+      // A cached authored fit may be ready synchronously; it will not emit a second
+      // asset-settled event. Reveal that actual fit after show() draws it.
+      if (mount.getAssetState?.() === 'authored') ready();
     } catch (e) {
       console.warn('[stageHull] hull show failed', e);
     }
@@ -202,6 +215,7 @@ export function createStageHull(stageEl, {
   function restore() {
     if (!released) return false;
     released = false;
+    shownSignature = null;
     setLive(false);
     if (live) mountHull();
     return true;

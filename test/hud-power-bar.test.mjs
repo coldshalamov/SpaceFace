@@ -93,16 +93,63 @@ test('HUD-POWER-BAR: cooldown seconds, armed Detonate, active rings, and loaded 
   assert.equal(ord['6'].running, true, 'Active Line carries active ring');
 });
 
-test('HUD-POWER-BAR: flight icons render distinct glyphs with blinking fuse lamp on Bomb', () => {
-  const bombSvg = arsenalIcon('power_charge', 24, '', true);
-  assert.match(bombSvg, /arsenal-fuse-lamp/, 'Bomb flight glyph includes blinking fuse lamp');
-  const fragSvg = arsenalIcon('bomb_frag', 24, '', true);
-  assert.match(fragSvg, /arsenal-fuse-lamp/, 'Drift bomb flight glyph uses the same charge + fuse lamp');
-  const shoveSvg = arsenalIcon('field_repulsor_standard', 24, '', true);
-  const plowSvg = arsenalIcon('field_cone_standard', 24, '', true);
-  const pinSvg = arsenalIcon('field_seed_standard', 24, '', true);
-  const lineSvg = arsenalIcon('power_massline', 24, '', true);
-  assert.equal(new Set([bombSvg, shoveSvg, plowSvg, pinSvg, lineSvg]).size, 5, 'all icons are distinct');
+test('HUD-POWER-BAR: planetary scoop never claims the independent Plow socket', () => {
+  const state = baseState({ planet: { active: true, player: { collectorOn: true } } });
+  const bindings = { rig: ['Digit5'] };
+  assert.equal(readRailModel(state, state.simTime)[5].state, 'ready');
+  assert.equal(readRailModel(state, state.simTime)[5].running, false);
+  assert.notEqual(readOrdnanceModel(state, createCooldownTracker(), bindings)['5'].running, true);
+  state.fields.coneActive = true;
+  assert.equal(readRailModel(state, state.simTime)[5].running, true);
+  assert.equal(readOrdnanceModel(state, createCooldownTracker(), bindings)['5'].running, true);
+});
+
+test('HUD-POWER-BAR: flight glyphs use one precise stroke and distinct geometry at compact size', () => {
+  const ids = [
+    'field_well_standard', 'field_repulsor_standard', 'field_seed_standard',
+    'power_charge', 'field_cone_standard', 'power_massline',
+    'power_travel_burn', 'field_skim_standard', 'power_gyre', 'mod_cloak_mk1',
+  ];
+  // Strip the outer SVG: data-arsenal alone must not make duplicate drawings pass.
+  const geometry = svg => svg.slice(svg.indexOf('>') + 1, -6);
+  const marks = ids.map(id => {
+    const svg = arsenalIcon(id, 32, '', true);
+    assert.match(svg, /viewBox="0 0 24 24" width="32" height="32"/, id);
+    assert.match(svg, /stroke="currentColor" stroke-width="1.62" stroke-linecap="butt" stroke-linejoin="bevel"/, id);
+    assert.match(svg, /aria-hidden="true" focusable="false"/, id);
+    const inner = geometry(svg);
+    assert.ok(inner.length > 0, id);
+    assert.doesNotMatch(inner, /stroke-width=|stroke-linecap=|stroke-linejoin=|<image|<text|<filter|<animate/, id);
+    return inner;
+  });
+  assert.equal(new Set(marks).size, ids.length, 'different verbs have different drawings, not just different IDs');
+
+  // Pull and Shove must remain distinguishable even without their HUD state colors.
+  assert.match(marks[0], /fill="currentColor" stroke="none"/, 'Pull has a solid accumulation point');
+  assert.match(marks[1], /<circle cx="12" cy="12" r="[\d.]+"\/>/, 'Shove has a hollow origin');
+  assert.doesNotMatch(marks[1], /fill="currentColor"/, 'Shove does not share Pull’s filled center');
+
+  const bomb = arsenalIcon('power_charge', 44, '', true);
+  assert.match(bomb, /arsenal-fuse-lamp/);
+  assert.match(bomb, /arsenal-fuse-rays/);
+  for (const id of ['bomb_frag', 'bomb_emp', 'bomb_thermite']) {
+    assert.equal(geometry(arsenalIcon(id, 44, '', true)), geometry(bomb), id + ' keeps the Bomb socket and fuse');
+  }
+  for (const id of ['mod_cloak_mk2', 'unique_quietcloak']) {
+    assert.equal(geometry(arsenalIcon(id, 32, '', true)), marks[9], id + ' keeps the Cloak verb');
+  }
+  const labeled = arsenalIcon('field_well_standard', 44, 'Pull & gather', true);
+  assert.match(labeled, /role="img" aria-label="Pull &amp; gather"/);
+  assert.match(labeled, /width="44" height="44"/);
+  assert.equal(arsenalIcon('not_a_real_power', 32, '', true), '');
+  assert.equal(arsenalIcon('bomb_not_in_catalog', 32, '', true), '');
+  assert.equal(arsenalIcon({ defId: 'field_well_standard' }, 32, '', true), arsenalIcon('field_well_standard', 32, '', true));
+  assert.equal(arsenalIcon({ id: 'bomb_emp' }, 44, '', true), arsenalIcon('bomb_emp', 44, '', true));
+
+  // The armory/outfit glyphs keep their established drawing style and fallback behavior.
+  assert.match(arsenalIcon('field_well_standard', 24), /stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/);
+  assert.notEqual(geometry(arsenalIcon('field_well_standard', 32)), marks[0]);
+  assert.equal(arsenalIcon('wpn_railgun_m', 24, '', true), arsenalIcon('wpn_railgun_m', 24));
 });
 
 test('HUD-POWER-BAR: first-use caption shows 3 times per key in a save, and every time in first Swarm run', () => {

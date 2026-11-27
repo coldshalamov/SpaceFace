@@ -151,6 +151,11 @@ export const SWARM_DRAFT_OFFERS = Object.freeze([
     blurb: 'Primes a hull so the next hit jumps the gap to its neighbours.',
   },
   {
+    id: 'incinerator', defId: 'wpn_incinerator_m', verb: 'Incinerate',
+    kind: 'verb', shape: null, fromWave: 10,
+    blurb: 'Two unbroken nose lasers melt armor and leave the target burning.',
+  },
+  {
     id: 'cooker', defId: 'wpn_thermal_cooker', verb: 'Burn',
     kind: 'verb', shape: null, fromWave: 9,
     blurb: 'Cooks a target from the inside until its own fuel joins the fire.',

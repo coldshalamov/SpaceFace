@@ -74,18 +74,19 @@ test('every figure is a read of its owner, and each entry records which owner su
   }
 });
 
-test('the labels name what the NEXT press does: Pull well, Shove with a detonation count, Pin anchor with no root implied', () => {
+test('R17: labels name what the NEXT press does: Pull well, Shove repulsor only, Pin stake/anchor, Bomb detonate count', () => {
   const state = makeState();
   let { entries } = read(state);
   assert.equal(entries.pull.label, 'Pull · Draws in');
   assert.match(entries.pull.sentence, /^Place a gravity well at your aim point/);
   assert.match(entries.pull.sentence, /gather/);
   assert.equal(entries.shove.label, 'Shove · Pushes away');
-  assert.equal(entries.shove.detonates.total, 0);
-  assert.equal(entries.pin.label, 'Pin · Drop anchor');
-  assert.match(entries.pin.sentence, /does not hold or root enemies/, 'no universal root is implied');
-  assert.doesNotMatch(entries.pin.sentence, /\b(freezes?|stuns?|roots? them)\b/i);
-  // Shove: count what the owners' own predicates will detonate.
+  assert.equal(entries.shove.detonates, undefined, 'R17: Shove does not own ordnance detonation');
+  assert.equal(entries.pin.label, 'Pin · Stake or anchor');
+  assert.match(entries.pin.sentence, /stake it in place/, 'R17: Pin stakes a body under cursor');
+  assert.match(entries.pin.sentence, /fixed anchor/, 'R17: Pin plants an anchor in open space');
+  assert.equal(entries.bomb.detonates.total, 0);
+  // Bomb (4): count what the owners' own predicates will detonate on the next press.
   const mine = { id: 21, alive: true, type: 'charge', data: { ownerId: 1, armed: true } };
   const theirs = { id: 22, alive: true, type: 'charge', data: { ownerId: 99, armed: true } };
   const unarmed = { id: 23, alive: true, type: 'charge', data: { ownerId: 1, armed: false } };
@@ -97,9 +98,11 @@ test('the labels name what the NEXT press does: Pull well, Shove with a detonati
   state.emergent = { stickies: [{ ownerId: 1, armed: true }, { ownerId: 99, armed: true }] };
   assert.deepEqual(armedOrdnanceCounts(state, 50), { charges: 1, bombs: 1, plants: 1, total: 3 });
   ({ entries } = read(state));
-  assert.equal(entries.shove.label, 'Shove · Pushes away + 3 blasts');
-  assert.match(entries.shove.sentence, /1 charge \+ 1 drift bomb \+ 1 planted charge will go off/);
-  assert.equal(entries.shove.ready.state, 'armed');
+  assert.equal(entries.shove.label, 'Shove · Pushes away', 'R17: armed ordnance does not repaint Shove');
+  assert.equal(entries.bomb.label, 'Bomb · Detonate 3 blasts');
+  assert.equal(entries.bomb.payload.next, 'detonate');
+  assert.match(entries.bomb.sentence, /1 charge \+ 1 drift bomb \+ 1 planted charge/);
+  assert.equal(entries.bomb.ready.state, 'armed');
 });
 
 test('RIG shows the Plow in every context — a planet band no longer repaints the key', () => {
@@ -199,7 +202,7 @@ function bootInput() {
   state.settings.gameplay = { ...(state.settings.gameplay || {}), powerFire: 'press' };
   const host = sim.registry.get('input');
   const tap = (code) => { applyFlightKeyEvent(host, { code, pressed: true }); sim.step(); applyFlightKeyEvent(host, { code, pressed: false }); };
-  const flags = () => ['chargeThrow', 'swarmBombThrow', 'dropBomb', 'toggleClearingCone', 'toggleSkimCollector']
+  const flags = () => ['chargeThrow', 'chargeDetonate', 'swarmBombThrow', 'dropBomb', 'toggleClearingCone', 'toggleSkimCollector']
     .filter((f) => state.input.actions[f] === true);
   return { sim, state, tap, flags };
 }
@@ -227,7 +230,14 @@ test('the label agrees with the real press: charge throws, bay bomb drops, a sec
   const entry = read(t.state).entries.bomb;
   assert.equal(entry.payload.next, 'drop');
   assert.deepEqual(press('Digit4'), ['dropBomb']);
-  // 5. R17: "Power 5 is the Plow, always" — the same label and action inside a planet band
+  // 5. R17: with armed ordnance out, Bomb reports detonate and Digit4 emits chargeDetonate; Digit2 emits none
+  const armedCharge = t.sim.spawn({ type: 'charge', data: { ownerId: t.state.playerId, armed: true } });
+  assert.equal(read(t.state).entries.bomb.payload.next, 'detonate');
+  assert.deepEqual(press('Digit2'), [], 'R17: Shove never detonates');
+  assert.deepEqual(press('Digit4'), ['chargeDetonate'], 'R17: second press of Bomb detonates');
+  armedCharge.alive = false;
+  t.sim.step();
+  // 6. R17: "Power 5 is the Plow, always" — the same label and action inside a planet band
   t.state.player.cargo.items.cmdty_impulse_charge = 0;
   const openLabel = read(t.state).entries.rig.label;
   assert.deepEqual(press('Digit5'), ['toggleClearingCone']);

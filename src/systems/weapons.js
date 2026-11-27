@@ -32,6 +32,9 @@ import {
   modelTruthFlashOrigin,
   modelTruthMineSensorRadius,
   modelTruthShotOrigin,
+  modelTruthSocketWorld,
+  modelTruthRow,
+  modelTruthRowForEntity,
 } from '../data/modelTruth.js';
 import { wrapAngle } from '../core/rng.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
@@ -1645,7 +1648,7 @@ export const weapons = {
     } else if (fireGate && fireGate.target && fireGate.target.pos) {
       beamAim = Math.atan2(fireGate.target.pos.z - e.pos.z, fireGate.target.pos.x - e.pos.x);
       const bareDir = this._hardpointDir(e, w, beamAim, 0);
-      solutionBlocked = !arcadeAim && !pilotAim && Math.abs(wrapAngle(bareDir - beamAim)) > fireGate.tolRad;
+      solutionBlocked = !arcadeAim && !pilotAim && def.id !== 'wpn_incinerator_m' && Math.abs(wrapAngle(bareDir - beamAim)) > fireGate.tolRad;
     }
     if (arcadeAim) beamAim = this._arcadeMountAngle(e, w, arcadeTarget, 0);
     const canFire = firing && !solutionBlocked && !overheated && capLeft >= energyCost * dt;
@@ -1670,7 +1673,8 @@ export const weapons = {
     }
 
     // A continuous beam still originates from its hardpoint facing and gimbal-assists toward aim.
-    const dir = arcadeAim || pilotAim ? beamAim : this._hardpointDir(e, w, beamAim != null ? beamAim : e.rot, 0);
+    const twinThermal = def.id === 'wpn_incinerator_m';
+    const dir = twinThermal ? (Number.isFinite(e.rot) ? e.rot : 0) : (arcadeAim || pilotAim ? beamAim : this._hardpointDir(e, w, beamAim != null ? beamAim : e.rot, 0));
     const origin = this._muzzle(e, w, dir);
     const to = { x: origin.x + Math.cos(dir) * range, z: origin.z + Math.sin(dir) * range };
     // RW-01: a siege-class beam pushes its firing hull backward for as long as it holds the beam.
@@ -1692,6 +1696,41 @@ export const weapons = {
       : w;
     const damageType = w.damageType || def.damageType || 'energy';
     const beamKey = `${String(e.id)}:${Number.isFinite(w.slotIndex) ? w.slotIndex : 0}`;
+    if (twinThermal) {
+      // A battery spends heat/cap once. Two parallel rays each own half of the advertised DPS
+      // and their own independent first-skin contact and release key. Never aim at the mouse.
+      // Use the measured forward socket rather than the arbitrary ordinal of the fitted slot.
+      // All fitted batteries (including a temporarily disabled one) occupy a stable lane.
+      let count = 0, ordinal = 0;
+      for (const mount of e.data?.weapons || [w]) {
+        if (mount.defId !== 'wpn_incinerator_m') continue;
+        if (mount === w) ordinal = count;
+        count++;
+      }
+      const nose = modelTruthSocketWorld(e, 'SOCKET_Weapon_Front') || origin;
+      const origins = incineratorBeamOrigins(e, nose, ordinal, count || 1);
+      for (let side = 0; side < origins.length; side++) {
+        const key = beamKey + ':incinerator:' + String(occupantGenerationOf(e) ?? 'fixture') + ':' + side;
+        const phase = this._beamFiringPrev.has(key) ? 'update' : 'begin';
+        this._beamFiring.add(key);
+        if (!this._beamActiveMeta.has(key)) this._beamActiveMeta.set(key, {
+          beamKey: key, ownerId: e.id, weaponId: w.defId, hardpointIdx: w.slotIndex,
+        });
+        const from = origins[side];
+        const endpoint = { x: from.x + Math.cos(dir) * range, z: from.z + Math.sin(dir) * range };
+        if (state.combat && Array.isArray(state.combat.beams)) state.combat.beams.push({
+          ownerId: e.id, sourceLife: occupantGenerationOf(e), sourceTeam: e.team, factionId: e.factionId,
+          weaponId: w.defId, from, to: endpoint, dmgType: damageType, dpsThisTick: damage / 2,
+          damagePacket: beamDamagePacket(wForPacket, def, damage / 2, damageType, dt),
+          beamKey: key, twinThermal: true, hardpointIdx: w.slotIndex, dir, range, phase,
+          rayRadius: 0.45,
+          sourceLocalForward: (from.x - e.pos.x) * Math.cos(dir) + (from.z - e.pos.z) * Math.sin(dir),
+          sourceLocalSide: -(from.x - e.pos.x) * Math.sin(dir) + (from.z - e.pos.z) * Math.cos(dir),
+        });
+      }
+      // Combat publishes each final ray on the existing fire channel after resolving cover.
+      return capLeft;
+    }
     const phase = this._beamFiringPrev.has(beamKey) ? 'update' : 'begin';
     this._beamFiring.add(beamKey);
     let beamMeta = this._beamActiveMeta.get(beamKey);
@@ -3827,6 +3866,75 @@ function resetWeaponDiagnostics(diag) {
   if (!diag) return;
   diag.autoFireSpatialQueries = 0;
   diag.autoFireCandidates = 0;
+}
+
+// The measured silhouette is normalized once per hull and battery count. Synthetic bodies
+// without a model row retain the radius-based fixture fallback. No scene queries in simulation.
+const incineratorLaneCache = new WeakMap();
+function measuredIncineratorLanes(row, count) {
+  if (!row) return null;
+  let byCount = incineratorLaneCache.get(row);
+  if (!byCount) { byCount = new Map(); incineratorLaneCache.set(row, byCount); }
+  if (byCount.has(count)) return byCount.get(count);
+  const outline = row.collider?.outline, reference = Number(row.gameplay?.entityRadius);
+  if (!Array.isArray(outline) || outline.length < 3 || !(reference > 0)) {
+    byCount.set(count, null); return null;
+  }
+  const points = outline.map((radius, i) => {
+    const angle = -Math.PI + ((i + 0.5) / outline.length) * Math.PI * 2;
+    const n = Math.max(0, Number(radius) || 0) / reference;
+    return { x: Math.cos(angle) * n, z: Math.sin(angle) * n };
+  });
+  const halfWidth = Math.min(Math.max(...points.map(p => p.z)), -Math.min(...points.map(p => p.z)));
+  if (!(halfWidth > 0.05)) { byCount.set(count, null); return null; }
+  const halfSpan = halfWidth * (count === 1 ? 0.50 : 0.73);
+  const step = 2 * halfSpan / (2 * count - 1);
+  const forwardAt = z => {
+    let forward = -Infinity;
+    for (let i = 0; i < points.length; i++) {
+      const a = points[i], b = points[(i + 1) % points.length];
+      const dz = b.z - a.z;
+      if (Math.abs(dz) < 1e-9) {
+        if (Math.abs(z - a.z) < 1e-9) forward = Math.max(forward, a.x, b.x);
+        continue;
+      }
+      const t = (z - a.z) / dz;
+      if (t >= 0 && t <= 1) forward = Math.max(forward, a.x + (b.x - a.x) * t);
+    }
+    return forward;
+  };
+  const lanes = Array.from({ length: count * 2 }, (_, i) => {
+    const z = -halfSpan + i * step;
+    // Use the front skin at the actual lateral seat, not the central nose's x coordinate.
+    // A small inset hides the aperture in the silhouette and prevents floating beams.
+    return { z, x: Math.min(forwardAt(z), forwardAt(-z)) - 0.045 };
+  });
+  const result = lanes.every(p => Number.isFinite(p.x) && p.x > 0) ? lanes : null;
+  byCount.set(count, result);
+  return result;
+}
+
+/** Symmetric front-hull apertures in the simulation plane; each beam remains nose-parallel. */
+export function incineratorBeamOrigins(ship, muzzle, ordinal = 0, batteryCount = 1) {
+  const dir = Number.isFinite(ship.rot) ? ship.rot : 0;
+  const c = Math.cos(dir), s = Math.sin(dir);
+  const r = Math.max(2, Number(ship.radius) || 6);
+  const count = Math.max(1, Math.trunc(batteryCount));
+  const lane = Math.max(0, Math.min(count - 1, Math.trunc(ordinal)));
+  const row = modelTruthRowForEntity(ship) || modelTruthRow(ship.data?.shipId);
+  const measured = measuredIncineratorLanes(row, count);
+  if (measured) return measured.slice(lane * 2, lane * 2 + 2).map(p => ({
+    x: ship.pos.x + r * (c * p.x - s * p.z),
+    z: ship.pos.z + r * (s * p.x + c * p.z),
+    y: 0.35,
+  }));
+  const forward = Math.max(r * 0.52, (muzzle.x - ship.pos.x) * c + (muzzle.z - ship.pos.z) * s);
+  const halfSpan = Math.max(1.2, r * (count === 1 ? 0.32 : 0.48));
+  const step = 2 * halfSpan / (2 * count - 1);
+  const port = -halfSpan + lane * 2 * step, starboard = port + step;
+  const x = ship.pos.x + c * forward, z = ship.pos.z + s * forward;
+  return [{ x: x - s * port, z: z + c * port, y: 0.35 },
+    { x: x - s * starboard, z: z + c * starboard, y: 0.35 }];
 }
 
 /** One tick of a continuous beam: the authored packet plus its share of the armor window. */

@@ -711,6 +711,9 @@ export function mountRefusal(slot, def) {
     return `${def.name} does not fit here: it needs a size ${def.size} hardpoint and this ${where} is size ${slot.size}.`;
   }
   const mount = mountClassOf(def);
+  if (def.id === 'wpn_incinerator_m' && slot.facing && slot.facing !== 'front') {
+    return 'Incinerator needs a forward fixed hardpoint: both beams are locked to the nose.';
+  }
   const accepts = HARDPOINT_ACCEPTS[hardpoint] || HARDPOINT_ACCEPTS.fixed;
   if (accepts.includes(mount)) return null;
   return `${def.name} does not fit a ${where}: it is ${MOUNT_CLASS_WORD[mount] || 'the wrong class'}, and a ring carries only guns and turrets. Fit it on a fixed hardpoint.`;
@@ -1818,8 +1821,8 @@ function makeWeaponRuntime(def, slot, slotIndex, isPlayer = false, derivedStats 
   // homing weapons lock a target and steer in flight (no gimbal — they fire toward the target).
   const isTurret = facing === 'turret' || tracking === 'auto_turret';
   const isHoming = tracking === 'homing';
-  const gimbalArc = isTurret ? (turretArc || Math.PI)
-    : (isHoming ? Math.PI : (isPlayer ? PLAYER_GIMBAL_ARC : GIMBAL_ARC_DEFAULT));
+  const gimbalArc = def.id === 'wpn_incinerator_m' ? 0 : (isTurret ? (turretArc || Math.PI)
+    : (isHoming ? Math.PI : (isPlayer ? PLAYER_GIMBAL_ARC : GIMBAL_ARC_DEFAULT)));
   const muzzleOffset = FACING_OFFSET[facing] || FACING_OFFSET.front;
   // PQ-176.02: an aimed gun on a turret ring aims itself and pays the ring's output margin.
   const mountClass = mountClassOf(def);

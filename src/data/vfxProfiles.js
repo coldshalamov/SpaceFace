@@ -99,6 +99,8 @@ const PRIMITIVE_PRESENTATION = Object.freeze({
 // not bullet streams — the concussion cannons (520/920) and the seismic gong (220).
 const CONCUSSION_IMPULSE_MIN = 200;
 
+const INCINERATOR_PICTURE = Object.freeze({ family: 'beam', variant: 'incinerator-beam' });
+
 const WEAPON_BY_ID = new Map(WEAPONS.map((w) => [w.id, w]));
 
 /**
@@ -142,6 +144,7 @@ export function classifyWeaponFamily(weaponId, weaponData = null, fallbackData =
   const primitive = (data && data.emergentPrimitive) ?? (fallback && fallback.emergentPrimitive);
   if (primitive && PRIMITIVE_PRESENTATION[primitive]) return PRIMITIVE_PRESENTATION[primitive];
 
+  if (id === 'wpn_incinerator_m') return INCINERATOR_PICTURE;
   if (continuous || projSpeed === Infinity || tracking === 'hitscan') {
     return WEAPON_FAMILY_PRESENTATION.beam;
   }

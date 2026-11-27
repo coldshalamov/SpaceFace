@@ -1600,7 +1600,8 @@ export const crucibleDraftScreen = {
     this._offCancel = this._ctx?.bus.on('ui:cancel', () => {
       const ctx = this._ctx;
       if (ctx?.screenManager?.top() !== this.id) return;
-      if (!this._guardLaunch(ctx)) this._skip?.click();
+      // R17 (2026-11-20): cancel/back must never start a round — move focus to Launch, matching Escape.
+      if (typeof this._skip?.focus === 'function') this._skip.focus();
     });
     const r = this._regions;
     if (!r || !canAnimate()) return;

@@ -326,7 +326,7 @@ test('Furnace Frag warns when the marked mite can move out before the fuze', () 
   }
 });
 
-test('Shove: the repulsor ring and every armed charge; a recharging repulsor keeps the blasts', () => withFields(() => {
+test('R17: Shove previews the repulsor only; Bomb previews armed charge detonation', () => withFields(() => {
   const t = boot();
   const rock = body(t.sim, 300, 10, { mass: 3 });
   const charge = t.sim.spawn({
@@ -335,30 +335,32 @@ test('Shove: the repulsor ring and every armed charge; a recharging repulsor kee
   });
   const inRepulsor = body(t.sim, 60, 0, { mass: 2 });
   t.sim.step();
-  const plan = powerPreviewPlan(t.state, 'shove');
-  assert.equal(plan.tint, 'red');
-  const field = plan.areas.find((a) => a.role === 'field');
+  const shovePlan = powerPreviewPlan(t.state, 'shove');
+  assert.equal(shovePlan.tint, 'red');
+  const field = shovePlan.areas.find((a) => a.role === 'field');
   assert.deepEqual([field.x, field.z, field.r], [t.player.pos.x, t.player.pos.z, FIELD_DEFS.repulsor.radius]);
-  const blast = plan.areas.find((a) => a.role === 'blast');
-  assert.deepEqual([blast.x, blast.z, blast.r], [280, 0, 84]);
-  const pushed = plan.moves.find((m) => m.id === rock.id);
-  assert.ok(pushed && pushed.toX > pushed.x, 'the charge throws the rock away from itself');
-  const shoved = plan.moves.find((m) => m.id === inRepulsor.id);
+  assert.equal(shovePlan.areas.some((a) => a.role === 'blast'), false, 'R17: Shove never previews ordnance blasts');
+  const shoved = shovePlan.moves.find((m) => m.id === inRepulsor.id);
   assert.ok(shoved && shoved.toX > shoved.x, 'the repulsor pushes outward from the ship');
+  assert.equal(ids(shovePlan).includes(rock.id), false);
 
+  // R17: Bomb previews the armed blast and kicks while ordnance is armed out there.
+  const detonatePlan = powerPreviewPlan(t.state, 'bomb');
+  const blast = detonatePlan.areas.find((a) => a.role === 'blast');
+  assert.deepEqual([blast.x, blast.z, blast.r], [280, 0, 84]);
+  const pushed = detonatePlan.moves.find((m) => m.id === rock.id);
+  assert.ok(pushed && pushed.toX > pushed.x, 'the armed charge throws the rock away from itself');
+
+  // Recharging Shove is blocked even when a charge is armed (Shove no longer detonates).
   t.state.fields.cooldowns.repulsor = t.state.simTime + 4;
   const cooling = powerPreviewPlan(t.state, 'shove');
-  assert.equal(cooling.areas.some((a) => a.role === 'field'), false, 'no repulsor while it recharges');
-  assert.ok(cooling.areas.some((a) => a.role === 'blast'), 'the charge still goes off');
-  assert.equal(cooling.blocked, null);
-  assert.ok(ids(cooling).includes(rock.id) && !ids(cooling).includes(inRepulsor.id));
-
+  assert.ok(cooling.blocked, 'recharging repulsor is blocked');
+  assert.equal(cooling.moves.length, 0);
+  assert.deepEqual(cooling.areas.map((a) => a.role), ['field'], 'the ring still shows, drawn dim');
+  // Bomb still previews detonation while Shove recharges.
+  assert.equal(powerPreviewPlan(t.state, 'bomb').blocked, null);
   charge.alive = false;
   t.sim.step();
-  const nothing = powerPreviewPlan(t.state, 'shove');
-  assert.ok(nothing.blocked, 'nothing armed and the repulsor recharging: the release does nothing');
-  assert.equal(nothing.moves.length, 0);
-  assert.deepEqual(nothing.areas.map((a) => a.role), ['field'], 'the ring still shows, drawn dim');
 }));
 
 test('Pin draws its flight and lock ring and outlines nothing; a recharging seed is blocked', () => withFields(() => {
@@ -376,7 +378,7 @@ test('Pin draws its flight and lock ring and outlines nothing; a recharging seed
   assert.match(powerPreviewPlan(t.state, 'pin').blocked, /Recharging/);
 }));
 
-test('Bomb with a charge aboard draws the throw to the hull it will stick to; Shove sets it off', () => withFields(() => {
+test('Bomb with a charge aboard draws the throw to the hull it will stick to; pressing Bomb again detonates it', () => withFields(() => {
   const t = boot();
   const target = body(t.sim, 90, 0, { type: 'ship', team: 1, radius: 8, mass: 30 });
   t.sim.step();
@@ -385,7 +387,8 @@ test('Bomb with a charge aboard draws the throw to the hull it will stick to; Sh
   const plan = powerPreviewPlan(t.state, 'bomb');
   assert.equal(plan.blocked, null);
   assert.equal(plan.host && plan.host.id, target.id, 'the plate sticks to the hull on its line');
-  assert.equal(plan.moves.length, 0, 'a throw moves nothing until Shove');
+  assert.equal(plan.moves.length, 0, 'a throw moves nothing until detonated');
+  assert.match(plan.note, /press Bomb again to detonate/i);
   const armed = plan.areas.find((a) => a.role === 'armed');
   assert.equal(armed.r, 84);
   assert.ok(Math.hypot(armed.x - target.pos.x, armed.z - target.pos.z) <= 8 + 1.2 + 6 + 2.1, 'the blast ring sits at the stick point');
